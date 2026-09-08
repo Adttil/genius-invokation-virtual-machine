@@ -1,13 +1,13 @@
-#ifndef GIVM_DECK_HPP
-#define GIVM_DECK_HPP
+#ifndef GIVM_DEFINITION_DECK_HPP
+#define GIVM_DEFINITION_DECK_HPP
 
 #include <stdexcept>
 #include <string_view>
 #include <vector>
 
-#include "definition/issued_id.hpp"
-#include "definition/issued_id_map.hpp"
-#include "definition/types.hpp"
+#include "issued_id.hpp"
+#include "issued_id_map.hpp"
+#include "types.hpp"
 
 namespace givm
 {

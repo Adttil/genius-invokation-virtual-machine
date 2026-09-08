@@ -16,7 +16,6 @@
 #include "table/entities/status_entity.hpp"
 #include "table/entities/player_entity.hpp"
 #include "definition.hpp"
-#include "deck.hpp"
 #include "table/table_storage.hpp"
 #include "utils/debug.hpp"
 

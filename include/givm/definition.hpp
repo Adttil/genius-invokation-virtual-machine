@@ -5,5 +5,6 @@
 #include "definition/source_view.hpp"
 #include "definition/library.hpp"
 #include "definition/source_library.hpp"
+#include "definition/deck.hpp"
 
 #endif

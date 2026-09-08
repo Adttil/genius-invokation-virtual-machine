@@ -53,14 +53,13 @@ event 描述一次正在结算、允许响应者修改的规则事件。handler 
 
 ## 模块入口
 
-核心模块依赖方向为：
+三个核心模块的依赖方向为：
 
 ```text
-definition -> deck -> table -> executor
+definition -> table -> executor
 ```
 
-- `definition.hpp`：定义源、编译定义库、issued id 和程序入口。
-- `deck.hpp`：牌组链接和只含 issued ID 的 `linked_deck`。
+- `definition.hpp`：定义源、编译定义库、issued id、程序入口，以及牌组名称链接与 `linked_deck`。
 - `table.hpp`：牌桌状态、实体 ID、实体访问对象和 `card_table`。
 - `executor.hpp`：公开指令、事件、随机输入和 `executor`。
 - `utils/stack.hpp`：执行栈与 frame view。

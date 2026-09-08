@@ -29,10 +29,9 @@
 `include/givm` 的主要外部入口为：
 
 - `givm.hpp`：完整公开接口。
-- `definition.hpp`：定义源、编译定义库、issued id 与程序入口。
-- `deck.hpp`：牌组名称链接与 issued ID 牌组。
+- `definition.hpp`：定义源、编译定义库、issued id、程序入口，以及牌组名称链接与 `linked_deck`。
 - `table.hpp`：牌桌持久状态、实体 ID、实体访问对象与 `card_table`。
 - `executor.hpp`：具体指令、事件、广播工具、随机输入与 `executor`。
 - `utils/stack.hpp`：通用执行栈及 frame view。
 
-模块依赖方向为 `definition -> deck -> table -> executor`。跨模块使用外部入口头；模块内部实现可以直接包含本模块头文件。
+三个核心模块的依赖方向为 `definition -> table -> executor`。跨模块使用外部入口头；模块内部实现可以直接包含本模块头文件。
