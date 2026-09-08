@@ -2,7 +2,9 @@
 
 # roll_dice
 
-掷出栈顶 selector 指定的骰子。
+重投栈顶 selector 指定的骰子。
+
+本指令由独立头文件 `givm/executor/instructions/roll_dice.hpp` 提供，不由 `givm/executor/instructions.hpp` 聚合导出。
 
 ## 字段
 
@@ -27,7 +29,7 @@ stack.top<selector>();
 - 当前骰子依次按万能、冰、水、火、雷、风、岩、草排列，同种骰子连续排列；排列结果从 1 开始编号，第 `i` 个骰子对应选择 bitset 从低位到高位的第 `i` 位。
 - 全零 bitset 表示本次不掷任何骰子。
 - 本命令是单玩家、单 selector 的通用随机重投工具。
-- 默认回合开始流程不使用本命令处理双方重投；双方投掷阶段由 [`process_dice_roll_phase`](process_dice_roll_phase.md) 预发重投随机池并推进。
+- 当前双方投掷阶段由 [`start_dice_roll_phase`](start_dice_roll_phase.md) 预发重投随机池并推进。
 - 本指令不发布投骰 event。
 
 ## 形式化语义

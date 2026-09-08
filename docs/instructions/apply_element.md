@@ -11,7 +11,7 @@
 | `source` | `element_application_source_id` | 元素附着来源。 |
 | `target` | `character_id` | 目标角色。 |
 | `element` | `element` | 要附着的元素。 |
-| `cause` | `element_application_cause` | 普通效果附着或伤害附着。 |
+| `cause` | `element_application_cause` | 普通效果附着或伤害附着；默认为 `effect`。 |
 
 ## 执行
 
@@ -23,3 +23,5 @@
 4. 按当前 table 枚举可响应 `elemental_reaction_will_occur` 的实体，连同游标和事件对象一起压入广播 frame。
 5. 推进该广播；若响应者没有接管默认反应，本指令直接应用默认 aura 结果。响应者若接管，则由其固定响应程序修改事件或 table。
 6. 推进 [`after_elemental_reaction`](../events/after_elemental_reaction.md) 广播，然后完成。
+
+定制响应若接管默认处理，应将 `already_handled` 设为 `true` 并在响应程序中完成所需替代效果；仅返回非空入口不会自动阻止默认 aura 更新。

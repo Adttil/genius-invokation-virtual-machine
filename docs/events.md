@@ -4,7 +4,7 @@
 
 每个链接页面规定相应类型的公开契约，包括字段与默认值、领域语义、执行顺序、事件顺序、挂起点以及可观察 stack ABI。实现和性能优化必须保持这些契约；页面不记录私有状态机写法或擦除存储布局。
 
-共享的重入、activation、默认广播和 onpay 协议见 [指令、栈与事件系统](event-system.md)，stack 容器接口见 [Executor Stack](stack.md)，最小对局组合见 [最小可运行对局](game-flow.md)。执行层统一使用 instruction 术语；代码目录和部分具体类型名仍沿用 command。
+共享的重入、activation、默认广播和 onpay 协议见 [指令、栈与事件系统](event-system.md)，stack 容器接口见 [Executor Stack](stack.md)，最小对局组合见 [最小可运行对局](game-flow.md)。执行层统一使用 instruction 术语；`test_command` 保留现有类型名。
 
 ## 公共结算约定
 
@@ -67,6 +67,7 @@
 | [`action_phase_started`](events/action_phase_started.md) | 行动阶段已经开始。 |
 | [`before_action`](events/before_action.md) | 一名玩家即将选择行动。 |
 | [`cost_of_switch`](events/cost_of_switch.md) | 计算主动切换出战角色的费用需求。 |
+| [`dice_removed`](events/dice_removed.md) | 主动切人支付非零骰子费用后发出的通知。 |
 | [`round_end_declared`](events/round_end_declared.md) | 当前行动玩家已宣布结束。 |
 | [`round_ended`](events/round_ended.md) | 双方均已结束，本回合已经关闭。 |
 
@@ -76,7 +77,7 @@
 
 | 指令 | 机制 |
 | --- | --- |
-| [`deal_damage`](instructions/deal_damage.md) | 完整处理一次伤害计算、伤害结算、扣血、伤害元素附着、伤害后响应和死亡检查。 |
+| [`deal_damage`](instructions/deal_damage.md) | 处理伤害计算、伤害结算、扣血、伤害元素附着、伤害后响应及胜负检查。 |
 | [`absorb_damage_by_count`](instructions/absorb_damage_by_count.md) | 在 `damage_effect` 固定响应程序中，用当前实体计数吸收伤害。 |
 | [`apply_element`](instructions/apply_element.md) | 完整处理元素附着、元素反应和反应后响应。 |
 | [`set_element_aura`](instructions/set_element_aura.md) | 写入角色元素附着。 |
@@ -87,7 +88,7 @@
 | [`damage_effect`](events/damage_effect.md) | 护盾等效果的结算工作区。 |
 | [`after_damage`](events/after_damage.md) | 实际扣血已经完成，且伤害携带的元素附着/反应流程已经处理。 |
 | [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 默认反应效果前的可接管工作区。 |
-| [`after_elemental_reaction`](events/after_elemental_reaction.md) | 元素反应效果均已处理。 |
+| [`after_elemental_reaction`](events/after_elemental_reaction.md) | 本次默认或接管的元素反应处理已结束。 |
 
 ## 调试
 

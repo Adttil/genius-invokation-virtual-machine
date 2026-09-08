@@ -12,7 +12,7 @@
 
 ## 栈 ABI
 
-本指令不要求特定栈顶布局，也不读写 executor stack。
+除执行器维护的公共 `stage_t` 后缀外，本指令不要求额外栈输入，也不创建临时 frame。
 
 ## 执行
 
@@ -24,4 +24,4 @@
 
 整个遍历在一次指令执行中完成，不产生中间挂起点，也不进行普通事件广播。所有角色初始化完成后进入下一条固定指令。
 
-`character_initialization` 当前约定只修改 event 并返回空入口。该约定暂未由单独的静态 Context 类型强制。
+`character_initialization` 约定只修改 event 并返回空入口。

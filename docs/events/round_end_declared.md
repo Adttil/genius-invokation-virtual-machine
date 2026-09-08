@@ -10,4 +10,4 @@
 
 ## 响应
 
-响应者通过 `table.state().active_player` 得知宣告者。若这是本回合第一次宣告结束，`begin_action` 会在广播前先设置 `table.state().first_ended = true`；广播期间 `active_player` 仍保持为宣告者，广播结束后才切换给对手。第二次声明广播完成后，`begin_action` 进入回合程序中的下一条 `end_round`。
+响应者通过 `table.state().active_player` 得知宣告者。若这是本回合第一次宣告结束，`begin_action` 会在广播前先设置 `table.state().first_ended = true`；广播期间 `active_player` 仍保持为宣告者，广播结束后才切换给对手。第二次声明广播完成后，`begin_action` 进入调用方规则程序的下一条指令；是否紧接 [`end_round`](../instructions/end_round.md) 由该程序安排。

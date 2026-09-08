@@ -2,7 +2,7 @@
 
 # 指令、栈对象与公共类型
 
-指令必须保持小型、平凡可复制且平凡析构，以便进入 executor 的擦除指令存储。指令是可保存的 re-entry point，不承载大型结算状态。现有代码目录和部分具体类型名仍沿用 command。
+指令必须保持小型、平凡可复制且平凡析构，以便进入 executor 的擦除指令存储。每个指令显式声明 `context_type`；不依赖事件 Context 的指令使用 `context_type = void`。指令是可保存的 re-entry point，不承载大型结算状态；部分具体类型名仍沿用 command。
 
 executor stack object 同样必须平凡可复制、平凡析构，且对齐不超过 `std::max_align_t`。stack object 的大小由对应 frame 协议决定；非平凡对象、局部引用、`std::span` 这类依赖外部生命周期的数据不得直接作为 stack object 保存。完整 stack 接口约定见 [Executor Stack](stack.md)。
 
@@ -17,10 +17,11 @@ executor stack object 同样必须平凡可复制、平凡析构，且对齐不�
 | 含义 | 完整类型 |
 | --- | --- |
 | 事件描述的牌实体身份 | `std::variant<hand_card_id, deck_card_id>` |
-| 任意运行期实体 | `std::variant<hand_card_id, deck_card_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` |
-| 带计数器的实体 | `std::variant<support_id, summon_id, combat_status_id, attachment_id>` |
+| 任意运行期实体 | `std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` |
+| 带计数器的实体 | `std::variant<hand_card_status_id, deck_card_status_id, support_id, summon_id, combat_status_id, attachment_id>` |
 | 已解析的打牌目标 | `std::variant<std::monostate, character_id, support_id, summon_id>` |
-| 伤害或元素附着来源 | `std::variant<hand_card_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` |
+| 伤害或元素附着来源 | `std::variant<hand_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` |
+| 治疗等效果来源 | `std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` |
 
 实现中，确实在多个字段表达同一含义的 variant 可以分别使用 `card_id`、`entity_id`、`counted_entity_id`、`card_target_id`、`effect_source_id`、`damage_source_id` 或 `element_application_source_id` 等便捷别名。这些别名不属于基础实体 ID，直接定义在首次使用它的 event 之前；不同语义的来源别名各自展开完整 variant，不通过另一个来源别名间接定义。
 
@@ -30,14 +31,14 @@ executor stack object 同样必须平凡可复制、平凡析构，且对齐不�
 
 ## `dice_counts`
 
-`dice_counts`、`elemental_dice_cost` 与 `elemental_dice` 一起定义在 `enums/elemental_dice.hpp`。`elemental_dice_cost` 目前仍是不完整的早期实现，本次只调整归属位置。`dice_counts` 在内部保存 8 个 `std::uint8_t`，但不暴露数组下标；只能使用 `elemental_dice` 索引：
+`dice_counts`、`elemental_dice_cost` 与 `elemental_dice` 一起定义在 `enums/elemental_dice.hpp`。行动费用使用下述 `elemental_dice_requirement`。`dice_counts` 默认所有分量为 0，在内部保存 8 个 `std::uint8_t`，但不暴露数组下标；只能使用 `elemental_dice` 索引：
 
 ```cpp
 dice_counts dice;
 dice[elemental_dice::pyro] = 2;
 ```
 
-它表示玩家当前骰子、一次增减或玩家提交的具体支付骰子。`elemental_dice_cost` 表示费用约束，两者不可混用。
+它表示玩家当前骰子、一次增减或玩家提交的具体支付骰子，不能代替包含同色、任意元素条件的费用约束。
 
 ## 普通数值类型
 
@@ -45,7 +46,7 @@ dice[elemental_dice::pyro] = 2;
 
 - 牌数量、伤害、充能、治疗、生命、秘传点和实体计数器使用 `std::uint32_t`。
 - 一次资源变化的正负增量使用 `std::int32_t`。
-- 骰子数量使用 `std::uint8_t`。
+- `dice_counts` 的各元素分量及费用字段 `same`、`any` 使用 `std::uint8_t`；总骰数、投骰数量与重投次数使用 `std::uint32_t`。
 
 具体语义由字段名和所属指令/event 表达。
 
@@ -55,13 +56,13 @@ dice[elemental_dice::pyro] = 2;
 
 ```cpp
 struct action_request {
-    action_request_kind request_kind;
-    action_kind action_kind;
-    stack_count_t action_index;
+    action_request_kind request_kind = action_request_kind::none;
+    action_kind action_kind = action_kind::switch_active;
+    stack_count_t action_index = 0;
 };
 ```
 
-`request_kind` 区分仅计算费用、使用已有费用结果执行、现场计算并执行；对应名称为 `calculate_cost`、`do_action_with_cost` 和 `do_action`。`action_kind + action_index` 选择某类行动数组中的元素。真正执行时提交的骰子和目标放在独立的 `action_argument` 中：
+`action_request_kind::none` 表示未提交输入；其余值区分仅计算费用、使用已有费用结果执行、现场计算并执行，对应名称为 `calculate_cost`、`do_action_with_cost` 和 `do_action`。当前 `action_kind` 包含 `switch_active` 和 `declare_round_end`：前者通过 `action_index` 选择切人费用数组中的元素，后者不使用该索引。真正执行时提交的骰子和目标放在独立的 `action_argument` 中：
 
 ```cpp
 struct action_argument {
@@ -70,26 +71,28 @@ struct action_argument {
 };
 ```
 
+`action_target` 使用 `action_target_kind` 判别 `none`、`character`、`support` 或 `summon`，并保存对应 ID 字段，默认 `kind == action_target_kind::none`。它与事件使用的 `card_target_id` variant 是不同类型。当前切人执行读取选中 `cost_of_switch.target`，不读取 `action_argument.target`。
+
 费用结果使用 `action_cost_requirement`：
 
 ```cpp
 struct elemental_dice_requirement {
     dice_counts fixed;
-    std::uint8_t same;
-    std::uint8_t any;
+    std::uint8_t same = 0;
+    std::uint8_t any = 0;
 };
 
 struct action_cost_requirement {
     elemental_dice_requirement dice_requirement;
-    action_speed speed;
+    action_speed speed = action_speed::combat;
 };
 ```
 
-`dice_requirement` 描述费用约束，`paid_dice` 描述外层实际选择支付的骰子，两者不可混用。当前最小实现只接通主动切人：`cost_of_switch` 是费用计算事件，默认费用为 1 个任意元素骰，默认速度为 `action_speed::combat`。
+`dice_requirement` 描述费用约束，`paid_dice` 描述外层实际选择支付的骰子，两者不可混用。主动切人使用 `cost_of_switch` 计算费用，默认费用为 1 个任意元素骰，默认速度为 `action_speed::combat`；宣告结束不需要费用计算。
 
 每个费用 handler 调用前，`begin_action` 清空事件中的 `cost_effect_argument<cost_of_switch>`。handler 可以修改费用、写入本次实际减费参数，并返回 `program_entry<onpay_context<cost_of_switch>>`。入口和参数共同保存为 `onpay_item<cost_of_switch>`；费用预览不执行 onpay，确认后只执行选中 action 对应的一行。
 
-所有 onpay 完成后，`begin_action` 自己从 `action_argument.paid_dice` 扣除当前行动玩家的骰子，再继续 action 本体。费用合法性由外层根据对应 `cost_of_switch.requirement` 判断，核心消费流程假定输入已经合法。
+所有 onpay 完成后，`begin_action` 按 `action_argument.paid_dice` 从当前行动玩家资源中扣除骰子；非零支付随后广播 [`dice_removed`](events/dice_removed.md)，响应完成后继续切人本体。费用合法性由外层根据对应 `cost_of_switch.requirement` 判断，核心消费流程假定输入已经合法。
 
 ## 伤害倍率
 
@@ -100,7 +103,7 @@ struct action_cost_requirement {
 | `multiplier_numerator` | `std::uint16_t` | 分子，默认 1。 |
 | `multiplier_denominator` | `std::uint16_t` | 分母，默认 1；核心假设拓展不会写入 0。 |
 
-所有加算伤害先写入 `value`，倍率最后统一应用，避免响应顺序改变“先加算再倍乘”的规则。
+所有加算伤害先写入 `value`，倍率最后统一应用，避免响应顺序改变“先加算再倍乘”的规则。倍率结果按整数除法向下取整，并在超过 `std::uint32_t` 上限时饱和至该上限。
 
 ## 规则枚举
 

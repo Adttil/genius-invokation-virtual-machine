@@ -4,6 +4,8 @@
 
 向 executor stack 顶部推送一个选择对象。
 
+本指令由独立头文件 `givm/executor/instructions/push_selector.hpp` 提供，不由 `givm/executor/instructions.hpp` 聚合导出。
+
 ## 字段
 
 | 字段 | 类型 | 含义 |
@@ -26,5 +28,5 @@ stack.top<selector>();
 - 消费 selector 的 command 会在成功读取后直接弹出 selector，不需要单独的 pop command。
 - 全零 bitset 是有效选择，表示没有选择任何候选项。
 - 每一位对应哪个候选项由消费选择的 command 定义。
-- 需要等待 bitset 多选输入的流程通常由前置指令主动挂起，并把 frame 尾部 selector 作为输入槽暴露给外层；`push_selector` 更适合脚本、规则效果或随机选择直接提供已完成输入。
+- 本指令用于直接提供已完成的选择，不自行挂起等待输入。
 - 不是所有输入都使用 selector；例如开局出战角色选择直接使用 `character_id`。

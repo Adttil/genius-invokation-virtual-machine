@@ -12,7 +12,7 @@
 | `definition_id` | `const definition_id<card_definition>` | 已捕获的牌定义。 |
 | `target` | `std::variant<std::monostate, character_id, support_id, summon_id>` | 最终具体目标，可修改。 |
 | `speed` | `action_speed` | 行动速度，可修改。 |
-| `effect_cancelled` | `bool` | 是否仅无效化牌定义效果。 |
+| `effect_cancelled` | `bool` | 是否仅无效化牌定义效果，默认 false。 |
 
 ## 响应
 

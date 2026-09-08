@@ -4,4 +4,6 @@
 
 兼容旧名；当前代码中 `process_dice_roll_phase` 是 [`start_dice_roll_phase`](start_dice_roll_phase.md) 的别名。
 
+该别名仅由独立头文件 `givm/executor/instructions/process_dice_roll_phase.hpp` 提供，不由 `givm/executor/instructions.hpp` 聚合导出。新程序使用 `start_dice_roll_phase`。
+
 投骰阶段的完整栈协议、`stage_t` 后缀约定和执行流程见 [`start_dice_roll_phase`](start_dice_roll_phase.md)。

@@ -12,7 +12,7 @@ definition source 是一个描述单项游戏规则的 C++ 对象。它可以代
 using definition_category = support_view;
 ```
 
-`definition_category` 是必须提供的公开嵌套类型，用来指定这个 source 产生哪一类 definition。上例表示它产生 support definition。
+`definition_category` 是必须提供的公开嵌套类型，用来指定这个 source 产生哪一类 definition。一个 source 只产生该类别的一项 definition；需要关联卡牌与支援等不同类别时，分别注册 source 并声明依赖。上例表示它产生 support definition。
 
 可用类别及其运行时实体 view 如下：
 
@@ -39,7 +39,7 @@ std::string_view name() const;
 
 名称对核心是不透明的字符串。核心不会解析其中的显示名、版本、作者或其他片段；这些格式约定属于上层和拓展生态。名称的作用域是定义类别，同一类别内不能重名，不同类别可以使用相同名称。
 
-核心会保留返回的 `std::string_view`。底层字符必须在保存该 source 的 `definition_source_library` 及由它编译出的 `definition_library` 使用期间保持有效。
+核心会保留返回的 `std::string_view`。底层字符必须在保存该 source 的 `definition_source_library`、由它编译出的 `definition_library` 及相应 `issued_id_map` 使用期间保持有效。
 
 ## 标签与依赖
 
@@ -117,7 +117,7 @@ auto card_dependencies_by_tag() const;
 
 上述接口每次返回的 range 只需支持一次顺序遍历，数量不必在编译期确定。调用方会在本次接口调用后立即完整消费该 range，不保存 range 或元素对象的引用，因此 source 可以返回临时 range、容器或惰性 range。
 
-元素转换所得 `std::string_view` 可能被源库保留。其底层字符必须覆盖相应源库及编译库的使用期。这些字符串只在添加 source 和编译规则库时查询，不会进入对局运行时的名称查找热路径。
+元素转换所得 `std::string_view` 可能被源库保留，部分名称和标签也由编译库及 `issued_id_map` 借用。其底层字符必须覆盖这些对象的使用期。字符串用于注册、编译和对局前的名称链接；对局规则执行使用 issued ID，不要求运行时按名称查找。
 
 ### 依赖声明示例
 
@@ -158,7 +158,7 @@ auto compile(definition_compile_context& context) const;
 
 参数 `context` 是只在本次调用期间有效的编译上下文。它可以解析当前 source 已声明的依赖，并把响应程序加入正在构建的游戏规则程序。source 不得在返回对象或其他长期状态中保存该上下文的引用或指针。
 
-返回值是编译后的 definition，必须按值返回。核心直接推导其准确类型、取得所有权，并在运行时以该类型的 const 引用传给 handler。接口不要求 source 提供 `data_type` 或其他用于重复说明返回类型的嵌套别名。本文示例通常把返回类型命名为 `definition_type`，但这只是 source 内部的命名习惯。
+返回值是编译后的 definition，必须按值返回一个非 `void`、可复制构造的对象类型。核心直接推导其准确类型、取得所有权，并在运行时以该类型的 const 引用传给 handler。接口不要求 source 提供 `data_type` 或其他用于重复说明返回类型的嵌套别名。本文示例通常把返回类型命名为 `definition_type`，但这只是 source 内部的命名习惯。
 
 `compile(...)` 一次性返回完整对象。普通配置、issued id 和程序入口都在返回前确定，不存在后续 setter 或分阶段补写。
 
@@ -184,7 +184,7 @@ definition_id<TCategory> resolve_id(std::string_view name) const;
 
 返回值是 `definition_id<TCategory>`，表示该 definition 在本次编译库中的强类型 issued id。它是拥有值，可以直接保存在编译后的 definition 中；不同类别的 definition id 不能混用。
 
-名称没有声明、目标 definition 不存在或类别不匹配时，本次规则库编译失败。
+名称未在对应类别中声明，或目标 definition 不存在时，抛出 `std::invalid_argument`，本次规则库编译失败。
 
 ### 解析标签 ID 依赖
 
@@ -194,7 +194,7 @@ tag_id resolve_tag(std::string_view name) const;
 
 `name` 必须等于当前 source 的 `tag_dependencies()` 返回的某个标签名称。
 
-返回值是该标签在本次编译库中的 `tag_id`。它是拥有值，可以直接保存在编译后的 definition 中。名称没有声明时，本次规则库编译失败。
+返回值是该标签在本次编译库中的 `tag_id`。它是拥有值，可以直接保存在编译后的 definition 中。名称没有声明时抛出 `std::invalid_argument`，本次规则库编译失败。
 
 ### 解析标签筛选依赖
 
@@ -207,7 +207,7 @@ std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter
 
 返回值是拥有自身存储的 `std::vector<definition_id<TCategory>>`，包含每个匹配 definition 的 issued id 一次；没有匹配项时返回空 vector。结果不引用编译上下文，可以移动并长期保存在编译后的 definition 中。结果按本次编译的 issued id 顺序排列，不表示名称排序。
 
-筛选表达式没有声明或类别不匹配时，本次规则库编译失败。
+筛选表达式未在对应类别中声明时，抛出 `std::invalid_argument`，本次规则库编译失败。
 
 ### 加入响应程序
 
@@ -345,7 +345,7 @@ bool can_handle() const;
 
 Lua 等动态来源通过 C++ adapter 实现与静态 source 相同的接口，不使用另一套定义协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
 
-脚本中的 Context 标识需要由 adapter 分派到具体 C++ Context，再将相应 `any_instruction_for<TContext>` range 传给 `add_program<TContext>`。这仍然使用同一套公开指令和强类型程序入口。仓库目前尚未提供内置 Lua 或 Python adapter。
+脚本中的 Context 标识需要由 adapter 分派到具体 C++ Context，再将相应 `any_instruction_for<TContext>` range 传给 `add_program<TContext>`。这仍然使用同一套公开指令和强类型程序入口。
 
 ## 注册与生命周期
 
@@ -374,13 +374,13 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 返回类型是 `definition_compile_result`。其 `library` 成员是编译后的游戏规则，`id_map` 成员是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。两者对应同一个定义集合和 ID 分配结果，也可以按该顺序结构化绑定；对局运行时只需要 `library`。
 
-当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `make_issued_id_map(...)`。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
+当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `make_issued_id_map(...)`。提前生成映射与随后 `compile(...)` 必须使用相同的定义集合、标签声明及选择范围；生成映射后改变源库或选择范围可能改变 ID 分配。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
 
 ## 编译库与持久化
 
 `definition_library` 是定义源集和游戏流程规则共同编译出的不可变游戏规则，不是一局游戏的可变状态。table 引用一份 definition library；table 与 executor 共同构成对局状态。
 
-definition library 按类别提供名称、issued id、编译后的 definition、标签和事件分派查询，并提供游戏主入口及按公开执行位置读取指令的能力。其内部容器和程序布局不是公开接口。
+definition library 通过 issued id 提供 definition view、名称、标签和事件分派查询，并提供游戏主入口及按公开执行位置读取指令的能力。编译后的具体 definition 对象由核心传给对应 handler；名称到 issued id 的查找由 `issued_id_map` 提供。其内部容器和程序布局不是公开接口。
 
 需要持久化定义库构建信息时，稳定描述包括按类别记录的 definition source 完整名称，以及初始化程序和回合程序中的公开指令。恢复时，上层注册表按“类别 + 完整名称”找到 source 并重新编译。同类别同名却实现不同属于拓展冲突，核心不尝试序列化或比较任意 C++、Lua 定义实现。
 
@@ -388,12 +388,12 @@ definition library 按类别提供名称、issued id、编译后的 definition�
 
 ## 背后的编译过程
 
-一份规则库按以下顺序形成：
+一份规则库的构建包含以下工作：
 
 1. 读取每个 source 的定义类别、名称、标签和依赖声明。
 2. 从 `definition_selection` 指定的定义求出依赖闭包，或选择全部定义。
 3. 为选中的定义和标签建立 issued id 映射。
-4. 为每个 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应强类型入口。
+4. 为每个选中的 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应强类型入口。
 5. 根据有效 `handle` 调用和可选 `can_handle` 结果安装运行时分派。
 6. 将 definition 响应程序与调用方提供的初始化程序、回合程序共同组成游戏规则程序。
 7. 所有 definition 完整构造后，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`。

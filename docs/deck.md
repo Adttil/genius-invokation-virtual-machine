@@ -16,6 +16,8 @@ auto [library, id_map] = source_library.compile(...);
 
 `id_map` 用于链接牌组或其他对局前输入，不需要保存在 table 或 executor 中。table 只引用 `library`；进入对局后不再进行名称查询。
 
+`id_map` 自身保存非拥有的名称和标签字符串视图，其底层字符在映射使用期间仍须有效。`linked_deck` 则只保存解析后的 ID，不延长这些字符串或 `id_map` 的生命周期；source 的生命周期约定见 [定义源](definition-system.md)。
+
 ## 链接牌组
 
 ```cpp
@@ -43,7 +45,7 @@ std::vector<definition_id<character_view>> linked_deck::characters;
 
 `characters` 按提供顺序保存角色槽位。该顺序决定之后使用 `character_id.index` 访问角色时的 index。
 
-`linked_deck` 只能与产生其 issued ID 的定义库配合使用。同一定义源集合保证产生一致的 issued ID；把其他定义库的链接结果装入 table 属于调用方错误。
+`linked_deck` 必须与其 issued ID 分配结果相匹配的定义库配合使用。相同的选中定义集合及标签声明产生一致的 issued ID；仅仅注册了同一组 source，却采用不同的 `definition_selection`，不保证相同 ID。`linked_deck` 不携带规则库身份，`load_deck` 也不检查这种匹配关系，调用方应直接使用同一次编译返回的 `id_map` 完成链接。
 
 ## 装载牌组
 

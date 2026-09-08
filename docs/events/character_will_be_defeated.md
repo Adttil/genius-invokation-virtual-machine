@@ -9,8 +9,8 @@
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
 | `target` | `const character_id` | 待击倒角色。 |
-| `prevented` | `bool` | 是否阻止本次击倒。 |
-| `revive_health` | `std::uint32_t` | 阻止后应设置的生命值。 |
+| `prevented` | `bool` | 是否阻止本次击倒，默认 false。 |
+| `revive_health` | `std::uint32_t` | 阻止后应设置的生命值，默认 0。 |
 
 ## 响应
 

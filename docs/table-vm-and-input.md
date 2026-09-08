@@ -26,7 +26,9 @@ auto& stack() noexcept;
 
 默认构造的 executor 尚未开始执行。`enter_entry(library)` 清空已有 stack、建立初始执行 frame，并从该 definition library 的 `entry()` 开始一次新的执行。它不会保存 definition library 的引用；在下一次 `enter_entry()` 前，调用方必须使用引用同一 definition library 的 table 推进和观察该 executor。
 
-`execute_next()` 执行当前公开规则步骤，并在返回前到达下一个可公开观察的位置。返回 `true` 表示 executor 可以继续自动推进；返回 `false` 表示已经到达输入、观察挂起点或终局。`false` 不承诺执行位置保持不变，调用方应在返回后重新读取 `status()` 和 `position()`。
+`execute_next()` 完整执行一次当前公开指令。一次执行是同步且不可打断的，返回时本次执行已经结束。指令对象不保存运行时状态，而是根据 table 和 stack 中的信息决定本次操作与后续执行位置；`stage_t` 是栈上的结算状态。后续位置可以仍是该指令，此时下一次调用会根据新的栈状态再次完整执行它，这就是自重入。
+
+返回 `false` 表示外层应暂停自动推进，不表示本次指令执行在中途被打断。对局结果由 `status()` 判断，返回 `true` 本身不保证对局尚未结束。调用方应在返回后重新读取 `status()` 和 `position()`，不能根据返回值推断执行位置是否变化。
 
 具体指令通过 `execution_context` 明确选择进入下一条、保留当前位置挂起、在下一条挂起、进入响应程序或结束对局。正常流程必须通过 `execute_next()` 推进；程序段之间的连接不会成为独立的公开执行步骤。
 
@@ -76,7 +78,7 @@ executor stack 保存事件、输入槽、广播游标、activation frame 和其
 
 外层输入的一般流程是：
 
-1. 执行直到 `execute_next()` 返回 `false`。
+1. 执行直到 `execute_next()` 返回 `false`，或 `status()` 不再是 `game_result::no_result`。
 2. 若 `status()` 已有结果，进入终局观察流程。
 3. 否则重新通过 `table.definition_library().instruction(executor.position())` 识别当前指令。
 4. 按该指令文档读取 table 与 stack，构造候选项并完成合法性检查。

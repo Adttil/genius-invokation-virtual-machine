@@ -4,7 +4,7 @@
 
 ## 调用协议
 
-`executor::execute_next` 接收一个返回 `std::uint32_t` 的可调用对象：
+`executor::execute_next` 以非常量左值引用接收可调用对象；其无参数调用结果必须可转换为 `std::uint32_t`：
 
 ```cpp
 executor.execute_next(table, random);
@@ -65,6 +65,8 @@ struct tape_random
 模拟器可以在一次 `execute_next` 返回后复制彼此匹配的 table 与 executor，并为不同分支提供不同随机源。两份 table 必须继续绑定同一份仍存活的不可变 definition library。
 
 每个记录的 `std::uint32_t` 都是独立输入，可以单独替换。若替换导致后续控制流和随机调用次数发生变化，分支可以使用调整后的条带或在条带耗尽时切换到后备生成器。
+
+复制暂停状态也会复制 stack 中已经预发的随机值。更换后续传入的随机源只影响之后的新调用，不会替换已经保存在 stack 中的随机池；若要替换这些值所对应的随机输入，应从预发之前的状态重新回放。
 
 单条指令内部是同步执行过程。只有 `execute_next` 返回后，当前执行位置、table 和 stack 才共同构成可复制、可观察的暂停状态。
 

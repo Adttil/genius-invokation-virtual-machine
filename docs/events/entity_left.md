@@ -8,7 +8,7 @@
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| `entity` | `const std::variant<hand_card_id, deck_card_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` | 已离场实体的历史 ID。 |
+| `entity` | `const std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` | 已离场实体的历史 ID。 |
 
 ## 响应
 

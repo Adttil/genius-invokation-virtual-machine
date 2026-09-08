@@ -8,7 +8,7 @@
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| `entity` | `const std::variant<support_id, summon_id, combat_status_id, attachment_id>` | 计数发生变化的实体。 |
+| `entity` | `const std::variant<hand_card_status_id, deck_card_status_id, support_id, summon_id, combat_status_id, attachment_id>` | 计数发生变化的实体。 |
 | `previous` | `const std::uint32_t` | 旧计数器。 |
 | `current` | `const std::uint32_t` | 新计数器。 |
 

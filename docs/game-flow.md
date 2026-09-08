@@ -10,22 +10,23 @@
 
 牌组链接、生命周期和装载接口见 [牌组链接与装载](deck.md)。
 
+本例由外层在启动执行前把初始先手映射为玩家 0，并设置 `table.state().active_player`。这是对局初始状态的准备，不是初始化程序中的指令。
+
 ## 初始化程序
 
 初始化程序可以依次包含：
 
 1. 对双方执行 [`shuffle_deck`](instructions/shuffle_deck.md)。
 2. 对双方执行 [`initialize_characters`](instructions/initialize_characters.md)。
-3. 把初始先手映射为玩家 0，并设置 `table.state().active_player`。
-4. 执行两条 [`draw_cards`](instructions/draw_cards.md)，分别为双方抽取初始手牌。
-5. 执行 [`replace_cards_both`](instructions/replace_cards_both.md)，等待并结算双方换牌。
-6. 执行 [`select_active_character_both`](instructions/select_active_character_both.md)，等待双方选择初始出战角色。
+3. 执行两条 [`draw_cards`](instructions/draw_cards.md)，分别为双方抽取初始手牌。
+4. 执行 [`replace_cards_both`](instructions/replace_cards_both.md)，等待并结算双方换牌。
+5. 执行 [`select_active_character_both`](instructions/select_active_character_both.md)，等待双方选择初始出战角色。
 
 初始化程序只执行一次。是否洗牌、角色初始化顺序、初始手牌数和是否允许换牌都由调用方提供的指令序列决定；具体牌组内容来自对局前装入 table 的输入。
 
 ## 回合程序
 
-当前默认形态可以写成：
+本页采用以下回合程序：
 
 ```cpp
 const auto round = std::tuple{
@@ -51,6 +52,7 @@ const auto deck = link_deck(id_map, card_names, character_names);
 card_table table{ library };
 table.load_deck(player_id{ 0 }, deck);
 table.load_deck(player_id{ 1 }, deck);
+table.state().active_player = player_id{ 0 };
 executor execution;
 execution.enter_entry(library);
 ```
@@ -89,5 +91,7 @@ table 不保存通用阶段枚举。当前流程由执行位置、当前指令�
 | `hand_limit` | 10 | 有效手牌上限。 |
 | `support_limit` | 4 | 支援区数量上限。 |
 | `summon_limit` | 4 | 召唤物区数量上限。 |
+
+这些字段是规则参数；容量约束由相应领域指令处理，不由通用实体容器自动执行。
 
 [返回当前指令与事件目录](events.md)

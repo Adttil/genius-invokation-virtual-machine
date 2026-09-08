@@ -8,7 +8,7 @@
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| `source` | `const std::variant<hand_card_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` | 伤害来源。 |
+| `source` | `const std::variant<hand_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id, combat_status_id, character_id, skill_id, attachment_id>` | 伤害来源。 |
 | `target` | `const character_id` | 受伤角色。 |
 | `value` | `std::uint32_t` | 剩余伤害值，唯一可修改字段。 |
 | `type` | `const damage_type` | 最终伤害类型。 |

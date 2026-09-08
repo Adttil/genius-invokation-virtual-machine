@@ -2,12 +2,14 @@
 
 本文记录 `card_table` 内部实体存储结构的目标、约束、候选方案、已否决方案，以及第一版实验实现的取舍。它讨论的是内部布局与生命周期，不规定卡牌或 status 的具体规则语义。
 
+第一版实验选择下文的方案 B 与方案 S1；“候选方案”与“已否决或暂不采用的设计”保留比较依据，不代表同时提供的接口。本文的容器布局和优化方向属于可替换实现，实体语义见 [牌与区域实体模型](card-entity-model.md)。
+
 ## 1. 问题边界
 
-当前大多数实体按所属对象分别存放在 `std::vector` 中。这对角色、召唤物等数量少且容器数量固定的实体没有明显问题，但卡牌带来两个不同的问题：
+最初整理这一设计时，大多数实体按所属对象分别存放在 `std::vector` 中。这对角色、召唤物等数量少且容器数量固定的实体没有明显问题，但卡牌带来两个不同的问题：
 
 1. 牌堆允许在任意位置插入、按牌堆位置访问和重排。直接用 `vector<card_data>` 表示牌堆时，中间插入会改变后续卡牌的地址和 ID。广播会先在栈上记录响应者实体 ID 快照、以后再推进响应，所以位置型 ID 可能使已排队的响应错误地落到另一张牌上。
-2. 每张手牌和牌堆牌以后都可以拥有少量 card status。若每张牌各自持有一个 `vector<status_data>`，会产生大量独立的小分配。这里真正关心的是访问速度和缓存局部性；容器对象或尾端空位本身占多少字节只是次要因素。
+2. 每张手牌和牌堆牌都需要支持少量 card status。若每张牌各自持有一个 `vector<status_data>`，会产生大量独立的小分配。这里真正关心的是访问速度和缓存局部性；容器对象或尾端空位本身占多少字节只是次要因素。
 
 本文将新实体简称为 **status**。它是附着于卡牌的效果状态，不是角色的 `attachment`，也不是玩家的 `combat_status`。
 
@@ -40,7 +42,7 @@ class character_entity;
 using character_view = character_entity<const detail::table_storage>;
 ```
 
-这样可以避免 `handle` 同时表示“事件处理”和“实体句柄”。事件响应仍使用 `handle` 语义，例如 `handle_fn_t` 和 `can_handle<TEvent>()`；实体访问对象则统一叫 entity/view。
+这样可以避免 `handle` 同时表示“事件处理”和“实体句柄”。事件响应仍使用 `handle` 语义，例如 `handle_fn_t` 和实体上的 `can_handle<TEvent>()`；实体访问对象则统一叫 entity/view。source 的可选响应能力接口则是 `can_handle<TEntityView, TEvent>()`。
 
 ### 2.3 table_accessor 与强耦合边界
 
@@ -59,18 +61,20 @@ using character_view = character_entity<const detail::table_storage>;
 
 ### 2.4 生命周期与安全点
 
-本项目不采用带 generation 的通用 slot map。执行过程中实体只会被标记删除或从所属链/顺序表中脱离，不复用其槽位。只有在 executor stack、日志和展示任务都不再保存旧 instruction/event/entity ID 的安全点才调用 `table.clean_up()`；终局时可先观察现场，再调用 `executor.clear()` 建立这一边界。
+本项目不采用带 generation 的通用 slot map。执行过程中实体只会被标记删除或从所属链/顺序表中脱离，不复用其槽位。只有在 executor stack、日志和展示任务都不再依赖旧实体 ID 的安全点才调用 `table.clean_up()`；终局时可先观察现场，再调用 `executor.clear()` 释放执行器保存的旧现场，并由上层结束其余观察任务。
 
 这意味着：
 
-- 一次完整结算期间 ID 稳定；
+- cleanup 前，仍存活且未转移的实体保持原 ID；删除或转移的实体，其旧 ID 立即失效；
 - cleanup 可以重排槽位并使旧 ID 整体失效；
 - 不需要为每个槽位长期保存 generation；
 - cleanup 以前不能复用被删除槽位。
 
+槽位 ID 稳定不保证数据地址稳定。现有 entity/view 保存的数据指针，以及它们返回的引用，可能因底层 `vector` 扩容而在 cleanup 前失效；持有有效 ID 的调用方应重新取得访问对象。
+
 ### 2.5 status ID 保存 owner
 
-status 节点不应反复保存相同的 owner。owner 属于引用的上下文，应放进临时的 ID：
+status 节点不应反复保存相同的 owner。owner 属于 status ID 表达的实体上下文，应放进临时的 ID：
 
 ```cpp
 struct hand_card_status_id {
@@ -127,7 +131,7 @@ std::vector<size_t> deck_order;
 牌堆保存两个数组：
 
 ```cpp
-std::vector<card_data> deck_card_datas; // 稳定槽位，cleanup 前不移动
+std::vector<card_data> deck_card_datas; // cleanup 前不改已有槽位索引；扩容可能搬移内存
 std::vector<size_t> deck_card_order;    // 牌堆位置 -> 槽位
 std::vector<card_data> hand_card_datas; // 继续尾插、标记删除
 ```
@@ -175,7 +179,7 @@ std::vector<status_slot> status_slots;
 优点：
 
 - 实现简单；
-- 所有 status 数据只有一次连续分配；
+- 所有 status 数据共享一个连续池，按池容量扩容；
 - 不再有每张牌一个小 vector 的独立分配；
 - ID 可直接索引节点，删除后仍能用定义 ID 判无效；
 - 存储层以后可在不改变实体语义的前提下换成分段池。

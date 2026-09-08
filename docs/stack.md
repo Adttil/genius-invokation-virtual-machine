@@ -21,7 +21,7 @@ const auto frame = stack.top<selector>();
 auto&& [input] = frame;
 ```
 
-`frame_view` 是非持有 view。后续任何 `push` 之后都必须假设已有 `frame_view` 失效，因为 stack 可能搬迁存储；`pop`、`reserve`、移动、赋值或交换 stack 后也不得继续使用旧 view。需要继续访问时，重新通过 `top` 取得当前 view。
+`frame_view` 是非持有 view。后续任何 `push` 之后都必须假设已有 `frame_view` 失效，因为 stack 可能搬迁存储；`pop`、`clear`、`reserve`、移动、赋值或交换 stack 后也不得继续使用旧 view。需要继续访问时，重新通过 `top` 取得当前 view。
 
 ## Object
 
@@ -31,7 +31,7 @@ stack object 必须平凡可复制、平凡析构，且对齐不超过 `std::max
 
 ## Dynamic Array
 
-动态数组通过 `dynamic_array<T>(...)` 压入，只能集中出现在 frame 开头。访问时在模板参数中写作 `T[]`，得到 `std::span<T>`。
+动态数组通过 `dynamic_array<T>(...)` 压入，只能集中出现在 frame 开头。访问时在模板参数中写作 `T[]`；可变 stack 返回 `std::span<T>`，只读 stack 返回 `std::span<const T>`。
 
 ```cpp
 const auto frame = stack.push(
@@ -41,7 +41,7 @@ const auto frame = stack.push(
 auto&& [values, header_ref] = frame;
 ```
 
-传入整数时只指定数组长度，数组内容由调用方随后通过返回的 span 写入。传入 range 时复制 range 内容。
+传入无符号整数时只指定数组长度，不初始化元素；数组内容必须由调用方随后通过返回的 span 写入后才能读取。传入 range 时复制 range 内容，其元素值类型去掉 const 后必须与 `T` 相同。range 必须在计数与复制期间保持长度和内容一致；没有大小信息的 range 必须支持重复遍历，不能使用计数后即被消费的单遍来源。
 
 ## Top
 

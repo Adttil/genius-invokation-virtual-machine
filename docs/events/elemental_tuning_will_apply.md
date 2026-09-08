@@ -11,7 +11,7 @@
 | `card` | `const hand_card_id` | 将用于调和的手牌。 |
 | `from` | `const elemental_dice` | 原骰子类型。 |
 | `to` | `const elemental_dice` | 目标骰子类型。 |
-| `cancelled` | `bool` | 设为 true 可取消调和生效。 |
+| `cancelled` | `bool` | 默认 false，设为 true 可取消调和生效。 |
 
 ## 响应
 

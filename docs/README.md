@@ -35,4 +35,4 @@
 - `executor.hpp`：具体指令、事件、广播工具、随机输入与 `executor`。
 - `utils/stack.hpp`：通用执行栈及 frame view。
 
-模块依赖方向为 `definition -> table -> executor`。跨模块使用外部入口头；模块内部实现可以直接包含本模块头文件。
+模块依赖方向为 `definition -> deck -> table -> executor`。跨模块使用外部入口头；模块内部实现可以直接包含本模块头文件。
