@@ -267,10 +267,15 @@ namespace givm
             const auto active_character = player.state().active_character;
             GIVM_ASSERT(active_character.has_value());
 
+            const auto is_switch_target = [active = *active_character](const auto& character)
+            {
+                return character.id() != active && character.state().health != 0;
+            };
+
             stack_count_t switch_count = 0;
             for(auto character : player.characters())
             {
-                if(not (character.id() == *active_character))
+                if(is_switch_target(character))
                 {
                     ++switch_count;
                 }
@@ -310,12 +315,11 @@ namespace givm
             stack_count_t index = 0;
             for(auto character : player.characters())
             {
-                const auto target = character.id();
-                if(target == *active_character)
+                if(not is_switch_target(character))
                 {
                     continue;
                 }
-                costs[index++] = default_switch_cost(target);
+                costs[index++] = default_switch_cost(character.id());
             }
 
             return context.yield();

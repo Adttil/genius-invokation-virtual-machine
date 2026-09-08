@@ -24,7 +24,9 @@ stack.top<
 >();
 ```
 
-行动窗口枚举可切换出战的角色。handler 数组保存本行动窗口的费用响应者顺序；`cost_of_switch[]` 按可切换目标保存费用事件，`action_request.action_index` 是其从 0 开始的索引；`onpay_item[]` 是以 action 为行、handler 为列的行主序矩阵；`stack_count_t` 是确认支付后遍历选中 onpay 行的游标。
+行动窗口按角色槽位顺序枚举己方仍存活且当前未出战的角色作为切人候选。handler 数组保存本行动窗口的费用响应者顺序；`cost_of_switch[]` 按可切换目标保存费用事件，`action_request.action_index` 是其从 0 开始的索引；`onpay_item[]` 是以 action 为行、handler 为列的行主序矩阵；`stack_count_t` 是确认支付后遍历选中 onpay 行的游标。
+
+没有可切换角色时，切人候选为空，仍可宣告结束。
 
 `stage_t` 位于物理栈顶，`action_request` 是它前面的输入槽；仅预览费用时只写 request。真正执行切人时外层同时写 `action_argument`，其中 `paid_dice` 是提交支付的骰子。当前切人目标由索引对应的 `cost_of_switch.target` 确定，不读取 `action_argument.target`。
 

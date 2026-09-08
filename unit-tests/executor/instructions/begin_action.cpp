@@ -554,3 +554,131 @@ TEST_CASE(
     CHECK(table.state().active_player == next_player);
     CHECK(before_actions == std::vector<player_id>{ next_player });
 }
+
+TEST_CASE(
+    "switch actions offer only living standby characters",
+    "[begin_action][switch-targets]"
+)
+{
+    const bool has_living_targets = GENERATE(true, false);
+    CAPTURE(has_living_targets);
+
+    std::vector<player_id> before_actions;
+    const action_observer_source observer{ action_speed::fast, &before_actions };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    const auto [library, id_map] = test::compile_definitions_with_program(
+        std::tuple{ begin_action{} },
+        std::tuple{ stop_execution{} },
+        observer,
+        character_source
+    );
+
+    card_table table{ library };
+    const auto player = player_id{ 0 };
+    const auto opponent = player_id{ 1 };
+    table[player].add(id_map.get_id<support_view>(observer.name()), {});
+    const auto character_definition = id_map.get_id<character_view>(character_source.name());
+    std::vector<character_id> characters;
+    for(const auto health : { 0u, 1u, 10u, 10u, 0u, 10u })
+    {
+        characters.push_back(table[player].add(character_definition, {
+            .max_health = 10, .max_energy = 3, .health = health, .energy = 0
+        }).id());
+    }
+    table[characters[3]].erase();
+    table[player].state().active_character = characters[2];
+    table[opponent].state().active_character = table[opponent].add(character_definition, {
+        .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
+    }).id();
+    table.state().active_player = player;
+    table[player].state().dice[elemental_dice::pyro] = 2;
+
+    if(not has_living_targets)
+    {
+        table[characters[1]].state().health = 0;
+        table[characters[5]].state().health = 0;
+    }
+
+    executor target;
+    target.enter_entry(library);
+    zero_random random;
+    run_until_blocked(target, table, random);
+
+    const auto check_targets = [&](const std::vector<character_id>& expected)
+    {
+        auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request, stage] =
+            target.stack().top<
+                detail::handler_id<cost_of_switch>[],
+                cost_of_switch[],
+                onpay_item<cost_of_switch>[],
+                stack_count_t,
+                action_argument,
+                action_request,
+                stage_t
+            >();
+        REQUIRE(costs.size() == expected.size());
+        REQUIRE(handlers.size() == 1);
+        CHECK(onpay_items.size() == expected.size());
+        for(size_t index = 0; index < expected.size(); ++index)
+        {
+            CHECK(costs[index].target == expected[index]);
+        }
+    };
+
+    if(has_living_targets)
+    {
+        check_targets({ characters[1], characters[5] });
+        for(stack_count_t index = 0; index < 2; ++index)
+        {
+            submit_action(target, table, {
+                .request_kind = action_request_kind::calculate_cost,
+                .action_kind = action_kind::switch_active,
+                .action_index = index
+            });
+            run_until_blocked(target, table, random);
+            check_targets({ characters[1], characters[5] });
+        }
+
+        dice_counts paid_dice;
+        paid_dice[elemental_dice::pyro] = 1;
+        submit_action(target, table, {
+            .request_kind = action_request_kind::do_action_with_cost,
+            .action_kind = action_kind::switch_active,
+            .action_index = 1
+        }, { .paid_dice = paid_dice });
+        run_until_blocked(target, table, random);
+        REQUIRE(table[player].state().active_character == characters[5]);
+        CHECK(table[player].state().dice.total() == 1);
+        check_targets({ characters[1], characters[2] });
+
+        submit_action(target, table, {
+            .request_kind = action_request_kind::do_action,
+            .action_kind = action_kind::switch_active,
+            .action_index = 0
+        }, { .paid_dice = paid_dice });
+        run_until_blocked(target, table, random);
+        REQUIRE(table[player].state().active_character == characters[1]);
+        CHECK(table[player].state().dice.total() == 0);
+        check_targets({ characters[2], characters[5] });
+    }
+    else
+    {
+        check_targets({});
+        submit_action(target, table, {
+            .request_kind = action_request_kind::do_action,
+            .action_kind = action_kind::declare_round_end
+        });
+        run_until_blocked(target, table, random);
+        CHECK(table.state().active_player == opponent);
+        CHECK(table.state().first_ended);
+        CHECK(table[player].state().active_character == characters[2]);
+        CHECK(table[player].state().dice.total() == 2);
+        check_targets({});
+    }
+
+    CHECK(static_cast<bool>(table[characters[0]]));
+    CHECK(static_cast<bool>(table[characters[4]]));
+    CHECK(table[characters[0]].state().health == 0);
+    CHECK(table[characters[4]].state().health == 0);
+    CHECK_FALSE(static_cast<bool>(table[characters[3]]));
+}
