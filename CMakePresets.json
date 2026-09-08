@@ -1,0 +1,31 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "_options-base",
+            "hidden": true,
+            "cacheVariables": {
+                "GIVM_BUILD_SMOKE_TEST": false,
+                "GIVM_BUILD_UNIT_TESTS": false
+            }
+        },
+        {
+            "name": "givm",
+            "inherits": "_options-base"
+        },
+        {
+            "name": "givm-smoke-test",
+            "inherits": "givm",
+            "cacheVariables": {
+                "GIVM_BUILD_SMOKE_TEST": true
+            }
+        },
+        {
+            "name": "givm-unit-tests",
+            "inherits": "givm-smoke-test",
+            "cacheVariables": {
+                "GIVM_BUILD_UNIT_TESTS": true
+            }
+        }
+    ]
+}

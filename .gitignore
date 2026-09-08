@@ -1,0 +1,7 @@
+out
+build
+release
+.cache
+*.zip
+/CMakeUserPresets.json
+/compile_commands.json

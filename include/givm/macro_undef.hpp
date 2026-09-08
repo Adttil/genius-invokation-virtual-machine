@@ -1,0 +1,1 @@
+#undef GIVM_ASSERT
