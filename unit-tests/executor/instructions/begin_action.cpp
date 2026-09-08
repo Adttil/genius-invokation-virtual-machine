@@ -6,8 +6,11 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <givm/executor/instructions/begin_action.hpp>
+#include <givm/executor/instructions/end_round.hpp>
+#include <givm/executor/instructions/start_round.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -181,6 +184,54 @@ namespace
             remaining -= reduction;
             event.effect_argument.reduced_dice.any = reduction;
             return data.onpay_entry;
+        }
+    };
+
+    struct action_observer_source
+    {
+        using definition_category = support_view;
+
+        struct definition_type
+        {
+            action_speed speed;
+            std::vector<player_id>* before_actions;
+        };
+
+        action_speed speed;
+        std::vector<player_id>* before_actions;
+
+        constexpr std::string_view name() const noexcept
+        {
+            return "ActionObserver";
+        }
+
+        constexpr definition_type compile(definition_compile_context&) const noexcept
+        {
+            return { speed, before_actions };
+        }
+
+        static program_entry<before_action> handle(
+            const definition_type& data,
+            const support_view&,
+            before_action&,
+            const card_table& table,
+            random_fn&
+        )
+        {
+            data.before_actions->push_back(table.state().active_player);
+            return program_entry<before_action>::null();
+        }
+
+        static program_entry<onpay_context<cost_of_switch>> handle(
+            const definition_type& data,
+            const support_view&,
+            cost_of_switch& event,
+            const card_table&,
+            random_fn&
+        )
+        {
+            event.requirement.speed = data.speed;
+            return program_entry<onpay_context<cost_of_switch>>::null();
         }
     };
 
@@ -397,4 +448,109 @@ TEST_CASE(
     CHECK(action_phase_count == 1);
     CHECK(target.status() == game_result::no_result);
     CHECK(table.definition_library().instruction(target.position()).is<begin_action>());
+}
+
+TEST_CASE(
+    "actions skip the player who declared round end until the next round",
+    "[begin_action][game-flow]"
+)
+{
+    const auto initial_player = GENERATE(player_id{ 0 }, player_id{ 1 });
+    const auto speed = GENERATE(action_speed::combat, action_speed::fast);
+    CAPTURE(initial_player, speed);
+
+    std::vector<player_id> before_actions;
+    const action_observer_source observer{ speed, &before_actions };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    const auto [library, id_map] = test::compile_definitions_with_program(
+        std::tuple{ start_round{} },
+        std::tuple{ begin_action{}, end_round{}, start_round{} },
+        observer,
+        character_source
+    );
+
+    card_table table{ library };
+    table[initial_player].add(id_map.get_id<support_view>(observer.name()), {});
+    const auto character_definition = id_map.get_id<character_view>(character_source.name());
+    for(auto player : table.players())
+    {
+        const auto active = player.add(character_definition, {
+            .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
+        }).id();
+        player.add(character_definition, {
+            .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
+        });
+        player.state().active_character = active;
+    }
+    table.state().active_player = initial_player;
+
+    executor target;
+    target.enter_entry(library);
+    zero_random random;
+    run_until_blocked(target, table, random);
+    REQUIRE(before_actions == std::vector<player_id>{ initial_player });
+    for(auto player : table.players())
+    {
+        player.state().dice[elemental_dice::pyro] = 3;
+    }
+
+    dice_counts paid_dice;
+    paid_dice[elemental_dice::pyro] = 1;
+    const auto switch_active = [&]
+    {
+        before_actions.clear();
+        submit_action(target, table, {
+            .request_kind = action_request_kind::do_action,
+            .action_kind = action_kind::switch_active,
+            .action_index = 0
+        }, { .paid_dice = paid_dice });
+        run_until_blocked(target, table, random);
+    };
+    const auto declare_round_end = [&]
+    {
+        before_actions.clear();
+        submit_action(target, table, {
+            .request_kind = action_request_kind::do_action,
+            .action_kind = action_kind::declare_round_end
+        });
+        run_until_blocked(target, table, random);
+    };
+
+    switch_active();
+    const auto first_ended = speed == action_speed::combat
+        ? other_player(initial_player)
+        : initial_player;
+    REQUIRE(table.state().active_player == first_ended);
+    REQUIRE(before_actions == std::vector<player_id>{ first_ended });
+    REQUIRE_FALSE(table.state().first_ended);
+
+    declare_round_end();
+    const auto continuing_player = other_player(first_ended);
+    REQUIRE(table.state().active_player == continuing_player);
+    REQUIRE(table.state().first_ended);
+    REQUIRE(before_actions == std::vector<player_id>{ continuing_player });
+
+    for(int action = 0; action < 2; ++action)
+    {
+        const auto active_before = table[continuing_player].state().active_character;
+        const auto dice_before = table[continuing_player].state().dice.total();
+        switch_active();
+        REQUIRE(table.state().active_player == continuing_player);
+        CHECK(table.state().first_ended);
+        CHECK(table[continuing_player].state().active_character != active_before);
+        CHECK(table[continuing_player].state().dice.total() == dice_before - 1);
+        CHECK(before_actions == std::vector<player_id>{ continuing_player });
+    }
+
+    declare_round_end();
+    REQUIRE(table.state().round_number == 2);
+    REQUIRE_FALSE(table.state().first_ended);
+    REQUIRE(table.state().active_player == first_ended);
+    REQUIRE(before_actions == std::vector<player_id>{ first_ended });
+
+    table[first_ended].state().dice[elemental_dice::pyro] = 1;
+    switch_active();
+    const auto next_player = speed == action_speed::combat ? continuing_player : first_ended;
+    CHECK(table.state().active_player == next_player);
+    CHECK(before_actions == std::vector<player_id>{ next_player });
 }

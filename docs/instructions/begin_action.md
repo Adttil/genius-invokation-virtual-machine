@@ -41,7 +41,7 @@ stack.top<
 ## 执行
 
 1. 首次进入时推进 [`action_phase_started`](../events/action_phase_started.md) 广播；同一回合内后续行动机会不会重复广播。
-2. 若上次战斗行动需要交接，先切换 `active_player`。
+2. 若上次战斗行动需要交接且对方尚未宣告结束，先切换 `active_player`。
 3. 推进 [`before_action`](../events/before_action.md) 广播。
 4. 创建行动等待 frame 并挂起。
 5. 恢复后按 `action_request` 分支：
@@ -52,7 +52,7 @@ stack.top<
    - `do_action + declare_round_end`：弹出等待 frame，设置首次结束标记并推进 [`round_end_declared`](../events/round_end_declared.md) 广播。第一次声明后切换给对手并继续本指令；第二次声明后进入游戏规则程序中的下一条指令。
 6. 确认切人后，按列进入选中 onpay 行中的非空固定入口。
 7. 所有 onpay 完成后，从当前玩家扣除 `action_argument.paid_dice` 并广播 [`dice_removed`](../events/dice_removed.md)；零骰支付不广播。
-8. 根据选中的 `cost_of_switch.target` 设置出战角色并广播 `active_character_changed`。战斗行动切换行动玩家，快速行动保持当前玩家，然后重新进入 `before_action`。
+8. 根据选中的 `cost_of_switch.target` 设置出战角色并广播 `active_character_changed`。战斗行动在对方尚未宣告结束时交接行动权；对方已宣告结束或本次为快速行动时，当前玩家继续行动，然后重新进入 `before_action`。
 
 ## 注意
 

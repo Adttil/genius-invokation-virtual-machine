@@ -236,7 +236,10 @@ namespace givm
         bool execute_before_action(card_table& table, execution_context& context) const
         {
             auto& state = table.state();
-            if(static_cast<stage_type>(context.current_stage()) == stage_type::before_action_with_switch)
+            if(
+                static_cast<stage_type>(context.current_stage()) == stage_type::before_action_with_switch
+                && not state.first_ended
+            )
             {
                 state.active_player = other_player(state.active_player);
             }
