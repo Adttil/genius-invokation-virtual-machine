@@ -18,4 +18,4 @@ target_link_libraries(your_target PRIVATE givm::givm)
 
 也可以单独引入 `givm/` 下的接口，例如 `<givm/definition.hpp>`、`<givm/table.hpp>` 和 `<givm/executor.hpp>`。
 
-公开行为与规则拓展协议见[项目文档](docs/README.md)。
+公开接口见[参考手册](docs/zh/reference.md)，整理前的资料保存在[旧文档](docs/zh/old/README.md)。

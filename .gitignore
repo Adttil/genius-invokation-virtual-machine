@@ -5,3 +5,4 @@ release
 *.zip
 /CMakeUserPresets.json
 /compile_commands.json
+__pycache__/

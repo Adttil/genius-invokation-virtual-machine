@@ -2,29 +2,36 @@
     "version": 3,
     "configurePresets": [
         {
-            "name": "_options-base",
-            "hidden": true,
+            "name": "givm",
+            "description": "Configure the library without tests or examples.",
             "cacheVariables": {
-                "GIVM_BUILD_SMOKE_TEST": false,
-                "GIVM_BUILD_UNIT_TESTS": false
+                "GIVM_BUILD_UNIT_TESTS": false,
+                "GIVM_BUILD_EXAMPLES": false
             }
         },
         {
-            "name": "givm",
-            "inherits": "_options-base"
-        },
-        {
-            "name": "givm-smoke-test",
+            "name": "givm-tests",
+            "description": "Build the unit tests.",
             "inherits": "givm",
             "cacheVariables": {
-                "GIVM_BUILD_SMOKE_TEST": true
+                "GIVM_BUILD_UNIT_TESTS": true
             }
         },
         {
-            "name": "givm-unit-tests",
-            "inherits": "givm-smoke-test",
+            "name": "givm-examples",
+            "description": "Build the documentation example tests.",
+            "inherits": "givm",
             "cacheVariables": {
-                "GIVM_BUILD_UNIT_TESTS": true
+                "GIVM_BUILD_EXAMPLES": true
+            }
+        },
+        {
+            "name": "givm-tests-examples",
+            "description": "Build both unit tests and documentation example tests.",
+            "inherits": "givm",
+            "cacheVariables": {
+                "GIVM_BUILD_UNIT_TESTS": true,
+                "GIVM_BUILD_EXAMPLES": true
             }
         }
     ]
