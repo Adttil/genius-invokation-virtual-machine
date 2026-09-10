@@ -15,7 +15,7 @@ struct dice_roll_preparation;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `count` | `const std::uint32_t` | 每名玩家本次获得的骰子总数；只读 |
-| `fixed_dice` | `std::array<dice_counts, 2>` | 双方必定获得的骰子，按玩家编号索引；每方总数不得超过 count |
+| `fixed_dice` | `std::array<dice_counts, 2>` | 双方必定获得的骰子，按玩家编号索引；初始均为空，每方总数不得超过 count |
 | `reroll_count` | `std::array<std::uint32_t, 2>` | 双方能够重投的次数，按玩家编号索引；初始各为 1 |
 
 ## 示例

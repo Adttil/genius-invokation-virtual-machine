@@ -10,6 +10,10 @@ struct action_phase_started;
 
 本回合的行动阶段已经开始。响应者可以在玩家第一次选择行动前处理行动阶段开始时的效果。
 
+## 注意
+
+调用方应在进入 [`begin_action`](../instructions/begin_action.md) 前确定首位行动玩家，广播沿用 `table.state().active_player`。本事件的所有响应会在首次 [`before_action`](before_action.md) 之前结算完毕。
+
 ## 示例
 
 ```cpp

@@ -10,6 +10,10 @@ struct round_ended;
 
 双方均已宣布结束，本回合已经关闭。响应者可以结算回合结束时生效的效果。
 
+## 注意
+
+在 [`end_round`](../instructions/end_round.md) 按约定接在双方结束声明之后执行时，广播中的 `table.state().active_player` 是首先结束的玩家，也就是下一回合的先手；`first_ended` 已清除，`round_number` 尚未递增。
+
 ## 示例
 
 ```cpp

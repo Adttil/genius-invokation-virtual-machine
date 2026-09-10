@@ -10,6 +10,10 @@ struct before_action;
 
 当前行动玩家即将选择下一次行动。响应者可以在玩家作出选择前处理自动触发的效果。
 
+## 注意
+
+`table.state().active_player` 表示即将行动的玩家。在正常行动机会中，若 `first_ended` 为 `true`，则对手已经宣告结束，本玩家可以继续行动。
+
 ## 示例
 
 ```cpp

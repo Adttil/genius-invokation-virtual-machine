@@ -22,7 +22,7 @@ program_entry<TContext> add_program(TInstructions&& instructions);
 
 |  |  |
 | --- | --- |
-| `instructions` | 按顺序执行的指令，每项须与 `TContext` 兼容并满足 [`any_instruction_for`](../any_instruction_for.md) 的存储要求 |
+| `instructions` | 按顺序执行的[核心指令](../../instructions.md)，也可用 [`any_instruction_for`](../any_instruction_for.md) 保存；每项须与 `TContext` 兼容并满足该容器的存储要求 |
 
 ## 返回值
 

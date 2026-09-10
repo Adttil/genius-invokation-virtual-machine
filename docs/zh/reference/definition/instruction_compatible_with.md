@@ -28,7 +28,7 @@ concept instruction_compatible_with =
 
 ## 注意
 
-只检查 `context_type` 的兼容性，不检查指令大小、执行函数或当前运行环境。
+只检查 `context_type` 的兼容性，不检查指令大小、执行函数或当前运行环境。满足本概念不表示该类型属于允许使用的[核心指令集合](../instructions.md)。
 
 ## 示例
 

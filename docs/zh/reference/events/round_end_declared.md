@@ -10,6 +10,10 @@ struct round_end_declared;
 
 当前行动玩家已经宣布本回合结束。响应者可以在另一名玩家继续行动或本回合关闭前处理结束声明。
 
+## 注意
+
+广播期间，`table.state().active_player` 仍表示宣告者。第一次宣告结束时，`first_ended` 已设为 `true`，行动方会在响应结束后切换。双方的声明都结算完毕后，是否紧接 [`end_round`](../instructions/end_round.md) 由调用方提供的流程决定。
+
 ## 示例
 
 ```cpp

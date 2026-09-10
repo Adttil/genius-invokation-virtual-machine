@@ -19,29 +19,44 @@
 ```cpp
 #include <cstdint>
 #include <print>
+#include <string_view>
 #include <tuple>
 
 #include <givm/givm.hpp>
 
-struct finish_game
+struct result_source
 {
-    using context_type = void;
-    givm::program_entry<void> entry;
+    using definition_category = givm::support_view;
+    struct definition_type {};
 
-    bool execute(givm::card_table&, givm::execution_context& context, givm::random_fn&) const
+    std::string_view name() const { return "终局判定"; }
+    definition_type compile(givm::definition_compile_context&) const { return {}; }
+
+    static givm::program_entry<givm::test_event> handle(
+        const definition_type&,
+        const givm::support_view&,
+        givm::test_event&,
+        const givm::card_table&,
+        givm::random_fn&
+    )
     {
-        return context.enter(entry);
+        return givm::program_entry<givm::test_event>::player_0_win();
     }
 };
 
 int main()
 {
+    const result_source source{};
     givm::definition_source_library sources{};
+    sources.add(source);
     const auto [library, ids] = sources.compile(
-        std::tuple{},
-        std::tuple{ finish_game{ givm::program_entry<void>::player_0_win() } }
+        std::tuple{ givm::test_command{} },
+        std::tuple{ givm::start_round{ .max_rounds = 0 } }
     );
     givm::card_table table{ library };
+    table[givm::player_id{ 0 }].add(
+        ids.get_id<givm::support_view>("终局判定"), givm::support_state{}
+    );
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     for(execution.enter_entry(library); execution.execute_next(table, random);)

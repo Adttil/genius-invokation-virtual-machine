@@ -9,7 +9,7 @@ template<class TContext>
 class any_instruction_for;
 ```
 
-可容纳不同具体指令、但适用于同一种 context 的指令对象。它适合在运行时组装指令序列，例如根据对局配置决定需要哪些初始化操作。
+保存[核心给定集合](../instructions.md)中适用于同一种 context 的不同具体指令。它适合在运行时组装指令序列，例如根据对局配置决定需要哪些初始化操作。
 
 ## 模板参数
 
@@ -32,7 +32,7 @@ class any_instruction_for;
 
 ## 注意
 
-保存的是指令副本。指令须为隐式生命周期类型，可平凡复制、可平凡析构，大小不超过 64 字节，对齐不超过 `alignof(std::max_align_t)`。指令需提供 `context_type` 和 `bool execute(card_table&, execution_context&, random_fn&) const`。
+保存的是指令副本。指令须为隐式生命周期类型，可平凡复制、可平凡析构，大小不超过 64 字节，对齐不超过 `alignof(std::max_align_t)`。
 
 ## 示例
 

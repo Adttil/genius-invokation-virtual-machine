@@ -17,33 +17,17 @@ using stage_t = std::uint8_t;
 ## 示例
 
 ```cpp
-#include <print>
 #include <cstdint>
+#include <print>
 #include <tuple>
 
 #include <givm/givm.hpp>
-
-struct effect
-{
-    using context_type = void;
-
-    bool execute(givm::card_table& table, givm::execution_context& context, givm::random_fn&) const
-    {
-        givm::stage_t& stage = context.current_stage();
-        if(stage == 0)
-        {
-            stage = 1;
-            return context.yield();
-        }
-        return context.end_game(givm::game_result::both_loss);
-    }
-};
 
 int main()
 {
     givm::definition_source_library sources{};
     const auto [library, ids] = sources.compile(
-        std::tuple{ effect{} },
+        std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } }
     );
     givm::card_table table{ library };
@@ -51,17 +35,26 @@ int main()
     execution.enter_entry(library);
     auto random = []() -> std::uint32_t { return 0; };
     const bool continued = execution.execute_next(table, random);
-    std::println("首次执行请求继续: {}", continued);
-    execution.execute_next(table, random);
-    std::println("再次执行后双方告负: {}", execution.status() == givm::game_result::both_loss);
+    std::println("等待替换手牌: {}", !continued);
+    {
+        auto&& [selection, stage] = execution.stack().top<givm::selector, givm::stage_t>();
+        // stage 是输入槽后需要保留的尾部状态，无需读取或修改。
+        std::println("输入玩家: {}", selection.player.index);
+        selection.selected.reset(); // 空选择表示保留全部手牌。
+    }
+    std::println("提交选择后继续执行: {}", execution.execute_next(table, random));
+    std::println("下一条是回合开始: {}",
+        library.instruction(execution.position()).is<givm::start_round>());
 }
 ```
 
 输出
 
 ```text
-首次执行请求继续: false
-再次执行后双方告负: true
+等待替换手牌: true
+输入玩家: 0
+提交选择后继续执行: true
+下一条是回合开始: true
 ```
 
 ## 参阅
