@@ -10,7 +10,7 @@ constexpr bool execute_next(card_table& table, TRandom& random_source);
 ```
 [`card_table`](../../table/card_table.md)
 
-完整执行当前位置的一次指令，并更新牌桌与执行现场。
+完成对局推进中的一次指令执行。
 
 本次指令执行同步完成，不可中断。一次结算可能包含多条指令或同一指令的多次重入，因此可能跨越多次调用。
 
@@ -29,58 +29,45 @@ constexpr bool execute_next(card_table& table, TRandom& random_source);
 
 ## 返回值
 
-`true` 表示本次执行未请求暂停；`false` 表示应停止自动推进，将控制权交给调用方。
+`true` 表示本次执行未请求暂停；`false` 表示应停止自动推进，将控制权交给调用方。对局正常结束时也返回 `false`，它不表示指令执行失败。
 
 是否终局应通过 [`status`](status.md) 判断。尚未终局而返回 `false` 时，可将 [`position`](position.md) 返回的位置传给 [`definition_library::instruction`](../../definition/definition_library/instruction.md)，取得下一条要执行的指令，按其约定处理输入或观察。
 
 ## 注意
 
-调用前须具有有效执行现场，由 [`enter_entry`](enter_entry.md) 建立或从另一执行器复制、移动取得；经 [`clear`](clear.md) 清空后须重新建立。若正在等待输入，继续执行前须按该指令的约定提供输入。
+推进尚未结束的对局前，须由 [`enter_entry`](enter_entry.md) 准备开始，或从另一执行器复制、移动取得有效的对局进度。经 [`clear`](clear.md) 丢弃未完成的结算后，开始新对局前应调用 `enter_entry`。若正在等待输入，继续执行前须按该指令的约定提供输入。已经终局时，调用仍返回 `false`。
 
 ## 示例
 
 ```cpp
-#include <givm/givm.hpp>
-
+#include <print>
 #include <cstdint>
-#include <iostream>
 #include <tuple>
+
+#include <givm/givm.hpp>
 
 int main()
 {
-    using namespace givm;
-
-    definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(
-        std::tuple{
-            shuffle_deck{.player = player_id{0}},
-            replace_cards{.player = player_id{0}}
-        },
-        std::tuple{start_round{}}
+    givm::definition_source_library sources{};
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-
-    card_table table{library};
-    executor execution{};
-    execution.enter_entry(library);
-
+    givm::card_table table{ library };
+    givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    // 自动推进到输入、观察或终局暂停点。
-    while(execution.status() == game_result::no_result
-          && execution.execute_next(table, random))
+    for(execution.enter_entry(library); execution.execute_next(table, random);)
     {}
-
-    std::cout << std::boolalpha
-              << "has no result: " << (execution.status() == game_result::no_result) << '\n'
-              << "waiting at replace_cards: "
-              << library.instruction(execution.position()).is<replace_cards>() << '\n';
+    std::println("尚未终局: {}", execution.status() == givm::game_result::no_result);
+    std::println("正在等待换牌输入: {}", library.instruction(execution.position()).is<givm::replace_cards>());
 }
 ```
 
 输出
 
 ```text
-has no result: true
-waiting at replace_cards: true
+尚未终局: true
+正在等待换牌输入: true
 ```
 
 ## 参阅

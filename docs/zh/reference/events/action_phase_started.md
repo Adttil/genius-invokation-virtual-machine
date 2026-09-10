@@ -1,0 +1,66 @@
+[givm](../../reference.md) / [事件](../events.md) / **action_phase_started**
+
+# givm::action_phase_started
+
+定义于头文件 `<givm/executor/events.hpp>`
+
+```cpp
+struct action_phase_started;
+```
+
+本回合的行动阶段已经开始。响应者可以在玩家第一次选择行动前处理行动阶段开始时的效果。
+
+## 示例
+
+```cpp
+#include <print>
+#include <cstdint>
+#include <string_view>
+#include <tuple>
+#include <utility>
+
+#include <givm/givm.hpp>
+
+struct observer_source
+{
+    using definition_category = givm::support_view;
+    struct definition_type { int* count; };
+    int* count;
+
+    std::string_view name() const { return "observer"; }
+    definition_type compile(givm::definition_compile_context&) const { return { count }; }
+
+    static givm::program_entry<givm::action_phase_started> handle(
+        const definition_type& definition, const givm::support_view&,
+        givm::action_phase_started&, const givm::card_table&, givm::random_fn&)
+    {
+        ++*definition.count;
+        return givm::program_entry<givm::action_phase_started>::null();
+    }
+};
+
+int main()
+{
+    int count = 0;
+    observer_source source{ &count };
+    givm::definition_source_library sources{};
+    sources.add(source);
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{});
+    givm::card_table table{ library };
+    const auto observer = table[givm::player_id{ 0 }].add(
+        ids.get_id<givm::support_view>("observer"), givm::support_state{});
+    auto random_source = []() -> std::uint32_t { return 0; };
+    givm::random_fn random{ random_source };
+    givm::action_phase_started event{};
+    const auto view = std::as_const(table)[observer.id()];
+    view.definition().handle<givm::action_phase_started>(view, event, table, random);
+    std::println("响应次数: {}", count);
+}
+```
+
+输出
+
+```text
+响应次数: 1
+```

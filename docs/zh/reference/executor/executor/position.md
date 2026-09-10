@@ -18,45 +18,34 @@ constexpr execution_position position() const noexcept;
 ## 示例
 
 ```cpp
-#include <givm/givm.hpp>
-
+#include <print>
 #include <cstdint>
-#include <iostream>
 #include <tuple>
+
+#include <givm/givm.hpp>
 
 int main()
 {
-    using namespace givm;
-
-    definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(
-        std::tuple{shuffle_deck{.player = player_id{0}}},
-        std::tuple{start_round{.max_rounds = 0}}
+    givm::definition_source_library sources{};
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-
-    card_table table{library};
-    executor execution{};
-    execution.enter_entry(library);
+    givm::card_table table{ library };
+    givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-
-    std::cout << std::boolalpha
-              << "next is shuffle_deck: "
-              << library.instruction(execution.position()).is<shuffle_deck>()
-              << '\n';
-
+    execution.enter_entry(library);
+    std::println("下一条是洗牌: {}", library.instruction(execution.position()).is<givm::shuffle_deck>());
     execution.execute_next(table, random);
-
-    std::cout << "next is start_round: "
-              << library.instruction(execution.position()).is<start_round>()
-              << '\n';
+    std::println("下一条是回合开始: {}", library.instruction(execution.position()).is<givm::start_round>());
 }
 ```
 
 输出
 
 ```text
-next is shuffle_deck: true
-next is start_round: true
+下一条是洗牌: true
+下一条是回合开始: true
 ```
 
 ## 参阅
@@ -64,6 +53,6 @@ next is start_round: true
 | | |
 | --- | --- |
 | [`definition_library::instruction`](../../definition/definition_library/instruction.md) | 取得指定执行位置的指令 |
-| [`enter_entry`](enter_entry.md) | 建立从规则程序入口开始的执行现场 |
+| [`enter_entry`](enter_entry.md) | 准备开始一场对局 |
 | [`execute_next`](execute_next.md) | 完整执行当前位置的一次指令 |
 | [`status`](status.md) | 取得对局结果 |

@@ -9,7 +9,7 @@ constexpr void enter_entry(const definition_library& library);
 ```
 [`definition_library`](../../definition/definition_library.md)
 
-重置执行现场，准备从 `library` 的规则程序入口开始执行。
+准备按照 `library` 提供的游戏流程开始一场对局。
 
 原有的待完成结算被丢弃。本函数不执行指令；通过 [`execute_next`](execute_next.md) 开始执行。
 
@@ -17,7 +17,7 @@ constexpr void enter_entry(const definition_library& library);
 
 | | |
 | --- | --- |
-| `library` | 提供待执行规则程序的定义库 |
+| `library` | 本场对局使用的定义库 |
 
 ## 返回值
 
@@ -30,42 +30,34 @@ constexpr void enter_entry(const definition_library& library);
 ## 示例
 
 ```cpp
-#include <givm/givm.hpp>
-
-#include <iostream>
+#include <print>
+#include <cstdint>
 #include <tuple>
+
+#include <givm/givm.hpp>
 
 int main()
 {
-    using namespace givm;
-
-    definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(
-        std::tuple{shuffle_deck{.player = player_id{0}}},
-        std::tuple{start_round{.max_rounds = 0}}
+    givm::definition_source_library sources{};
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-
-    card_table table{library};
+    givm::card_table table{ library };
+    givm::executor execution{};
+    auto random = []() -> std::uint32_t { return 0; };
     table.state().round_number = 4;
-
-    std::cout << "round before enter_entry: " << table.state().round_number << '\n';
-
-    executor execution{};
     execution.enter_entry(library);
-
-    std::cout << std::boolalpha
-              << "next is shuffle_deck: "
-              << library.instruction(execution.position()).is<shuffle_deck>() << '\n';
-    std::cout << "round after enter_entry: " << table.state().round_number << '\n';
+    std::println("牌桌回合数保持原值: {}", table.state().round_number);
+    std::println("首个操作是洗牌: {}", library.instruction(execution.position()).is<givm::shuffle_deck>());
 }
 ```
 
 输出
 
 ```text
-round before enter_entry: 4
-next is shuffle_deck: true
-round after enter_entry: 4
+牌桌回合数保持原值: 4
+首个操作是洗牌: true
 ```
 
 ## 参阅

@@ -8,7 +8,7 @@
 constexpr auto& stack(this auto& self) noexcept;
 ```
 
-返回执行器持有的栈。
+访问结算中的临时数据，例如当前指令约定的外部输入槽。
 
 ## 模板参数
 
@@ -33,33 +33,26 @@ constexpr auto& stack(this auto& self) noexcept;
 ## 示例
 
 ```cpp
-#include <givm/executor.hpp>
-
-#include <concepts>
-#include <iostream>
+#include <print>
 #include <utility>
+
+#include <givm/givm.hpp>
 
 int main()
 {
     givm::executor execution{};
-
-    auto& writable_stack = execution.stack();
-    const auto& readable_stack = std::as_const(execution).stack();
-
-    static_assert(std::same_as<decltype(writable_stack), givm::frame_stack&>);
-    static_assert(std::same_as<decltype(readable_stack), const givm::frame_stack&>);
-
-    std::cout << std::boolalpha
-              << "same stack: " << (&writable_stack == &readable_stack) << '\n'
-              << "stack empty: " << readable_stack.empty() << '\n';
+    auto& writable = execution.stack();
+    const auto& readable = std::as_const(execution).stack();
+    std::println("两种访问指向同一个栈: {}", &writable == &readable);
+    std::println("初始临时数据为空: {}", readable.empty());
 }
 ```
 
 输出
 
 ```text
-same stack: true
-stack empty: true
+两种访问指向同一个栈: true
+初始临时数据为空: true
 ```
 
 ## 参阅

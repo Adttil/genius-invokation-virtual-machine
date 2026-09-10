@@ -36,8 +36,9 @@ class type;
 
 | | |
 | --- | --- |
-| [(构造函数)](type/constructor.md) | 构造 type |
-| [(析构函数)](type/destructor.md) | 析构 type |
+| [(构造函数)](type/constructor.md) | 构造一个`type` |
+| [`operator=`](type/operator_assign.md) | 赋值一个`type` |
+| [(析构函数)](type/destructor.md) | 销毁一个`type` |
 | [`method1`](type/method1.md) | `method1` 做什么 |
 | [`method2`](type/method2.md) | `method2` 做什么 |
 

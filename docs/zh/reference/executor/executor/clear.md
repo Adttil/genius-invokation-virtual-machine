@@ -8,7 +8,7 @@
 constexpr void clear() noexcept;
 ```
 
-清空执行栈，丢弃其中保存的结算状态。
+丢弃尚未完成的结算及其临时数据。
 
 调用后，[`stack`](stack.md) 返回的栈为空。[`position`](position.md) 和 [`status`](status.md) 的返回值保持不变。此函数不修改与执行器配合使用的 [`card_table`](../../table/card_table.md)。
 
@@ -23,51 +23,39 @@ constexpr void clear() noexcept;
 ## 示例
 
 ```cpp
-#include <givm/givm.hpp>
-
+#include <print>
 #include <cstdint>
-#include <iostream>
 #include <tuple>
+
+#include <givm/givm.hpp>
 
 int main()
 {
-    using namespace givm;
-
-    definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(
-        std::tuple{shuffle_deck{.player = player_id{0}}},
-        std::tuple{start_round{.max_rounds = 1}}
+    givm::definition_source_library sources{};
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-    card_table table{library};
-    executor execution{};
-    execution.enter_entry(library);
-
+    givm::card_table table{ library };
+    givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    while(execution.status() == game_result::no_result
-          && execution.execute_next(table, random))
+    for(execution.enter_entry(library); execution.execute_next(table, random);)
     {}
-
     const auto previous_position = execution.position();
     const auto previous_result = execution.status();
     execution.clear();
-
-    std::cout << std::boolalpha
-              << "stack empty: " << execution.stack().empty() << '\n'
-              << "position preserved: "
-              << (execution.position() == previous_position) << '\n'
-              << "result preserved: "
-              << (execution.status() == previous_result) << '\n'
-              << "round: " << table.state().round_number << '\n';
+    std::println("临时数据已清空: {}", execution.stack().empty());
+    std::println("执行位置保留: {}", execution.position() == previous_position);
+    std::println("对局结果保留: {}", execution.status() == previous_result);
 }
 ```
 
 输出
 
 ```text
-stack empty: true
-position preserved: true
-result preserved: true
-round: 1
+临时数据已清空: true
+执行位置保留: true
+对局结果保留: true
 ```
 
 ## 参阅

@@ -34,53 +34,41 @@ constexpr executor(executor&& other) noexcept;     // (3)
 ## 示例
 
 ```cpp
-#include <givm/givm.hpp>
-
+#include <print>
 #include <cstdint>
-#include <iostream>
 #include <tuple>
-#include <utility>
+
+#include <givm/givm.hpp>
 
 int main()
 {
-    using namespace givm;
-
-    definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(
-        std::tuple{shuffle_deck{.player = player_id{0}}},
-        std::tuple{start_round{.max_rounds = 0}}
+    givm::definition_source_library sources{};
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-
-    card_table table{library};
-    executor original{};
-    original.enter_entry(library);
-
-    // 分支同时复制牌桌和执行器。
-    card_table branch_table{table};
-    executor copied{original};
-    executor branch{std::move(copied)};
+    givm::card_table table{ library };
+    givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-
-    while(branch.status() == game_result::no_result
-          && branch.execute_next(branch_table, random))
+    execution.enter_entry(library);
+    givm::card_table branch_table{ table };
+    givm::executor branch{ execution };
+    while(branch.execute_next(branch_table, random))
     {}
-
-    std::cout << std::boolalpha
-              << "original has no result: " << (original.status() == game_result::no_result) << '\n'
-              << "branch: both players lost: " << (branch.status() == game_result::both_loss) << '\n';
+    std::println("原对局尚无结果: {}", execution.status() == givm::game_result::no_result);
+    std::println("分支双方告负: {}", branch.status() == givm::game_result::both_loss);
 }
 ```
 
 输出
 
 ```text
-original has no result: true
-branch: both players lost: true
+原对局尚无结果: true
+分支双方告负: true
 ```
 
 ## 参阅
 
 | | |
 | --- | --- |
-| [`operator=`](operator_assign.md) | 替换执行器的执行状态 |
 | [`enter_entry`](enter_entry.md) | 建立从定义库入口开始的执行状态 |

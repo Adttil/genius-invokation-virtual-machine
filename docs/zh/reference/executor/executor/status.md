@@ -13,7 +13,7 @@ constexpr game_result status() const noexcept;
 
 ## 返回值
 
-返回下列 `game_result` 值之一。
+返回下列 [`game_result`](../../enums/game_result.md) 值之一。
 
 | | |
 | --- | --- |
@@ -31,45 +31,34 @@ constexpr game_result status() const noexcept;
 ## 示例
 
 ```cpp
-#include <givm/givm.hpp>
-
+#include <print>
 #include <cstdint>
-#include <iostream>
 #include <tuple>
+
+#include <givm/givm.hpp>
 
 int main()
 {
-    using namespace givm;
-
-    definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(
-        std::tuple{shuffle_deck{.player = player_id{0}}},
-        std::tuple{start_round{.max_rounds = 0}}
+    givm::definition_source_library sources{};
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-
-    card_table table{library};
-    executor execution{};
-
-    std::cout << std::boolalpha
-              << "before execution: no result: "
-              << (execution.status() == game_result::no_result) << '\n';
-
-    execution.enter_entry(library);
+    givm::card_table table{ library };
+    givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    while(execution.status() == game_result::no_result
-          && execution.execute_next(table, random))
+    std::println("执行前尚无结果: {}", execution.status() == givm::game_result::no_result);
+    for(execution.enter_entry(library); execution.execute_next(table, random);)
     {}
-
-    std::cout << "after execution: both players lost: "
-              << (execution.status() == game_result::both_loss) << '\n';
+    std::println("结束后双方告负: {}", execution.status() == givm::game_result::both_loss);
 }
 ```
 
 输出
 
 ```text
-before execution: no result: true
-after execution: both players lost: true
+执行前尚无结果: true
+结束后双方告负: true
 ```
 
 ## 参阅
@@ -77,5 +66,5 @@ after execution: both players lost: true
 | | |
 | --- | --- |
 | [`execute_next`](execute_next.md) | 完整执行当前位置的一次指令 |
-| [`enter_entry`](enter_entry.md) | 建立从规则程序入口开始的执行现场 |
+| [`enter_entry`](enter_entry.md) | 准备开始一场对局 |
 | [`position`](position.md) | 取得当前执行位置 |

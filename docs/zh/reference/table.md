@@ -1,0 +1,84 @@
+[givm](../reference.md) / **牌桌**
+
+# 牌桌
+
+牌桌描述一场对局中双方拥有的角色、卡牌、骰子和持续效果，以及它们随对局变化的状态。
+
+## 使用概念
+
+| | |
+| --- | --- |
+| [实体的身份与访问](table/entity_access.md) | 定义与实体、ID、只读视图和生命周期 |
+| [`card_table`](table/card_table.md) | 保存和访问整张牌桌 |
+
+## 实体
+
+|  |  |
+| --- | --- |
+| [`player_entity`](table/player_entity.md) | 玩家的访问入口 |
+| [`hand_card_entity`](table/hand_card_entity.md) | 手牌的访问入口 |
+| [`deck_card_entity`](table/deck_card_entity.md) | 牌库卡牌的访问入口 |
+| [`hand_card_status_entity`](table/hand_card_status_entity.md) | 手牌上的状态的访问入口 |
+| [`deck_card_status_entity`](table/deck_card_status_entity.md) | 牌库卡牌上的状态的访问入口 |
+| [`support_entity`](table/support_entity.md) | 支援的访问入口 |
+| [`summon_entity`](table/summon_entity.md) | 召唤物的访问入口 |
+| [`combat_status_entity`](table/combat_status_entity.md) | 出战状态的访问入口 |
+| [`character_entity`](table/character_entity.md) | 角色的访问入口 |
+| [`skill_entity`](table/skill_entity.md) | 技能的访问入口 |
+| [`attachment_entity`](table/attachment_entity.md) | 角色附属实体的访问入口 |
+
+## 只读视图
+
+|  |  |
+| --- | --- |
+| [`player_view`](table/player_view.md) | 玩家的只读视图 |
+| [`hand_card_view`](table/hand_card_view.md) | 手牌的只读视图 |
+| [`deck_card_view`](table/deck_card_view.md) | 牌库卡牌的只读视图 |
+| [`hand_card_status_view`](table/hand_card_status_view.md) | 手牌上的状态的只读视图 |
+| [`deck_card_status_view`](table/deck_card_status_view.md) | 牌库卡牌上的状态的只读视图 |
+| [`support_view`](table/support_view.md) | 支援的只读视图 |
+| [`summon_view`](table/summon_view.md) | 召唤物的只读视图 |
+| [`combat_status_view`](table/combat_status_view.md) | 出战状态的只读视图 |
+| [`character_view`](table/character_view.md) | 角色的只读视图 |
+| [`skill_view`](table/skill_view.md) | 技能的只读视图 |
+| [`attachment_view`](table/attachment_view.md) | 角色附属实体的只读视图 |
+
+## 实体 ID
+
+|  |  |
+| --- | --- |
+| [`player_id`](table/player_id.md) | 玩家的身份 |
+| [`hand_card_id`](table/hand_card_id.md) | 手牌的身份 |
+| [`deck_card_id`](table/deck_card_id.md) | 牌库卡牌的身份 |
+| [`hand_card_status_id`](table/hand_card_status_id.md) | 手牌上的状态的身份 |
+| [`deck_card_status_id`](table/deck_card_status_id.md) | 牌库卡牌上的状态的身份 |
+| [`support_id`](table/support_id.md) | 支援的身份 |
+| [`summon_id`](table/summon_id.md) | 召唤物的身份 |
+| [`combat_status_id`](table/combat_status_id.md) | 出战状态的身份 |
+| [`character_id`](table/character_id.md) | 角色的身份 |
+| [`skill_id`](table/skill_id.md) | 技能的身份 |
+| [`attachment_id`](table/attachment_id.md) | 角色附属实体的身份 |
+| [`other_player`](table/other_player.md) | 取得另一方玩家的 ID |
+
+## 状态与参数
+
+|  |  |
+| --- | --- |
+| [`game_parameters`](table/game_parameters.md) | 对局采用的容量限制 |
+| [`table_state`](table/table_state.md) | 双方共享的对局状态，用于记录当前回合和行动归属 |
+| [`player_state`](table/player_state.md) | 一位玩家的骰子和出战角色状态 |
+| [`character_state`](table/character_state.md) | 角色在对局中的生命值、充能和元素附着 |
+| [`support_state`](table/support_state.md) | 支援在对局中使用的计数状态 |
+| [`summon_state`](table/summon_state.md) | 召唤物在对局中使用的计数状态 |
+| [`combat_status_state`](table/combat_status_state.md) | 出战状态在对局中使用的计数状态 |
+| [`attachment_state`](table/attachment_state.md) | 角色附属实体在对局中使用的计数状态 |
+| [`skill_state`](table/skill_state.md) | 技能在对局中使用的计数状态 |
+| [`status_state`](table/status_state.md) | 卡牌状态在对局中使用的计数状态 |
+| [`card_state`](table/card_state.md) | 卡牌自身的状态 |
+
+## 卡牌搬运与遍历
+
+|  |  |
+| --- | --- |
+| [`card_data`](table/card_data.md) | 保留状态的卡牌搬运数据 |
+| [`card_status_range`](table/card_status_range.md) | 遍历一张卡牌所带的状态 |

@@ -1,0 +1,38 @@
+[givm](../../reference.md) / [牌桌](../table.md) / **attachment_state**
+
+# givm::attachment_state
+
+定义于头文件 `<givm/table.hpp>`
+
+```cpp
+struct attachment_state;
+```
+
+角色附属实体在对局中使用的计数状态。`count` 的具体含义由相应定义决定，例如剩余可用次数或累计数量。
+
+## 成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `count` | `std::uint32_t` | 该实体当前的计数 |
+
+## 示例
+
+```cpp
+#include <print>
+
+#include <givm/givm.hpp>
+
+int main()
+{
+    givm::attachment_state value{ .count = 3 };
+    --value.count;
+    std::println("剩余计数: {}", value.count);
+}
+```
+
+输出
+
+```text
+剩余计数: 2
+```
