@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **dice_counts**
+[givm](../../reference.md) / [枚举值](../enums.md) / **dice_counts**
 
 # givm::dice_counts
 
@@ -58,3 +58,9 @@ int main()
 足够支付指定火骰: true
 支付后总数: 2
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`elemental_dice`](elemental_dice.md) | 元素骰的种类 |

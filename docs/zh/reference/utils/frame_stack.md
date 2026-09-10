@@ -66,5 +66,5 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`frame_view`](frame_view.md) | 访问一帧中的值 |
-| [`dynamic_array`](dynamic_array.md) | 准备动态长度数组 |
+| [`frame_view`](frame_view.md) | 一帧数据的访问对象 |
+| [`dynamic_array`](dynamic_array.md) | 动态数组初始化参数的构造工具，是一个可调用常量 |

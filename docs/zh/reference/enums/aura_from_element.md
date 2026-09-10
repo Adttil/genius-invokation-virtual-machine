@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **aura_from_element**
+[givm](../../reference.md) / [枚举值](../enums.md) / **aura_from_element**
 
 # givm::aura_from_element
 
@@ -39,3 +39,10 @@ int main()
 ```text
 是否水附着: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`element`](element.md) | 元素种类 |
+| [`element_aura`](element_aura.md) | 角色身上保留的元素附着 |

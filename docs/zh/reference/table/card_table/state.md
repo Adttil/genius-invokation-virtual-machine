@@ -15,7 +15,7 @@ constexpr auto& state(this Self& self) noexcept;
 
 |  |  |
 | --- | --- |
-| `Self` | 由牌桌对象推导，保留其 const 限定 |
+| `Self` | 由牌桌对象推导并保留其 const 限定的类型 |
 
 ## 参数
 

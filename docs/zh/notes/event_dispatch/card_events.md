@@ -2,17 +2,17 @@
 
 # 效果取消与卡牌身份
 
-取消牌或技能的效果，与撤销已经提交的行动不同。本页保留这项区分以及调和、弃牌的规则边界；事件的公开字段见[事件 reference](../../reference/events.md)。
+取消牌或技能的效果，与撤销已经提交的行动不同。本页保留这项区分以及调和、弃牌的规则边界；事件的公开字段见[事件 reference](../../reference/executor/events.md)。
 
 ## 取消效果不回滚行动
 
-[`card_will_be_played`](../../reference/events/card_will_be_played.md) 位于支付提交之后、牌定义效果生效之前。无效化只取消定义效果，不退还费用，也不阻止牌离开手牌；行动速度和目标仍可按规则调整。支付提交时已经捕获牌定义，牌离手后仍能说明这次行动来自哪个定义。`card_played` 所触发的“打出牌后”效果应位于牌自身效果之后。
+[`card_will_be_played`](../../reference/executor/events/card_will_be_played.md) 位于支付提交之后、牌定义效果生效之前。无效化只取消定义效果，不退还费用，也不阻止牌离开手牌；行动速度和目标仍可按规则调整。支付提交时已经捕获牌定义，牌离手后仍能说明这次行动来自哪个定义。`card_played` 所触发的“打出牌后”效果应位于牌自身效果之后。
 
 技能采用同样的边界：无效化 `skill_will_be_used` 中的技能效果不撤销支付，费用竞争在此前的费用计算阶段已经完成。`skill_used` 所触发的后续效果应排在技能定义自身效果之后。不能因为效果被取消，就把已经提交的行动解释为从未发生。
 
 ## 调和取消的范围
 
-[`elemental_tuning_will_apply`](../../reference/events/elemental_tuning_will_apply.md) 位于调和本体的弃牌和转骰之前；取消时不再执行后续调和本体。这与打牌、技能已经付款后的“仅取消定义效果”不同。
+[`elemental_tuning_will_apply`](../../reference/executor/events/elemental_tuning_will_apply.md) 位于调和本体的弃牌和转骰之前；取消时不再执行后续调和本体。这与打牌、技能已经付款后的“仅取消定义效果”不同。
 
 响应要求付出的额外代价由其返回的效果程序承担；原约定没有承诺取消调和会自动回滚已经完成的响应副作用。成功后的调和通知使用已经弃置手牌的历史身份。
 

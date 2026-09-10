@@ -65,5 +65,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`card_table`](../table/card_table.md) | 保存牌桌状态 |
-| [`definition_library`](../definition/definition_library.md) | 提供实体定义和规则程序 |
+| [`card_table`](../table/card_table.md) | 游戏对局的牌桌 |
+| [`definition_library`](../definition/definition_library.md) | 编译后的定义库 |

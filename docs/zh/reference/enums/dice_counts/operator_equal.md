@@ -1,4 +1,4 @@
-[givm](../../../reference.md) / [游戏用语](../../enums.md) / [dice_counts](../dice_counts.md) / **operator==**
+[givm](../../../reference.md) / [枚举值](../../enums.md) / [dice_counts](../dice_counts.md) / **operator==**
 
 # givm::operator==
 

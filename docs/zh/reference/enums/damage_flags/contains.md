@@ -1,4 +1,4 @@
-[givm](../../../reference.md) / [游戏用语](../../enums.md) / [damage_flags](../damage_flags.md) / **contains**
+[givm](../../../reference.md) / [枚举值](../../enums.md) / [damage_flags](../damage_flags.md) / **contains**
 
 # givm::damage_flags::contains
 

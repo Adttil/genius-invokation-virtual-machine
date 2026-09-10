@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **element_from_damage_type**
+[givm](../../reference.md) / [枚举值](../enums.md) / **element_from_damage_type**
 
 # givm::element_from_damage_type
 
@@ -39,3 +39,10 @@ int main()
 ```text
 物理伤害不带元素: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`damage_type`](damage_type.md) | 伤害的元素或特殊类别 |
+| [`element`](element.md) | 元素种类 |

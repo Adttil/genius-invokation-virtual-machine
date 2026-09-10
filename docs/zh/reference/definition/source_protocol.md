@@ -11,7 +11,7 @@
 | | |
 | --- | --- |
 | `using definition_category = ...;` | 定义所属类别，取 [`definition_types`](definition_types.md) 中的类型 |
-| `name() const` | 返回 `std::string_view`，名称在同一类别内唯一 |
+| `name() const` | 返回同一类别内唯一的完整名称 |
 | `compile(definition_compile_context&) const` | 返回这项定义的配置数据，供后续事件响应使用 |
 
 `compile` 的返回值不能是 `void` 或引用，须能存入 `std::any`，因此其类型须可复制构造。返回类型由源自行决定，不必命名为 `definition_type`，也不必与 `definition_category` 相同。
@@ -22,16 +22,16 @@
 
 | | |
 | --- | --- |
-| `tags()` | 定义自身所属的分类标签 |
-| `tag_dependencies()` | 编译时需要直接取得 ID 的标签名称 |
-| `card_dependencies()` / `card_dependencies_by_tag()` | 卡牌定义依赖 |
-| `status_dependencies()` / `status_dependencies_by_tag()` | 卡牌状态定义依赖 |
-| `support_dependencies()` / `support_dependencies_by_tag()` | 支援定义依赖 |
-| `summon_dependencies()` / `summon_dependencies_by_tag()` | 召唤物定义依赖 |
-| `combat_status_dependencies()` / `combat_status_dependencies_by_tag()` | 出战状态定义依赖 |
-| `character_dependencies()` / `character_dependencies_by_tag()` | 角色定义依赖 |
-| `skill_dependencies()` / `skill_dependencies_by_tag()` | 技能定义依赖 |
-| `attachment_dependencies()` / `attachment_dependencies_by_tag()` | 角色附着实体定义依赖 |
+| `tags()` | 返回定义自身所属的分类标签 |
+| `tag_dependencies()` | 返回编译时需要直接取得 ID 的标签名称 |
+| `card_dependencies()` / `card_dependencies_by_tag()` | 返回所依赖的卡牌定义名称或标签筛选条件 |
+| `status_dependencies()` / `status_dependencies_by_tag()` | 返回所依赖的卡牌状态定义名称或标签筛选条件 |
+| `support_dependencies()` / `support_dependencies_by_tag()` | 返回所依赖的支援定义名称或标签筛选条件 |
+| `summon_dependencies()` / `summon_dependencies_by_tag()` | 返回所依赖的召唤物定义名称或标签筛选条件 |
+| `combat_status_dependencies()` / `combat_status_dependencies_by_tag()` | 返回所依赖的出战状态定义名称或标签筛选条件 |
+| `character_dependencies()` / `character_dependencies_by_tag()` | 返回所依赖的角色定义名称或标签筛选条件 |
+| `skill_dependencies()` / `skill_dependencies_by_tag()` | 返回所依赖的技能定义名称或标签筛选条件 |
+| `attachment_dependencies()` / `attachment_dependencies_by_tag()` | 返回所依赖的角色附着实体定义名称或标签筛选条件 |
 
 `*_dependencies()` 列出名称，`*_dependencies_by_tag()` 列出形如 `治疗 & !料理` 的筛选表达式。每种查询须使用相应的声明：名称依赖通过 `resolve_id` 查询，标签依赖通过 `resolve_tag` 查询，筛选依赖通过 `resolve_ids_by_tag` 查询。只声明名称依赖不会顺带授权标签查询，反之亦然。
 
@@ -53,9 +53,9 @@ static givm::handler_program_entry_t<TEvent> handle(
 
 `TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。没有匹配的函数就表示不响应。
 
-响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的指令](../instructions.md)，通过 [`add_program`](definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
+响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的指令](../executor/instructions.md)，通过 [`add_program`](definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
 
-入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](../events/character_initialization.md)要求在响应函数内直接填写初始状态。
+入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](../executor/events/character_initialization.md)要求在响应函数内直接填写初始状态。
 
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
 

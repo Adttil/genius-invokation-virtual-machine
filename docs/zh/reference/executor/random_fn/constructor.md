@@ -11,7 +11,7 @@ template<class TRandom>
 constexpr explicit random_fn(TRandom& random) noexcept;
 ```
 
-接入一个由调用方管理的随机源。
+构造一个引用调用方随机源的视图。
 
 ## 模板参数
 

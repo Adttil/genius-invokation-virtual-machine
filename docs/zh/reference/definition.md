@@ -6,51 +6,73 @@
 
 定义源适合按游戏内容逐项编写；源库负责汇集与选择，编译所得定义库用于对局。初次编写卡牌或角色效果可以先阅读[定义源协议](definition/source_protocol.md)。
 
-## 定义的准备与使用
+## 类
+
+### 定义的准备与使用
 
 |  |  |
 | --- | --- |
-| [`definition_source_library`](definition/definition_source_library.md) | 汇集与编译定义源 |
-| [`definition_source_view`](definition/definition_source_view.md) | 查看定义源的名称、分类和依赖 |
-| [`definition_compile_context`](definition/definition_compile_context.md) | 编写定义时查找依赖并登记效果 |
-| [`definition_selection`](definition/definition_selection.md) | 选择对局需要的内容 |
-| [`definition_compile_result`](definition/definition_compile_result.md) | 取得定义库与配套 ID 映射 |
-| [`definition_library`](definition/definition_library.md) | 查询对局使用的定义 |
+| [`definition_source_library`](definition/definition_source_library.md) | 可供编译的定义源集合 |
+| [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
+| [`definition_compile_context`](definition/definition_compile_context.md) | 单项定义的编译上下文 |
+| [`definition_compile_result`](definition/definition_compile_result.md) | 配套的定义库与 ID 映射 |
+| [`definition_library`](definition/definition_library.md) | 对局使用的定义与流程 |
 | [`linked_deck`](definition/linked_deck.md) | 已确定卡牌与角色定义的牌组 |
-| [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
 
-## 名称、ID 与标签
-
-|  |  |
-| --- | --- |
-| [`issued_id`](definition/issued_id.md) | 定义与标签 ID 的共同操作 |
-| [`definition_id`](definition/definition_id.md) | 标识实体定义 |
-| [`tag_id`](definition/tag_id.md) | 标识分类标签 |
-| [`issued_id_map`](definition/issued_id_map.md) | 在名称和 ID 之间查询 |
-| [`tag_mask`](definition/tag_mask.md) | 记录并匹配一组分类标签 |
-
-## 效果与指令
+### 名称、ID 与标签
 
 |  |  |
 | --- | --- |
-| [`program_entry`](definition/program_entry.md) | 选择后续效果或终局结果 |
-| [`execution_position`](definition/execution_position.md) | 表示当前将要执行的操作位置 |
-| [`any_instruction_for`](definition/any_instruction_for.md) | 在同种 context 下保存不同指令 |
-| [`instruction_compatible_with`](definition/instruction_compatible_with.md) | 检查指令与 context 的兼容性 |
-| [`instruction_type_index`](definition/instruction_type_index.md) | 识别具体指令类型 |
+| [`issued_id`](definition/issued_id.md) | 按类别区分的定义或标签 ID |
+| [`issued_id_map`](definition/issued_id_map.md) | 定义名称、分类标签与 ID 的对应表 |
+| [`tag_mask`](definition/tag_mask.md) | 分类标签集合 |
 
-## 定义类别与响应类型
+### 效果与指令
+
+|  |  |
+| --- | --- |
+| [`program_entry`](definition/program_entry.md) | 效果程序或终局结果的入口 |
+| [`any_instruction_for`](definition/any_instruction_for.md) | 同一种 context 下的同构指令值 |
+
+### 定义类别与响应映射
 
 |  |  |
 | --- | --- |
 | [`card_definition`](definition/card_definition.md) | 卡牌定义类别 |
 | [`status_definition`](definition/status_definition.md) | 卡牌状态定义类别 |
-| [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`views_of_definition`](definition/views_of_definition.md) | 定义对应的实体形态 |
 | [`subscribed_events`](definition/subscribed_events.md) | 实体形态可响应的事件 |
-| [`support_subscribed_events`](definition/support_subscribed_events.md) | 场上实体共用的事件列表 |
 | [`handler_program_context`](definition/handler_program_context.md) | 事件响应 context 的映射 |
+
+## 类型别名
+
+|  |  |
+| --- | --- |
+| [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
+| [`definition_id`](definition/definition_id.md) | 实体定义的身份标识 |
+| [`tag_id`](definition/tag_id.md) | 分类标签的身份标识 |
+| [`execution_position`](definition/execution_position.md) | 当前将要执行的操作位置 |
+| [`definition_types`](definition/definition_types.md) | 全部定义类别 |
+| [`support_subscribed_events`](definition/support_subscribed_events.md) | 场上实体共用的事件列表 |
 | [`handler_program_context_t`](definition/handler_program_context_t.md) | 事件响应所用的 context 类型 |
 | [`handler_program_entry_t`](definition/handler_program_entry_t.md) | 事件响应返回的效果入口类型 |
-| [`definition_data`](definition/definition_data.md) | 持有已编译定义的数据 |
+| [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
 | [`handle_fn_t`](definition/handle_fn_t.md) | 统一的事件响应函数指针类型 |
+
+## 常量
+
+|  |  |
+| --- | --- |
+| [`instruction_type_index`](definition/instruction_type_index.md) | 具体指令类型的标识 |
+
+## 函数
+
+|  |  |
+| --- | --- |
+| [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
+
+## 概念
+
+|  |  |
+| --- | --- |
+| [`instruction_compatible_with`](definition/instruction_compatible_with.md) | 指令与 context 相容的约束 |

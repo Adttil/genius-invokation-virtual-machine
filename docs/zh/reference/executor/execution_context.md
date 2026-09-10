@@ -24,4 +24,4 @@ class execution_context;
 
 ## 注意
 
-执行器在调用核心指令时提供此对象。定义源通过组合[核心给定的指令](../instructions.md)安排效果，不能借此扩展指令集合；对局的外层驱动使用 [`executor`](executor.md)。
+执行器在调用核心指令时提供此对象。定义源通过组合[核心给定的指令](instructions.md)安排效果，不能借此扩展指令集合；对局的外层驱动使用 [`executor`](executor.md)。

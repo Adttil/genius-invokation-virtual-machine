@@ -9,7 +9,7 @@ template<class... TList>
 using type_list_cat = /* 拼接后的类型序列 */;
 ```
 
-按给定顺序连接多组类型，形成一个类型序列。
+多组类型序列按给定顺序拼接所得的 `type_list` 类型。
 
 ## 模板参数
 

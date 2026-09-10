@@ -19,7 +19,7 @@ struct card_data;
 
 ## 注意
 
-通过玩家的 `take_*` 接口取得，再交给 `add_hand_card` 或 [`insert_deck_card`](../instructions/insert_deck_card.md)。`first_status` 和 `last_status` 关联卡牌携带的状态；调用方在搬运中原样保留它们，不应手工修改。
+通过玩家的 `take_*` 接口取得，再交给 `add_hand_card` 或 [`insert_deck_card`](../executor/instructions/insert_deck_card.md)。`first_status` 和 `last_status` 关联卡牌携带的状态；调用方在搬运中原样保留它们，不应手工修改。
 
 这份数据不独立拥有附带状态，不能跨牌桌搬运，不能在搬运过程中清理牌桌，也不能把同一份附带状态重复装入多个位置。
 

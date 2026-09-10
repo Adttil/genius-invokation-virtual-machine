@@ -9,7 +9,7 @@ using definition_selection =
     std::array<std::span<const std::string_view>, definition_types::size()>;
 ```
 
-指定一场对局首先需要哪些定义，例如双方牌组中出现的卡牌和角色。它们声明的依赖由源库自动补入，无须调用方逐一列出。
+一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。它们声明的依赖由源库自动补入，无须调用方逐一列出。
 
 ## 注意
 

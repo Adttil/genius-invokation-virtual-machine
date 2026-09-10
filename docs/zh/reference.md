@@ -1,36 +1,45 @@
-# GIVM 参考手册
+# Genius Invokation Virtual Machine 参考
 
-GIVM 的中文公开接口文档。初次使用可以从[使用指南](reference/guides.md)开始，再按主题查阅具体类型和函数。
-
-## 核心模块
+## [枚举值](reference/enums.md)
 
 | | |
 | --- | --- |
-| [定义](reference/definition.md) | 描述角色、卡牌、技能、状态及其效果 |
-| [牌桌](reference/table.md) | 访问一场对局中的实体、资源和状态 |
-| [执行](reference/executor.md) | 推进对局并处理暂停与结果 |
+| [`element`](reference/enums/element.md) | 元素 |
+| [`elemental_reaction`](reference/enums/elemental_reaction.md) | 元素反应 |
+| [`weapon_type`](reference/enums/weapon_type.md) | 武器类型 |
+| [`game_result`](reference/enums/game_result.md) | 对局结果 |
 
-## 游戏操作与公共类型
-
-| | |
-| --- | --- |
-| [指令](reference/instructions.md) | 编排游戏操作 |
-| [事件](reference/events.md) | 响应游戏中的变化 |
-| [游戏用语](reference/enums.md) | 元素、骰子、伤害、行动和对局结果 |
-| [通用工具](reference/utils.md) | 临时数据和编译期类型工具 |
-
-## 使用指南
+## [定义](reference/definition.md)
 
 | | |
 | --- | --- |
-| [核心概念](reference/guides/overview.md) | 规则与对局、定义与实体、指令与事件 |
-| [开始使用](reference/guides/quick_start.md) | 接入工程并运行简单流程 |
-| [驱动与输入](reference/guides/driving.md) | 在暂停时提交输入并继续推进 |
-| [分支模拟](reference/guides/branching.md) | 从同一局面尝试不同后续 |
+| [`definition_source_view`](reference/definition/definition_source_view.md) | 定义源的类型擦除视图 |
+| [`definition_source_library`](reference/definition/definition_source_library.md) | 定义源库 |
+| [`definition_library`](reference/definition/definition_library.md) | 定义库 |
+| [`linked_deck`](reference/definition/linked_deck.md) | 关联到定义库的牌组 |
 
-## 文档编写
+## [牌桌](reference/table.md)
 
 | | |
 | --- | --- |
-| [写作规范](reference/style_guide.md) | 页面组织、表述和示例要求 |
-| [页面模板](reference/templates.md) | 按页面种类选择起稿模板 |
+| [`card_table`](reference/table/card_table.md) | 牌桌 |
+| [`player_view`](reference/table/player_view.md) | 玩家的只读视图 |
+| [`hand_card_view`](reference/table/hand_card_view.md) | 手牌的只读视图 |
+| [`deck_card_view`](reference/table/deck_card_view.md) | 牌库卡牌的只读视图 |
+| [`character_view`](reference/table/character_view.md) | 角色的只读视图 |
+
+## [执行](reference/executor.md)
+
+| | |
+| --- | --- |
+| [`executor`](reference/executor/executor.md) | 游戏对局的执行器 |
+| [`random_fn`](reference/executor/random_fn.md) | 随机函数视图 |
+| [事件](reference/executor/events.md) | 可响应的游戏事件 |
+| [指令](reference/executor/instructions.md) | 游戏的执行单元 |
+
+## [通用工具](reference/utils.md)
+
+| | |
+| --- | --- |
+| [`type_list`](reference/utils/type_list.md) | 类型列表 |
+| [`frame_stack`](reference/utils/frame_stack.md) | 帧栈 |

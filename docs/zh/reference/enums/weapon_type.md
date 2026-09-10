@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **weapon_type**
+[givm](../../reference.md) / [枚举值](../enums.md) / **weapon_type**
 
 # givm::weapon_type
 

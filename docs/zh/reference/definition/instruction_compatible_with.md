@@ -17,7 +17,7 @@ concept instruction_compatible_with =
     >;
 ```
 
-检查一条指令是否适合放在给定 context 下的效果中。无需 context 的自由指令可用于任何效果；有 context 要求的指令只能用于对应的效果。
+一条指令适用于给定 context 的约束。无需 context 的自由指令可用于任何效果；有 context 要求的指令只能用于对应的效果。
 
 ## 模板参数
 
@@ -28,7 +28,7 @@ concept instruction_compatible_with =
 
 ## 注意
 
-只检查 `context_type` 的兼容性，不检查指令大小、执行函数或当前运行环境。满足本概念不表示该类型属于允许使用的[核心指令集合](../instructions.md)。
+只检查 `context_type` 的兼容性，不检查指令大小、执行函数或当前运行环境。满足本概念不表示该类型属于允许使用的[核心指令集合](../executor/instructions.md)。
 
 ## 示例
 

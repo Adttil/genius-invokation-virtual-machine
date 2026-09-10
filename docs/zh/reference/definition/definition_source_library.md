@@ -8,7 +8,7 @@
 class definition_source_library;
 ```
 
-汇集卡牌、角色和其他实体的定义源，供对局选择所需内容。它把分散编写的定义组织在一起，并在准备对局时产生一份可供使用的定义库。
+卡牌、角色和其他实体的定义源集合，供对局选择所需内容。它把分散编写的定义组织在一起，并在准备对局时产生一份可供使用的定义库。
 
 ## 成员常量
 
@@ -73,5 +73,5 @@ int main()
 
 |  |  |
 | --- | --- |
-| [定义源协议](source_protocol.md) | 编写卡牌与角色定义源 |
-| [`definition_selection`](definition_selection.md) | 选择对局需要的内容 |
+| [定义源协议](source_protocol.md) | 卡牌与角色定义源的编写协议 |
+| [`definition_selection`](definition_selection.md) | 按类别指定的定义名称集合 |

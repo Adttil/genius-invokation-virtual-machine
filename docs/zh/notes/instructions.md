@@ -1,6 +1,6 @@
 # 指令设计备忘
 
-本页保留指令设计中的理由、反例和待处理问题。接口见[指令 reference](../reference/instructions.md)，具体实现直接阅读[指令源码](../../../include/givm/executor/instructions)。
+本页保留指令设计中的理由、反例和待处理问题。接口见[指令 reference](../reference/executor/instructions.md)，具体实现直接阅读[指令源码](../../../include/givm/executor/instructions)。
 
 核心给定指令集合的限制、一次执行与完整结算的区别，以及 `deal_damage` 后不能直接接 `absorb_damage_by_count` 取得伤害事件 context 的反例，集中在[固定程序设计](fixed_program.md)。这些约定不取决于模板是否已经提供相应静态检查。
 

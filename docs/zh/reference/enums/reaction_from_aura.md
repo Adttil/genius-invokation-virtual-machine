@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **reaction_from_aura**
+[givm](../../reference.md) / [枚举值](../enums.md) / **reaction_from_aura**
 
 # givm::reaction_from_aura
 
@@ -40,3 +40,11 @@ int main()
 ```text
 冰在先时发生融化: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`element_aura`](element_aura.md) | 角色身上保留的元素附着 |
+| [`element`](element.md) | 元素种类 |
+| [`elemental_reaction`](elemental_reaction.md) | 元素相遇时产生的反应种类 |

@@ -76,12 +76,10 @@ def parse_document(document: Path) -> list[Example]:
 
 def collect_examples(root: Path) -> list[Example]:
     reference = root / "docs" / "zh" / "reference"
-    templates = reference / "templates"
     examples = []
     for document in sorted(reference.rglob("*.md")):
-        if not document.is_relative_to(templates):
-            name = document.relative_to(reference).with_suffix("").as_posix()
-            examples.extend(replace(example, name=name) for example in parse_document(document))
+        name = document.relative_to(reference).with_suffix("").as_posix()
+        examples.extend(replace(example, name=name) for example in parse_document(document))
     if not examples:
         raise ExampleError("No documented examples found")
     return examples

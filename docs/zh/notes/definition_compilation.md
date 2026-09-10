@@ -348,7 +348,7 @@ static program_entry<damage_effect> handle(
 }
 ```
 
-`character_initialization` 沿用相同调用形状，但原记录约定 handler 只修改局部事件并返回空入口；`enter_character` 不进入它返回的程序。当前 `initialize_characters` 也遵循直接填写状态、不进入响应程序的处理方式，见 [character_initialization](../reference/events/character_initialization.md)。原文将“具体事件字段、响应时序和栈 ABI”一并指向事件目录；现在前两者由事件及指令 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)，不作为事件使用者的完整栈协议。
+`character_initialization` 沿用相同调用形状，但原记录约定 handler 只修改局部事件并返回空入口；`enter_character` 不进入它返回的程序。当前 `initialize_characters` 也遵循直接填写状态、不进入响应程序的处理方式，见 [character_initialization](../reference/executor/events/character_initialization.md)。原文将“具体事件字段、响应时序和栈 ABI”一并指向事件目录；现在前两者由事件及指令 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)，不作为事件使用者的完整栈协议。
 
 handler 使用静态函数，是因为运行时持有编译后的 definition，而不保留原 source。动态 adapter 需要的 Lua 状态引用、回调索引或其他稳定句柄应由 `compile(...)` 放进 definition，再由静态 handler 读取。
 

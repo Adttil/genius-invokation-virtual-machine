@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **element_application_cause**
+[givm](../../reference.md) / [枚举值](../enums.md) / **element_application_cause**
 
 # givm::element_application_cause
 

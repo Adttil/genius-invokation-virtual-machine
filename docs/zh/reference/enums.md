@@ -1,12 +1,14 @@
-[givm](../reference.md) / **游戏用语**
+[givm](../reference.md) / **枚举值**
 
-# 游戏用语
+# 枚举值
 
-描述元素、骰子、行动、装备和对局结果所用的公共类型。
+元素、骰子、行动、装备和对局结果的枚举类型，以及相关的类和函数。
+
+## 枚举
 
 |  |  |
 | --- | --- |
-| [`action_speed`](enums/action_speed.md) | 行动完成后是否移交行动权 |
+| [`action_speed`](enums/action_speed.md) | 行动的速度类别 |
 | [`attachment_slot`](enums/attachment_slot.md) | 角色装备所占用的位置，用于区分武器、圣遗物等装备类别 |
 | [`damage_flag_bits`](enums/damage_flag_bits.md) | 一次伤害可以附带的独立性质 |
 | [`damage_type`](enums/damage_type.md) | 伤害的元素或特殊类别 |
@@ -19,7 +21,7 @@
 | [`weapon_type`](enums/weapon_type.md) | 角色或武器所属的武器类别 |
 | [`elemental_dice`](enums/elemental_dice.md) | 元素骰的种类，包括七种元素和万能元素 |
 
-## 数量和组合
+## 类
 
 |  |  |
 | --- | --- |
@@ -27,7 +29,7 @@
 | [`elemental_dice_cost`](enums/elemental_dice_cost.md) | 各种元素骰的费用数量 |
 | [`damage_flags`](enums/damage_flags.md) | 一次伤害的性质组合 |
 
-## 元素与反应
+## 函数
 
 |  |  |
 | --- | --- |

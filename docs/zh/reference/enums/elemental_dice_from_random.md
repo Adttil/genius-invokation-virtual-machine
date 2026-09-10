@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **elemental_dice_from_random**
+[givm](../../reference.md) / [枚举值](../enums.md) / **elemental_dice_from_random**
 
 # givm::elemental_dice_from_random
 
@@ -40,3 +40,9 @@ int main()
 0 对应万能: true
 11 对应火: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`elemental_dice`](elemental_dice.md) | 元素骰的种类 |

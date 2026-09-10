@@ -28,7 +28,7 @@ executor.execute_next(table, random);
 
 上层记录器应记录所有实际发生的随机调用。即使一次调用发生在最终挂起之前，它仍属于本次同步执行步骤。
 
-运行到挂起或终局的通用循环见[驱动与输入](../reference/guides/driving.md)。
+推进到暂停或终局的接口及示例见 [`executor::execute_next`](../reference/executor/executor/execute_next.md)。
 
 ## 记录与回放
 

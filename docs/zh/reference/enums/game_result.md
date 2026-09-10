@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **game_result**
+[givm](../../reference.md) / [枚举值](../enums.md) / **game_result**
 
 # givm::game_result
 

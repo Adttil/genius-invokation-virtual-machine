@@ -9,13 +9,13 @@ template<bool Mutable, class T>
 using maybe_mutable = std::conditional_t<Mutable, T, const T>;
 ```
 
-根据访问权限选择可修改或只读的类型。
+由访问权限决定 const 限定的类型。
 
 ## 模板参数
 
 |  |  |
 | --- | --- |
-| `Mutable` | 为真时保留 `T`，否则添加 const 限定 |
+| `Mutable` | 可修改标志；为 true 时类型为 `T`，否则为 `const T` |
 | `T` | 原类型 |
 
 ## 示例

@@ -9,7 +9,7 @@ template<template<class...> class U>
 using apply = U<T...>;
 ```
 
-用这组类型作为另一个模板的类型实参。
+以本序列作为类型实参的 `U` 特化。
 
 ## 模板参数
 

@@ -15,7 +15,7 @@ struct selector;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`player_id`](../table/player_id.md) | 进行选择的玩家 |
-| `selected` | `std::bitset<selection_capacity>` | 各位置是否被选中 |
+| `selected` | `std::bitset<selection_capacity>` | 各候选位置的选中状态 |
 
 ## 示例
 
@@ -45,4 +45,4 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`selection_capacity`](selection_capacity.md) | 选择可表示的位置数量 |
+| [`selection_capacity`](selection_capacity.md) | 单次选择可表示的位置数量 |

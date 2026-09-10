@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **damage_flag_bits**
+[givm](../../reference.md) / [枚举值](../enums.md) / **damage_flag_bits**
 
 # givm::damage_flag_bits
 
@@ -23,7 +23,7 @@ enum class damage_flag_bits : std::uint8_t
 | `combat_damage` | 战斗伤害 |
 | `skill_damage` | 技能伤害 |
 | `reaction_damage` | 反应伤害 |
-| `ignore_shield` | 忽略护盾 |
+| `ignore_shield` | 无视护盾的伤害 |
 
 ## 示例
 
@@ -50,3 +50,9 @@ int main()
 忽略护盾: true
 移除标志后忽略护盾: false
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`damage_flags`](damage_flags.md) | 伤害的性质组合 |

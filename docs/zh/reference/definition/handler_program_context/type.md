@@ -68,4 +68,4 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`handler_program_context_t`](../handler_program_context_t.md) | 直接取得映射所得的类型 |
+| [`handler_program_context_t`](../handler_program_context_t.md) | 事件响应所用的 context 类型 |

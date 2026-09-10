@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **elemental_reaction**
+[givm](../../reference.md) / [枚举值](../enums.md) / **elemental_reaction**
 
 # givm::elemental_reaction
 
@@ -65,3 +65,11 @@ int main()
 冰与火的反应是融化: true
 冰与草不发生反应: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`reaction_between`](reaction_between.md) | 判断两个元素的反应 |
+| [`reaction_from_aura`](reaction_from_aura.md) | 判断附着与新元素的反应 |
+| [`aura_after_reaction`](aura_after_reaction.md) | 取得反应后的附着 |

@@ -71,5 +71,5 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`dynamic_array`](../dynamic_array.md) | 指定动态数组的来源 |
+| [`dynamic_array`](../dynamic_array.md) | 动态数组初始化参数的构造工具，是一个可调用常量 |
 | [`top`](top.md) | 访问已有数据 |

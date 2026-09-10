@@ -15,7 +15,7 @@ constexpr card_data take_hand_card(hand_card_id card_id) const
 
 |  |  |
 | --- | --- |
-| [`card_id`](../../events/card_id.md) | 该玩家仍然有效的一张手牌 ID |
+| [`card_id`](../hand_card_id.md) | 该玩家仍然有效的一张手牌 ID |
 
 ## 返回值
 

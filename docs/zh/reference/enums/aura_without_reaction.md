@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **aura_without_reaction**
+[givm](../../reference.md) / [枚举值](../enums.md) / **aura_without_reaction**
 
 # givm::aura_without_reaction
 
@@ -40,3 +40,10 @@ int main()
 ```text
 形成冰草共存: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`element_aura`](element_aura.md) | 角色身上保留的元素附着 |
+| [`element`](element.md) | 元素种类 |

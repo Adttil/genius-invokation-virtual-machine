@@ -1,0 +1,94 @@
+[givm](../../reference.md) / [执行](../executor.md) / **事件**
+
+# 事件
+
+事件描述对局中正在发生或已经完成的事情。实体定义可以响应相关事件，读取通知的数据，或在允许修改的时机调整即将生效的效果。
+
+事件类型也限定其响应中能够使用的[指令](instructions.md)。这种限制表达响应发生的语境，例如抵挡伤害只能用于伤害结算的响应。每次触发可以选择响应实体的范围与顺序，不要求所有事件使用统一的广播顺序。
+
+## 回合与投骰
+
+| | |
+| --- | --- |
+| [`battle_started`](events/battle_started.md) | 对局首次进入战斗的通知 |
+| [`action_phase_started`](events/action_phase_started.md) | 本回合行动阶段开始的通知 |
+| [`before_action`](events/before_action.md) | 当前行动玩家选择行动前的事件 |
+| [`round_end_declared`](events/round_end_declared.md) | 玩家宣布本回合结束的通知 |
+| [`round_ended`](events/round_ended.md) | 本回合结束的通知 |
+| [`dice_roll_preparation`](events/dice_roll_preparation.md) | 本回合投骰前的准备事件 |
+| [`dice_added`](events/dice_added.md) | 元素骰增加后的通知 |
+| [`dice_removed`](events/dice_removed.md) | 元素骰移除或支付后的通知 |
+| [`dice_converted`](events/dice_converted.md) | 元素骰种类转换后的通知 |
+
+## 资源与费用
+
+| | |
+| --- | --- |
+| [`changing_secret_points`](events/changing_secret_points.md) | 秘传点数变化前的调整事件 |
+| [`secret_points_changed`](events/secret_points_changed.md) | 秘传点数变化后的通知 |
+| [`changing_energy`](events/changing_energy.md) | 角色充能变化前的调整事件 |
+| [`energy_changed`](events/energy_changed.md) | 角色充能变化后的通知 |
+| [`calculating_card_payment`](events/calculating_card_payment.md) | 打出手牌时的支付计算事件 |
+| [`calculating_skill_payment`](events/calculating_skill_payment.md) | 使用技能时的支付计算事件 |
+| [`calculating_switch_payment`](events/calculating_switch_payment.md) | 切换出战角色时的支付计算事件 |
+| [`cost_of_switch`](events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
+| [`elemental_dice_requirement`](events/elemental_dice_requirement.md) | 一项行动对元素骰的需求 |
+| [`action_cost_requirement`](events/action_cost_requirement.md) | 一项行动的骰子费用与行动速度 |
+| [`cost_effect_argument`](events/cost_effect_argument.md) | 费用调整效果的减费记录 |
+
+## 卡牌与技能
+
+| | |
+| --- | --- |
+| [`hand_card_created`](events/hand_card_created.md) | 新手牌创建后的通知 |
+| [`card_drawn`](events/card_drawn.md) | 一张牌抽取完成后的通知 |
+| [`card_discarded`](events/card_discarded.md) | 手牌或牌堆中的牌被弃置后的通知 |
+| [`card_candidate_chosen`](events/card_candidate_chosen.md) | 候选牌定义选定后的通知 |
+| [`elemental_tuning_will_apply`](events/elemental_tuning_will_apply.md) | 元素调和生效前的事件 |
+| [`elemental_tuning_applied`](events/elemental_tuning_applied.md) | 元素调和完成后的通知 |
+| [`card_will_be_played`](events/card_will_be_played.md) | 手牌效果生效前的事件 |
+| [`card_played`](events/card_played.md) | 打出手牌完成后的通知 |
+| [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |
+| [`skill_used`](events/skill_used.md) | 技能使用完成后的通知 |
+
+## 伤害、治疗与元素
+
+| | |
+| --- | --- |
+| [`damage_calculation`](events/damage_calculation.md) | 伤害计算事件 |
+| [`damage_effect`](events/damage_effect.md) | 扣除生命前的伤害结算事件 |
+| [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
+| [`healing`](events/healing.md) | 角色恢复生命前的治疗调整事件 |
+| [`healed`](events/healed.md) | 角色治疗完成后的通知 |
+| [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 元素反应生效前的事件 |
+| [`after_elemental_reaction`](events/after_elemental_reaction.md) | 元素反应处理完成后的通知 |
+
+## 角色与实体
+
+| | |
+| --- | --- |
+| [`active_character_changed`](events/active_character_changed.md) | 出战角色设置完成后的通知 |
+| [`character_initialization`](events/character_initialization.md) | 角色初始状态的准备事件 |
+| [`character_will_be_defeated`](events/character_will_be_defeated.md) | 角色被击倒前的事件 |
+| [`character_defeated`](events/character_defeated.md) | 角色被击倒后的通知 |
+| [`entity_will_leave`](events/entity_will_leave.md) | 实体离场前的事件 |
+| [`entity_left`](events/entity_left.md) | 实体离场后的通知 |
+| [`entity_count_changed`](events/entity_count_changed.md) | 实体计数变化后的通知 |
+
+## 标识类型别名
+
+| | |
+| --- | --- |
+| [`card_id`](events/card_id.md) | 手牌或牌堆中的牌标识 |
+| [`card_target_id`](events/card_target_id.md) | 卡牌效果的目标标识 |
+| [`damage_source_id`](events/damage_source_id.md) | 伤害的来源标识 |
+| [`effect_source_id`](events/effect_source_id.md) | 治疗等效果的来源标识 |
+| [`element_application_source_id`](events/element_application_source_id.md) | 元素附着的来源标识 |
+| [`entity_id`](events/entity_id.md) | 各类牌桌实体的标识 |
+| [`counted_entity_id`](events/counted_entity_id.md) | 具有计数的实体标识 |
+
+## 调试
+
+| | |
+| --- | --- |
+| [`test_event`](events/test_event.md) | 事件响应的测试通知 |

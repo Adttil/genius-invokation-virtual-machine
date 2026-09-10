@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **damage_type**
+[givm](../../reference.md) / [枚举值](../enums.md) / **damage_type**
 
 # givm::damage_type
 
@@ -59,3 +59,9 @@ int main()
 火伤对应火元素: true
 物理伤害没有对应元素: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`element_from_damage_type`](element_from_damage_type.md) | 取得伤害所带的元素 |

@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **element_aura**
+[givm](../../reference.md) / [枚举值](../enums.md) / **element_aura**
 
 # givm::element_aura
 
@@ -59,3 +59,13 @@ int main()
 加入草后形成冰草共存: true
 随后遇火优先发生融化: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`aura_from_element`](aura_from_element.md) | 取得单元素附着 |
+| [`primary_element_from_aura`](primary_element_from_aura.md) | 取得优先参与反应的附着元素 |
+| [`aura_without_reaction`](aura_without_reaction.md) | 取得不发生反应时的附着 |
+| [`reaction_from_aura`](reaction_from_aura.md) | 判断附着与新元素的反应 |
+| [`aura_after_reaction`](aura_after_reaction.md) | 取得反应后的附着 |

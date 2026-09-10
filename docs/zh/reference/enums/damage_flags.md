@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **damage_flags**
+[givm](../../reference.md) / [枚举值](../enums.md) / **damage_flags**
 
 # givm::damage_flags
 
@@ -49,3 +49,9 @@ int main()
 是否技能伤害: true
 是否忽略护盾: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`damage_flag_bits`](damage_flag_bits.md) | 伤害的独立性质 |

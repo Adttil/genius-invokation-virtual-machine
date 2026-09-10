@@ -33,7 +33,7 @@ card status 数据存放在 table 级 `status_slots` 池中，牌只保存链首
 
 ## 区域与 Entity/View
 
-对应公开类型为 [hand_card_entity](../reference/table/hand_card_entity.md)、[deck_card_entity](../reference/table/deck_card_entity.md)、[hand_card_id](../reference/table/hand_card_id.md)、[deck_card_id](../reference/table/deck_card_id.md) 及 [card_id](../reference/events/card_id.md)。
+对应公开类型为 [hand_card_entity](../reference/table/hand_card_entity.md)、[deck_card_entity](../reference/table/deck_card_entity.md)、[hand_card_id](../reference/table/hand_card_id.md)、[deck_card_id](../reference/table/deck_card_id.md) 及 [card_id](../reference/executor/events/card_id.md)。
 
 虽然 `card_data` 同构，但两个区域必须使用不同的 entity/view：
 
@@ -74,7 +74,7 @@ ID 用于保存实体身份，entity/view 用于访问实体。需要在新增�
 
 ## 弃牌语义
 
-当前牌桌操作见 [hand_card_entity::erase](../reference/table/hand_card_entity/erase.md)、[deck_card_entity::erase](../reference/table/deck_card_entity/erase.md)、[discard_top_deck_card](../reference/table/player_entity/discard_top_deck_card.md)。领域结算中的事件另由[指令](../reference/instructions.md)组织。
+当前牌桌操作见 [hand_card_entity::erase](../reference/table/hand_card_entity/erase.md)、[deck_card_entity::erase](../reference/table/deck_card_entity/erase.md)、[discard_top_deck_card](../reference/table/player_entity/discard_top_deck_card.md)。领域结算中的事件另由[指令](../reference/executor/instructions.md)组织。
 
 弃牌不是区域转移。table 层的手牌和牌堆牌实体均提供 `erase()`，牌堆还提供 `discard_top_deck_card()`；这些操作同时删除牌上 status，不会自动广播弃牌事件。弃牌后不存在可通过“弃牌区 ID”继续访问的牌实体。
 

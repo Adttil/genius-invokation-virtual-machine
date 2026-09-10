@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **attachment_slot**
+[givm](../../reference.md) / [枚举值](../enums.md) / **attachment_slot**
 
 # givm::attachment_slot
 
@@ -21,7 +21,7 @@ enum class attachment_slot : std::uint8_t
 
 |  |  |
 | --- | --- |
-| `none` | 不占装备位置 |
+| `none` | 无装备位置 |
 | `weapon` | 武器 |
 | `artifact` | 圣遗物 |
 | `talent` | 天赋 |

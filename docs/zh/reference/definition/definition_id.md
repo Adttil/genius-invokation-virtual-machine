@@ -9,7 +9,7 @@ template<class TEntityView>
 using definition_id = issued_id<TEntityView>;
 ```
 
-标识一项实体定义。它说明卡牌、角色或其他实体采用哪一份定义，不标识牌桌上的某一个实体。
+一项实体定义的身份标识。它说明卡牌、角色或其他实体采用哪一份定义，不标识牌桌上的某一个实体。
 
 ## 模板参数
 
@@ -47,4 +47,4 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`issued_id`](issued_id.md) | ID 的共同操作 |
+| [`issued_id`](issued_id.md) | 按类别区分的定义或标签 ID |

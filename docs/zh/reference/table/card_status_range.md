@@ -23,7 +23,7 @@ class card_status_range;
 
 |  |  |
 | --- | --- |
-| [`iterator`](card_status_range/iterator.md) | 遍历卡牌状态的位置 |
+| [`iterator`](card_status_range/iterator.md) | 卡牌状态的遍历迭代器 |
 
 ## 成员函数
 

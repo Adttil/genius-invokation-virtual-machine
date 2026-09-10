@@ -21,7 +21,7 @@ class issued_id;
 
 |  |  |
 | --- | --- |
-| [`invalid_value`](issued_id/invalid_value.md) | 表示未取得 ID 的值 |
+| [`invalid_value`](issued_id/invalid_value.md) | 未取得 ID 时的无效值 |
 
 ## 成员函数
 
@@ -65,5 +65,5 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`definition_id`](definition_id.md) | 标识实体定义 |
-| [`tag_id`](tag_id.md) | 标识标签 |
+| [`definition_id`](definition_id.md) | 实体定义的身份标识 |
+| [`tag_id`](tag_id.md) | 分类标签的身份标识 |

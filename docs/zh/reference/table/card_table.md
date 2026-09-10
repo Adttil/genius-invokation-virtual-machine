@@ -65,4 +65,4 @@ int main()
 |  |  |
 | --- | --- |
 | [实体的身份与访问](entity_access.md) | ID、实体访问对象和只读视图的使用约定 |
-| [`executor`](../executor/executor.md) | 推进对局 |
+| [`executor`](../executor/executor.md) | 游戏对局的执行器 |

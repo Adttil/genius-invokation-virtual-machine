@@ -21,8 +21,8 @@ struct type_list;
 
 |  |  |
 | --- | --- |
-| [`type_at`](type_list/type_at.md) | 按位置取得类型 |
-| [`apply`](type_list/apply.md) | 把类型序列应用到另一个模板 |
+| [`type_at`](type_list/type_at.md) | 序列中指定位置的类型 |
+| [`apply`](type_list/apply.md) | 以本序列为类型实参的模板特化 |
 
 ## 成员函数
 

@@ -1,4 +1,4 @@
-[givm](../../../reference.md) / [游戏用语](../../enums.md) / [elemental_dice_cost](../elemental_dice_cost.md) / **operator/**
+[givm](../../../reference.md) / [枚举值](../../enums.md) / [elemental_dice_cost](../elemental_dice_cost.md) / **operator/**
 
 # givm::operator/
 

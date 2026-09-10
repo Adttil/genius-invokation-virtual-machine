@@ -9,7 +9,7 @@ template<class TContext>
 class any_instruction_for;
 ```
 
-保存[核心给定集合](../instructions.md)中适用于同一种 context 的不同具体指令。它适合在运行时组装指令序列，例如根据对局配置决定需要哪些初始化操作。
+适用于同一种 context 的同构指令值，容纳[核心给定集合](../executor/instructions.md)中的不同具体指令。它适合在运行时组装指令序列，例如根据对局配置决定需要哪些初始化操作。
 
 ## 模板参数
 
@@ -74,4 +74,4 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`instruction_compatible_with`](instruction_compatible_with.md) | 检查指令是否可用于某个 context |
+| [`instruction_compatible_with`](instruction_compatible_with.md) | 指令与 context 相容的约束 |

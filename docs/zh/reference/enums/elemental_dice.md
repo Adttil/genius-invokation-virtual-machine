@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **elemental_dice**
+[givm](../../reference.md) / [枚举值](../enums.md) / **elemental_dice**
 
 # givm::elemental_dice
 
@@ -58,3 +58,11 @@ int main()
 万能骰数量: 1
 骰子总数: 3
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`elemental_dice_from_random`](elemental_dice_from_random.md) | 从随机值取得骰子种类 |
+| [`dice_counts`](dice_counts.md) | 各种元素骰的持有数量 |
+| [`elemental_dice_cost`](elemental_dice_cost.md) | 各种元素骰的费用数量 |

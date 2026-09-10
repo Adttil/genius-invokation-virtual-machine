@@ -8,7 +8,7 @@
 using tag_id = issued_id<std::string_view>;
 ```
 
-标识定义的一个分类标签，例如卡牌的用途或角色的元素分类。
+一个分类标签的身份标识，例如卡牌的用途或角色的元素分类。
 
 ## 示例
 
@@ -35,4 +35,4 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`issued_id`](issued_id.md) | ID 的共同操作 |
+| [`issued_id`](issued_id.md) | 按类别区分的定义或标签 ID |

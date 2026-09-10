@@ -18,7 +18,7 @@ struct handler_program_context<cost_of_switch>
 };
 ```
 
-把事件类型映射为其响应效果可以使用的 context。定义效果时应使用这层映射，让事件的语义限制与具体类型对应起来。
+事件类型与其响应效果所用 context 的映射。定义效果时应使用这层映射，让事件的语义限制与具体类型对应起来。
 
 ## 模板参数
 
@@ -34,7 +34,7 @@ struct handler_program_context<cost_of_switch>
 
 ## 注意
 
-通常映射为事件本身；[`cost_of_switch`](../events/cost_of_switch.md) 使用声明所示的映射。编写定义源时优先使用 [`handler_program_context_t`](handler_program_context_t.md)，不需要另外为这项类型映射划分事件类别。
+通常映射为事件本身；[`cost_of_switch`](../executor/events/cost_of_switch.md) 使用声明所示的映射。编写定义源时优先使用 [`handler_program_context_t`](handler_program_context_t.md)，不需要另外为这项类型映射划分事件类别。
 
 ## 示例
 

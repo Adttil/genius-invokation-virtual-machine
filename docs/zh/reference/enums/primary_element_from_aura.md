@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **primary_element_from_aura**
+[givm](../../reference.md) / [枚举值](../enums.md) / **primary_element_from_aura**
 
 # givm::primary_element_from_aura
 
@@ -42,3 +42,10 @@ int main()
 冰草优先冰: true
 草冰优先草: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`element_aura`](element_aura.md) | 角色身上保留的元素附着 |
+| [`element`](element.md) | 元素种类 |

@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **skill_kind**
+[givm](../../reference.md) / [枚举值](../enums.md) / **skill_kind**
 
 # givm::skill_kind
 

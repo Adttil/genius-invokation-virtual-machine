@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **action_speed**
+[givm](../../reference.md) / [枚举值](../enums.md) / **action_speed**
 
 # givm::action_speed
 

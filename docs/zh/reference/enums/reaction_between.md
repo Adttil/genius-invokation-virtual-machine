@@ -1,4 +1,4 @@
-[givm](../../reference.md) / [游戏用语](../enums.md) / **reaction_between**
+[givm](../../reference.md) / [枚举值](../enums.md) / **reaction_between**
 
 # givm::reaction_between
 
@@ -59,3 +59,10 @@ int main()
 是否融化: true
 交换元素后反应相同: true
 ```
+
+## 参阅
+
+|  |  |
+| --- | --- |
+| [`element`](element.md) | 元素种类 |
+| [`elemental_reaction`](elemental_reaction.md) | 元素相遇时产生的反应种类 |

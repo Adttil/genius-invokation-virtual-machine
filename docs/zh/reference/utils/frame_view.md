@@ -22,7 +22,7 @@ class frame_view;
 
 |  |  |
 | --- | --- |
-| `byte_type` | 根据 `IsMutable` 选取 `unsigned char` 或 `const unsigned char` |
+| `byte_type` | 字节类型；`IsMutable` 为 true 时是 `unsigned char`，否则是 `const unsigned char` |
 
 ## 成员函数
 
