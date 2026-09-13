@@ -22,12 +22,6 @@ struct initialize_characters;
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 要初始化角色的玩家 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](initialize_characters/execute.md) | 按角色定义重新准备指定玩家所有角色的初始状态 |
-
 ## 注意
 
 每个角色分别响应 [`character_initialization`](../events/character_initialization.md)。已有角色状态会被这次准备的状态替换；本指令不创建角色。
@@ -71,8 +65,8 @@ int main()
         ids.get_id<givm::character_view>("character"), givm::character_state{});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("初始化后的生命: {}", character.state().health);
 }
 ```

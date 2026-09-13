@@ -72,17 +72,17 @@ int main()
     givm::card_table table{ library };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
-    std::println("完成回合数: {}", table.state().round_number);
-    std::println("以双败结束: {}", execution.status() == givm::game_result::both_loss);
+    execution.enter_entry(library);
+    execution.run(table, random);
+    std::println("终局时的回合数: {}", table.state().round_number);
+    std::println("以双败结束: {}", execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }
 ```
 
 输出
 
 ```text
-完成回合数: 2
+终局时的回合数: 3
 以双败结束: true
 ```
 

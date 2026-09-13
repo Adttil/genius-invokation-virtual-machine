@@ -12,15 +12,26 @@ namespace givm
 
         player_id player;
         std::bitset<selection_capacity> selected;
-
-        bool execute(card_table&, execution_context& context, random_fn&) const
-        {
-            context.stack().push(
-                selector{ .player = player, .selected = selected }
-            );
-            return context.enter_next();
-        }
     };
+
+    namespace detail
+    {
+        template<>
+        struct instruction_implementation<push_selector>
+        {
+            template<bool Observed>
+            static execution_state execute(
+                const givm::push_selector& instruction, card_table&, execution_context& context, random_fn&
+            )
+            {
+                context.stack().push(
+                    selector{ .player = instruction.player, .selected = instruction.selected }
+                );
+                return context.enter_next();
+            }
+
+        };
+    }
 }
 
 #endif

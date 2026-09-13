@@ -17,12 +17,10 @@ class executor;
 | | |
 | --- | --- |
 | [`(构造函数)`](executor/constructor.md) | 构造一个`executor` |
-| [`enter_entry`](executor/enter_entry.md) | 开始执行一场游戏 |
-| [`position`](executor/position.md) | 取得当前执行位置 |
-| [`execute_next`](executor/execute_next.md) | 执行当前位置的指令 |
-| [`status`](executor/status.md) | 取得对局结果 |
-| [`stack`](executor/stack.md) | 访问执行栈 |
-| [`clear`](executor/clear.md) | 清空执行栈 |
+| [`enter_entry`](executor/enter_entry.md) | 准备按照定义库的流程开始对局 |
+| [`run`](executor/run.md) | 推进至需要输入或对局结束 |
+| [`step`](executor/step.md) | 推进至下一处可观察现场、输入现场或终局 |
+| [`view_in`](executor/view_in.md) | 取得指定种类的当前执行现场视图 |
 
 ## 示例
 
@@ -46,18 +44,19 @@ int main()
 
     givm::executor execution{};
 
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    const auto state = execution.run(table, random);
 
-    std::println("总回合数: {}", table.state().round_number);
-    std::println("是否双败: {}", execution.status() == givm::game_result::both_loss);
+    std::println("终局时的回合数: {}", table.state().round_number);
+    std::println("是否双败: {}", state == givm::execution_state::finished
+        && execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }
 ```
 
 输出
 
 ```text
-总回合数: 2
+终局时的回合数: 3
 是否双败: true
 ```
 

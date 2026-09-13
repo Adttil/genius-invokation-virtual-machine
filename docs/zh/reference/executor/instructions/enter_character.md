@@ -23,12 +23,6 @@ struct enter_character;
 | `player` | [`player_id`](../../table/player_id.md) | 角色所属的玩家 |
 | `definition` | `definition_id<character_view>` | 要入场的角色定义 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](enter_character/execute.md) | 使一个角色加入指定玩家的队伍，并按角色定义准备其初始状态 |
-
 ## 注意
 
 新角色的 [`character_initialization`](../events/character_initialization.md) 由该角色定义直接响应。需要的初始状态在这次响应中填写；入场不自动将其设为出战角色。
@@ -72,8 +66,8 @@ int main()
     givm::card_table table{ library };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     const auto character = table[givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }];
     std::println("初始生命: {}", character.state().health);
 }

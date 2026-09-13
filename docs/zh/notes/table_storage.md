@@ -73,7 +73,7 @@ using character_view = character_entity<const detail::table_storage>;
 
 公开使用时还应注意：[is_valid](../reference/table/hand_card_entity/is_valid.md) 不能检测已经悬空的访问对象。以下“不复用”是本设计的执行期分配策略，不是允许跨清理继续尝试旧 ID 的保护机制。
 
-本项目不采用带 generation 的通用 slot map。执行过程中实体只会被标记删除或从所属链/顺序表中脱离，不复用其槽位。只有在 executor stack、日志和展示任务都不再依赖旧实体 ID 的安全点才调用 `table.clean_up()`；终局时可先观察现场，再调用 `executor.clear()` 释放执行器保存的旧现场，并由上层结束其余观察任务。
+本项目不采用带 generation 的通用 slot map。执行过程中实体只会被标记删除或从所属链/顺序表中脱离，不复用其槽位。只有在仍有效的执行现场、日志和展示任务都不再依赖旧实体 ID 的安全点才调用 `table.clean_up()`。终局会逻辑废弃旧执行现场，不再要求主动清栈；上层仍须结束自身对旧实体身份的观察和展示任务。
 
 这意味着：
 

@@ -1,3 +1,4 @@
+#include "../executor_access.hpp"
 #include <tuple>
 #include <vector>
 
@@ -15,9 +16,9 @@ namespace
 
         int value;
 
-        bool execute(card_table&, execution_context&, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
         {
-            return value != 0;
+            return value != 0 ? detail::continue_execution : execution_state::action;
         }
     };
 
@@ -36,19 +37,19 @@ TEST_CASE("initialization and round programs accept tuple-like and range forms",
 
     definition_source_library sources;
     const auto [library, id_map] = sources.compile(initialization, round);
-    const auto entry = library.entry();
-    CHECK(library.instruction(entry).is<marker_instruction>());
-    CHECK(library.instruction(entry).as<marker_instruction>().value == 1);
-    CHECK(library.instruction(entry + 1).as<marker_instruction>().value == 4);
-    CHECK(library.instruction(entry + 2).as<marker_instruction>().value == 2);
-    CHECK(library.instruction(entry + 3).as<marker_instruction>().value == 3);
+    const auto entry = detail::executor_access::entry(library);
+    CHECK(detail::executor_access::instruction(library, entry).is<marker_instruction>());
+    CHECK(detail::executor_access::instruction(library, entry).as<marker_instruction>().value == 1);
+    CHECK(detail::executor_access::instruction(library, entry + 1).as<marker_instruction>().value == 4);
+    CHECK(detail::executor_access::instruction(library, entry + 2).as<marker_instruction>().value == 2);
+    CHECK(detail::executor_access::instruction(library, entry + 3).as<marker_instruction>().value == 3);
 
     const definition_selection selection{};
     const auto [selected_library, selected_id_map] = sources.compile(selection, initialization, round);
-    const auto selected_entry = selected_library.entry();
-    CHECK(selected_library.instruction(selected_entry).is<marker_instruction>());
+    const auto selected_entry = detail::executor_access::entry(selected_library);
+    CHECK(detail::executor_access::instruction(selected_library, selected_entry).is<marker_instruction>());
     CHECK(
-        selected_library.instruction(selected_entry + 3)
+        detail::executor_access::instruction(selected_library, selected_entry + 3)
             .as<marker_instruction>().value == 3
     );
 }

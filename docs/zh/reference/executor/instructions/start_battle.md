@@ -16,12 +16,6 @@ struct start_battle;
 | --- | --- |
 | `context_type` | `void`，表示不依赖特定事件语境 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](start_battle/execute.md) | 在第一回合发出战斗开始通知，让相关效果在双方进入战斗时生效 |
-
 ## 注意
 
 只有牌桌回合数为 1 时发出 [`battle_started`](../events/battle_started.md)；在其他回合执行时直接继续。
@@ -66,8 +60,8 @@ int main()
     table.state().round_number = 1;
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("收到事件次数: {}", count);
 }
 ```

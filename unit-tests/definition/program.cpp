@@ -14,7 +14,7 @@ namespace
     struct other_context{};
 }
 
-TEST_CASE("program entries preserve their context and named terminal states", "[definition][program]")
+TEST_CASE("program entries preserve their context and null identity", "[definition][program]")
 {
     using entry_type = program_entry<event_context>;
 
@@ -26,19 +26,8 @@ TEST_CASE("program entries preserve their context and named terminal states", "[
 
     constexpr entry_type default_entry;
     constexpr auto null_entry = entry_type::null();
-    constexpr auto player_0_win = entry_type::player_0_win();
-    constexpr auto player_1_win = entry_type::player_1_win();
-    constexpr auto both_loss = entry_type::both_loss();
 
     STATIC_REQUIRE(default_entry == null_entry);
     STATIC_REQUIRE(default_entry.is_null());
     STATIC_REQUIRE(not static_cast<bool>(default_entry));
-
-    STATIC_REQUIRE(not player_0_win.is_null());
-    STATIC_REQUIRE(not player_1_win.is_null());
-    STATIC_REQUIRE(not both_loss.is_null());
-    STATIC_REQUIRE(static_cast<bool>(player_0_win));
-    STATIC_REQUIRE(player_0_win != player_1_win);
-    STATIC_REQUIRE(player_0_win != both_loss);
-    STATIC_REQUIRE(player_1_win != both_loss);
 }

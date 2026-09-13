@@ -14,15 +14,27 @@ namespace givm
     {
         using context_type = void;
 
+    };
+
+    template<>
+    struct detail::instruction_implementation<replace_cards_both>
+    {
         enum class stage_type : stage_t
         {
             prepare,
             first_selection,
             second_selection
         };
-        bool execute(card_table& table, execution_context& context, random_fn& random) const
+        template<bool Observed>
+        static execution_state execute(
+            const givm::replace_cards_both& instruction,
+            card_table& table,
+            execution_context& context,
+            random_fn& random
+        )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
+
             if(stage == stage_type::prepare)
             {
                 const auto player0_random_count = table[player_id{ 0 }].hand_card_count();
@@ -41,7 +53,7 @@ namespace givm
                     value = random();
                 }
 
-                return context.yield();
+                return context.yield(execution_state::initial_card_selection);
             }
 
             auto&& [random_pool, player0_random_count, input, stored_stage] =
@@ -62,10 +74,12 @@ namespace givm
                 input.player = other_player(player);
                 input.selected.reset();
                 stored_stage = static_cast<stage_t>(stage_type::second_selection);
-                return context.yield();
+
+                return context.yield(execution_state::card_selection);
             }
 
             context.stack().pop<std::uint32_t[], std::uint32_t, selector, stage_t>();
+
             return context.enter_next();
         }
     };

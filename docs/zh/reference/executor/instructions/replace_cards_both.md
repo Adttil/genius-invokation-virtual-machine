@@ -16,19 +16,16 @@ struct replace_cards_both;
 | --- | --- |
 | `context_type` | `void`，表示不依赖特定事件语境 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](replace_cards_both/execute.md) | 让双方分别选择开局需要替换的手牌 |
-
 ## 注意
 
-等待输入时，栈顶可按 `top<selector, stage_t>()` 取得选择槽和需保留的尾部状态。两次提交分别指定不同玩家；选择位按该方当前有效手牌的遍历顺序。空选择表示全部保留。新牌优先避开本次换回的同名牌；这个双方开局替换过程不发出 card_drawn。
+尚未接受任何一方的选择时，执行器返回 `execution_state::initial_card_selection`，通过相应的[现场视图](../execution_view/initial_card_selection.md)指定首先换牌的玩家及其选择。该方换牌完成后返回 `execution_state::card_selection`，由相应[视图](../execution_view/card_selection.md)读取剩余玩家并提交其选择。
+
+可以任选先提交的一方；选择位按该方当前有效手牌的遍历顺序。空选择表示全部保留。新牌优先避开本次换回的同名牌；这个双方开局替换过程不发出 card_drawn。
 
 ## 示例
 
 ```cpp
+#include <bitset>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -64,14 +61,16 @@ int main()
     }
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
-    for(int submission = 0; submission < 2; ++submission)
-    {
-        auto&& [input, preserved] = execution.stack().top<givm::selector, givm::stage_t>();
-        input.selected.set(0);
-        while(execution.execute_next(table, random)) {}
-    }
+    execution.enter_entry(library);
+    execution.run(table, random);
+    std::bitset<givm::selection_capacity> selected{};
+    selected.set(0);
+    execution.view_in<givm::execution_state::initial_card_selection>().select(givm::player_id{ 1 }, selected);
+    execution.run(table, random);
+    const auto remaining = execution.view_in<givm::execution_state::card_selection>();
+    std::println("剩余玩家为玩家 0: {}", remaining.player() == givm::player_id{ 0 });
+    remaining.select(selected);
+    execution.run(table, random);
     std::println("玩家 0 的手牌数量: {}", table[givm::player_id{ 0 }].hand_card_count());
     std::println("玩家 0 抽到另一种牌: {}",
         (*table[givm::player_id{ 0 }].hand_cards().begin()).definition().id().value() == b.value());
@@ -81,6 +80,7 @@ int main()
 输出
 
 ```text
+剩余玩家为玩家 0: true
 玩家 0 的手牌数量: 1
 玩家 0 抽到另一种牌: true
 ```

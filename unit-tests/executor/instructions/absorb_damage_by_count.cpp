@@ -4,9 +4,11 @@
 #include <type_traits>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <givm/executor/instructions/absorb_damage_by_count.hpp>
 #include <givm/executor/instructions/deal_damage.hpp>
+#include <givm/executor/views/damage.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -75,12 +77,12 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
         {
-            if(context.current_stage() == stage_t{})
+            if(context.current_stage() == detail::stage_t{})
             {
                 ++context.current_stage();
-                return context.yield();
+                return context.yield(execution_state::action);
             }
             return context.enter_next();
         }
@@ -89,9 +91,7 @@ namespace
     void run_until_blocked(executor& execution, card_table& table)
     {
         zero_random random;
-        while(execution.execute_next(table, random))
-        {
-        }
+        REQUIRE(execution.run(table, random) == execution_state::action);
     }
 }
 
@@ -277,4 +277,42 @@ TEST_CASE(
 
     CHECK(table[shield].state().count == 3);
     CHECK(table[damaged_character].state().health == 8);
+}
+
+TEST_CASE("step reports only final damage after shield responses", "[absorb_damage_by_count][observation]")
+{
+    const std::uint32_t maximum = GENERATE(0u, 2u, 3u);
+    const count_shield_source shield_source{ "ObservedShield", maximum };
+    const test::named_definition_source<character_view> character_source{ "ObservedCharacter" };
+    constexpr character_id attacker{ player_id{ 0 }, 0 };
+    constexpr character_id target{ player_id{ 1 }, 0 };
+    const auto [library, ids] = test::compile_definitions_with_program(
+        std::tuple{ deal_damage{ .source = attacker, .target = target, .value = 3,
+                                 .type = damage_type::physical }, pause_once{} },
+        std::tuple{}, shield_source, character_source
+    );
+    card_table table{ library };
+    const auto character_definition = ids.get_id<character_view>(character_source.name());
+    table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
+    table[player_id{ 1 }].add(character_definition, { .max_health = 10, .health = 10 });
+    const auto shield = table[player_id{ 1 }].add(
+        ids.get_id<combat_status_view>(shield_source.name()), { .count = 4 }).id();
+    auto normal_table = table;
+    executor normal;
+    normal.enter_entry(library);
+    zero_random random;
+    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+
+    executor observed;
+    observed.enter_entry(library);
+    if(maximum < 3)
+    {
+        REQUIRE(observed.step(table, random) == execution_state::health_reduced);
+        CHECK(observed.view_in<execution_state::health_reduced>().value() == 3 - maximum);
+        CHECK(table[shield].state().count == 4 - maximum);
+        CHECK(table[target].state().health == 7 + maximum);
+    }
+    REQUIRE(observed.step(table, random) == execution_state::action);
+    CHECK(table[target].state().health == normal_table[target].state().health);
+    CHECK(table[shield].state().count == normal_table[shield].state().count);
 }

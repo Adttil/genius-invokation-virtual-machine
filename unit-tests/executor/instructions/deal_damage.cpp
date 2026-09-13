@@ -1,3 +1,4 @@
+#include "../../executor_access.hpp"
 #include <cstdint>
 #include <limits>
 #include <string_view>
@@ -5,8 +6,10 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <givm/executor/instructions/deal_damage.hpp>
+#include <givm/executor/views/damage.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -138,20 +141,16 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
-            return context.yield();
+            return context.yield(execution_state::action);
         }
     };
 
     bool run_until_stop(executor& target, card_table& table)
     {
         zero_random random;
-        while(target.execute_next(table, random))
-        {
-        }
-        return target.status() == game_result::no_result
-            && table.definition_library().instruction(target.position()).is<stop_execution>();
+        return target.run(table, random) == execution_state::action;
     }
 
     game_result result_after_damage(
@@ -199,10 +198,10 @@ namespace
         executor executor;
         executor.enter_entry(table.definition_library());
         zero_random random;
-        while(executor.execute_next(table, random))
-        {
-        }
-        return executor.status();
+        const auto state = executor.run(table, random);
+        return state == execution_state::finished
+            ? executor.view_in<execution_state::finished>().result()
+            : game_result::no_result;
     }
 }
 
@@ -418,4 +417,189 @@ TEST_CASE("deal_damage saturates reaction bonus and multiplier", "[deal_damage]"
     CHECK(log.reaction == elemental_reaction::melt);
     CHECK(log.after_damage_value == max_value);
     CHECK(table[target_character_id].state().health == 0);
+}
+
+TEST_CASE("damage observation exposes the final value before elemental settlement", "[deal_damage][observation]")
+{
+    auto initial_aura = element_aura::none;
+    SECTION("non-reactive element application") {}
+    SECTION("elemental reaction") { initial_aura = element_aura::cryo; }
+
+    damage_log log{ .effect_reduction = 1 };
+    const damage_observer_source observer_source{ &log };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    constexpr support_id source{ .player_id = player_id{ 0 }, .index = 0 };
+    constexpr character_id damaged{ .player_id = player_id{ 1 }, .index = 0 };
+    const auto [library, ids] = test::compile_definitions_with_program(
+        std::tuple{ deal_damage{
+            .source = source,
+            .target = damaged,
+            .value = 3,
+            .type = damage_type::pyro,
+            .flags = damage_flag_bits::skill_damage
+        } },
+        std::tuple{ stop_execution{} },
+        observer_source, character_source
+    );
+    const auto character_definition = ids.get_id<character_view>(character_source.name());
+    card_table observed_table{ library };
+    observed_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    observed_table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
+    observed_table[player_id{ 1 }].add(character_definition, {
+        .max_health = 10, .health = 10, .aura = initial_aura
+    });
+    auto normal_table = observed_table;
+    zero_random random;
+    executor normal;
+    normal.enter_entry(library);
+    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    const auto normal_order = log.order;
+    log.order.clear();
+
+    executor observed;
+    observed.enter_entry(library);
+    REQUIRE(observed.step(observed_table, random) == execution_state::health_reduced);
+    const auto health = observed.view_in<execution_state::health_reduced>();
+    const auto expected_damage = initial_aura == element_aura::cryo ? 4u : 2u;
+    CHECK(health.source() == damage_source_id{ source });
+    CHECK(health.target() == damaged);
+    CHECK(health.value() == expected_damage);
+    CHECK(health.type() == damage_type::pyro);
+    CHECK(health.flags().contains(damage_flag_bits::skill_damage));
+    CHECK(observed_table[damaged].state().health == 10 - expected_damage);
+    CHECK(observed_table[damaged].state().aura == initial_aura);
+    CHECK(log.order == std::vector{ observed_event::calculation, observed_event::effect });
+
+    auto copied_execution = observed;
+    auto copied_table = observed_table;
+    REQUIRE(observed.step(observed_table, random) == execution_state::action);
+    CHECK(log.order == normal_order);
+    CHECK(observed_table[damaged].state().health == normal_table[damaged].state().health);
+    CHECK(observed_table[damaged].state().aura == normal_table[damaged].state().aura);
+    CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
+
+    REQUIRE(copied_execution.step(copied_table, random) == execution_state::action);
+    CHECK(copied_table[damaged].state().health == observed_table[damaged].state().health);
+    CHECK(copied_table[damaged].state().aura == observed_table[damaged].state().aura);
+    CHECK(detail::executor_access::stack(copied_execution).size() == detail::executor_access::stack(observed).size());
+}
+
+TEST_CASE("earlier lethal damage supersedes an explicit terminal instruction", "[deal_damage][observation][game-result]")
+{
+    const bool observed = GENERATE(false, true);
+    const auto initial_health = GENERATE(1u, 10u);
+    CAPTURE(observed, initial_health);
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    constexpr character_id source{ .player_id = player_id{ 0 }, .index = 0 };
+    constexpr character_id damaged{ .player_id = player_id{ 1 }, .index = 0 };
+    const auto [library, ids] = test::compile_definitions_with_program(
+        std::tuple{
+            deal_damage{
+                .source = source, .target = damaged, .value = 4, .type = damage_type::physical
+            },
+            end_game{ .result = game_result::player_1_win }
+        },
+        std::tuple{ stop_execution{} },
+        character_source
+    );
+    const auto definition = ids.get_id<character_view>(character_source.name());
+    card_table table{ library };
+    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = initial_health });
+    executor execution;
+    execution.enter_entry(library);
+    zero_random random;
+
+    auto state = observed ? execution.step(table, random) : execution.run(table, random);
+    if(observed)
+    {
+        REQUIRE(state == execution_state::health_reduced);
+        const auto health = execution.view_in<execution_state::health_reduced>();
+        CHECK(table[damaged].state().health == (initial_health == 1 ? 0 : 6));
+        CHECK(health.value() == 4);
+        state = execution.step(table, random);
+    }
+    REQUIRE(state == execution_state::finished);
+    const auto expected_result = initial_health == 1
+        ? game_result::player_0_win
+        : game_result::player_1_win;
+    CHECK(execution.view_in<execution_state::finished>().result() == expected_result);
+}
+
+TEST_CASE("damage observation retains overkill damage after health reaches zero", "[deal_damage][observation]")
+{
+    damage_log log;
+    const damage_observer_source observer_source{ &log };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    constexpr support_id source{ .player_id = player_id{ 0 }, .index = 0 };
+    constexpr character_id damaged{ .player_id = player_id{ 1 }, .index = 0 };
+    const auto [library, ids] = test::compile_definitions_with_program(
+        std::tuple{ deal_damage{
+            .source = source, .target = damaged, .value = 999, .type = damage_type::physical
+        } },
+        std::tuple{ stop_execution{} },
+        observer_source, character_source
+    );
+    const auto definition = ids.get_id<character_view>(character_source.name());
+    card_table table{ library };
+    table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 1 });
+    executor execution;
+    execution.enter_entry(library);
+    zero_random random;
+
+    REQUIRE(execution.step(table, random) == execution_state::health_reduced);
+    const auto damage = execution.view_in<execution_state::health_reduced>();
+    CHECK(damage.target() == damaged);
+    CHECK(damage.value() == 999);
+    CHECK(table[damaged].state().health == 0);
+    CHECK(log.order == std::vector{ observed_event::calculation, observed_event::effect });
+
+    REQUIRE(execution.step(table, random) == execution_state::finished);
+    CHECK(log.after_damage_value == 999);
+    CHECK(log.order == std::vector{
+        observed_event::calculation, observed_event::effect, observed_event::after_damage
+    });
+    CHECK(execution.view_in<execution_state::finished>().result() == game_result::player_0_win);
+}
+
+TEST_CASE("zero damage skips health observation while preserving element and after-damage work", "[deal_damage][observation]")
+{
+    auto type = damage_type::physical;
+    std::uint32_t value = 0;
+    damage_log log;
+    SECTION("physical damage") {}
+    SECTION("elemental damage still applies its element") { type = damage_type::pyro; }
+    SECTION("a damage effect reduces the final damage to zero")
+    {
+        value = 3;
+        log.effect_reduction = 3;
+    }
+
+    const damage_observer_source observer_source{ &log };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    constexpr support_id source{ .player_id = player_id{ 0 }, .index = 0 };
+    constexpr character_id damaged{ .player_id = player_id{ 1 }, .index = 0 };
+    const auto [library, ids] = test::compile_definitions_with_program(
+        std::tuple{ deal_damage{ .source = source, .target = damaged, .value = value, .type = type } },
+        std::tuple{ stop_execution{} },
+        observer_source, character_source
+    );
+    const auto definition = ids.get_id<character_view>(character_source.name());
+    card_table table{ library };
+    table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
+    executor execution;
+    execution.enter_entry(library);
+    zero_random random;
+
+    REQUIRE(execution.step(table, random) == execution_state::action);
+    CHECK(table[damaged].state().health == 10);
+    CHECK(table[damaged].state().aura == (type == damage_type::pyro ? element_aura::pyro : element_aura::none));
+    CHECK(log.order == std::vector{
+        observed_event::calculation, observed_event::effect, observed_event::after_damage
+    });
+    CHECK(log.after_damage_value == 0);
 }

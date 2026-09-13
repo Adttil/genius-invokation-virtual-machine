@@ -1,3 +1,4 @@
+#include "../../executor_access.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <string_view>
@@ -9,6 +10,8 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include <givm/executor/instructions/begin_action.hpp>
+#include <givm/executor/views/action.hpp>
+#include <givm/executor/views/entities.hpp>
 #include <givm/executor/instructions/end_round.hpp>
 #include <givm/executor/instructions/start_round.hpp>
 
@@ -44,21 +47,21 @@ namespace
 
         payment_log* log;
 
-        bool execute(card_table& table, execution_context& context, random_fn&) const
+        execution_state execute(card_table& table, detail::execution_context& context, random_fn&) const
         {
             auto&& [onpay, activation] = context.stack().top<
                 frame<
                     detail::handler_id<cost_of_switch>,
                     cost_effect_argument<cost_of_switch>,
-                    stage_t
+                    detail::stage_t
                 >,
-                frame<execution_context::return_info, stage_t>
+                frame<detail::execution_context::return_info, detail::stage_t>
             >();
             auto&& [current_handler, argument, onpay_stage] = onpay;
             auto&& [return_info, activation_stage] = activation;
             (void)onpay_stage;
             (void)return_info;
-            REQUIRE(activation_stage == stage_t{});
+            REQUIRE(activation_stage == detail::stage_t{});
 
             const auto* support = std::get_if<support_id>(&current_handler);
             REQUIRE(support != nullptr);
@@ -235,6 +238,175 @@ namespace
         }
     };
 
+    struct switch_observer_source
+    {
+        using definition_category = support_view;
+
+        struct definition_type
+        {
+            std::vector<character_id>* active_characters;
+        };
+
+        std::vector<character_id>* active_characters;
+
+        constexpr std::string_view name() const noexcept { return "SwitchObserver"; }
+
+        constexpr definition_type compile(definition_compile_context&) const noexcept
+        {
+            return { active_characters };
+        }
+
+        static program_entry<active_character_changed> handle(
+            const definition_type& data,
+            const support_view&,
+            active_character_changed& event,
+            const card_table& table,
+            random_fn&
+        )
+        {
+            const auto active = table[event.current.player_id].state().active_character;
+            REQUIRE(active.has_value());
+            CHECK(*active == event.current);
+            data.active_characters->push_back(*active);
+            return program_entry<active_character_changed>::null();
+        }
+    };
+
+    struct terminal_switch_source
+    {
+        using definition_category = support_view;
+
+        struct definition_type
+        {
+            std::uint32_t* preview_count;
+            program_entry<onpay_context<cost_of_switch>> entry;
+        };
+
+        std::uint32_t* preview_count;
+
+        constexpr std::string_view name() const noexcept
+        {
+            return "TerminalSwitch";
+        }
+
+        definition_type compile(definition_compile_context& context) const
+        {
+            return {
+                .preview_count = preview_count,
+                .entry = context.add_program<onpay_context<cost_of_switch>>(std::tuple{
+                    end_game{ .result = game_result::player_1_win }
+                })
+            };
+        }
+
+        static program_entry<onpay_context<cost_of_switch>> handle(
+            const definition_type& data,
+            const support_view&,
+            cost_of_switch&,
+            const card_table&,
+            random_fn&
+        )
+        {
+            ++*data.preview_count;
+            return data.entry;
+        }
+    };
+
+    struct round_observer_source
+    {
+        using definition_category = support_view;
+
+        struct definition_type
+        {
+            std::vector<player_id>* declarations;
+            std::vector<player_id>* endings;
+        };
+
+        std::vector<player_id>* declarations;
+        std::vector<player_id>* endings;
+
+        constexpr std::string_view name() const noexcept { return "RoundObserver"; }
+
+        constexpr definition_type compile(definition_compile_context&) const noexcept
+        {
+            return { declarations, endings };
+        }
+
+        static program_entry<round_end_declared> handle(
+            const definition_type& data,
+            const support_view&,
+            round_end_declared&,
+            const card_table& table,
+            random_fn&
+        )
+        {
+            data.declarations->push_back(table.state().active_player);
+            return program_entry<round_end_declared>::null();
+        }
+
+        static program_entry<round_ended> handle(
+            const definition_type& data,
+            const support_view&,
+            round_ended&,
+            const card_table& table,
+            random_fn&
+        )
+        {
+            data.endings->push_back(table.state().active_player);
+            return program_entry<round_ended>::null();
+        }
+    };
+
+    struct grant_action_die
+    {
+        using context_type = before_action;
+
+        execution_state execute(card_table& table, detail::execution_context& context, random_fn&) const
+        {
+            ++table[table.state().active_player].state().dice[elemental_dice::pyro];
+            return context.enter_next();
+        }
+    };
+
+    struct action_response_source
+    {
+        using definition_category = support_view;
+
+        struct definition_type
+        {
+            program_entry<before_action> entry;
+            std::uint32_t* calls;
+        };
+
+        std::string_view source_name;
+        bool enabled;
+        std::uint32_t* calls;
+
+        constexpr std::string_view name() const noexcept { return source_name; }
+
+        definition_type compile(definition_compile_context& context) const
+        {
+            return {
+                .entry = enabled
+                    ? context.add_program<before_action>(std::tuple{ grant_action_die{} })
+                    : program_entry<before_action>::null(),
+                .calls = calls
+            };
+        }
+
+        static program_entry<before_action> handle(
+            const definition_type& data,
+            const support_view&,
+            before_action&,
+            const card_table&,
+            random_fn&
+        )
+        {
+            ++*data.calls;
+            return data.entry;
+        }
+    };
+
     struct zero_random
     {
         std::uint32_t operator()() const noexcept
@@ -247,34 +419,17 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
-            return context.yield();
+            return context.yield(execution_state::action);
         }
     };
 
     void run_until_blocked(executor& target, card_table& table, zero_random& random)
     {
-        while(target.execute_next(table, random))
-        {
-        }
+        REQUIRE(target.run(table, random) == execution_state::action);
     }
 
-    void submit_action(
-        executor& target,
-        const card_table& table,
-        action_request request,
-        action_argument argument = {}
-    )
-    {
-        REQUIRE(target.status() == game_result::no_result);
-        REQUIRE(table.definition_library().instruction(target.position()).is<begin_action>());
-        auto&& [stored_argument, stored_request, stage] =
-            target.stack().top<action_argument, action_request, stage_t>();
-        (void)stage;
-        stored_argument = argument;
-        stored_request = request;
-    }
 }
 
 TEST_CASE(
@@ -366,36 +521,10 @@ TEST_CASE(
 
     for(stack_count_t action_index = 0; action_index < 2; ++action_index)
     {
-        submit_action(target, table, {
-            .request_kind = action_request_kind::calculate_cost,
-            .action_kind = action_kind::switch_active,
-            .action_index = action_index
-        });
+        target.view_in<execution_state::action>().request_cost(action_index);
         run_until_blocked(target, table, random);
 
-        auto&& [
-            handlers,
-            costs,
-            onpay_items,
-            onpay_cursor,
-            argument,
-            request,
-            stage
-        ] = target.stack().top<
-            detail::handler_id<cost_of_switch>[],
-            cost_of_switch[],
-            onpay_item<cost_of_switch>[],
-            stack_count_t,
-            action_argument,
-            action_request,
-            stage_t
-        >();
-        (void)handlers;
-        (void)onpay_items;
-        (void)onpay_cursor;
-        (void)argument;
-        (void)request;
-        (void)stage;
+        const auto costs = target.view_in<execution_state::action>().costs();
         REQUIRE(costs.size() == 2);
         CHECK(costs[action_index].requirement.dice_requirement.any == 1);
     }
@@ -409,16 +538,7 @@ TEST_CASE(
 
     dice_counts paid_dice;
     paid_dice[elemental_dice::pyro] = 1;
-    submit_action(
-        target,
-        table,
-        {
-            .request_kind = action_request_kind::do_action_with_cost,
-            .action_kind = action_kind::switch_active,
-            .action_index = 1
-        },
-        { .paid_dice = paid_dice }
-    );
+    target.view_in<execution_state::action>().execute_action_with_cost(1, { .paid_dice = paid_dice });
     run_until_blocked(target, table, random);
 
     CHECK(log == payment_log{
@@ -446,8 +566,7 @@ TEST_CASE(
     CHECK(table[player].state().active_character == selected_target);
     CHECK(table.state().active_player == opponent);
     CHECK(action_phase_count == 1);
-    CHECK(target.status() == game_result::no_result);
-    CHECK(table.definition_library().instruction(target.position()).is<begin_action>());
+    CHECK(target.view_in<execution_state::action>().costs().empty());
 }
 
 TEST_CASE(
@@ -499,20 +618,13 @@ TEST_CASE(
     const auto switch_active = [&]
     {
         before_actions.clear();
-        submit_action(target, table, {
-            .request_kind = action_request_kind::do_action,
-            .action_kind = action_kind::switch_active,
-            .action_index = 0
-        }, { .paid_dice = paid_dice });
+        target.view_in<execution_state::action>().execute_action(0, { .paid_dice = paid_dice });
         run_until_blocked(target, table, random);
     };
     const auto declare_round_end = [&]
     {
         before_actions.clear();
-        submit_action(target, table, {
-            .request_kind = action_request_kind::do_action,
-            .action_kind = action_kind::declare_round_end
-        });
+        target.view_in<execution_state::action>().declare_round_end();
         run_until_blocked(target, table, random);
     };
 
@@ -607,21 +719,23 @@ TEST_CASE(
     const auto check_targets = [&](const std::vector<character_id>& expected)
     {
         auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request, stage] =
-            target.stack().top<
+            detail::executor_access::stack(target).top<
                 detail::handler_id<cost_of_switch>[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
                 action_argument,
-                action_request,
-                stage_t
+                detail::action_request,
+                detail::stage_t
             >();
+        const auto visible_costs = target.view_in<execution_state::action>().costs();
+        REQUIRE(visible_costs.size() == expected.size());
         REQUIRE(costs.size() == expected.size());
         REQUIRE(handlers.size() == 1);
         CHECK(onpay_items.size() == expected.size());
         for(size_t index = 0; index < expected.size(); ++index)
         {
-            CHECK(costs[index].target == expected[index]);
+            CHECK(visible_costs[index].target == expected[index]);
         }
     };
 
@@ -630,32 +744,20 @@ TEST_CASE(
         check_targets({ characters[1], characters[5] });
         for(stack_count_t index = 0; index < 2; ++index)
         {
-            submit_action(target, table, {
-                .request_kind = action_request_kind::calculate_cost,
-                .action_kind = action_kind::switch_active,
-                .action_index = index
-            });
+            target.view_in<execution_state::action>().request_cost(index);
             run_until_blocked(target, table, random);
             check_targets({ characters[1], characters[5] });
         }
 
         dice_counts paid_dice;
         paid_dice[elemental_dice::pyro] = 1;
-        submit_action(target, table, {
-            .request_kind = action_request_kind::do_action_with_cost,
-            .action_kind = action_kind::switch_active,
-            .action_index = 1
-        }, { .paid_dice = paid_dice });
+        target.view_in<execution_state::action>().execute_action_with_cost(1, { .paid_dice = paid_dice });
         run_until_blocked(target, table, random);
         REQUIRE(table[player].state().active_character == characters[5]);
         CHECK(table[player].state().dice.total() == 1);
         check_targets({ characters[1], characters[2] });
 
-        submit_action(target, table, {
-            .request_kind = action_request_kind::do_action,
-            .action_kind = action_kind::switch_active,
-            .action_index = 0
-        }, { .paid_dice = paid_dice });
+        target.view_in<execution_state::action>().execute_action(0, { .paid_dice = paid_dice });
         run_until_blocked(target, table, random);
         REQUIRE(table[player].state().active_character == characters[1]);
         CHECK(table[player].state().dice.total() == 0);
@@ -664,10 +766,7 @@ TEST_CASE(
     else
     {
         check_targets({});
-        submit_action(target, table, {
-            .request_kind = action_request_kind::do_action,
-            .action_kind = action_kind::declare_round_end
-        });
+        target.view_in<execution_state::action>().declare_round_end();
         run_until_blocked(target, table, random);
         CHECK(table.state().active_player == opponent);
         CHECK(table.state().first_ended);
@@ -681,4 +780,300 @@ TEST_CASE(
     CHECK(table[characters[0]].state().health == 0);
     CHECK(table[characters[4]].state().health == 0);
     CHECK_FALSE(static_cast<bool>(table[characters[3]]));
+}
+
+TEST_CASE("an observed switch exposes its destination after payment and before applying it", "[begin_action][execution-view]")
+{
+    std::vector<player_id> before_actions;
+    const action_observer_source observer{ action_speed::fast, &before_actions };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    const auto [library, id_map] = test::compile_definitions_with_program(
+        std::tuple{ begin_action{} }, std::tuple{ stop_execution{} }, observer, character_source
+    );
+    card_table table{ library };
+    const player_id player{ 0 };
+    table[player].add(id_map.get_id<support_view>(observer.name()), {});
+    const auto character_definition = id_map.get_id<character_view>(character_source.name());
+    const auto previous = table[player].add(character_definition, { .health = 10 }).id();
+    const auto current = table[player].add(character_definition, { .health = 10 }).id();
+    table[player].state().active_character = previous;
+    table[player].state().dice[elemental_dice::pyro] = 1;
+    table.state().active_player = player;
+
+    executor target;
+    target.enter_entry(library);
+    zero_random random;
+    REQUIRE(target.run(table, random) == execution_state::action);
+    REQUIRE(before_actions == std::vector<player_id>{ player });
+    dice_counts paid;
+    paid[elemental_dice::pyro] = 1;
+    target.view_in<execution_state::action>().execute_action(0, { .paid_dice = paid });
+
+    REQUIRE(target.step(table, random) == execution_state::active_character_changed);
+    const auto view = target.view_in<execution_state::active_character_changed>();
+    CHECK(view.character() == current);
+    CHECK(table[player].state().active_character == previous);
+    CHECK(table[player].state().dice.total() == 0);
+    CHECK(before_actions == std::vector<player_id>{ player });
+
+    REQUIRE(target.step(table, random) == execution_state::action);
+    CHECK(table[player].state().active_character == current);
+    CHECK(before_actions == std::vector<player_id>{ player, player });
+}
+
+TEST_CASE("a terminal onpay entry waits for action confirmation", "[begin_action][onpay][terminal]")
+{
+    const bool observed = GENERATE(false, true);
+    CAPTURE(observed);
+    std::uint32_t preview_count = 0;
+    const terminal_switch_source terminal_source{ &preview_count };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    const auto [library, id_map] = test::compile_definitions_with_program(
+        std::tuple{ begin_action{} }, std::tuple{ stop_execution{} }, terminal_source, character_source
+    );
+    card_table table{ library };
+    const player_id player{ 0 };
+    table[player].add(id_map.get_id<support_view>(terminal_source.name()), {});
+    const auto character_definition = id_map.get_id<character_view>(character_source.name());
+    const auto active = table[player].add(character_definition, { .health = 10 }).id();
+    table[player].add(character_definition, { .health = 10 });
+    table[player].state().active_character = active;
+    table[player].state().dice[elemental_dice::pyro] = 1;
+    table.state().active_player = player;
+    executor target;
+    target.enter_entry(library);
+    zero_random random;
+
+    REQUIRE(target.run(table, random) == execution_state::action);
+    CHECK(preview_count == 0);
+    for(std::uint32_t preview = 1; preview <= 2; ++preview)
+    {
+        target.view_in<execution_state::action>().request_cost(0);
+        const auto state = observed ? target.step(table, random) : target.run(table, random);
+        REQUIRE(state == execution_state::action);
+        CHECK(preview_count == preview);
+        REQUIRE(target.view_in<execution_state::action>().costs().size() == 1);
+        CHECK(table[player].state().active_character == active);
+        CHECK(table[player].state().dice[elemental_dice::pyro] == 1);
+    }
+
+    dice_counts paid;
+    paid[elemental_dice::pyro] = 1;
+    target.view_in<execution_state::action>().execute_action_with_cost(0, { .paid_dice = paid });
+    const auto state = observed ? target.step(table, random) : target.run(table, random);
+    REQUIRE(state == execution_state::finished);
+    CHECK(target.view_in<execution_state::finished>().result() == game_result::player_1_win);
+    CHECK(preview_count == 2);
+    CHECK(table[player].state().active_character == active);
+    CHECK(table[player].state().dice[elemental_dice::pyro] == 1);
+}
+
+TEST_CASE("an action starts before its responses and response entries add no observation", "[begin_action][execution-view]")
+{
+    std::uint32_t skipped_calls = 0;
+    std::uint32_t response_calls = 0;
+    const action_response_source skipped_source{ "NoEffect", false, &skipped_calls };
+    const action_response_source response_source{ "GrantDie", true, &response_calls };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    const auto [library, id_map] = test::compile_definitions_with_program(
+        std::tuple{ begin_action{} }, std::tuple{ stop_execution{} },
+        skipped_source, response_source, character_source
+    );
+    card_table table{ library };
+    const player_id player{ 0 };
+    table[player].add(id_map.get_id<support_view>(skipped_source.name()), {});
+    table[player].add(id_map.get_id<support_view>(response_source.name()), {});
+    const auto active = table[player].add(
+        id_map.get_id<character_view>(character_source.name()), { .health = 10 }
+    ).id();
+    table[player].state().active_character = active;
+    table.state().active_player = player;
+    executor target;
+    target.enter_entry(library);
+    zero_random random;
+
+    REQUIRE(target.step(table, random) == execution_state::action_started);
+    (void)target.view_in<execution_state::action_started>();
+    CHECK(skipped_calls == 0);
+    CHECK(response_calls == 0);
+    CHECK(table[player].state().dice[elemental_dice::pyro] == 0);
+
+    REQUIRE(target.step(table, random) == execution_state::action);
+    CHECK(table[player].state().dice[elemental_dice::pyro] == 1);
+    CHECK(skipped_calls == 1);
+    CHECK(response_calls == 1);
+}
+
+TEST_CASE("action opportunities and round boundaries stop before their responses", "[begin_action][execution-view][round]")
+{
+    const auto initial_player = GENERATE(player_id{ 0 }, player_id{ 1 });
+    const auto speed = GENERATE(action_speed::combat, action_speed::fast);
+    CAPTURE(initial_player, speed);
+
+    std::vector<player_id> before_actions;
+    std::vector<player_id> declarations;
+    std::vector<player_id> endings;
+    const action_observer_source action_observer{ speed, &before_actions };
+    const round_observer_source round_observer{ &declarations, &endings };
+    std::vector<character_id> switched_characters;
+    const switch_observer_source switch_observer{ &switched_characters };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    const auto [library, id_map] = test::compile_definitions_with_program(
+        std::tuple{ begin_action{}, end_round{}, end_game{ .result = game_result::both_loss } },
+        std::tuple{ stop_execution{} }, action_observer, round_observer, switch_observer, character_source
+    );
+    card_table table{ library };
+    table[initial_player].add(id_map.get_id<support_view>(action_observer.name()), {});
+    table[initial_player].add(id_map.get_id<support_view>(round_observer.name()), {});
+    table[initial_player].add(id_map.get_id<support_view>(switch_observer.name()), {});
+    const auto character_definition = id_map.get_id<character_view>(character_source.name());
+    for(auto player : table.players())
+    {
+        const auto active = player.add(character_definition, { .health = 10 }).id();
+        player.add(character_definition, { .health = 10 });
+        player.state().active_character = active;
+        player.state().dice[elemental_dice::pyro] = 3;
+    }
+    table.state().active_player = initial_player;
+    executor target;
+    target.enter_entry(library);
+    zero_random random;
+
+    REQUIRE(target.step(table, random) == execution_state::action_started);
+    (void)target.view_in<execution_state::action_started>();
+    CHECK(table.state().active_player == initial_player);
+    CHECK(before_actions.empty());
+    REQUIRE(target.step(table, random) == execution_state::action);
+    REQUIRE(before_actions == std::vector<player_id>{ initial_player });
+
+    const auto switch_active = [&](player_id next_player)
+    {
+        const auto player = table.state().active_player;
+        const auto next_character = target.view_in<execution_state::action>().costs()[0].target;
+        const auto previous_character = table[player].state().active_character;
+        const auto previous_dice = table[player].state().dice.total();
+        const auto switch_count = switched_characters.size();
+        const auto before_count = before_actions.size();
+        dice_counts paid;
+        paid[elemental_dice::pyro] = 1;
+        target.view_in<execution_state::action>().execute_action(0, { .paid_dice = paid });
+        REQUIRE(target.step(table, random) == execution_state::active_character_changed);
+        CHECK(target.view_in<execution_state::active_character_changed>().character() == next_character);
+        CHECK(table[player].state().active_character == previous_character);
+        CHECK(table[player].state().dice.total() == previous_dice - 1);
+        CHECK(switched_characters.size() == switch_count);
+        CHECK(before_actions.size() == before_count);
+        if(speed == action_speed::combat)
+        {
+            REQUIRE(target.step(table, random) == execution_state::action_started);
+            (void)target.view_in<execution_state::action_started>();
+            CHECK(table.state().active_player == next_player);
+            CHECK(table[player].state().active_character == next_character);
+            REQUIRE(switched_characters.size() == switch_count + 1);
+            CHECK(switched_characters.back() == next_character);
+            CHECK(before_actions.size() == before_count);
+        }
+        REQUIRE(target.step(table, random) == execution_state::action);
+        CHECK(table.state().active_player == next_player);
+        CHECK(table[player].state().active_character == next_character);
+        REQUIRE(switched_characters.size() == switch_count + 1);
+        CHECK(switched_characters.back() == next_character);
+        CHECK(before_actions.size() == before_count + 1);
+        CHECK(before_actions.back() == next_player);
+    };
+
+    const auto first_ended = speed == action_speed::combat
+        ? other_player(initial_player)
+        : initial_player;
+    switch_active(first_ended);
+
+    target.view_in<execution_state::action>().declare_round_end();
+    REQUIRE(target.step(table, random) == execution_state::round_end_declared);
+    (void)target.view_in<execution_state::round_end_declared>();
+    CHECK(table.state().active_player == first_ended);
+    CHECK(table.state().first_ended);
+    CHECK(declarations.empty());
+    const auto before_handoff = before_actions.size();
+    const auto continuing_player = other_player(first_ended);
+    REQUIRE(target.step(table, random) == execution_state::action_started);
+    (void)target.view_in<execution_state::action_started>();
+    CHECK(table.state().active_player == continuing_player);
+    CHECK(declarations == std::vector<player_id>{ first_ended });
+    CHECK(before_actions.size() == before_handoff);
+    REQUIRE(target.step(table, random) == execution_state::action);
+
+    // A combat action opens another opportunity even when the opponent has ended.
+    switch_active(continuing_player);
+    switch_active(continuing_player);
+
+    target.view_in<execution_state::action>().declare_round_end();
+    REQUIRE(target.step(table, random) == execution_state::round_end_declared);
+    (void)target.view_in<execution_state::round_end_declared>();
+    CHECK(table.state().active_player == continuing_player);
+    CHECK(declarations == std::vector<player_id>{ first_ended });
+    REQUIRE(target.step(table, random) == execution_state::round_ending);
+    (void)target.view_in<execution_state::round_ending>();
+    CHECK(declarations == std::vector<player_id>{ first_ended, continuing_player });
+    CHECK(endings.empty());
+    CHECK(table.state().active_player == continuing_player);
+    CHECK(table.state().first_ended);
+
+    REQUIRE(target.step(table, random) == execution_state::finished);
+    CHECK(target.view_in<execution_state::finished>().result() == game_result::both_loss);
+    CHECK(endings == std::vector<player_id>{ first_ended });
+    CHECK(table.state().active_player == first_ended);
+    CHECK_FALSE(table.state().first_ended);
+}
+
+TEST_CASE("a round starts before its limit check and dice reset", "[start_round][execution-view]")
+{
+    const bool observed = GENERATE(false, true);
+    const bool exceeds_limit = GENERATE(false, true);
+    CAPTURE(observed, exceeds_limit);
+    const auto [library, id_map] = test::compile_definitions_with_program(
+        std::tuple{ start_round{ .max_rounds = 2 }, stop_execution{} },
+        std::tuple{ stop_execution{} }
+    );
+    card_table table{ library };
+    table.state().round_number = exceeds_limit ? 2 : 1;
+    for(auto player : table.players())
+    {
+        player.state().dice[elemental_dice::pyro] = 3;
+    }
+    executor target;
+    target.enter_entry(library);
+    zero_random random;
+    const auto initial_stack_size = detail::executor_access::stack(target).size();
+
+    if(observed)
+    {
+        REQUIRE(target.step(table, random) == execution_state::round_started);
+        (void)target.view_in<execution_state::round_started>();
+        CHECK(table.state().round_number == (exceeds_limit ? 3 : 2));
+        CHECK(detail::executor_access::stack(target).size() == initial_stack_size);
+        for(auto player : table.players())
+        {
+            CHECK(player.state().dice[elemental_dice::pyro] == 3);
+        }
+    }
+
+    const auto state = observed ? target.step(table, random) : target.run(table, random);
+    CHECK(table.state().round_number == (exceeds_limit ? 3 : 2));
+    if(exceeds_limit)
+    {
+        REQUIRE(state == execution_state::finished);
+        CHECK(target.view_in<execution_state::finished>().result() == game_result::both_loss);
+        for(auto player : table.players())
+        {
+            CHECK(player.state().dice[elemental_dice::pyro] == 3);
+        }
+    }
+    else
+    {
+        REQUIRE(state == execution_state::action);
+        for(auto player : table.players())
+        {
+            CHECK(player.state().dice.total() == 0);
+        }
+    }
 }

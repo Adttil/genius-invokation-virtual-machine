@@ -1,3 +1,4 @@
+#include "executor_access.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -20,9 +21,9 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
-            return context.yield();
+            return context.yield(execution_state::action);
         }
     };
 
@@ -182,8 +183,8 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     sequence_random random{
         .values = { std::numeric_limits<std::uint32_t>::max(), 0, std::uint32_t{ 0x80000000u } }
     };
-    REQUIRE(target.execute_next(table, random));
-    CHECK_FALSE(target.execute_next(table, random));
+    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
+    CHECK_FALSE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
     CHECK(random.position == 3);
 
     CHECK(deck_definition_values(table[player_id{ 0 }]) == std::vector<size_t>{
@@ -235,7 +236,7 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
     target.enter_entry(library);
     sequence_random random{ .values = { 2, 3 } };
 
-    REQUIRE(target.execute_next(table, random));
+    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
     REQUIRE(initialization_order.size() == 2);
     CHECK(bool(initialization_order[0] == "Beta"));
     CHECK(bool(initialization_order[1] == "Alpha"));

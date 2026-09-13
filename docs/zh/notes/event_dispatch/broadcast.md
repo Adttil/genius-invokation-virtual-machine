@@ -2,7 +2,7 @@
 
 # 默认广播工具与事件事务
 
-默认广播是一组可替换的实现工具，不是所有事件、指令必须采用的广播规则。本页完整保留原协议的采样顺序、frame 结构、响应推进和单目标例外。
+默认广播是一组可替换的实现工具，不是所有事件、指令必须采用的广播规则。本页记录这组工具的采样顺序、frame 结构、响应推进和单目标例外。
 
 ## 广播辅助工具与 frame ABI
 
@@ -46,8 +46,8 @@ stack.top<
 默认 handler 接口接收 definition data、自身 entity view、可修改 event、只读 table 和随机函数，并返回 `handler_program_entry_t<E>`。handler 可以执行普通 C++ 计算，因此按层数、生命、费用结果或其他运行期状态修改事件不需要额外表达式语言。
 
 - 返回空入口：不进入响应程序，保留 handler 对 event 的修改。
-- 返回普通入口：立即进入固定响应程序，返回后继续广播。
-- 通过 `program_entry` 的具名结果工厂结束对局，并保留当前广播和 activation 现场。
+- 返回普通入口：进入固定响应程序，程序返回后继续广播。
+- 响应程序执行 `end_game` 时，栈顶保存结果，旧广播和 activation 被逻辑废弃，不再继续广播；入口本身不再有独立的终局种类。
 
 handler 不能通过收到的 `const card_table&` 直接修改持久状态。需要产生副作用时，由返回的固定程序执行相应指令。
 
@@ -67,18 +67,20 @@ handler 不能通过收到的 `const card_table&` 直接修改持久状态。需
 
 `current_handler` 保存当前响应者自身（self）的身份，不是事件的 `target`。事件指向的受伤角色可以与响应的护盾、支援或卡牌不同；`absorb_damage_by_count` 正是从这一槽取得应扣计数的实体。进入响应子程序后它留在下方广播 frame 中，activation 上的指令不需要把 self 复制进自身固定操作数。初始压帧时该槽只是默认构造，推进器写入当前项之后才具有这个“当前响应者”的意义。
 
-`continue_broadcast` 自己的返回值与指令返回给外层的布尔值不同：返回 `false` 表示刚通过 `context.enter(entry)` 进入了一个非空响应入口；领域指令通常据此返回 `true`，让执行器继续运行响应程序。只有快照中的全部响应者都已走完，广播推进器才返回 `true`。事件后处理和 `pop_broadcast` 仍由领域指令执行。
+`continue_broadcast` 的结果区分“本轮广播已走完”与“刚进入响应程序”。快照中的全部响应者走完后，领域指令才继续事件后处理和 `pop_broadcast`；取得非空入口时直接进入响应。该辅助函数的返回不代表一条指令只执行了一部分。
+
+广播辅助工具不负责外部观察停点，也不在 activation 上方另压实体身份或专用观察阶段。当前观察范围与撤回通用效果入口通知的理由见[执行观察与输入](../execution_observation.md)。
 
 普通广播中的已失效实体被跳过，不等同于可任意清理或重排底层存储：快照保存的是 ID，跨 `clean_up()` 使用 ID 的限制仍然适用。不能拿 `try_handle` 的无效检查当作悬空对象、越界 ID 或清理后旧 ID 的保护。
 
 ### 多个预备广播的快照边界
 
-[`select_active_character_both`](../../../../include/givm/executor/instructions/select_active_character_both.hpp) 在收齐双方选择、同时写入出战角色之后，先压玩家 1 的广播，再压玩家 0 的广播。栈顶先处理玩家 0 的通知，但两个响应者快照此前都已建立。因此玩家 0 的响应新建的实体不会进入已经预备好的玩家 1 快照。这个例子解释为什么不能把“每个事件有自己的快照”误写成“前一个广播结束后才采样下一个”。
+[`select_active_character_both`](../../../../include/givm/executor/instructions/select_active_character_both.hpp) 在收齐双方选择、同时写入出战角色之后，先压玩家 1 的广播，再压玩家 0 的广播。观察模式先报告初选完成，下一次推进才用仍保留的原选择帧准备这两个广播；外部从牌桌读取双方结果。栈顶先处理玩家 0 的通知，但两个响应者快照此前都已建立。因此玩家 0 的响应新建的实体不会进入已经预备好的玩家 1 快照。这个例子解释为什么不能把“每个事件有自己的快照”误写成“前一个广播结束后才采样下一个”。
 
 相比之下，`draw_cards`、单方 `replace_cards` 和元素反应后的通知，是推进到后一个广播时才重新调用 `prepare_broadcast`；后一个广播可采样之前响应创建的实体。
 
 ### 初始化特例的额外前提
 
-[`enter_character`](../../../../include/givm/executor/instructions/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/instructions/initialize_characters.hpp) 直接调用当前角色定义的 `handle<character_initialization>`，没有先调用 `can_handle` 检查。角色定义必须提供这个 handler。事件是函数内的局部值，调用后把 `event.state` 写回角色，返回入口被 `(void)` 丢弃；即使 handler 返回终局入口也不会由这两条指令进入。旧文建议返回 null 保持这个事实明确。
+[`enter_character`](../../../../include/givm/executor/instructions/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/instructions/initialize_characters.hpp) 直接调用当前角色定义的 `handle<character_initialization>`，没有先调用 `can_handle` 检查。角色定义必须提供这个 handler。事件是函数内的局部值，调用后把 `event.state` 写回角色，返回入口被 `(void)` 丢弃；即使 handler 返回含 end_game 的程序入口也不会由这两条指令进入。旧文建议返回 null 保持这个事实明确。
 
 旧文把“将来可增加静态限制但应保持现有语义”作为设计余地。这里仍保留该余地，不把它误记为已有静态限制。

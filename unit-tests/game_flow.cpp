@@ -4,8 +4,10 @@
 #include <cstdint>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <givm/givm.hpp>
 
@@ -74,52 +76,6 @@ namespace
         }
     };
 
-    template<class TRandom>
-    void run_until_blocked(
-        executor& target,
-        card_table& table,
-        TRandom& random
-    )
-    {
-        while(
-            target.status() == game_result::no_result
-            && target.execute_next(table, random)
-        )
-        {
-        }
-    }
-
-    bool submit_selector(
-        executor& target,
-        player_id player,
-        std::bitset<selection_capacity> selected
-    )
-    {
-        if(target.stack().empty())
-        {
-            return false;
-        }
-
-        auto&& [input, stage] = target.stack().top<selector, stage_t>();
-        (void)stage;
-        input.player = player;
-        input.selected = selected;
-        return true;
-    }
-
-    bool submit_active_character_selection(executor& target, character_id selected)
-    {
-        if(target.stack().empty())
-        {
-            return false;
-        }
-
-        auto&& [input, stage] = target.stack().top<character_id, stage_t>();
-        (void)stage;
-        input = selected;
-        return true;
-    }
-
     dice_counts select_one_available_dice(const card_table& table, player_id player)
     {
         dice_counts result;
@@ -136,36 +92,15 @@ namespace
         return result;
     }
 
-    bool waiting_for_action(const executor& target, const card_table& table)
-    {
-        return target.status() == game_result::no_result
-            && table.definition_library().instruction(target.position()).is<begin_action>();
-    }
-
-    bool submit_action(
+    template<class TRandom>
+    bool perform_first_available_switch(
         executor& target,
-        const card_table& table,
-        action_request request,
-        action_argument argument = {}
+        card_table& table,
+        TRandom& random,
+        execution_state& state
     )
     {
-        if(not waiting_for_action(target, table))
-        {
-            return false;
-        }
-
-        auto&& [stored_argument, stored_request, stage] =
-            target.stack().top<action_argument, action_request, stage_t>();
-        (void)stage;
-        stored_argument = argument;
-        stored_request = request;
-        return true;
-    }
-
-    template<class TRandom>
-    bool perform_first_available_switch(executor& target, card_table& table, TRandom& random)
-    {
-        if(not waiting_for_action(target, table))
+        if(state != execution_state::action)
         {
             return false;
         }
@@ -185,54 +120,35 @@ namespace
             return false;
         }
 
-        const auto dice_before = table[acting_player].state().dice.total();
-        if(not submit_action(
-            target,
-            table,
-            action_request{
-                .request_kind = action_request_kind::do_action,
-                .action_kind = action_kind::switch_active,
-                .action_index = 0
-            },
-            argument
-        ))
+        const auto current = target.view_in<execution_state::action>();
+        if(current.costs().empty())
         {
             return false;
         }
-
-        run_until_blocked(target, table, random);
+        const auto dice_before = table[acting_player].state().dice.total();
+        current.execute_action(0, argument);
+        state = target.run(table, random);
 
         const auto active_after = table[acting_player].state().active_character;
         return active_after.has_value()
             && *active_after != *active_before
             && table[acting_player].state().dice.total() == dice_before - 1
             && table.state().active_player == other_player(acting_player)
-            && waiting_for_action(target, table);
+            && state == execution_state::action;
     }
 
     template<class TRandom>
-    bool submit_round_end(executor& target, card_table& table, TRandom& random)
+    bool submit_round_end(executor& target, card_table& table, TRandom& random, execution_state& state)
     {
-        if(not submit_action(
-            target,
-            table,
-            action_request{
-                .request_kind = action_request_kind::do_action,
-                .action_kind = action_kind::declare_round_end
-            }
-        ))
+        if(state != execution_state::action)
         {
             return false;
         }
-
-        run_until_blocked(target, table, random);
+        target.view_in<execution_state::action>().declare_round_end();
+        state = target.run(table, random);
         return true;
     }
 
-    bool game_ended(const executor& target)
-    {
-        return target.status() != game_result::no_result;
-    }
 }
 
 TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
@@ -284,33 +200,39 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
 
     table.state().active_player = player_id{ 0 };
 
-    run_until_blocked(target, table, random);
+    auto state = target.run(table, random);
+    REQUIRE(state == execution_state::initial_card_selection);
     REQUIRE(table[player_id{ 0 }].hand_card_count() == 5);
     REQUIRE(table[player_id{ 1 }].hand_card_count() == 5);
 
-    REQUIRE(submit_selector(target, player_id{ 0 }, std::bitset<selection_capacity>{ 0b11 }));
-    run_until_blocked(target, table, random);
-    REQUIRE(submit_selector(target, player_id{ 1 }, {}));
-    run_until_blocked(target, table, random);
+    const auto first_selection_player = GENERATE(player_id{ 0 }, player_id{ 1 });
+    const auto second_selection_player = other_player(first_selection_player);
+    target.view_in<execution_state::initial_card_selection>().select(
+        first_selection_player, std::bitset<selection_capacity>{ 0b11 }
+    );
+    state = target.run(table, random);
+    REQUIRE(state == execution_state::card_selection);
+    REQUIRE(target.view_in<execution_state::card_selection>().player() == second_selection_player);
+    target.view_in<execution_state::card_selection>().select({});
+    state = target.run(table, random);
 
     REQUIRE(table[player_id{ 0 }].hand_card_count() == 5);
     REQUIRE(table[player_id{ 0 }].deck_card_count() == 5);
     REQUIRE(table[player_id{ 1 }].hand_card_count() == 5);
     REQUIRE(table[player_id{ 1 }].deck_card_count() == 5);
 
-    REQUIRE(table.definition_library().instruction(target.position()).is<select_active_character_both>());
-    REQUIRE(submit_active_character_selection(
-        target,
-        character_id{ .player_id = player_id{ 0 }, .index = 0 }
-    ));
-    run_until_blocked(target, table, random);
+    REQUIRE(state == execution_state::initial_active_character_selection);
+    target.view_in<execution_state::initial_active_character_selection>().select(
+        character_id{ .player_id = first_selection_player, .index = 0 }
+    );
+    state = target.run(table, random);
 
-    REQUIRE(table.definition_library().instruction(target.position()).is<select_active_character_both>());
-    REQUIRE(submit_active_character_selection(
-        target,
-        character_id{ .player_id = player_id{ 1 }, .index = 0 }
-    ));
-    run_until_blocked(target, table, random);
+    REQUIRE(state == execution_state::remaining_active_character_selection);
+    const auto remaining = target.view_in<execution_state::remaining_active_character_selection>();
+    REQUIRE(remaining.player() == second_selection_player);
+    CHECK(remaining.selected() == character_id{ .player_id = first_selection_player, .index = 0 });
+    remaining.select(0);
+    state = target.run(table, random);
 
     REQUIRE(table[player_id{ 0 }].state().active_character.has_value());
     REQUIRE(table[player_id{ 1 }].state().active_character.has_value());
@@ -319,39 +241,118 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     {
         CAPTURE(round);
 
-        REQUIRE(table.definition_library().instruction(target.position()).is<start_dice_roll_phase>());
+        REQUIRE(state == execution_state::dice_selection);
         REQUIRE(table.state().round_number == round);
         REQUIRE(table[player_id{ 0 }].state().dice.total() == 8);
         REQUIRE(table[player_id{ 1 }].state().dice.total() == 8);
 
-        REQUIRE(submit_selector(target, player_id{ 0 }, {}));
-        run_until_blocked(target, table, random);
-        REQUIRE(table.definition_library().instruction(target.position()).is<start_dice_roll_phase>());
+        const auto prepared_random_count = random.value;
+        REQUIRE(target.view_in<execution_state::dice_selection>().remaining(first_selection_player) == 1);
+        target.view_in<execution_state::dice_selection>().select(
+            first_selection_player, std::bitset<selection_capacity>{ 1 }
+        );
+        state = target.run(table, random);
+        REQUIRE(state == execution_state::dice_selection);
 
-        REQUIRE(submit_selector(target, player_id{ 1 }, {}));
-        run_until_blocked(target, table, random);
-        REQUIRE(waiting_for_action(target, table));
+        REQUIRE(target.view_in<execution_state::dice_selection>().player() == second_selection_player);
+        REQUIRE(target.view_in<execution_state::dice_selection>().remaining(first_selection_player) == 0);
+        CHECK(random.value == prepared_random_count);
+        target.view_in<execution_state::dice_selection>().select({});
+        state = target.run(table, random);
+        CHECK(random.value == prepared_random_count);
+        REQUIRE(state == execution_state::action);
         REQUIRE(table.state().active_player == player_id{ 0 });
 
-        REQUIRE(perform_first_available_switch(target, table, random));
-        REQUIRE(perform_first_available_switch(target, table, random));
+        REQUIRE(perform_first_available_switch(target, table, random, state));
+        REQUIRE(perform_first_available_switch(target, table, random, state));
         REQUIRE(table.state().active_player == player_id{ 0 });
 
-        REQUIRE(submit_round_end(target, table, random));
-        REQUIRE(not game_ended(target));
+        REQUIRE(submit_round_end(target, table, random, state));
+        REQUIRE(state != execution_state::finished);
         REQUIRE(table.state().first_ended);
         REQUIRE(table.state().active_player == player_id{ 1 });
 
-        REQUIRE(submit_round_end(target, table, random));
+        REQUIRE(submit_round_end(target, table, random, state));
         REQUIRE(table[player_id{ 0 }].hand_card_count() == 5 + round * 2);
         REQUIRE(table[player_id{ 1 }].hand_card_count() == 5 + round * 2);
         if(round < max_rounds)
         {
-            REQUIRE(not game_ended(target));
+            REQUIRE(state != execution_state::finished);
         }
     }
 
-    REQUIRE(game_ended(target));
-    REQUIRE(table.state().round_number == max_rounds);
-    REQUIRE(target.status() == game_result::both_loss);
+    REQUIRE(state == execution_state::finished);
+    REQUIRE(table.state().round_number == max_rounds + 1);
+    REQUIRE(target.view_in<execution_state::finished>().result() == game_result::both_loss);
+}
+
+TEST_CASE("step skips replacements and observes simultaneous initial active choices", "[game-flow][execution-view]")
+{
+    const test_card_definition_source card_source;
+    const test_character_definition_source character_source;
+    definition_source_library sources;
+    REQUIRE(sources.add(card_source, character_source));
+    const auto [library, id_map] = sources.compile(
+        std::tuple{
+            initialize_characters{ .player = player_id{ 0 } },
+            initialize_characters{ .player = player_id{ 1 } },
+            draw_cards{ .count = 5, .player = relative_player::current },
+            draw_cards{ .count = 5, .player = relative_player::other },
+            replace_cards_both{},
+            select_active_character_both{},
+            begin_action{}
+        },
+        std::tuple{}
+    );
+    std::array<std::string_view, 10> cards;
+    cards.fill(card_source.name());
+    std::array<std::string_view, 3> characters;
+    characters.fill(character_source.name());
+    const auto deck = link_deck(id_map, cards, characters);
+    card_table table{ library, game_parameters{ .hand_limit = 10 } };
+    table.load_deck(player_id{ 0 }, deck);
+    table.load_deck(player_id{ 1 }, deck);
+    table.state().active_player = player_id{ 0 };
+    executor target;
+    target.enter_entry(library);
+    increasing_random random;
+
+    REQUIRE(target.run(table, random) == execution_state::initial_card_selection);
+    const auto prepared_random_count = random.value;
+    const std::bitset<selection_capacity> replaced{ 0b11 };
+    target.view_in<execution_state::initial_card_selection>().select(player_id{ 1 }, replaced);
+    REQUIRE(target.step(table, random) == execution_state::card_selection);
+    CHECK(table[player_id{ 1 }].hand_card_count() == 5);
+    CHECK(table[player_id{ 1 }].deck_card_count() == 5);
+    CHECK(random.value == prepared_random_count);
+
+    REQUIRE(target.view_in<execution_state::card_selection>().player() == player_id{ 0 });
+    target.view_in<execution_state::card_selection>().select({});
+    REQUIRE(target.step(table, random) == execution_state::initial_active_character_selection);
+    CHECK(random.value == prepared_random_count);
+
+    const character_id player1_choice{ .player_id = player_id{ 1 }, .index = 1 };
+    const character_id player0_choice{ .player_id = player_id{ 0 }, .index = 2 };
+    target.view_in<execution_state::initial_active_character_selection>().select(player1_choice);
+    CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
+    CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
+    REQUIRE(target.step(table, random) == execution_state::remaining_active_character_selection);
+    CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
+    CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
+    const auto remaining = target.view_in<execution_state::remaining_active_character_selection>();
+    CHECK(remaining.selected() == player1_choice);
+    CHECK(remaining.player() == player_id{ 0 });
+    remaining.select(player0_choice.index);
+    CHECK(remaining.selected() == player1_choice);
+    CHECK(remaining.player() == player_id{ 0 });
+    CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
+    CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
+    REQUIRE(target.step(table, random) == execution_state::initial_active_characters_selected);
+
+    const auto view = target.view_in<execution_state::initial_active_characters_selected>();
+    static_assert(std::is_empty_v<decltype(view)>);
+    CHECK(table[player_id{ 0 }].state().active_character == player0_choice);
+    CHECK(table[player_id{ 1 }].state().active_character == player1_choice);
+    REQUIRE(target.step(table, random) == execution_state::action_started);
+    REQUIRE(target.step(table, random) == execution_state::action);
 }

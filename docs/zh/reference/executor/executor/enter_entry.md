@@ -11,7 +11,7 @@ constexpr void enter_entry(const definition_library& library);
 
 准备按照 `library` 提供的游戏流程开始一场对局。
 
-原有的待完成结算被丢弃。本函数不执行指令；通过 [`execute_next`](execute_next.md) 开始执行。
+原有的待完成结算被丢弃。本函数不执行指令；通过 [`run`](run.md) 或 [`step`](step.md) 开始推进。
 
 ## 参数
 
@@ -49,7 +49,8 @@ int main()
     table.state().round_number = 4;
     execution.enter_entry(library);
     std::println("牌桌回合数保持原值: {}", table.state().round_number);
-    std::println("首个操作是洗牌: {}", library.instruction(execution.position()).is<givm::shuffle_deck>());
+    const auto state = execution.run(table, random);
+    std::println("随后推进至终局: {}", state == givm::execution_state::finished);
 }
 ```
 
@@ -57,13 +58,12 @@ int main()
 
 ```text
 牌桌回合数保持原值: 4
-首个操作是洗牌: true
+随后推进至终局: true
 ```
 
 ## 参阅
 
 | | |
 | --- | --- |
-| [`execute_next`](execute_next.md) | 完整执行当前位置的一次指令 |
-| [`clear`](clear.md) | 清空执行栈 |
-| [`position`](position.md) | 取得当前执行位置 |
+| [`run`](run.md) | 推进至输入现场或终局 |
+| [`step`](step.md) | 推进至下一处观察或输入现场 |

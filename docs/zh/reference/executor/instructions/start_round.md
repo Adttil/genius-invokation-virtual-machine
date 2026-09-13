@@ -22,15 +22,11 @@ struct start_round;
 | --- | --- | --- |
 | `max_rounds` | `std::uint32_t` | 允许进行的最大回合数，初始为 14 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](start_round/execute.md) | 开始下一回合，更新回合数并清空双方的元素骰 |
-
 ## 注意
 
-如果下一回合超过上限，本次不增加回合数，也不清空骰子。
+先增加回合数，再判断是否超过上限；超过时以双方失败结束，不清空骰子。因此因回合数超限而结束时，牌桌回合数为 `max_rounds + 1`。
+
+以 [`step`](../executor/step.md) 推进时，增加回合数后先返回 `execution_state::round_started`，随后推进才判断上限及清空骰子。
 
 ## 示例
 
@@ -50,16 +46,16 @@ int main()
     givm::card_table table{ library };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("回合数: {}", table.state().round_number);
-    std::println("达到上限后双败: {}", execution.status() == givm::game_result::both_loss);
+    std::println("超过上限后双败: {}", execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }
 ```
 
 输出
 
 ```text
-回合数: 2
-达到上限后双败: true
+回合数: 3
+超过上限后双败: true
 ```

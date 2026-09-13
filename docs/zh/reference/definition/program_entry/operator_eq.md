@@ -14,7 +14,7 @@ friend constexpr bool operator==(program_entry, program_entry) noexcept = defaul
 
 |  |  |
 | --- | --- |
-| 两个操作数 | context 相同、属于同一定义库的入口，或命名的空入口与终局入口 |
+| 两个操作数 | context 相同、属于同一定义库的入口或空入口 |
 
 ## 返回值
 
@@ -24,22 +24,48 @@ friend constexpr bool operator==(program_entry, program_entry) noexcept = defaul
 
 ```cpp
 #include <print>
+#include <string_view>
+#include <tuple>
 
 #include <givm/givm.hpp>
 
+struct result_source
+{
+    using definition_category = givm::support_view;
+    using entry_type = givm::program_entry<givm::round_ended>;
+
+    std::string_view name() const { return "终局判定"; }
+    entry_type compile(givm::definition_compile_context& context) const
+    {
+        const auto first = context.add_program<givm::round_ended>(
+            std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } });
+        const auto second = context.add_program<givm::round_ended>(
+            std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } });
+        std::println("选择同一效果: {}", first == second);
+        std::println("默认入口为空: {}", entry_type{} == entry_type::null());
+        return first;
+    }
+    static entry_type handle(
+        const entry_type& entry, const givm::support_view&, givm::round_ended&,
+        const givm::card_table&, givm::random_fn&)
+    {
+        return entry;
+    }
+};
+
 int main()
 {
-    using entry_type = givm::handler_program_entry_t<givm::round_ended>;
-    const auto first = entry_type::player_0_win();
-    const auto second = entry_type::player_1_win();
-    std::println("选择同一终局: {}", first == second);
-    std::println("默认入口为空: {}", entry_type{} == entry_type::null());
+    const result_source source{};
+    givm::definition_source_library sources{};
+    sources.add(source);
+    const auto [library, ids] = sources.compile(
+        std::tuple{}, std::tuple{ givm::start_round{} });
 }
 ```
 
 输出
 
 ```text
-选择同一终局: false
+选择同一效果: false
 默认入口为空: true
 ```

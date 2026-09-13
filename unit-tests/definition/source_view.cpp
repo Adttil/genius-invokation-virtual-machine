@@ -132,9 +132,9 @@ namespace
 
         definition_id<support_view> resolved_support;
 
-        bool execute(card_table&, execution_context&, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
         {
-            return resolved_support.is_valid();
+            return resolved_support.is_valid() ? detail::continue_execution : execution_state::action;
         }
     };
 
@@ -142,9 +142,9 @@ namespace
     {
         using context_type = onpay_context<cost_of_switch>;
 
-        bool execute(card_table&, execution_context&, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
         {
-            return true;
+            return detail::continue_execution;
         }
     };
 
@@ -152,9 +152,9 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context&, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
         {
-            return true;
+            return detail::continue_execution;
         }
     };
 

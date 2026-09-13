@@ -22,12 +22,6 @@ struct absorb_damage_by_count;
 | --- | --- | --- |
 | `maximum_count` | `std::uint32_t` | 本次最多消耗的计数，初始为 uint32_t 的最大值 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](absorb_damage_by_count/execute.md) | 用当前响应实体的次数或层数抵挡伤害 |
-
 ## 注意
 
 仅能用于 [`damage_effect`](../events/damage_effect.md) 的响应，当前响应实体必须具有 `state().count`。吸收量等于剩余伤害、实体计数和 `maximum_count` 三者的最小值；伤害与计数同时减少该值。是否属于己方护盾、是否忽略护盾等适用性判断，由实体的事件响应决定。
@@ -39,6 +33,7 @@ struct absorb_damage_by_count;
 #include <print>
 #include <string_view>
 #include <tuple>
+#include <variant>
 
 #include <givm/givm.hpp>
 
@@ -102,8 +97,8 @@ int main()
         ids.get_id<givm::combat_status_view>("shield"), { .count = 3 });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("角色剩余生命: {}", table[target].state().health);
     std::println("护盾剩余计数: {}", shield.state().count);
 }

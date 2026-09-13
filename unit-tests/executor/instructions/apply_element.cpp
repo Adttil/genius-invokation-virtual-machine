@@ -1,3 +1,4 @@
+#include "../../executor_access.hpp"
 #include <cstdint>
 #include <string_view>
 #include <tuple>
@@ -6,6 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <givm/executor/instructions/apply_element.hpp>
+#include <givm/executor/instructions/set_element_aura.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -47,7 +49,7 @@ namespace
 
             element_aura aura;
 
-            bool execute(card_table& table, execution_context& context, random_fn&) const
+            execution_state execute(card_table& table, detail::execution_context& context, random_fn&) const
             {
                 auto&& [broadcast, activation] = context.stack().top<
                     frame<
@@ -55,9 +57,9 @@ namespace
                         stack_count_t,
                         elemental_reaction_will_occur,
                         detail::handler_id<elemental_reaction_will_occur>,
-                        stage_t
+                        detail::stage_t
                     >,
-                    frame<execution_context::return_info, stage_t>
+                    frame<detail::execution_context::return_info, detail::stage_t>
                 >();
                 auto&& [handlers, cursor, event, current_handler, broadcast_stage] = broadcast;
                 auto&& [return_info, activation_stage] = activation;
@@ -129,19 +131,16 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
-            return context.yield();
+            return context.yield(execution_state::action);
         }
     };
 
     bool run_until_blocked(executor& target, card_table& table)
     {
         zero_random random;
-        while(target.execute_next(table, random))
-        {
-        }
-        return table.definition_library().instruction(target.position()).is<stop_execution>();
+        return target.run(table, random) == execution_state::action;
     }
 }
 
@@ -274,4 +273,82 @@ TEST_CASE("a response can replace apply_element default reaction handling", "[ap
     CHECK(log.order == std::vector{ 1, 2 });
     CHECK(log.reaction == elemental_reaction::vaporize);
     CHECK(character.state().aura == element_aura::dendro);
+}
+
+TEST_CASE("step crosses aura changes without an observation stop", "[apply_element][set_element_aura][observation]")
+{
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    constexpr character_id source{ .player_id = player_id{ 0 }, .index = 0 };
+    constexpr character_id affected{ .player_id = player_id{ 1 }, .index = 0 };
+    const auto [library, ids] = test::compile_definitions_with_program(
+        std::tuple{
+            set_element_aura{ .target = affected, .aura = element_aura::cryo },
+            set_element_aura{ .target = affected, .aura = element_aura::none },
+            apply_element{ .source = source, .target = affected, .element = element::hydro }
+        },
+        std::tuple{ stop_execution{} },
+        character_source
+    );
+    const auto definition = ids.get_id<character_view>(character_source.name());
+    card_table table{ library };
+    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
+    auto normal_table = table;
+    zero_random random;
+    executor normal;
+    normal.enter_entry(library);
+    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+
+    executor observed;
+    observed.enter_entry(library);
+    REQUIRE(observed.step(table, random) == execution_state::action);
+    CHECK(table[affected].state().aura == element_aura::hydro);
+    CHECK(table[affected].state().aura == normal_table[affected].state().aura);
+    CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
+}
+
+TEST_CASE("step crosses reaction responses while preserving settlement and broadcast ordering", "[apply_element][observation]")
+{
+    reaction_log log;
+    SECTION("default reaction") {}
+    SECTION("a response replaces the default result")
+    {
+        log.take_over = true;
+        log.replacement_aura = element_aura::dendro;
+    }
+
+    const reaction_observer_source observer_source{ &log };
+    const test::named_definition_source<character_view> character_source{ "Character" };
+    constexpr support_id source{ .player_id = player_id{ 0 }, .index = 0 };
+    constexpr character_id affected{ .player_id = player_id{ 1 }, .index = 0 };
+    const auto [library, ids] = test::compile_definitions_with_program(
+        std::tuple{ apply_element{ .source = source, .target = affected, .element = element::pyro } },
+        std::tuple{ stop_execution{} },
+        observer_source, character_source
+    );
+    card_table table{ library };
+    table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    table[player_id{ 1 }].add(ids.get_id<character_view>(character_source.name()), {
+        .max_health = 10, .health = 10, .aura = element_aura::hydro
+    });
+    auto normal_table = table;
+    zero_random random;
+    executor normal;
+    normal.enter_entry(library);
+    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    const auto normal_order = log.order;
+    log.order.clear();
+
+    executor observed;
+    observed.enter_entry(library);
+    REQUIRE(observed.step(table, random) == execution_state::action);
+    CHECK(log.order == normal_order);
+    CHECK(log.order == std::vector{ 1, 2 });
+    CHECK(log.incoming == element::pyro);
+    CHECK(log.reacted_aura == element_aura::hydro);
+    CHECK(log.reaction == elemental_reaction::vaporize);
+    CHECK(log.cause == element_application_cause::effect);
+    CHECK(table[affected].state().aura == (log.take_over ? element_aura::dendro : element_aura::none));
+    CHECK(table[affected].state().aura == normal_table[affected].state().aura);
+    CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
 }

@@ -20,27 +20,39 @@ namespace givm
         player_id player;
         definition_id<card_definition> definition;
         std::int32_t position = -1;
-
-        bool execute(card_table& table, execution_context& context, random_fn&) const
-        {
-            auto player_entity = table[player];
-            const auto size = player_entity.deck_card_count();
-            size_t index;
-            if(position >= 0)
-            {
-                index = static_cast<size_t>(position);
-                GIVM_ASSERT(index <= size);
-            }
-            else
-            {
-                const auto offset_from_top = static_cast<size_t>(-position - 1);
-                GIVM_ASSERT(offset_from_top <= size);
-                index = size - offset_from_top;
-            }
-            player_entity.insert_deck_card(index, definition, card_state{});
-            return context.enter_next();
-        }
     };
+
+    namespace detail
+    {
+        template<>
+        struct instruction_implementation<insert_deck_card>
+        {
+            template<bool Observed>
+            static execution_state execute(
+                const givm::insert_deck_card& instruction, card_table& table, execution_context& context, random_fn&
+            )
+            {
+                auto player_entity = table[instruction.player];
+                const auto size = player_entity.deck_card_count();
+                size_t index;
+                if(instruction.position >= 0)
+                {
+                    index = static_cast<size_t>(instruction.position);
+                    GIVM_ASSERT(index <= size);
+                }
+                else
+                {
+                    const auto offset_from_top = static_cast<size_t>(-instruction.position - 1);
+                    GIVM_ASSERT(offset_from_top <= size);
+                    index = size - offset_from_top;
+                }
+                player_entity.insert_deck_card(index, instruction.definition, card_state{});
+
+                return context.enter_next();
+            }
+
+        };
+    }
 }
 
 #include "../../macro_undef.hpp"

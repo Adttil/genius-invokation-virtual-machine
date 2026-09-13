@@ -33,9 +33,11 @@
 | | |
 | --- | --- |
 | [`executor`](reference/executor/executor.md) | 游戏对局的执行器 |
+| [`execution_state`](reference/executor/execution_state.md) | 对局执行现场的种类 |
+| [`execution_view`](reference/executor/execution_view.md) | 对局执行现场的视图 |
 | [`random_fn`](reference/executor/random_fn.md) | 随机函数视图 |
 | [事件](reference/executor/events.md) | 可响应的游戏事件 |
-| [指令](reference/executor/instructions.md) | 游戏的执行单元 |
+| [指令](reference/executor/instructions.md) | 游戏规则的操作描述 |
 
 ## [通用工具](reference/utils.md)
 

@@ -87,6 +87,7 @@ namespace givm
             // TODO: apply the remaining default reaction effects here.
             return result;
         }
+
     }
 
     struct apply_element
@@ -97,22 +98,31 @@ namespace givm
         character_id target;
         element element;
         element_application_cause cause = element_application_cause::effect;
+    };
+
+    template<>
+    struct detail::instruction_implementation<apply_element>
+    {
         enum class stage_type : stage_t
         {
             apply,
             reaction_broadcast,
             after_reaction_broadcast
         };
-        bool execute(card_table& table, execution_context& context, random_fn& random) const
+
+        template<bool Observed>
+        static execution_state execute(
+            const givm::apply_element& instruction, card_table& table, execution_context& context, random_fn& random
+        )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
             if(stage == stage_type::apply)
             {
-                if(not detail::begin_element_application(
-                    source,
-                    target,
-                    element,
-                    cause,
+                if(not begin_element_application(
+                    instruction.source,
+                    instruction.target,
+                    instruction.element,
+                    instruction.cause,
                     table,
                     context
                 ))
@@ -120,14 +130,14 @@ namespace givm
                     return context.enter_next();
                 }
                 context.current_stage() = static_cast<stage_t>(stage_type::reaction_broadcast);
-                return true;
+                return continue_execution;
             }
 
             if(stage == stage_type::reaction_broadcast)
             {
                 if(not detail::continue_broadcast<elemental_reaction_will_occur>(table, context, random))
                 {
-                    return true;
+                    return continue_execution;
                 }
 
                 detail::prepare_broadcast(
@@ -136,12 +146,12 @@ namespace givm
                     context.stack()
                 );
                 context.current_stage() = static_cast<stage_t>(stage_type::after_reaction_broadcast);
-                return true;
+                return continue_execution;
             }
 
             if(not detail::continue_broadcast<after_elemental_reaction>(table, context, random))
             {
-                return true;
+                return continue_execution;
             }
 
             detail::pop_broadcast<after_elemental_reaction>(context);

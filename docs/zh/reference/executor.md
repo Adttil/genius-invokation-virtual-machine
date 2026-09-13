@@ -9,15 +9,14 @@
 |  |  |
 | --- | --- |
 | [`executor`](executor/executor.md) | 游戏对局的执行器 |
-| [`execution_context`](executor/execution_context.md) | 核心指令推进对局时使用的上下文 |
+| [`execution_view`](executor/execution_view.md) | 一处对局执行现场的视图 |
 | [`random_fn`](executor/random_fn.md) | 随机函数视图 |
-| [`selector`](executor/selector.md) | 一名玩家对一组候选项的选择结果 |
 
-## 类型别名
+## 枚举
 
 |  |  |
 | --- | --- |
-| [`stage_t`](executor/stage_t.md) | 指令结算进度的数值类型 |
+| [`execution_state`](executor/execution_state.md) | 执行器交回控制权时的执行现场种类 |
 
 ## 常量
 

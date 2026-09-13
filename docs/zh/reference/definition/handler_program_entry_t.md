@@ -79,4 +79,4 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`program_entry`](program_entry.md) | 空入口、普通效果和终局入口 |
+| [`program_entry`](program_entry.md) | 响应程序入口与空入口 |

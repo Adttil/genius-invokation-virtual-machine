@@ -23,12 +23,6 @@ struct draw_cards;
 | `count` | `std::uint32_t` | 尝试抽取的牌数 |
 | `player` | [`relative_player`](relative_player.md) | 相对于当前行动玩家的抽牌方，初始为 current |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](draw_cards/execute.md) | 让一名玩家从牌堆顶抽取指定数量的牌 |
-
 ## 注意
 
 牌堆耗尽后停止抽取。达到手牌上限后，仍继续从牌堆移走本次应抽的牌，但这些牌不进入手牌。先完成本次所有抽牌，再逐张发出 [`card_drawn`](../events/card_drawn.md)，只通知实际进入手牌的牌。
@@ -68,8 +62,8 @@ int main()
     player.insert_deck_card(1, card, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("手牌数量: {}", player.hand_card_count());
     std::println("牌堆数量: {}", player.deck_card_count());
 }

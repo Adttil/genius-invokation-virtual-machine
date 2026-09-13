@@ -22,19 +22,14 @@ struct replace_cards;
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 替换手牌的玩家 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](replace_cards/execute.md) | 让指定玩家选择需要替换的手牌，将所选牌放回牌堆并抽取等量新牌 |
-
 ## 注意
 
-等待输入时，栈顶可按 `top<selector, stage_t>()` 取得选择槽和需保留的尾部状态。保持 `selector.player` 为指定玩家，在 `selected` 中标记要换回的手牌；位序按当前有效手牌的遍历顺序。空选择表示保留全部手牌。替换完成后，逐张发出 [`card_drawn`](../events/card_drawn.md)。
+等待输入时，执行器返回 `execution_state::card_selection`，通过相应的[现场视图](../execution_view/card_selection.md)提交选择。选择位按当前有效手牌的遍历顺序，空选择表示保留全部手牌。替换完成后，逐张发出 [`card_drawn`](../events/card_drawn.md)。
 
 ## 示例
 
 ```cpp
+#include <bitset>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -70,14 +65,12 @@ int main()
     }
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
-    for(int submission = 0; submission < 1; ++submission)
-    {
-        auto&& [input, preserved] = execution.stack().top<givm::selector, givm::stage_t>();
-        input.selected.set(0);
-        while(execution.execute_next(table, random)) {}
-    }
+    execution.enter_entry(library);
+    execution.run(table, random);
+    std::bitset<givm::selection_capacity> selected{};
+    selected.set(0);
+    execution.view_in<givm::execution_state::card_selection>().select(selected);
+    execution.run(table, random);
     std::println("玩家 0 的手牌数量: {}", table[givm::player_id{ 0 }].hand_card_count());
     std::println("玩家 0 抽到另一种牌: {}",
         (*table[givm::player_id{ 0 }].hand_cards().begin()).definition().id().value() == b.value());

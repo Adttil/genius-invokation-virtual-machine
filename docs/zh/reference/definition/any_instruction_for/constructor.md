@@ -53,10 +53,10 @@ int main()
     givm::card_table table{ library };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("初始化操作数量: {}", initialization.size());
-    std::println("完成回合数: {}", table.state().round_number);
+    std::println("终局时的回合数: {}", table.state().round_number);
 }
 ```
 
@@ -64,5 +64,5 @@ int main()
 
 ```text
 初始化操作数量: 2
-完成回合数: 1
+终局时的回合数: 2
 ```

@@ -19,8 +19,15 @@ namespace givm
         using context_type = damage_effect;
 
         std::uint32_t maximum_count = std::numeric_limits<std::uint32_t>::max();
+    };
 
-        bool execute(card_table& table, execution_context& context, random_fn&) const
+    template<>
+    struct detail::instruction_implementation<absorb_damage_by_count>
+    {
+        template<bool Observed>
+        static execution_state execute(
+            const givm::absorb_damage_by_count& instruction, card_table& table, execution_context& context, random_fn&
+        )
         {
             auto&& [broadcast, activation] = context.stack().top<
                 frame<
@@ -40,7 +47,7 @@ namespace givm
             (void)return_info;
             GIVM_ASSERT(activation_stage == stage_t{});
 
-            std::visit([&](auto id)
+            std::visit([&, instruction = &instruction](auto id)
             {
                 auto entity = table[id];
                 if(not entity)
@@ -52,7 +59,7 @@ namespace givm
                 if constexpr(requires { entity.state().count; })
                 {
                     auto& count = entity.state().count;
-                    const std::uint32_t absorbed = std::min({ event.value, count, maximum_count });
+                    const std::uint32_t absorbed = std::min({ event.value, count, instruction->maximum_count });
                     event.value -= absorbed;
                     count -= absorbed;
                 }
@@ -61,7 +68,6 @@ namespace givm
                     GIVM_ASSERT(false);
                 }
             }, current_handler);
-
             return context.enter_next();
         }
     };

@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <type_traits>
 
@@ -12,8 +13,9 @@
 
 namespace givm
 {
+    enum class execution_state : std::uint8_t;
+
     class card_table;
-    class execution_context;
     class random_fn;
 
     template<class TCostEvent>
@@ -24,13 +26,29 @@ namespace givm
 
     namespace detail
     {
+        class execution_context;
+        struct executor_access;
+
+        template<class TInstruction>
+        struct instruction_implementation
+        {
+            template<bool Observed>
+            static execution_state execute(
+                const TInstruction& instruction, card_table& table, execution_context& context, random_fn& random
+            )
+            {
+                return instruction.execute(table, context, random);
+            }
+        };
+
         inline constexpr std::size_t instruction_storage_size = 64;
 
-        using instruction_execute_fn = bool (*)(const void*, card_table&, execution_context&, random_fn&);
+        using instruction_execute_fn = execution_state (*)(const void*, card_table&, execution_context&, random_fn&);
 
         struct instruction_rtti
         {
             instruction_execute_fn execute;
+            instruction_execute_fn execute_observed;
         };
 
         template<class TInstruction>
@@ -38,7 +56,12 @@ namespace givm
             +[](const void* storage, card_table& table, execution_context& context, random_fn& random)
             {
                 const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
-                return instruction.execute(table, context, random);
+                return instruction_implementation<TInstruction>::template execute<false>(instruction, table, context, random);
+            },
+            +[](const void* storage, card_table& table, execution_context& context, random_fn& random)
+            {
+                const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
+                return instruction_implementation<TInstruction>::template execute<true>(instruction, table, context, random);
             }
         };
 
@@ -62,9 +85,13 @@ namespace givm
                 return *reinterpret_cast<const TInstruction*>(storage_);
             }
 
-            constexpr bool execute(card_table& table, execution_context& context, random_fn& random) const
+            template<bool Observed>
+            constexpr execution_state execute(card_table& table, execution_context& context, random_fn& random) const
             {
-                return rtti_->execute(storage_, table, context, random);
+                if constexpr(Observed)
+                    return rtti_->execute_observed(storage_, table, context, random);
+                else
+                    return rtti_->execute(storage_, table, context, random);
             }
 
             constexpr const void* type_index() const noexcept
@@ -99,9 +126,13 @@ namespace givm
                 return any_instruction_view{ rtti_, storage_ };
             }
 
-            constexpr bool execute(card_table& table, execution_context& context, random_fn& random) const
+            template<bool Observed>
+            constexpr execution_state execute(card_table& table, execution_context& context, random_fn& random) const
             {
-                return rtti_->execute(storage_, table, context, random);
+                if constexpr(Observed)
+                    return rtti_->execute_observed(storage_, table, context, random);
+                else
+                    return rtti_->execute(storage_, table, context, random);
             }
 
         private:
@@ -112,8 +143,11 @@ namespace givm
         static_assert(std::is_trivially_copyable_v<any_instruction>);
     }
 
-    template<class TInstruction>
-    inline constexpr auto instruction_type_index = &detail::instruction_rtti_of<TInstruction>;
+    namespace detail
+    {
+        template<class TInstruction>
+        inline constexpr auto instruction_type_index = &instruction_rtti_of<TInstruction>;
+    }
 
     template<class TInstruction, class TContext>
     concept instruction_compatible_with =
@@ -150,17 +184,14 @@ namespace givm
                           "instruction must be trivially destructible");
         }
 
-        constexpr bool execute(card_table& table, execution_context& context, random_fn& random) const
-        {
-            return instruction_.execute(table, context, random);
-        }
+    private:
+        friend class detail::any_instruction;
 
         constexpr explicit operator const detail::any_instruction&() const noexcept
         {
             return instruction_;
         }
 
-    private:
         detail::any_instruction instruction_;
     };
 }

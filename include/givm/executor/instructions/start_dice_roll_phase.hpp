@@ -17,24 +17,24 @@
 
 namespace givm
 {
-    inline constexpr std::uint32_t packed_dice_per_random = 10;
-
-    struct dice_reroll_lane
-    {
-        std::uint32_t remaining = 0;
-        std::uint32_t cursor = 0;
-    };
-
-    struct dice_reroll_phase
-    {
-        std::uint32_t dice_count = 0;
-        std::uint32_t player0_random_count = 0;
-        dice_reroll_lane first;
-        dice_reroll_lane second;
-    };
-
     namespace detail
     {
+        inline constexpr std::uint32_t packed_dice_per_random = 10;
+
+        struct dice_reroll_lane
+        {
+            std::uint32_t remaining = 0;
+            std::uint32_t cursor = 0;
+        };
+
+        struct dice_reroll_phase
+        {
+            std::uint32_t dice_count = 0;
+            std::uint32_t player0_random_count = 0;
+            dice_reroll_lane first;
+            dice_reroll_lane second;
+        };
+
         inline constexpr size_t packed_dice_random_count(size_t dice_count) noexcept
         {
             return (dice_count + packed_dice_per_random - 1) / packed_dice_per_random;
@@ -137,34 +137,45 @@ namespace givm
         std::uint32_t count = 8;
         std::array<std::uint32_t, 2> reroll_count{ 1, 1 };
 
+    };
+
+    template<>
+    struct detail::instruction_implementation<start_dice_roll_phase>
+    {
         enum class stage_type : stage_t
         {
             prepare_broadcast,
             apply_preparation,
             reroll
         };
-        bool execute(card_table& table, execution_context& context, random_fn& random) const
+        template<bool Observed>
+        static execution_state execute(
+            const givm::start_dice_roll_phase& instruction,
+            card_table& table,
+            execution_context& context,
+            random_fn& random
+        )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
             if(stage == stage_type::prepare_broadcast)
             {
                 detail::prepare_broadcast(
                     dice_roll_preparation{
-                        .count = count,
-                        .reroll_count = reroll_count
+                        .count = instruction.count,
+                        .reroll_count = instruction.reroll_count
                     },
                     table,
                     context.stack()
                 );
                 context.current_stage() = static_cast<stage_t>(stage_type::apply_preparation);
-                return true;
+                return continue_execution;
             }
 
             if(stage == stage_type::apply_preparation)
             {
                 if(not detail::continue_broadcast<dice_roll_preparation>(table, context, random))
                 {
-                    return true;
+                    return continue_execution;
                 }
 
                 auto&& [targets, cursor, event_ref, current_handler, broadcast_stage] =
@@ -227,7 +238,7 @@ namespace givm
                     value = random();
                 }
 
-                return context.yield();
+                return context.yield(execution_state::dice_selection);
             }
 
             auto&& [random_pool, phase, input, stored_stage] =
@@ -265,7 +276,7 @@ namespace givm
 
             input.player = detail::next_reroll_player(phase);
             input.selected.reset();
-            return context.yield();
+            return context.yield(execution_state::dice_selection);
         }
     };
 }

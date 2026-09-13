@@ -16,15 +16,11 @@ struct end_round;
 | --- | --- |
 | `context_type` | `void`，表示不依赖特定事件语境 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](end_round/execute.md) | 关闭本回合并准备下一回合的先手 |
-
 ## 注意
 
 将行动玩家从最后宣布结束的一方切换为另一方，清除已有人宣布结束的标记，然后发出 [`round_ended`](../events/round_ended.md)。回合结束抽牌等其他效果可在本指令之后另行安排。
+
+以 [`step`](../executor/step.md) 推进时，执行上述操作前先返回 `execution_state::round_ending`。此时 `active_player` 仍是最后宣布结束的一方，结束声明标记尚未清除。
 
 ## 示例
 
@@ -47,8 +43,8 @@ int main()
     table.state().first_ended = true;
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("下一回合由玩家 0 先手: {}", table.state().active_player == givm::player_id{ 0 });
     std::println("结束声明标记已清除: {}", !table.state().first_ended);
 }

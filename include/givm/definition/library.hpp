@@ -17,7 +17,6 @@
 #include "issued_id_map.hpp"
 #include "subscribed_events.hpp"
 #include "types.hpp"
-#include "../enums/game_result.hpp"
 #include "../utils/debug.hpp"
 #include "../utils/type_list.hpp"
 
@@ -25,44 +24,25 @@
 
 namespace givm
 {
-    using execution_position = std::size_t;
-
     namespace detail
     {
-        inline constexpr execution_position null_program_position =
-            static_cast<execution_position>(game_result::no_result);
-        inline constexpr execution_position player_0_win_position =
-            static_cast<execution_position>(game_result::player_0_win);
-        inline constexpr execution_position player_1_win_position =
-            static_cast<execution_position>(game_result::player_1_win);
-        inline constexpr execution_position both_loss_position =
-            static_cast<execution_position>(game_result::both_loss);
-        inline constexpr execution_position program_prefix_size = both_loss_position + 1;
-        inline constexpr execution_position entry_position = program_prefix_size;
+        inline constexpr execution_position program_prefix_size = entry_position;
 
         struct null_instruction
         {
-            bool execute(card_table&, execution_context&, random_fn&) const
+            execution_state execute(card_table&, execution_context&, random_fn&) const
             {
                 GIVM_ASSERT(false);
-                return false;
-            }
-        };
-
-        struct end_game_instruction
-        {
-            bool execute(card_table&, execution_context&, random_fn&) const noexcept
-            {
-                return false;
+                return execution_state{};
             }
         };
 
         struct return_instruction
         {
-            bool execute(card_table&, execution_context&, random_fn&) const
+            execution_state execute(card_table&, execution_context&, random_fn&) const
             {
                 GIVM_ASSERT(false);
-                return false;
+                return execution_state{};
             }
         };
 
@@ -70,10 +50,10 @@ namespace givm
         {
             execution_position target;
 
-            bool execute(card_table&, execution_context&, random_fn&) const
+            execution_state execute(card_table&, execution_context&, random_fn&) const
             {
                 GIVM_ASSERT(false);
-                return false;
+                return execution_state{};
             }
         };
     }
@@ -216,6 +196,8 @@ namespace givm
     class definition_library
     {
         friend class definition_source_library;
+        friend class executor;
+        friend struct detail::executor_access;
 
     public:
         static constexpr size_t definition_count = definition_types::size();
@@ -293,17 +275,19 @@ namespace givm
             return { *this, id };
         }
 
-        static constexpr execution_position entry() noexcept
+    private:
+        static constexpr detail::execution_position entry() noexcept
         {
             return detail::entry_position;
         }
 
-        constexpr decltype(auto) instruction(execution_position position) const noexcept
+        constexpr decltype(auto) instruction(detail::execution_position position) const noexcept
         {
             GIVM_ASSERT(position < program_.size());
             return static_cast<detail::any_instruction_view>(program_[position]);
         }
 
+    public:
         template<class TDefinitionType>
         std::string_view name(definition_id<TDefinitionType> id) const
         {
@@ -419,9 +403,6 @@ namespace givm
         : tag_names_(tag_names.begin(), tag_names.end())
         {
             program_.push_back(detail::any_instruction{ detail::null_instruction{} });
-            program_.push_back(detail::any_instruction{ detail::end_game_instruction{} });
-            program_.push_back(detail::any_instruction{ detail::end_game_instruction{} });
-            program_.push_back(detail::any_instruction{ detail::end_game_instruction{} });
             GIVM_ASSERT(program_.size() == detail::program_prefix_size);
         }
 

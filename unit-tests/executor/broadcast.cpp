@@ -1,3 +1,4 @@
+#include "../executor_access.hpp"
 #include <cstdint>
 #include <string_view>
 #include <tuple>
@@ -5,9 +6,12 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <givm/definition/source_library.hpp>
 #include <givm/executor/instructions/test_command.hpp>
+#include <givm/executor/instructions/end_game.hpp>
+#include <givm/executor.hpp>
 #include <givm/table.hpp>
 
 using namespace givm;
@@ -35,7 +39,7 @@ namespace
 
         response_observation* observation;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
         {
             auto&& [broadcast, activation] = context.stack().top<
                 frame<
@@ -43,9 +47,9 @@ namespace
                     stack_count_t,
                     test_event,
                     detail::handler_id<test_event>,
-                    stage_t
+                    detail::stage_t
                 >,
-                frame<execution_context::return_info, stage_t>
+                frame<detail::execution_context::return_info, detail::stage_t>
             >();
             auto&& [handlers, cursor, event, current_handler, broadcast_stage] = broadcast;
             auto&& [return_info, activation_stage] = activation;
@@ -58,7 +62,7 @@ namespace
                 && cursor == 1
                 && std::holds_alternative<support_id>(current_handler)
                 && std::get<support_id>(current_handler) == observation->expected_handler
-                && activation_stage == stage_t{};
+                && activation_stage == detail::stage_t{};
             observation->execution_order.push_back(1);
             return context.enter_next();
         }
@@ -70,7 +74,7 @@ namespace
 
         response_observation* observation;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
         {
             observation->execution_order.push_back(2);
             return context.enter_next();
@@ -159,9 +163,9 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context& context, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
-            return context.yield();
+            return context.yield(execution_state::action);
         }
     };
 
@@ -169,27 +173,32 @@ namespace
     {
         using definition_category = support_view;
 
-        struct definition_type{};
+        struct definition_type
+        {
+            program_entry<test_event> entry;
+        };
 
         constexpr std::string_view name() const noexcept
         {
             return "terminal-response";
         }
 
-        constexpr definition_type compile(definition_compile_context&) const noexcept
+        definition_type compile(definition_compile_context& context) const
         {
-            return {};
+            return { context.add_program<test_event>(std::tuple{
+                end_game{ .result = game_result::player_1_win }
+            }) };
         }
 
         static program_entry<test_event> handle(
-            const definition_type&,
+            const definition_type& data,
             const support_view&,
             test_event&,
             const card_table&,
             random_fn&
         )
         {
-            return program_entry<test_event>::player_1_win();
+            return data.entry;
         }
     };
 }
@@ -221,10 +230,7 @@ TEST_CASE("ordinary broadcasts resume across fixed responses", "[broadcast][fixe
     executor target;
     target.enter_entry(table.definition_library());
     fixed_random random;
-    while(target.execute_next(table, random))
-    {
-        REQUIRE(target.status() == game_result::no_result);
-    }
+    REQUIRE(target.run(table, random) == execution_state::action);
 
     CHECK(observation.fixed_context_observed);
     CHECK(observation.execution_order == std::vector{ 1, 2 });
@@ -232,6 +238,7 @@ TEST_CASE("ordinary broadcasts resume across fixed responses", "[broadcast][fixe
 
 TEST_CASE("a fixed response may terminate the game without discarding its stack", "[broadcast][fixed-program]")
 {
+    const bool observed = GENERATE(false, true);
     const terminal_response_source source;
     definition_source_library sources;
     REQUIRE(sources.add(source));
@@ -240,25 +247,18 @@ TEST_CASE("a fixed response may terminate the game without discarding its stack"
         std::tuple{ stop_execution{} }
     );
     card_table table{ library };
-    table[player_id{ 0 }].add(
+    const auto handler = table[player_id{ 0 }].add(
         id_map.get_id<support_view>(source.name()),
         { .count = 1 }
-    );
+    ).id();
 
     executor target;
     target.enter_entry(table.definition_library());
     fixed_random random;
-    while(
-        target.status() == game_result::no_result
-        && target.execute_next(table, random)
-    )
-    {
-    }
-    REQUIRE(target.status() == game_result::player_1_win);
-    const auto terminal_stack_size = target.stack().size();
-    REQUIRE(terminal_stack_size != 0);
-
-    CHECK_FALSE(target.execute_next(table, random));
-    CHECK(target.status() == game_result::player_1_win);
-    CHECK(target.stack().size() == terminal_stack_size);
+    auto state = observed ? target.step(table, random) : target.run(table, random);
+    REQUIRE(state == execution_state::finished);
+    CHECK(target.view_in<execution_state::finished>().result() == game_result::player_1_win);
+    const auto [result] = detail::executor_access::stack(target).top<game_result>();
+    CHECK(result == game_result::player_1_win);
+    CHECK(detail::executor_access::stack(target).size() > sizeof(game_result));
 }

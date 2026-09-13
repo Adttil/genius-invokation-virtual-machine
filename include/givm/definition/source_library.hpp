@@ -662,7 +662,7 @@ namespace givm
                 result.program_,
                 std::forward<TInitializationSequence>(initialization_program)
             );
-            const execution_position round_entry_position = result.program_.size();
+            const detail::execution_position round_entry_position = result.program_.size();
             detail::append_instructions<void>(
                 result.program_,
                 std::forward<TRoundSequence>(round_program)

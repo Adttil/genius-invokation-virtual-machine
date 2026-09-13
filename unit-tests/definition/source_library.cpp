@@ -17,9 +17,9 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context&, random_fn&) const noexcept
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
         {
-            return false;
+            return execution_state{};
         }
     };
 

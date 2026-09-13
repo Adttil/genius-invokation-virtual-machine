@@ -61,19 +61,30 @@ namespace givm
         using context_type = void;
 
         player_id player;
-
-        bool execute(card_table& table, execution_context& context, random_fn& random) const
-        {
-            auto&& [input] = context.stack().top<selector>();
-            GIVM_ASSERT(input.player == player);
-
-            const auto selected_mask = input.selected;
-            context.stack().pop<selector>();
-
-            detail::roll_selected_dice(table, player, selected_mask, random);
-            return context.enter_next();
-        }
     };
+
+    namespace detail
+    {
+        template<>
+        struct instruction_implementation<roll_dice>
+        {
+            template<bool Observed>
+            static execution_state execute(
+                const givm::roll_dice& instruction, card_table& table, execution_context& context, random_fn& random
+            )
+            {
+                auto&& [input] = context.stack().top<selector>();
+                GIVM_ASSERT(input.player == instruction.player);
+
+                const auto selected_mask = input.selected;
+                context.stack().pop<selector>();
+
+                detail::roll_selected_dice(table, instruction.player, selected_mask, random);
+                return context.enter_next();
+            }
+
+        };
+    }
 }
 
 #include "../../macro_undef.hpp"

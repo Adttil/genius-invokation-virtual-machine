@@ -18,28 +18,52 @@ namespace givm
     {
         using context_type = void;
 
+    };
+
+    template<>
+    struct detail::instruction_implementation<select_active_character_both>
+    {
         enum class stage_type : stage_t
         {
             prepare,
             first,
             second,
             broadcast_player0,
-            broadcast_player1
+            broadcast_player1,
+            selections_applied
         };
-        bool execute(card_table& table, execution_context& context, random_fn& random) const
+        template<bool Observed>
+        static execution_state execute(
+            const givm::select_active_character_both& instruction,
+            card_table& table,
+            execution_context& context,
+            random_fn& random
+        )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
+            if constexpr(Observed)
+            {
+                if(stage == stage_type::selections_applied)
+                {
+                    const auto [first, second, stored_stage] =
+                        context.stack().top<character_id, character_id, stage_t>();
+                    const auto player0 = first.player_id == player_id{ 0 } ? first : second;
+                    const auto player1 = first.player_id == player_id{ 0 } ? second : first;
+                    context.stack().pop<character_id, character_id, stage_t>();
+                    return prepare_broadcasts(table, context, player0, player1);
+                }
+            }
             if(stage == stage_type::broadcast_player0 || stage == stage_type::broadcast_player1)
             {
                 if(not detail::continue_broadcast<active_character_changed>(table, context, random))
                 {
-                    return true;
+                    return continue_execution;
                 }
 
                 detail::pop_broadcast<active_character_changed>(context);
                 if(stage == stage_type::broadcast_player0)
                 {
-                    return true;
+                    return continue_execution;
                 }
 
                 return context.enter_next();
@@ -52,7 +76,7 @@ namespace givm
                     character_id{ .player_id = player_id{ 0 }, .index = 0 },
                     static_cast<stage_t>(stage_type::first)
                 );
-                return context.yield();
+                return context.yield(execution_state::initial_active_character_selection);
             }
 
             auto&& [first_selection, input_selection, stored_stage] =
@@ -65,14 +89,13 @@ namespace givm
                     .index = 0
                 };
                 stored_stage = static_cast<stage_t>(stage_type::second);
-                return context.yield();
+                return context.yield(execution_state::remaining_active_character_selection);
             }
 
             GIVM_ASSERT(stage == stage_type::second);
             const auto first_selection_copy = first_selection;
             const auto second_selection_copy = input_selection;
             GIVM_ASSERT(not (first_selection_copy.player_id == second_selection_copy.player_id));
-            context.stack().pop<character_id, character_id, stage_t>();
 
             const auto player0_selection = first_selection_copy.player_id == player_id{ 0 }
                 ? first_selection_copy
@@ -86,22 +109,37 @@ namespace givm
             GIVM_ASSERT(static_cast<bool>(table[player0_selection]));
             GIVM_ASSERT(static_cast<bool>(table[player1_selection]));
 
-            auto& player0_state = table[player_id{ 0 }].state();
-            auto& player1_state = table[player_id{ 1 }].state();
+            table[player_id{ 0 }].state().active_character = player0_selection;
+            table[player_id{ 1 }].state().active_character = player1_selection;
+            if constexpr(Observed)
+            {
+                stored_stage = static_cast<stage_t>(stage_type::selections_applied);
+                return execution_state::initial_active_characters_selected;
+            }
+            context.stack().pop<character_id, character_id, stage_t>();
+            return prepare_broadcasts(table, context, player0_selection, player1_selection);
+        }
+
+    private:
+        static execution_state prepare_broadcasts(
+            card_table& table,
+            execution_context& context,
+            character_id player0_selection,
+            character_id player1_selection
+        )
+        {
             const active_character_changed player0_event{
                 .current = player0_selection
             };
             const active_character_changed player1_event{
                 .current = player1_selection
             };
-            player0_state.active_character = player0_selection;
-            player1_state.active_character = player1_selection;
 
             detail::prepare_broadcast(player1_event, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::broadcast_player1);
             detail::prepare_broadcast(player0_event, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::broadcast_player0);
-            return true;
+            return continue_execution;
         }
     };
 }

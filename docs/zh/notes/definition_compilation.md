@@ -322,7 +322,7 @@ static handler_program_entry_t<TEvent> handle(
 
 没有匹配调用时，该 definition 不响应这一 view 与事件组合。调用存在但返回类型错误时，source 不合法，不能静默退化为无 handler。
 
-handler 可以直接修改 event，但不能通过 const table 修改持久状态。需要修改 table 时，返回由 `compile(...)` 保存的程序入口；返回空入口只表示不进入响应程序，已经完成的 event 修改仍然保留。handler 也可以通过 `program_entry` 的具名结果直接结束对局。
+handler 可以直接修改 event，但不能通过 const table 修改持久状态。需要修改 table 时，返回由 `compile(...)` 保存的程序入口；返回空入口只表示不进入响应程序，已经完成的 event 修改仍然保留。需要结束对局时，在 `compile(...)` 中把公开 `end_game` 指令编入相应 Context 的程序，由 handler 返回保存的入口。
 
 计数护盾可以根据当前事件和实体状态决定是否返回前面编译的吸收程序：
 
@@ -414,7 +414,7 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 `definition_library` 是定义源集和游戏流程规则共同编译出的不可变游戏规则，不是一局游戏的可变状态。table 引用一份 definition library；table 与 executor 共同构成对局状态。
 
-definition library 通过 issued id 提供 definition view、名称、标签和事件分派查询，并提供游戏主入口及按公开执行位置读取指令的能力。编译后的具体 definition 对象由核心传给对应 handler；名称到 issued id 的查找由 `issued_id_map` 提供。其内部容器和程序布局不是公开接口。
+definition library 通过 issued id 提供 definition view、名称、标签和事件分派查询；游戏入口和取指仅供内部执行器使用。编译后的具体 definition 对象由核心传给对应 handler；名称到 issued id 的查找由 `issued_id_map` 提供。其内部容器和程序布局不是公开接口。
 
 需要持久化定义库构建信息时，稳定描述包括按类别记录的 definition source 完整名称，以及初始化程序和回合程序中的公开指令。恢复时，上层注册表按“类别 + 完整名称”找到 source 并重新编译。同类别同名却实现不同属于拓展冲突，核心不尝试序列化或比较任意 C++、Lua 定义实现。
 
@@ -434,6 +434,6 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 6. 将 definition 响应程序与调用方提供的初始化程序、回合程序共同组成游戏规则程序。
 7. 所有 definition 完整构造后，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`。
 
-编译期间的中间对象不是 `definition_library` 的可观察状态。程序段存放顺序、入口数值、内部连接指令和擦除存储也都不是定义源接口。definition source 与游戏流程只能提交核心公开指令；只要对局仍在运行，上层观察到的当前指令也必须来自公开指令集。
+编译期间的中间对象不是 `definition_library` 的可观察状态。程序段存放顺序、入口数值、内部连接指令和擦除存储也都不是定义源接口。definition source 与游戏流程只能提交核心公开指令描述；上层运行期间通过 execution_view 观察领域现场，而不是查看当前指令。
 
 [开发备忘](../notes.md)

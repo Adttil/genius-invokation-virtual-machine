@@ -13,16 +13,17 @@ inline constexpr size_t selection_capacity = 64;
 ## 示例
 
 ```cpp
+#include <bitset>
 #include <print>
 
 #include <givm/givm.hpp>
 
 int main()
 {
-    givm::selector selection{};
-    selection.selected.set(givm::selection_capacity - 1);
-    std::println("可表示的位置数量: {}", selection.selected.size());
-    std::println("已选择最后一个位置: {}", selection.selected.test(givm::selection_capacity - 1));
+    std::bitset<givm::selection_capacity> selection{};
+    selection.set(givm::selection_capacity - 1);
+    std::println("可表示的位置数量: {}", selection.size());
+    std::println("已选择最后一个位置: {}", selection.test(givm::selection_capacity - 1));
 }
 ```
 

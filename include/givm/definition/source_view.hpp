@@ -15,7 +15,6 @@
 #include "instruction.hpp"
 #include "subscribed_events.hpp"
 #include "types.hpp"
-#include "../enums/game_result.hpp"
 
 namespace givm
 {
@@ -25,6 +24,13 @@ namespace givm
 
     template<class TCategory>
     class definition_source_view;
+
+    namespace detail
+    {
+        using execution_position = std::size_t;
+        inline constexpr execution_position null_program_position = 0;
+        inline constexpr execution_position entry_position = 1;
+    }
 
     template<class TContext>
     class program_entry
@@ -37,24 +43,9 @@ namespace givm
             return {};
         }
 
-        [[nodiscard]] static constexpr program_entry player_0_win() noexcept
-        {
-            return program_entry{ game_result::player_0_win };
-        }
-
-        [[nodiscard]] static constexpr program_entry player_1_win() noexcept
-        {
-            return program_entry{ game_result::player_1_win };
-        }
-
-        [[nodiscard]] static constexpr program_entry both_loss() noexcept
-        {
-            return program_entry{ game_result::both_loss };
-        }
-
         [[nodiscard]] constexpr bool is_null() const noexcept
         {
-            return position_ == static_cast<std::size_t>(game_result::no_result);
+            return position_ == detail::null_program_position;
         }
 
         [[nodiscard]] constexpr explicit operator bool() const noexcept
@@ -69,14 +60,10 @@ namespace givm
         : position_{ position }
         {}
 
-        constexpr explicit program_entry(game_result result) noexcept
-        : position_{ static_cast<std::size_t>(result) }
-        {}
-
-        std::size_t position_ = static_cast<std::size_t>(game_result::no_result);
+        std::size_t position_ = detail::null_program_position;
 
         friend class definition_compile_context;
-        friend class execution_context;
+        friend class detail::execution_context;
     };
 
     namespace detail

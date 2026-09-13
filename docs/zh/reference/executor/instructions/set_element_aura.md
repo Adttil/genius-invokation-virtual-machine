@@ -23,12 +23,6 @@ struct set_element_aura;
 | `target` | [`character_id`](../../table/character_id.md) | 要设置附着的有效角色 |
 | `aura` | [`element_aura`](../../enums/element_aura.md) | 新的元素附着 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](set_element_aura/execute.md) | 直接指定角色身上的元素附着 |
-
 ## 注意
 
 本指令只设置附着，不触发元素反应。需要施加元素并判断反应时，使用 [`apply_element`](apply_element.md)。
@@ -75,8 +69,8 @@ int main()
         definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("目标附着水元素: {}", table[target].state().aura == givm::element_aura::hydro);
 }
 ```

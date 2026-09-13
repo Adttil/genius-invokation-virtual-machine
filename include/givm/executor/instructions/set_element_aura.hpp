@@ -13,10 +13,17 @@ namespace givm
 
         character_id target;
         element_aura aura;
+    };
 
-        bool execute(card_table& table, execution_context& context, random_fn&) const
+    template<>
+    struct detail::instruction_implementation<set_element_aura>
+    {
+        template<bool Observed>
+        static execution_state execute(
+            const givm::set_element_aura& instruction, card_table& table, execution_context& context, random_fn&
+        )
         {
-            table[target].state().aura = aura;
+            table[instruction.target].state().aura = instruction.aura;
             return context.enter_next();
         }
     };

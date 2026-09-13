@@ -51,19 +51,12 @@
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
 | [`definition_id`](definition/definition_id.md) | 实体定义的身份标识 |
 | [`tag_id`](definition/tag_id.md) | 分类标签的身份标识 |
-| [`execution_position`](definition/execution_position.md) | 当前将要执行的操作位置 |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`support_subscribed_events`](definition/support_subscribed_events.md) | 场上实体共用的事件列表 |
 | [`handler_program_context_t`](definition/handler_program_context_t.md) | 事件响应所用的 context 类型 |
 | [`handler_program_entry_t`](definition/handler_program_entry_t.md) | 事件响应返回的效果入口类型 |
 | [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
 | [`handle_fn_t`](definition/handle_fn_t.md) | 统一的事件响应函数指针类型 |
-
-## 常量
-
-|  |  |
-| --- | --- |
-| [`instruction_type_index`](definition/instruction_type_index.md) | 具体指令类型的标识 |
 
 ## 函数
 

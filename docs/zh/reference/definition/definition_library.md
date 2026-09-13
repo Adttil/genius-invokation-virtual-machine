@@ -27,8 +27,6 @@ class definition_library;
 |  |  |
 | --- | --- |
 | [`operator[]`](definition_library/operator_at.md) | 查看指定定义 |
-| [`entry`](definition_library/entry.md) | 取得对局流程的初始执行位置 |
-| [`instruction`](definition_library/instruction.md) | 查看执行位置上的指令 |
 | [`name`](definition_library/name.md) | 取得定义名称 |
 | [`tag_name`](definition_library/tag_name.md) | 取得标签名称 |
 | [`has_tag`](definition_library/has_tag.md) | 检查定义是否具有一个标签 |
@@ -40,7 +38,7 @@ class definition_library;
 
 ## 注意
 
-通过 [`definition_source_library::compile`](definition_source_library/compile.md) 创建。配套 ID、执行位置与程序入口应始终用于产生它们的定义库；使用它的牌桌、定义视图和指令视图不能比定义库存续更久。名称和标签的字符存储仍须保持有效。
+通过 [`definition_source_library::compile`](definition_source_library/compile.md) 创建。配套 ID 与程序入口应始终用于产生它们的定义库；使用它的牌桌和定义视图不能比定义库存续更久。名称和标签的字符存储仍须保持有效。
 
 ## 示例
 

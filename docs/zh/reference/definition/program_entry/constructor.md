@@ -18,16 +18,41 @@ constexpr program_entry() noexcept = default;
 
 ```cpp
 #include <print>
+#include <string_view>
+#include <tuple>
 
 #include <givm/givm.hpp>
 
+struct result_source
+{
+    using definition_category = givm::support_view;
+    using entry_type = givm::program_entry<givm::round_ended>;
+
+    std::string_view name() const { return "终局判定"; }
+    entry_type compile(givm::definition_compile_context& context) const
+    {
+        entry_type effect{};
+        std::println("尚无后续效果: {}", effect.is_null());
+        effect = context.add_program<givm::round_ended>(
+            std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } });
+        std::println("已选择终局效果: {}", static_cast<bool>(effect));
+        return effect;
+    }
+    static entry_type handle(
+        const entry_type& entry, const givm::support_view&, givm::round_ended&,
+        const givm::card_table&, givm::random_fn&)
+    {
+        return entry;
+    }
+};
+
 int main()
 {
-    using entry_type = givm::handler_program_entry_t<givm::round_ended>;
-    entry_type effect{};
-    std::println("尚无后续效果: {}", effect.is_null());
-    effect = entry_type::both_loss();
-    std::println("已选择终局效果: {}", static_cast<bool>(effect));
+    const result_source source{};
+    givm::definition_source_library sources{};
+    sources.add(source);
+    const auto [library, ids] = sources.compile(
+        std::tuple{}, std::tuple{ givm::start_round{} });
 }
 ```
 

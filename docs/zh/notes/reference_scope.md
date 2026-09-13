@@ -6,9 +6,9 @@
 
 - 定义源和游戏流程必须使用核心给定的公开指令集合；模板缺少静态集合检查，不改变这项约定。指令字段供定义源构造，事件字段供响应函数访问，二者都是公开接口，不因采用结构体或参与内部结算而变成仅供实现使用的数据。
 - 牌桌包含实体、只读 view、ID、公开状态、参数和成员操作。`card_data` 用于实际的卡牌搬运接口，因此包含在 reference 中。其余后台 `*_data`、`status_slot`、`invalid_status_index` 和 `detail` 存储辅助对象不作为独立的用户接口推广。
-- 定义库返回的指令观察对象虽使用内部类型名，但调用方需要使用其 `is`、`as`、`type_index` 等操作，因此在返回该对象的公开接口文档中说明。
-- `execution_context` 由核心指令使用，包含继续、暂停、进入效果和结束对局等操作；定义源不能通过自行编写指令来扩展集合。外部输入所需的最小后缀有文档，完整调用帧、广播帧和 `return_info` 排列不属于 reference。
-- `onpay_item` 只用于 `begin_action` 保存费用响应及其减费记录，不是定义源响应参数，也不在公开输入后缀中，因此不单列 reference。旧测试访问完整费用缓存时使用它，不能据此把缓存布局作为公开契约。
+- 定义库取指、执行位置与指令类型标识只供内部使用。公开运行接口返回 execution_state，由 view_in 取得相应访问对象；纯通知使用空视图，相关数据直接读取 table。
+- execution_context、stage_t、selector 与行动请求实现类型位于 `givm::detail` 命名空间，文件仍按所属功能组织。executor 不公开栈访问；执行现场的公开读写通过 execution_view 的读取方法和参数式输入，不再维护外部输入槽或完整帧 ABI。utils 中的栈工具可以独立使用。
+- `onpay_item` 只用于 `begin_action` 保存费用响应及其减费记录，不是定义源响应参数，也不由公开输入接口暴露，因此不单列 reference。旧测试访问完整费用缓存时使用它，不能据此把缓存布局作为公开契约。
 - `broadcast.hpp` 中的辅助函数位于 `givm::detail`，不能据此把其广播顺序写成所有事件的强制约定。
 - 未从指令公共入口导出的 `push_selector`、`roll_dice` 仍使用旧式栈配合，`process_dice_roll_phase` 是旧名称。这些遗留指令不列入新 reference。
 - `assume_enabled_t`、`assume_enabled` 没有实际调用点；`utils/optional.hpp`、`stable_vector.hpp`、`inplace_vector.hpp` 没有被三个公共入口引用，其中还有未完成的声明或接口。这些遗留文件需另行整理，本轮没有为其建立看似可用的公开 API 页。
@@ -20,11 +20,12 @@
 
 - `aura_after_reaction` 恒返回无附着，源码保留了附着消耗规则的 TODO；`aura_without_reaction` 也有非反应附着保留规则的 TODO。不能据此宣称完整实现了全部元素附着规则。
 - `apply_element` 的默认反应后果、`deal_damage` 的若干反应伤害加成仍有 TODO。文档不补写源码尚未执行的游戏效果。
+- 回合开始的掷骰子仍由独立指令安排，与回合开始广播的整合尚未完成；本次只调整回合计数及观察边界，目标顺序和未修范围见[执行观察与输入](execution_observation.md#本次确定的观察边界)。
 - `reaction_between` 对水雷组合返回感电；区分月感电所需状态仍待实现。
 - `player_data::clean_up()` 压缩角色数据后，没有同步重映射 `player_state::active_character`。这是源码阅读发现的风险，需要结合角色移除和清理场景另行验证。
 - 从非 const 的 `random_fn` 左值构造另一个 `random_fn` 时，模板构造可能优先于隐式复制构造；此时经模板构造的新包装会引用前一个包装对象。已经用独立小程序验证：重新给原包装赋值后，新包装也改用新的来源。后续若修改构造约束，需要同时检视生命周期说明。
 - 两个 `damage_flag_bits` 参数的 `operator|` 定义为 `damage_flags` 的隐藏友元；仅有枚举实参时，不能依赖它自然被实参相关查找找到。使用 `damage_flags` 对象作为左操作数可正常组合标志。
-- `begin_action` 可以通过最小输入后缀提交行动，但尚无单独读取计算后候选费用的公开访问函数。读取这部分费用仍会涉及内部缓存的布局；reference 不把完整内部帧变成调用方的约定。
+- 行动费用原本缺少独立的公开读取入口；如今由 execution_view<action>::costs() 提供只读范围。内部缓存布局仍不属于公开契约。
 - `begin_action` 重新报价沿用费用行当前的 `cost.target`，没有恢复最初候选；提交缓存中的 onpay 时也不再次检查原响应者是否有效。修改行动系统时需核对目标被改写、前一项效果使后一响应者失效的场景，详见[费用缓存的核对事项](event_dispatch/payment_commit.md#重新报价与响应者变化)。
 - 遗留 `push_selector` 压入选择后调用 `enter_next()`，而后者会重置栈顶进度值；旧选择协议未准备相应后缀。这组未从公共头导出的旧指令不能仅因文件仍在就被视为兼容当前执行器，见[遗留选择协议](instructions.md#遗留选择协议)。
 - 迁移旧设计时另核实：`any_instruction_for<void>` 转装为具体事件的 `any_instruction_for<E>`，会对整个包装再次应用 64 字节 payload 限制。独立编译得到 `72 <= 64` 断言失败；普通无 context 依赖的具体指令仍能加入事件程序。旧文的相容性意图与这一包装转换缺口需分开看，见[固定程序记录](fixed_program.md)。

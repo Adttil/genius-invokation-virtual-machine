@@ -16,19 +16,17 @@ struct begin_action;
 | --- | --- |
 | `context_type` | `void`，表示不依赖特定事件语境 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](begin_action/execute.md) | 开始本回合的行动阶段，让玩家依次选择行动，直到双方都宣布结束 |
-
 ## 注意
 
 先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持主动切换出战角色和宣布结束；当前行动方必须已有出战角色。主动切换可经过费用计算、支付、出战角色变更及行动权交接。双方均宣布结束后，本指令才结束行动阶段。
 
-等待行动输入时，按 `top<action_argument, action_request, stage_t>()` 取得参数、请求和需保留的尾部状态。通过 [`action_request`](action_request.md) 指定行动，通过 [`action_argument`](action_argument.md) 提供要支付的骰子。宣布结束无需支付骰子；主动切换时，`action_index` 按当前存活非出战角色的遍历顺序选择目标。调用方负责保证提交的支付满足计算出的费用。
+等待行动输入时，执行器返回 `execution_state::action`，通过相应的[现场视图](../execution_view/action.md)预览费用、执行行动或宣布结束。主动切换时，候选下标按当前存活非出战角色的遍历顺序选择目标；[`action_argument`](action_argument.md) 包含要支付的骰子，调用方负责保证支付满足计算出的费用。宣布结束无需支付骰子。
 
-只请求计算切换费用时，执行器计算后再次等待输入，并清空请求。之后执行该行动需要重新填写请求，见 [`action_request_kind`](action_request_kind.md)。
+只请求计算切换费用时，下一次推进完成计算后再次返回行动现场；通过新取得的视图读取费用，再提交要执行的行动。
+
+以 [`step`](../executor/step.md) 推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../execution_view/active_character_changed.md)给出目标，牌桌仍可读取原出战角色；随后推进先完成设置，再处理变更响应。到达此现场前，已确认的费用响应、骰子支付及 [`dice_removed`](../events/dice_removed.md) 响应均已完成。
+
+以 [`step`](../executor/step.md) 推进时，每次新的行动机会先返回 `execution_state::action_started`，随后才处理 `before_action`。快速行动不结束当前机会；战斗行动结束后，即使另一方已经宣布结束、仍由当前玩家行动，也会报告新的行动机会。宣布结束时先返回 `execution_state::round_end_declared`，此时牌桌上的 `active_player` 仍是宣布结束的一方，随后推进才处理其结束响应。
 
 ## 示例
 
@@ -74,17 +72,15 @@ int main()
     table[givm::player_id{ 1 }].state().active_character = target;
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    auto state = execution.run(table, random);
     int declarations = 0;
-    while(execution.status() == givm::game_result::no_result)
+    while(state == givm::execution_state::action)
     {
         // 当前玩家宣布本回合结束。
-        auto&& [request, preserved] = execution.stack().top<givm::action_request, givm::stage_t>();
-        request = { .request_kind = givm::action_request_kind::do_action,
-                    .action_kind = givm::action_kind::declare_round_end };
+        execution.view_in<givm::execution_state::action>().declare_round_end();
         ++declarations;
-        while(execution.execute_next(table, random)) {}
+        state = execution.run(table, random);
     }
     std::println("双方结束声明次数: {}", declarations);
 }

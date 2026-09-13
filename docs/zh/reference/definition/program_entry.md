@@ -9,7 +9,7 @@ template<class TContext>
 class program_entry;
 ```
 
-一段效果的入口。事件响应可以用它选择接下来执行的效果，也可以表示没有后续效果，或者直接选择某种终局结果。
+一段效果的入口。事件响应可以用它选择接下来执行的效果，也可以表示没有后续效果。
 
 ## 模板参数
 
@@ -23,15 +23,12 @@ class program_entry;
 | --- | --- |
 | [(构造函数)](program_entry/constructor.md) | 构造空入口 |
 | [`null`](program_entry/null.md) | 取得空入口 |
-| [`player_0_win`](program_entry/player_0_win.md) | 取得玩家 0 获胜的终局入口 |
-| [`player_1_win`](program_entry/player_1_win.md) | 取得玩家 1 获胜的终局入口 |
-| [`both_loss`](program_entry/both_loss.md) | 取得双败终局入口 |
 | [`is_null`](program_entry/is_null.md) | 检查入口是否为空 |
 | [`operator bool`](program_entry/operator_bool.md) | 检查入口是否非空 |
 
 ## 注意
 
-普通效果入口由 [`definition_compile_context::add_program`](definition_compile_context/add_program.md) 产生，不能跨定义库使用。context 不同的入口不能相互转换。空入口表示“不进入任何后续效果”，不能传给 `execution_context::enter`。
+非空入口由 [`definition_compile_context::add_program`](definition_compile_context/add_program.md) 产生，不能跨定义库使用。context 不同的入口不能相互转换。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](../executor/instructions/end_game.md) 编入其程序。
 
 ## 非成员函数
 

@@ -22,12 +22,6 @@ struct shuffle_deck;
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 要洗牌的玩家 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](shuffle_deck/execute.md) | 随机重排指定玩家牌堆中的牌 |
-
 ## 示例
 
 ```cpp
@@ -64,8 +58,8 @@ int main()
     player.insert_deck_card(1, b, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("洗牌后牌数: {}", player.deck_card_count());
     std::println("原底牌变为顶牌: {}", player.deck_card_definition(1).value() == a.value());
 }

@@ -24,12 +24,6 @@ struct insert_deck_card;
 | `definition` | `definition_id<card_definition>` | 要插入的牌定义 |
 | `position` | `std::int32_t` | 插入位置，初始为 -1，即牌堆顶 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](insert_deck_card/execute.md) | 向指定玩家的牌堆插入一张牌 |
-
 ## 注意
 
 位置非负时，从牌堆底起计数，`0` 表示最底端，牌堆大小表示最顶端；负数从顶端计数，`-1` 表示顶端、`-2` 表示顶端下一张的位置。位置必须落在现有牌之间或两端。
@@ -67,8 +61,8 @@ int main()
     givm::card_table table{ library };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("牌堆数量: {}", table[givm::player_id{ 0 }].deck_card_count());
     std::println("插入指定牌: {}", table[givm::player_id{ 0 }].deck_card_definition(0).value() == card.value());
 }

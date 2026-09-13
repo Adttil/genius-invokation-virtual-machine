@@ -25,12 +25,6 @@ struct apply_element;
 | `element` | [`element`](../../enums/element.md) | 施加的元素 |
 | `cause` | [`element_application_cause`](../../enums/element_application_cause.md) | 附着来源的类别，初始为 effect |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](apply_element/execute.md) | 向一个角色施加元素附着 |
-
 ## 注意
 
 反应时先发出 [`elemental_reaction_will_occur`](../events/elemental_reaction_will_occur.md)，随后完成默认或由响应接管的附着处理，最后发出 [`after_elemental_reaction`](../events/after_elemental_reaction.md)。
@@ -77,8 +71,8 @@ int main()
         definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("目标附着水元素: {}", table[target].state().aura == givm::element_aura::hydro);
 }
 ```

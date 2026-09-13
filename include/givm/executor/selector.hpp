@@ -4,17 +4,20 @@
 #include <bitset>
 #include <cstddef>
 
-#include "../table/entity_id.hpp"
+#include "../table.hpp"
 
 namespace givm
 {
     inline constexpr size_t selection_capacity = 64;
 
-    struct selector
+    namespace detail
     {
-        player_id player;
-        std::bitset<selection_capacity> selected;
-    };
+        struct selector
+        {
+            player_id player;
+            std::bitset<selection_capacity> selected;
+        };
+    }
 }
 
 #endif

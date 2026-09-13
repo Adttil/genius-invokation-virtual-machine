@@ -15,22 +15,34 @@ namespace givm
 
         player_id player;
         definition_id<character_view> definition;
-
-        bool execute(card_table& table, execution_context& context, random_fn& random) const
-        {
-            const auto character = table[player].add(definition, character_state{}).id();
-            character_initialization event{};
-            const auto character_entity = std::as_const(table)[character];
-            (void)character_entity.definition().template handle<character_initialization>(
-                character_entity,
-                event,
-                std::as_const(table),
-                random
-            );
-            table[character].state() = event.state;
-            return context.enter_next();
-        }
     };
+
+    namespace detail
+    {
+        template<>
+        struct instruction_implementation<enter_character>
+        {
+            template<bool Observed>
+            static execution_state execute(
+                const givm::enter_character& instruction, card_table& table, execution_context& context, random_fn& random
+            )
+            {
+                const auto character = table[instruction.player].add(instruction.definition, character_state{}).id();
+                character_initialization event{};
+                const auto character_entity = std::as_const(table)[character];
+                (void)character_entity.definition().template handle<character_initialization>(
+                    character_entity,
+                    event,
+                    std::as_const(table),
+                    random
+                );
+                table[character].state() = event.state;
+
+                return context.enter_next();
+            }
+
+        };
+    }
 }
 
 #endif

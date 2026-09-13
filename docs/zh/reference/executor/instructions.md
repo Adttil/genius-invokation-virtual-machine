@@ -6,7 +6,7 @@
 
 规则流程与事件效果只能组合核心给定集合中的指令；公开接口不支持自行定义新的指令类型。
 
-具有 `context_type = void` 的指令可用于一般操作；具有事件类型的指令只能放入对应事件的响应。例如 [`absorb_damage_by_count`](instructions/absorb_damage_by_count.md) 用于伤害结算时的抵挡效果。一次调用总会完整执行一条指令；需要等待玩家输入或其他事件响应的结算，可以在后续调用中重新进入同一条指令。
+具有 `context_type = void` 的指令可用于一般操作；具有事件类型的指令只能放入对应事件的响应。例如 [`absorb_damage_by_count`](instructions/absorb_damage_by_count.md) 用于伤害结算时的抵挡效果。指令用于描述规则，其内部执行函数不属于公开接口；对局通过 [`executor`](executor.md) 推进，并通过执行现场观察结果和提交输入。
 
 ## 开局与牌堆
 
@@ -31,6 +31,7 @@
 | [`start_battle`](instructions/start_battle.md) | 首回合战斗开始的通知指令 |
 | [`begin_action`](instructions/begin_action.md) | 行动阶段的处理指令 |
 | [`end_round`](instructions/end_round.md) | 回合结束指令 |
+| [`end_game`](instructions/end_game.md) | 按指定胜负结果结束对局的指令 |
 
 ## 伤害与元素
 
@@ -52,14 +53,11 @@
 | | |
 | --- | --- |
 | [`relative_player`](instructions/relative_player.md) | 相对于当前行动玩家的一方 |
-| [`action_kind`](instructions/action_kind.md) | 行动种类 |
-| [`action_request_kind`](instructions/action_request_kind.md) | 行动请求的处理方式 |
 | [`action_target_kind`](instructions/action_target_kind.md) | 行动目标的种类 |
 
 ## 行动参数
 
 | | |
 | --- | --- |
-| [`action_request`](instructions/action_request.md) | 调用方提交的行动请求 |
 | [`action_target`](instructions/action_target.md) | 行动的目标 |
 | [`action_argument`](instructions/action_argument.md) | 执行行动时提交的支付骰子与目标 |

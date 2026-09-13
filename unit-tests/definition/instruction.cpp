@@ -16,17 +16,17 @@ namespace
 
         int value;
 
-        bool execute(card_table&, execution_context&, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const
         {
-            return true;
+            return execution_state{};
         }
     };
 
     struct unknown_context_instruction
     {
-        bool execute(card_table&, execution_context&, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const
         {
-            return true;
+            return execution_state{};
         }
     };
 
@@ -40,9 +40,9 @@ namespace
 
         int value;
 
-        bool execute(card_table&, execution_context&, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const
         {
-            return true;
+            return execution_state{};
         }
     };
 
@@ -50,9 +50,9 @@ namespace
     {
         using context_type = void;
 
-        bool execute(card_table&, execution_context&, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const
         {
-            return true;
+            return execution_state{};
         }
     };
 
@@ -60,9 +60,9 @@ namespace
     {
         using context_type = onpay_context<cost_event>;
 
-        bool execute(card_table&, execution_context&, random_fn&) const
+        execution_state execute(card_table&, detail::execution_context&, random_fn&) const
         {
-            return true;
+            return execution_state{};
         }
     };
 
@@ -70,12 +70,12 @@ namespace
     concept instruction_interface = requires(
         const T& instruction,
         card_table& table,
-        execution_context& context,
+        detail::execution_context& context,
         random_fn& random
     )
     {
         typename T::context_type;
-        { instruction.execute(table, context, random) } -> std::same_as<bool>;
+        { instruction.execute(table, context, random) } -> std::same_as<execution_state>;
     };
 }
 
@@ -98,7 +98,7 @@ TEST_CASE("typed erased instructions enforce their context when constructed", "[
     STATIC_REQUIRE(not instruction_compatible_with<onpay_instruction, cost_event>);
     STATIC_REQUIRE(instruction_compatible_with<event_any_instruction, event_context>);
     STATIC_REQUIRE(not instruction_compatible_with<event_any_instruction, other_context>);
-    STATIC_REQUIRE(instruction_interface<event_any_instruction>);
+    STATIC_REQUIRE(not instruction_interface<event_any_instruction>);
 
     STATIC_REQUIRE(std::constructible_from<event_any_instruction, stored_instruction>);
     STATIC_REQUIRE(std::constructible_from<event_any_instruction, event_instruction>);

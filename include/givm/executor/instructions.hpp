@@ -14,6 +14,7 @@
 #include "instructions/start_round.hpp"
 #include "instructions/begin_action.hpp"
 #include "instructions/end_round.hpp"
+#include "instructions/end_game.hpp"
 #include "instructions/start_dice_roll_phase.hpp"
 #include "instructions/start_battle.hpp"
 #include "instructions/absorb_damage_by_count.hpp"

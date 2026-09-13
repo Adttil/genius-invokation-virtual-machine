@@ -10,7 +10,7 @@
 
 生成器把所有前导 `#include` 提到聚合文件开头，其他代码分别放入独立命名空间。这样重模板头文件只需在一个编译单元中处理，各示例也可以使用相同的辅助名称。示例最后的 `main` 会转换为普通可调用函数，并在末尾补上 `return 0;`；只修改生成内容，不回写文档。
 
-每个页面生成一个带 `[example]` 标签的 Catch2 用例，名称是文档相对于 `docs/zh/reference/` 的路径去掉 `.md`，例如 `executor/executor/position` 或 `executor/instructions/draw_cards`。移动页面会改变测试名，无需另行维护登记表。
+每个页面生成一个带 `[example]` 标签的 Catch2 用例，名称是文档相对于 `docs/zh/reference/` 的路径去掉 `.md`，例如 `executor/executor/step` 或 `executor/instructions/draw_cards`。移动页面会改变测试名，无需另行维护登记表。
 
 需要扩展全局 `std` 或 `givm` 命名空间的示例不能直接放入这一聚合方式。产生输出等副作用的初始化应在 `main` 或其调用的函数中完成，不能放在命名空间作用域初始化时执行。
 
@@ -39,7 +39,7 @@ ctest --test-dir out/build/examples -C Debug -L "^example$" --output-on-failure
 
 ```text
 out/build/examples/example_test_tool/givm_examples
-out/build/examples/example_test_tool/givm_examples executor/executor/position.md
+out/build/examples/example_test_tool/givm_examples executor/executor/step.md
 out/build/examples/example_test_tool/givm_examples --list-tests
 ```
 

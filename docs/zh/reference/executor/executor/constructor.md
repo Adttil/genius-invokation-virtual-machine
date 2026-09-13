@@ -13,8 +13,8 @@ constexpr executor(executor&& other) noexcept;     // (3)
 
 构造执行器。
 
-1. 构造空执行器。栈为空，[`status`](status.md) 返回 [`game_result::no_result`](../../enums/game_result.md)；开始执行前需要调用 [`enter_entry`](enter_entry.md)。
-2. 复制 `other` 的执行位置和栈内容。两个执行器分别拥有各自的栈，随后推进其中一个不会改变另一个的执行状态。
+1. 构造空执行器。开始执行前需要调用 [`enter_entry`](enter_entry.md)。
+2. 复制 `other` 的对局进度和临时结算。两个执行器分别拥有各自的现场，随后推进其中一个不会改变另一个的执行状态。
 3. 从 `other` 移动执行状态。
 
 ## 参数
@@ -53,17 +53,17 @@ int main()
     execution.enter_entry(library);
     givm::card_table branch_table{ table };
     givm::executor branch{ execution };
-    while(branch.execute_next(branch_table, random))
-    {}
-    std::println("原对局尚无结果: {}", execution.status() == givm::game_result::no_result);
-    std::println("分支双方告负: {}", branch.status() == givm::game_result::both_loss);
+    branch.run(branch_table, random);
+    std::println("原对局尚未开始回合: {}", table.state().round_number == 0);
+    std::println("分支双方告负: {}",
+        branch.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }
 ```
 
 输出
 
 ```text
-原对局尚无结果: true
+原对局尚未开始回合: true
 分支双方告负: true
 ```
 

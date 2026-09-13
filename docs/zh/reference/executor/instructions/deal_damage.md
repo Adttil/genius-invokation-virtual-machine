@@ -28,15 +28,11 @@ struct deal_damage;
 | `type` | [`damage_type`](../../enums/damage_type.md) | 伤害种类 |
 | `flags` | [`damage_flags`](../../enums/damage_flags.md) | 伤害附加属性 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](deal_damage/execute.md) | 对一个角色造成伤害 |
-
 ## 注意
 
 依次经过 [`damage_calculation`](../events/damage_calculation.md)、[`damage_effect`](../events/damage_effect.md) 和 [`after_damage`](../events/after_damage.md)。计算倍率时向下取整，超出 uint32_t 范围时取其最大值；扣除生命不会低于 0。伤害后的响应结束后，根据双方是否仍有存活角色判断胜负。
+
+以 [`step`](../executor/step.md) 推进时，非零最终伤害扣除生命后先返回 `execution_state::health_reduced`；随后推进才处理元素附着及伤害后响应。相应[视图](../execution_view/health_reduced.md)的伤害值不以目标原有生命为上限。
 
 ## 示例
 
@@ -80,8 +76,8 @@ int main()
         definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("目标剩余生命: {}", table[target].state().health);
 }
 ```

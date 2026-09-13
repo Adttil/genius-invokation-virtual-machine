@@ -16,12 +16,6 @@ struct test_command;
 | --- | --- |
 | `context_type` | `void`，表示不依赖特定事件语境 |
 
-## 成员函数
-
-| | |
-| --- | --- |
-| [`execute`](test_command/execute.md) | 发出测试事件，用来检查实体定义中的事件响应是否能被调用 |
-
 ## 注意
 
 发出 [`test_event`](../events/test_event.md) 并等待相应效果完成后继续。
@@ -66,8 +60,8 @@ int main()
     table.state().round_number = 1;
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    for(execution.enter_entry(library); execution.execute_next(table, random);)
-    {}
+    execution.enter_entry(library);
+    execution.run(table, random);
     std::println("收到事件次数: {}", count);
 }
 ```

@@ -118,6 +118,12 @@ namespace givm
     {
         using context_type = void;
 
+        player_id player;
+    };
+
+    template<>
+    struct detail::instruction_implementation<replace_cards>
+    {
         enum class stage_type : stage_t
         {
             prepare_selection,
@@ -126,18 +132,23 @@ namespace givm
             broadcast_card_drawn
         };
 
-        player_id player;
-
-        bool execute(card_table& table, execution_context& context, random_fn& random) const
+        template<bool Observed>
+        static execution_state execute(
+            const givm::replace_cards& instruction,
+            card_table& table,
+            execution_context& context,
+            random_fn& random
+        )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
+
             if(stage == stage_type::prepare_selection)
             {
                 context.stack().push(
-                    selector{ .player = player },
+                    selector{ .player = instruction.player },
                     static_cast<stage_t>(stage_type::wait_selection)
                 );
-                return context.yield();
+                return context.yield(execution_state::card_selection);
             }
 
             if(stage == stage_type::prepare_card_drawn)
@@ -153,23 +164,23 @@ namespace givm
 
                 detail::prepare_broadcast(card_drawn{ .card = drawn_cards[cursor++] }, table, context.stack());
                 context.current_stage() = static_cast<stage_t>(stage_type::broadcast_card_drawn);
-                return true;
+                return continue_execution;
             }
 
             if(stage == stage_type::broadcast_card_drawn)
             {
                 if(not detail::continue_broadcast<card_drawn>(table, context, random))
                 {
-                    return true;
+                    return continue_execution;
                 }
 
                 detail::pop_broadcast<card_drawn>(context);
-                return true;
+                return continue_execution;
             }
 
             auto&& [input, stored_stage] = context.stack().top<selector, stage_t>();
             (void)stored_stage;
-            GIVM_ASSERT(input.player == player);
+            GIVM_ASSERT(input.player == instruction.player);
 
             const auto selected = input.selected;
             auto next_random = [&random]{ return random(); };
@@ -179,7 +190,7 @@ namespace givm
             {
                 drawn_cards.push_back(card);
             };
-            detail::replace_cards(table, player, selected, next_random, on_drawn);
+            detail::replace_cards(table, instruction.player, selected, next_random, on_drawn);
             context.stack().pop<selector, stage_t>();
             if(drawn_cards.empty())
             {
@@ -191,7 +202,8 @@ namespace givm
                 stack_count_t{},
                 static_cast<stage_t>(stage_type::prepare_card_drawn)
             );
-            return true;
+
+            return continue_execution;
         }
     };
 }
