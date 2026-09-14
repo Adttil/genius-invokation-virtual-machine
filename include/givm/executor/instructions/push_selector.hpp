@@ -21,7 +21,8 @@ namespace givm
         {
             template<bool Observed>
             static execution_state execute(
-                const givm::push_selector& instruction, card_table&, execution_context& context, random_fn&
+                const givm::push_selector& instruction, const definition_library&,
+                card_table&, execution_context& context, random_fn&
             )
             {
                 context.stack().push(

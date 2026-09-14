@@ -30,12 +30,14 @@ namespace givm::detail
     }(definition_types{}));
 
     template<class TEvent, class TEntity>
-    void append_broadcast_target(TEntity entity, std::vector<handler_id<TEvent>>& targets)
+    void append_broadcast_target(
+        const definition_library& library, TEntity entity, std::vector<handler_id<TEvent>>& targets
+    )
     {
         using entity_view = std::remove_cvref_t<TEntity>;
         if constexpr(requires { subscribed_events<entity_view>::template index_of<TEvent>(); })
         {
-            if(not entity.template can_handle<TEvent>())
+            if(not entity || not library[entity.definition_id()].template can_handle<TEvent, entity_view>())
             {
                 return;
             }
@@ -44,7 +46,9 @@ namespace givm::detail
     }
 
     template<class TEvent>
-    std::vector<handler_id<TEvent>> collect_all_broadcast_targets(const card_table& table)
+    std::vector<handler_id<TEvent>> collect_all_broadcast_targets(
+        const definition_library& library, const card_table& table
+    )
     {
         std::vector<handler_id<TEvent>> targets;
 
@@ -54,44 +58,44 @@ namespace givm::detail
         {
             for(auto card : player.hand_cards())
             {
-                append_broadcast_target<TEvent>(card, targets);
+                append_broadcast_target<TEvent>(library, card, targets);
                 for(auto status : card.statuses())
                 {
-                    append_broadcast_target<TEvent>(status, targets);
+                    append_broadcast_target<TEvent>(library, status, targets);
                 }
             }
 
             for(auto card : player.deck_cards())
             {
-                append_broadcast_target<TEvent>(card, targets);
+                append_broadcast_target<TEvent>(library, card, targets);
                 for(auto status : card.statuses())
                 {
-                    append_broadcast_target<TEvent>(status, targets);
+                    append_broadcast_target<TEvent>(library, status, targets);
                 }
             }
 
             for(auto support : player.supports())
             {
-                append_broadcast_target<TEvent>(support, targets);
+                append_broadcast_target<TEvent>(library, support, targets);
             }
             for(auto summon : player.summons())
             {
-                append_broadcast_target<TEvent>(summon, targets);
+                append_broadcast_target<TEvent>(library, summon, targets);
             }
             for(auto combat_status : player.combat_statuses())
             {
-                append_broadcast_target<TEvent>(combat_status, targets);
+                append_broadcast_target<TEvent>(library, combat_status, targets);
             }
             for(auto character : player.characters())
             {
-                append_broadcast_target<TEvent>(character, targets);
+                append_broadcast_target<TEvent>(library, character, targets);
                 for(auto skill : character.skills())
                 {
-                    append_broadcast_target<TEvent>(skill, targets);
+                    append_broadcast_target<TEvent>(library, skill, targets);
                 }
                 for(auto attachment : character.attachments())
                 {
-                    append_broadcast_target<TEvent>(attachment, targets);
+                    append_broadcast_target<TEvent>(library, attachment, targets);
                 }
             }
         }
@@ -100,9 +104,11 @@ namespace givm::detail
     }
 
     template<class TEvent>
-    void prepare_broadcast(const TEvent& event, const card_table& table, frame_stack& stack)
+    void prepare_broadcast(
+        const definition_library& library, const TEvent& event, const card_table& table, frame_stack& stack
+    )
     {
-        auto targets = collect_all_broadcast_targets<TEvent>(table);
+        auto targets = collect_all_broadcast_targets<TEvent>(library, table);
         stack.push(
             dynamic_array<handler_id<TEvent>>(targets),
             stack_count_t{},
@@ -114,6 +120,7 @@ namespace givm::detail
 
     template<class TEntityView, class TEvent>
     handler_program_entry_t<TEvent> try_handle(
+        const definition_library& library,
         TEntityView entity,
         TEvent& event,
         const card_table& table,
@@ -124,13 +131,14 @@ namespace givm::detail
         {
             return handler_program_entry_t<TEvent>::null();
         }
-        return entity.definition().template handle<TEvent>(
+        return library[entity.definition_id()].template handle<TEvent>(
             entity, event, table, random
         );
     }
 
     template<class TEvent>
     bool continue_broadcast(
+        const definition_library& library,
         const card_table& table,
         execution_context& context,
         random_fn& random
@@ -152,6 +160,7 @@ namespace givm::detail
             const auto entry = std::visit([&](auto id)
             {
                 return try_handle(
+                    library,
                     std::as_const(table)[id],
                     event,
                     table,

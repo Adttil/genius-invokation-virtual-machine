@@ -6,7 +6,11 @@
 
 ```cpp
 template<class TRandom>
-execution_state run(card_table& table, TRandom& random_source);
+execution_state run(
+    const definition_library& library,
+    card_table& table,
+    TRandom& random_source
+);
 ```
 [`execution_state`](../execution_state.md)
 [`card_table`](../../table/card_table.md)
@@ -25,7 +29,8 @@ execution_state run(card_table& table, TRandom& random_source);
 
 | | |
 | --- | --- |
-| `table` | 与当前执行现场配套的牌桌，使用建立现场时的定义库 |
+| `library` | 与当前执行现场配套的定义库；执行器不会在返回后持有它 |
+| `table` | 与当前执行现场配套的牌桌，其中的定义 ID 须属于本次使用的定义库 |
 | `random_source` | 本次推进使用的随机源，以左值传入；执行器不会在返回后持有它 |
 
 ## 返回值
@@ -33,6 +38,8 @@ execution_state run(card_table& table, TRandom& random_source);
 本次到达的输入现场种类，或表示对局已经结束的 `execution_state::finished`。通过 [`view_in`](view_in.md) 取得与返回值对应的视图。
 
 ## 注意
+
+每次推进须使用与建立当前现场时相同的编译产物。牌桌与执行器都不保存定义库指针；调用方负责保持程序现场、实体定义 ID 和所传定义库相匹配。
 
 本函数用于初始现场或输入现场。从 [`step`](step.md) 返回的仅供观察的现场继续时，应继续调用 `step`。已经到达 `finished` 的对局不能继续执行；重新开始应调用 `enter_entry`。
 
@@ -53,15 +60,15 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
-    const auto state = execution.run(table, random);
+    const auto state = execution.run(library, table, random);
     std::println("等待换牌: {}", state == givm::execution_state::card_selection);
     execution.view_in<givm::execution_state::card_selection>().select({});
     std::println("提交后到达终局: {}",
-        execution.run(table, random) == givm::execution_state::finished);
+        execution.run(library, table, random) == givm::execution_state::finished);
 }
 ```
 

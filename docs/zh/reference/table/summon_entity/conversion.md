@@ -40,7 +40,7 @@ int main()
     const example_source<givm::summon_view> summon_source{};
     sources.add(summon_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::summon_view>("示例");
     const auto entity = player.add(definition, { .count = 3 });

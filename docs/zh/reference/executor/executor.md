@@ -39,13 +39,13 @@ int main()
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 2 } }
     );
-    givm::card_table table{ library };
+    givm::card_table table{};
     auto random = []() -> std::uint32_t { return 0; };
 
     givm::executor execution{};
 
     execution.enter_entry(library);
-    const auto state = execution.run(table, random);
+    const auto state = execution.run(library, table, random);
 
     std::println("终局时的回合数: {}", table.state().round_number);
     std::println("是否双败: {}", state == givm::execution_state::finished

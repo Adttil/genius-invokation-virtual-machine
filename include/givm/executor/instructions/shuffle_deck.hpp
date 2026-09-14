@@ -22,7 +22,8 @@ namespace givm
         {
             template<bool Observed>
             static execution_state execute(
-                const givm::shuffle_deck& instruction, card_table& table, execution_context& context, random_fn& random
+                const givm::shuffle_deck& instruction, const definition_library&,
+                card_table& table, execution_context& context, random_fn& random
             )
             {
                 const auto target = table[instruction.player];

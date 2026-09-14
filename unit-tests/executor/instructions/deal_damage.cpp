@@ -8,8 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include <givm/executor/instructions/deal_damage.hpp>
-#include <givm/executor/views/damage.hpp>
+#include <givm/executor.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -141,16 +140,16 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
     };
 
-    bool run_until_stop(executor& target, card_table& table)
+    bool run_until_stop(const definition_library& library, executor& target, card_table& table)
     {
         zero_random random;
-        return target.run(table, random) == execution_state::action;
+        return target.run(library, table, random) == execution_state::action;
     }
 
     game_result result_after_damage(
@@ -181,7 +180,7 @@ namespace
             character_source.name()
         );
 
-        card_table table{ library };
+        card_table table{};
         table[player_id{ 0 }].add(definition_id, {
             .max_health = 10,
             .max_energy = 3,
@@ -196,9 +195,9 @@ namespace
         });
 
         executor executor;
-        executor.enter_entry(table.definition_library());
+        executor.enter_entry(library);
         zero_random random;
-        const auto state = executor.run(table, random);
+        const auto state = executor.run(library, table, random);
         return state == execution_state::finished
             ? executor.view_in<execution_state::finished>().result()
             : game_result::no_result;
@@ -241,7 +240,7 @@ TEST_CASE("deal_damage exposes calculation and effect mutation before health los
     const auto observer_id = id_map.get_id<support_view>(observer_source.name());
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
     table[player_id{ 0 }].add(definition_id, {
@@ -253,9 +252,9 @@ TEST_CASE("deal_damage exposes calculation and effect mutation before health los
     REQUIRE(character.id() == character_entity_id);
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
 
-    REQUIRE(run_until_stop(target, table));
+    REQUIRE(run_until_stop(library, target, table));
     CHECK(log.order == std::vector{
         observed_event::calculation,
         observed_event::effect,
@@ -289,7 +288,7 @@ TEST_CASE("elemental deal_damage applies its reaction between effect and after_d
     const auto observer_id = id_map.get_id<support_view>(observer_source.name());
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
     table[player_id{ 0 }].add(definition_id, {
@@ -305,9 +304,9 @@ TEST_CASE("elemental deal_damage applies its reaction between effect and after_d
     REQUIRE(character.id() == character_entity_id);
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
 
-    REQUIRE(run_until_stop(target, table));
+    REQUIRE(run_until_stop(library, target, table));
     CHECK(log.order == std::vector{
         observed_event::calculation,
         observed_event::effect,
@@ -345,7 +344,7 @@ TEST_CASE("deal_damage clamps lethal health loss without ending a living team", 
     const auto observer_id = id_map.get_id<support_view>(observer_source.name());
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
     table[player_id{ 1 }].add(definition_id, {
@@ -359,9 +358,9 @@ TEST_CASE("deal_damage clamps lethal health loss without ending a living team", 
     });
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
 
-    REQUIRE(run_until_stop(target, table));
+    REQUIRE(run_until_stop(library, target, table));
     CHECK(table[target_character_id].state().health == 0);
 }
 
@@ -392,7 +391,7 @@ TEST_CASE("deal_damage saturates reaction bonus and multiplier", "[deal_damage]"
     const auto observer_id = id_map.get_id<support_view>(observer_source.name());
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
     table[player_id{ 0 }].add(definition_id, {
@@ -411,9 +410,9 @@ TEST_CASE("deal_damage saturates reaction bonus and multiplier", "[deal_damage]"
     });
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
 
-    REQUIRE(run_until_stop(target, table));
+    REQUIRE(run_until_stop(library, target, table));
     CHECK(log.reaction == elemental_reaction::melt);
     CHECK(log.after_damage_value == max_value);
     CHECK(table[target_character_id].state().health == 0);
@@ -442,7 +441,7 @@ TEST_CASE("damage observation exposes the final value before elemental settlemen
         observer_source, character_source
     );
     const auto character_definition = ids.get_id<character_view>(character_source.name());
-    card_table observed_table{ library };
+    card_table observed_table{};
     observed_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
     observed_table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
     observed_table[player_id{ 1 }].add(character_definition, {
@@ -452,13 +451,13 @@ TEST_CASE("damage observation exposes the final value before elemental settlemen
     zero_random random;
     executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
     const auto normal_order = log.order;
     log.order.clear();
 
     executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(observed_table, random) == execution_state::health_reduced);
+    REQUIRE(observed.step(library, observed_table, random) == execution_state::health_reduced);
     const auto health = observed.view_in<execution_state::health_reduced>();
     const auto expected_damage = initial_aura == element_aura::cryo ? 4u : 2u;
     CHECK(health.source() == damage_source_id{ source });
@@ -472,13 +471,13 @@ TEST_CASE("damage observation exposes the final value before elemental settlemen
 
     auto copied_execution = observed;
     auto copied_table = observed_table;
-    REQUIRE(observed.step(observed_table, random) == execution_state::action);
+    REQUIRE(observed.step(library, observed_table, random) == execution_state::action);
     CHECK(log.order == normal_order);
     CHECK(observed_table[damaged].state().health == normal_table[damaged].state().health);
     CHECK(observed_table[damaged].state().aura == normal_table[damaged].state().aura);
     CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
 
-    REQUIRE(copied_execution.step(copied_table, random) == execution_state::action);
+    REQUIRE(copied_execution.step(library, copied_table, random) == execution_state::action);
     CHECK(copied_table[damaged].state().health == observed_table[damaged].state().health);
     CHECK(copied_table[damaged].state().aura == observed_table[damaged].state().aura);
     CHECK(detail::executor_access::stack(copied_execution).size() == detail::executor_access::stack(observed).size());
@@ -503,21 +502,21 @@ TEST_CASE("earlier lethal damage supersedes an explicit terminal instruction", "
         character_source
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
-    card_table table{ library };
+    card_table table{};
     table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
     table[player_id{ 1 }].add(definition, { .max_health = 10, .health = initial_health });
     executor execution;
     execution.enter_entry(library);
     zero_random random;
 
-    auto state = observed ? execution.step(table, random) : execution.run(table, random);
+    auto state = observed ? execution.step(library, table, random) : execution.run(library, table, random);
     if(observed)
     {
         REQUIRE(state == execution_state::health_reduced);
         const auto health = execution.view_in<execution_state::health_reduced>();
         CHECK(table[damaged].state().health == (initial_health == 1 ? 0 : 6));
         CHECK(health.value() == 4);
-        state = execution.step(table, random);
+        state = execution.step(library, table, random);
     }
     REQUIRE(state == execution_state::finished);
     const auto expected_result = initial_health == 1
@@ -541,7 +540,7 @@ TEST_CASE("damage observation retains overkill damage after health reaches zero"
         observer_source, character_source
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
-    card_table table{ library };
+    card_table table{};
     table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
     table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
     table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 1 });
@@ -549,14 +548,14 @@ TEST_CASE("damage observation retains overkill damage after health reaches zero"
     execution.enter_entry(library);
     zero_random random;
 
-    REQUIRE(execution.step(table, random) == execution_state::health_reduced);
+    REQUIRE(execution.step(library, table, random) == execution_state::health_reduced);
     const auto damage = execution.view_in<execution_state::health_reduced>();
     CHECK(damage.target() == damaged);
     CHECK(damage.value() == 999);
     CHECK(table[damaged].state().health == 0);
     CHECK(log.order == std::vector{ observed_event::calculation, observed_event::effect });
 
-    REQUIRE(execution.step(table, random) == execution_state::finished);
+    REQUIRE(execution.step(library, table, random) == execution_state::finished);
     CHECK(log.after_damage_value == 999);
     CHECK(log.order == std::vector{
         observed_event::calculation, observed_event::effect, observed_event::after_damage
@@ -587,7 +586,7 @@ TEST_CASE("zero damage skips health observation while preserving element and aft
         observer_source, character_source
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
-    card_table table{ library };
+    card_table table{};
     table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
     table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
     table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
@@ -595,7 +594,7 @@ TEST_CASE("zero damage skips health observation while preserving element and aft
     execution.enter_entry(library);
     zero_random random;
 
-    REQUIRE(execution.step(table, random) == execution_state::action);
+    REQUIRE(execution.step(library, table, random) == execution_state::action);
     CHECK(table[damaged].state().health == 10);
     CHECK(table[damaged].state().aura == (type == damage_type::pyro ? element_aura::pyro : element_aura::none));
     CHECK(log.order == std::vector{

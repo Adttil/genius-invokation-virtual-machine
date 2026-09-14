@@ -35,6 +35,7 @@ namespace givm
         template<bool Observed>
         static execution_state execute(
             const givm::select_active_character_both& instruction,
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             random_fn& random
@@ -50,12 +51,12 @@ namespace givm
                     const auto player0 = first.player_id == player_id{ 0 } ? first : second;
                     const auto player1 = first.player_id == player_id{ 0 } ? second : first;
                     context.stack().pop<character_id, character_id, stage_t>();
-                    return prepare_broadcasts(table, context, player0, player1);
+                    return prepare_broadcasts(library, table, context, player0, player1);
                 }
             }
             if(stage == stage_type::broadcast_player0 || stage == stage_type::broadcast_player1)
             {
-                if(not detail::continue_broadcast<active_character_changed>(table, context, random))
+                if(not detail::continue_broadcast<active_character_changed>(library, table, context, random))
                 {
                     return continue_execution;
                 }
@@ -117,11 +118,12 @@ namespace givm
                 return execution_state::initial_active_characters_selected;
             }
             context.stack().pop<character_id, character_id, stage_t>();
-            return prepare_broadcasts(table, context, player0_selection, player1_selection);
+            return prepare_broadcasts(library, table, context, player0_selection, player1_selection);
         }
 
     private:
         static execution_state prepare_broadcasts(
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             character_id player0_selection,
@@ -135,9 +137,9 @@ namespace givm
                 .current = player1_selection
             };
 
-            detail::prepare_broadcast(player1_event, table, context.stack());
+            detail::prepare_broadcast(library, player1_event, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::broadcast_player1);
-            detail::prepare_broadcast(player0_event, table, context.stack());
+            detail::prepare_broadcast(library, player0_event, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::broadcast_player0);
             return continue_execution;
         }

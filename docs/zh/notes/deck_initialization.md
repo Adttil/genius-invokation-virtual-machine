@@ -1,6 +1,6 @@
 # 牌组链接、装载与初始化的分工
 
-本篇保留牌组准备拆成多个阶段的理由、阶段之间的拥有关系和匹配约束，供修改对局创建流程时查阅。当前接口分别见 [link_deck](../reference/definition/link_deck.md)、[linked_deck](../reference/definition/linked_deck.md) 和 [card_table::load_deck](../reference/table/card_table/load_deck.md)；以下保留跨接口组合时容易遗漏的条件，不另设一套牌组 API。
+本篇保留牌组准备拆成多个阶段的理由、阶段之间的拥有关系和匹配约束，供修改对局创建流程时查阅。当前接口分别见 [link_deck](../reference/definition/link_deck.md)、[linked_deck](../reference/table/linked_deck.md) 和 [card_table::load_deck](../reference/table/card_table/load_deck.md)；以下保留跨接口组合时容易遗漏的条件，不另设一套牌组 API。
 
 对照基线为 `b3d6c50`：链接对象与链接函数已经位于 definition 模块的 `include/givm/definition/deck.hpp`，装载仍是 table 的操作，洗牌和角色初始化仍由 executor 的公开指令完成。这项职责划分解释了为何仓库不需要第四个独立 deck 核心模块。
 
@@ -20,7 +20,7 @@ auto [library, id_map] = source_library.compile(...);
 
 两个成员对应同一个定义集合和 issued ID 分配结果；返回值也可以按该顺序结构化绑定。
 
-`id_map` 用于链接牌组或其他对局前输入，不需要保存在 table 或 executor 中。table 只引用 `library`；进入对局后不再进行名称查询。
+`id_map` 用于链接牌组或其他对局前输入，不需要保存在 table 或 executor 中。table 只保存定义 ID，table 与 executor 均不持有 `library`；执行时由调用方显式传入，handler 通过定义 ID 比较识别已申请的依赖。进入对局后不再进行名称查询。
 
 `id_map` 自身保存非拥有的名称和标签字符串视图，其底层字符在映射使用期间仍须有效。`linked_deck` 则只保存解析后的 ID，不延长这些字符串或 `id_map` 的生命周期；source 的生命周期约定见 [定义源](definition_compilation.md)。
 
@@ -39,7 +39,7 @@ linked_deck link_deck(const issued_id_map& id_map, TCardNames&& card_names, TCha
 
 若规则库只从指定根名称编译依赖闭包，上层必须在编译前把双方牌组中的卡牌和角色名称加入相应类别的根名称集合。也可以编译源库中的全部定义。没有被选入本次规则库的名称不能在之后的牌组链接中使用。
 
-返回的 `linked_deck` 只拥有 issued ID：
+返回的 `linked_deck` 只拥有定义 ID：
 
 ```cpp
 std::vector<definition_id<card_definition>> linked_deck::cards;

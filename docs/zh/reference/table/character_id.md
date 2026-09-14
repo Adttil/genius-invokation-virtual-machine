@@ -54,12 +54,12 @@ int main()
     const example_source<givm::character_view> character_source{};
     sources.add(character_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::character_view>("示例");
     const auto entity = player.add(definition, { .max_health = 10, .health = 10 });
     const givm::character_id id = entity.id();
-    std::println("通过 ID 取得定义: {}", table[id].definition().name());
+    std::println("通过 ID 取得定义: {}", library[table[id].definition_id()].name());
 }
 ```
 

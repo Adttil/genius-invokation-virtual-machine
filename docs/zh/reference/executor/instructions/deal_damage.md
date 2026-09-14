@@ -68,7 +68,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::deal_damage{ .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }, .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .value = 3, .type = givm::damage_type::physical, .flags = {} } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     const auto attacker = table[givm::player_id{ 0 }].add(
         definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
@@ -77,7 +77,7 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::println("目标剩余生命: {}", table[target].state().health);
 }
 ```

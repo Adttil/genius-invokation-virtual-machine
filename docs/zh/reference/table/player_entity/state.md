@@ -30,7 +30,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto entity = table[givm::player_id{ 0 }];
     entity.state().dice[givm::elemental_dice::omni] = 2;
     std::println("骰子数: {}", entity.state().dice.total());

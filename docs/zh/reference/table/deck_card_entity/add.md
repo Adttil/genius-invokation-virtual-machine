@@ -16,7 +16,7 @@ constexpr deck_card_status_entity<TStorage> add(
 
 |  |  |
 | --- | --- |
-| [`definition_id`](../../definition/definition_id.md) | 配套定义库中的卡牌状态定义 ID |
+| [`definition_id`](../definition_id.md) | 配套定义库中的卡牌状态定义 ID |
 | `state` | 状态的初始计数 |
 
 ## 返回值
@@ -53,7 +53,7 @@ int main()
     const example_source<givm::status_definition> status_source{};
     sources.add(card_source, status_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::card_definition>("示例");
     const auto entity = player.add_deck_card(definition, {});

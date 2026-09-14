@@ -7,11 +7,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
-#include <givm/executor/instructions/start_round.hpp>
-#include <givm/executor/instructions/end_game.hpp>
+#include <givm/executor.hpp>
 
-#include <givm/definition/source_library.hpp>
-#include <givm/executor/executor.hpp>
+#include <givm/definition.hpp>
 #include <givm/table.hpp>
 
 using namespace givm;
@@ -33,7 +31,7 @@ namespace
         int* value;
         int digit;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
         {
             *value = *value * 10 + digit;
             return context.enter_next();
@@ -46,7 +44,7 @@ namespace
 
         int* execution_count;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
         {
             ++*execution_count;
             if(context.current_stage() == detail::stage_t{})
@@ -62,7 +60,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -82,12 +80,13 @@ namespace
     template<class T>
     concept publicly_executable_instruction = requires(
         const T& instruction,
+        const definition_library& library,
         card_table& table,
         detail::execution_context& context,
         random_fn& random
     )
     {
-        instruction.execute(table, context, random);
+        instruction.execute(library, table, context, random);
     };
 }
 
@@ -112,7 +111,7 @@ TEST_CASE("executor runs fixed instructions in sequence", "[executor][fixed-prog
         },
         std::tuple{ stop_execution{} }
     );
-    card_table table{ library };
+    card_table table{};
     executor target;
     target.enter_entry(library);
     fixed_random random;
@@ -127,7 +126,7 @@ TEST_CASE("executor runs fixed instructions in sequence", "[executor][fixed-prog
     CHECK(instruction.as<append_digit>().digit == 1);
     CHECK(instruction.type_index() == detail::instruction_type_index<append_digit>);
 
-    CHECK(target.run(table, random) == execution_state::action);
+    CHECK(target.run(library, table, random) == execution_state::action);
 
     CHECK(value == 123);
     CHECK(detail::executor_access::instruction(library, detail::executor_access::position(target)).is<stop_execution>());
@@ -141,18 +140,18 @@ TEST_CASE("yield keeps the current fixed instruction and stage", "[executor][fix
         std::tuple{ yield_once{ .execution_count = &execution_count } },
         std::tuple{ stop_execution{} }
     );
-    card_table table{ library };
+    card_table table{};
     executor target;
     target.enter_entry(library);
     fixed_random random;
 
     const auto initial_position = detail::executor_access::position(target);
-    REQUIRE_FALSE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
+    REQUIRE_FALSE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
     CHECK(execution_count == 1);
     CHECK(detail::executor_access::position(target) == initial_position);
     CHECK(detail::executor_access::instruction(library, detail::executor_access::position(target)).is<yield_once>());
 
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
     CHECK(execution_count == 2);
     CHECK(detail::executor_access::instruction(library, detail::executor_access::position(target)).is<stop_execution>());
 }
@@ -168,19 +167,19 @@ TEST_CASE("executor repeats the round segment without exposing its connection", 
             append_digit{ .value = &value, .digit = 3 }
         }
     );
-    card_table table{ library };
+    card_table table{};
     executor target;
     target.enter_entry(library);
     fixed_random random;
 
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
     CHECK(value == 123);
 
     REQUIRE(detail::executor_access::instruction(library, detail::executor_access::position(target)).is<append_digit>());
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
     CHECK(value == 12323);
 }
 
@@ -199,13 +198,13 @@ TEST_CASE("terminal result is a view and entering a game replaces its old stack"
         },
         std::tuple{ stop_execution{} }
     );
-    card_table table{ library };
+    card_table table{};
     executor target;
     target.enter_entry(library);
     fixed_random random;
     const auto initial_size = detail::executor_access::stack(target).size();
 
-    REQUIRE((observed ? target.step(table, random) : target.run(table, random)) == execution_state::finished);
+    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random)) == execution_state::finished);
     REQUIRE(target.view_in<execution_state::finished>().result() == result);
     CHECK(value == 1);
     REQUIRE(detail::executor_access::stack(target).size() > initial_size);
@@ -220,7 +219,36 @@ TEST_CASE("terminal result is a view and entering a game replaces its old stack"
     CHECK(detail::executor_access::stack(target).capacity() == retained_capacity);
     const auto [stage] = detail::executor_access::stack(target).top<detail::stage_t>();
     CHECK(stage == detail::stage_t{});
-    REQUIRE(target.run(table, random) == execution_state::finished);
+    REQUIRE(target.run(library, table, random) == execution_state::finished);
     CHECK(target.view_in<execution_state::finished>().result() == result);
     CHECK(value == 11);
+}
+
+TEST_CASE("executor uses the explicitly supplied library with an independent table", "[executor][definition-library]")
+{
+    const bool observed = GENERATE(false, true);
+    definition_source_library sources;
+    const auto first = sources.compile(
+        std::tuple{ end_game{ .result = game_result::player_0_win } },
+        std::tuple{ stop_execution{} }
+    );
+    const auto second = sources.compile(
+        std::tuple{ end_game{ .result = game_result::player_1_win } },
+        std::tuple{ stop_execution{} }
+    );
+    card_table table{};
+    executor target;
+    fixed_random random;
+
+    target.enter_entry(first.library);
+    REQUIRE((observed
+        ? target.step(first.library, table, random)
+        : target.run(first.library, table, random)) == execution_state::finished);
+    CHECK(target.view_in<execution_state::finished>().result() == game_result::player_0_win);
+
+    target.enter_entry(second.library);
+    REQUIRE((observed
+        ? target.step(second.library, table, random)
+        : target.run(second.library, table, random)) == execution_state::finished);
+    CHECK(target.view_in<execution_state::finished>().result() == game_result::player_1_win);
 }

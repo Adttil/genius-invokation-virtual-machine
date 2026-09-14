@@ -5,7 +5,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "../../definition.hpp"
+#include "../entity_fwd.hpp"
+#include "../issued_id.hpp"
 #include "../../enums/element_aura.hpp"
 #include "attachment_data.hpp"
 #include "skill_data.hpp"

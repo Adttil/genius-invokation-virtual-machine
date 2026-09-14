@@ -39,7 +39,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     table.parameters().hand_limit = 12;
     std::println("手牌上限: {}", table.parameters().hand_limit);
 }

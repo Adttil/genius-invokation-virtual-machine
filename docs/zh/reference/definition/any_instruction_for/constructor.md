@@ -50,11 +50,11 @@ int main()
     const auto [library, ids] = sources.compile(
         initialization, std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-    givm::card_table table{ library };
+    givm::card_table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::println("初始化操作数量: {}", initialization.size());
     std::println("终局时的回合数: {}", table.state().round_number);
 }

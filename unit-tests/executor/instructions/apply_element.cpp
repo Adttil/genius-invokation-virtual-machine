@@ -6,8 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <givm/executor/instructions/apply_element.hpp>
-#include <givm/executor/instructions/set_element_aura.hpp>
+#include <givm/executor.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -49,7 +48,7 @@ namespace
 
             element_aura aura;
 
-            execution_state execute(card_table& table, detail::execution_context& context, random_fn&) const
+            execution_state execute(const definition_library&, card_table& table, detail::execution_context& context, random_fn&) const
             {
                 auto&& [broadcast, activation] = context.stack().top<
                     frame<
@@ -131,16 +130,16 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
     };
 
-    bool run_until_blocked(executor& target, card_table& table)
+    bool run_until_blocked(const definition_library& library, executor& target, card_table& table)
     {
         zero_random random;
-        return target.run(table, random) == execution_state::action;
+        return target.run(library, table, random) == execution_state::action;
     }
 }
 
@@ -166,7 +165,7 @@ TEST_CASE("apply_element stores a non-reactive aura without broadcasting a react
     const auto observer_id = id_map.get_id<support_view>(observer_source.name());
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
     const auto character = table[player_id{ 1 }].add(definition_id, {
@@ -175,9 +174,9 @@ TEST_CASE("apply_element stores a non-reactive aura without broadcasting a react
     REQUIRE(character.id() == character_entity_id);
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
 
-    REQUIRE(run_until_blocked(target, table));
+    REQUIRE(run_until_blocked(library, target, table));
     CHECK(character.state().aura == element_aura::hydro);
     CHECK(log.order.empty());
 }
@@ -205,7 +204,7 @@ TEST_CASE("apply_element broadcasts both sides of a default reaction", "[apply_e
     const auto observer_id = id_map.get_id<support_view>(observer_source.name());
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
     const auto character = table[player_id{ 1 }].add(definition_id, {
@@ -218,9 +217,9 @@ TEST_CASE("apply_element broadcasts both sides of a default reaction", "[apply_e
     REQUIRE(character.id() == character_entity_id);
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
 
-    REQUIRE(run_until_blocked(target, table));
+    REQUIRE(run_until_blocked(library, target, table));
     CHECK(log.order == std::vector{ 1, 2 });
     CHECK(log.incoming == element::pyro);
     CHECK(log.reacted_aura == element_aura::cryo);
@@ -254,7 +253,7 @@ TEST_CASE("a response can replace apply_element default reaction handling", "[ap
     const auto observer_id = id_map.get_id<support_view>(observer_source.name());
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
     const auto character = table[player_id{ 1 }].add(definition_id, {
@@ -267,9 +266,9 @@ TEST_CASE("a response can replace apply_element default reaction handling", "[ap
     REQUIRE(character.id() == character_entity_id);
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
 
-    REQUIRE(run_until_blocked(target, table));
+    REQUIRE(run_until_blocked(library, target, table));
     CHECK(log.order == std::vector{ 1, 2 });
     CHECK(log.reaction == elemental_reaction::vaporize);
     CHECK(character.state().aura == element_aura::dendro);
@@ -290,18 +289,18 @@ TEST_CASE("step crosses aura changes without an observation stop", "[apply_eleme
         character_source
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
-    card_table table{ library };
+    card_table table{};
     table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
     table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
     auto normal_table = table;
     zero_random random;
     executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
 
     executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(table, random) == execution_state::action);
+    REQUIRE(observed.step(library, table, random) == execution_state::action);
     CHECK(table[affected].state().aura == element_aura::hydro);
     CHECK(table[affected].state().aura == normal_table[affected].state().aura);
     CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
@@ -326,7 +325,7 @@ TEST_CASE("step crosses reaction responses while preserving settlement and broad
         std::tuple{ stop_execution{} },
         observer_source, character_source
     );
-    card_table table{ library };
+    card_table table{};
     table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
     table[player_id{ 1 }].add(ids.get_id<character_view>(character_source.name()), {
         .max_health = 10, .health = 10, .aura = element_aura::hydro
@@ -335,13 +334,13 @@ TEST_CASE("step crosses reaction responses while preserving settlement and broad
     zero_random random;
     executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
     const auto normal_order = log.order;
     log.order.clear();
 
     executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(table, random) == execution_state::action);
+    REQUIRE(observed.step(library, table, random) == execution_state::action);
     CHECK(log.order == normal_order);
     CHECK(log.order == std::vector{ 1, 2 });
     CHECK(log.incoming == element::pyro);

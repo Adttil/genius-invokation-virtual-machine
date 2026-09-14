@@ -39,7 +39,8 @@ namespace givm
 
             template<bool Observed>
             static execution_state execute(
-                const givm::draw_cards& instruction, card_table& table, execution_context& context, random_fn& random
+                const givm::draw_cards& instruction, const definition_library& library,
+                card_table& table, execution_context& context, random_fn& random
             )
             {
                 const auto stage = static_cast<stage_type>(context.current_stage());
@@ -54,14 +55,14 @@ namespace givm
                         return context.enter_next();
                     }
 
-                    detail::prepare_broadcast(card_drawn{ .card = drawn_cards[cursor++] }, table, context.stack());
+                    detail::prepare_broadcast(library, card_drawn{ .card = drawn_cards[cursor++] }, table, context.stack());
                     context.current_stage() = static_cast<stage_t>(stage_type::broadcast_card_drawn);
                     return continue_execution;
                 }
 
                 if(stage == stage_type::broadcast_card_drawn)
                 {
-                    if(not detail::continue_broadcast<card_drawn>(table, context, random))
+                    if(not detail::continue_broadcast<card_drawn>(library, table, context, random))
                     {
                         return continue_execution;
                     }

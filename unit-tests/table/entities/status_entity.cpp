@@ -31,7 +31,7 @@ TEST_CASE("card status ranges preserve order when head middle and tail are erase
     const auto card_id = id_map.get_id<card_definition>("Card");
     const auto status_id = id_map.get_id<status_definition>("Status");
 
-    card_table table{ library };
+    card_table table{};
     const auto player = table[player_id{ 0 }];
     const auto card = player.add_hand_card(card_id, {});
     card.add(status_id, { .count = 10 });
@@ -60,7 +60,7 @@ TEST_CASE("moving a deck card into hand preserves its attached status chain", "[
     const auto card_id = id_map.get_id<card_definition>("Card");
     const auto status_id = id_map.get_id<status_definition>("Status");
 
-    card_table table{ library };
+    card_table table{};
     const auto player = table[player_id{ 0 }];
     const auto deck_card = player.add_deck_card(card_id, {});
     deck_card.add(status_id, { .count = 7 });

@@ -47,14 +47,14 @@ int main()
     sources.add(source);
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto observer = table[givm::player_id{ 0 }].add(
         ids.get_id<givm::support_view>("observer"), givm::support_state{});
     auto random_source = []() -> std::uint32_t { return 0; };
     givm::random_fn random{ random_source };
     givm::test_event event{};
     const auto view = std::as_const(table)[observer.id()];
-    view.definition().handle<givm::test_event>(view, event, table, random);
+    library[view.definition_id()].handle<givm::test_event>(view, event, table, random);
     std::println("响应次数: {}", count);
 }
 ```

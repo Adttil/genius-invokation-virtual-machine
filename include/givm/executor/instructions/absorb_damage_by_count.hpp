@@ -26,7 +26,8 @@ namespace givm
     {
         template<bool Observed>
         static execution_state execute(
-            const givm::absorb_damage_by_count& instruction, card_table& table, execution_context& context, random_fn&
+            const givm::absorb_damage_by_count& instruction, const definition_library&,
+            card_table& table, execution_context& context, random_fn&
         )
         {
             auto&& [broadcast, activation] = context.stack().top<

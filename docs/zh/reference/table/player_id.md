@@ -40,7 +40,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const givm::player_id id{ 1 };
     std::println("目标玩家: {}", table[id].id().index);
 }

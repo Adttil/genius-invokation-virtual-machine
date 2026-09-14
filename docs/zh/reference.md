@@ -16,13 +16,14 @@
 | [`definition_source_view`](reference/definition/definition_source_view.md) | 定义源的类型擦除视图 |
 | [`definition_source_library`](reference/definition/definition_source_library.md) | 定义源库 |
 | [`definition_library`](reference/definition/definition_library.md) | 定义库 |
-| [`linked_deck`](reference/definition/linked_deck.md) | 关联到定义库的牌组 |
 
 ## [牌桌](reference/table.md)
 
 | | |
 | --- | --- |
 | [`card_table`](reference/table/card_table.md) | 牌桌 |
+| [`definition_id`](reference/table/definition_id.md) | 实体采用的定义身份 |
+| [`linked_deck`](reference/table/linked_deck.md) | 已确定卡牌与角色定义的牌组 |
 | [`player_view`](reference/table/player_view.md) | 玩家的只读视图 |
 | [`hand_card_view`](reference/table/hand_card_view.md) | 手牌的只读视图 |
 | [`deck_card_view`](reference/table/deck_card_view.md) | 牌库卡牌的只读视图 |

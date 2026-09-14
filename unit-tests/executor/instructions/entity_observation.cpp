@@ -9,15 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include <givm/executor/instructions/draw_cards.hpp>
-#include <givm/executor/instructions/end_game.hpp>
-#include <givm/executor/instructions/enter_character.hpp>
-#include <givm/executor/instructions/insert_deck_card.hpp>
-#include <givm/executor/instructions/select_active_character_both.hpp>
-#include <givm/executor/instructions/set_active_character.hpp>
-#include <givm/executor/instructions/test_command.hpp>
-#include <givm/executor/views/entities.hpp>
-#include <givm/executor/views/selection.hpp>
+#include <givm/executor.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -29,7 +21,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return execution_state::action;
         }
@@ -238,20 +230,20 @@ TEST_CASE("step passes through creation responses and preserves initialization",
         std::tuple{ test_command{} }, std::tuple{ stop_entity_program{} },
         program_source, card_source, character_source
     );
-    card_table table{ library };
+    card_table table{};
     table[player_id{ 0 }].add(ids.get_id<support_view>(program_source.name()), { .count = 1 });
     auto normal_table = table;
     counting_random normal_random;
     executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(normal_table, normal_random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, normal_random) == execution_state::action);
 
     counting_random random;
     executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(table, random) == execution_state::action);
+    REQUIRE(observed.step(library, table, random) == execution_state::action);
     const character_id character{ .player_id = player_id{ 1 }, .index = 0 };
-    CHECK(table[character].definition().id().value() == ids.get_id<character_view>(character_source.name()).value());
+    CHECK(table[character].definition_id().value() == ids.get_id<character_view>(character_source.name()).value());
     CHECK(table[character].state().max_health == 12);
     CHECK(table[character].state().health == 12);
     CHECK(table[character].state().energy == 1);
@@ -273,19 +265,19 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
     const auto [library, ids] = test::compile_definitions_with_program(
         std::tuple{ test_command{} }, std::tuple{ stop_entity_program{} }, source
     );
-    card_table table{ library };
+    card_table table{};
     const auto entity = table[player_id{ 0 }].add(ids.get_id<support_view>(source.name()), { .count = 1 }).id();
     auto normal_table = table;
     counting_random random;
     executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
     REQUIRE(handler_calls == 1);
     handler_calls = 0;
 
     executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(table, random) == execution_state::action);
+    REQUIRE(observed.step(library, table, random) == execution_state::action);
     CHECK(handler_calls == 1);
     CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
     CHECK(random.calls == 0);
@@ -307,7 +299,7 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
         },
         std::tuple{ stop_entity_program{} }, observer_source, card_source
     );
-    card_table table{ library, { .hand_limit = 2 } };
+    card_table table{ { .hand_limit = 2 } };
     table.state().active_player = player_id{ 1 };
     table[player_id{ 1 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
     const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
@@ -323,13 +315,13 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     counting_random random;
     executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
     const auto normal_drawn = log.drawn;
     log.drawn.clear();
 
     executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(table, random) == execution_state::action);
+    REQUIRE(observed.step(library, table, random) == execution_state::action);
     CHECK(player.deck_card_count() == 0);
     CHECK(player.hand_card_count() == 2);
     CHECK(log.drawn.size() == 2 - initial_hand_count);
@@ -355,7 +347,7 @@ TEST_CASE("single-player active-character observation precedes the table update 
         std::tuple{ set_active_character{ current }, set_active_character{ current } },
         std::tuple{ stop_entity_program{} }, observer_source, character_source
     );
-    card_table table{ library };
+    card_table table{};
     const auto definition = ids.get_id<character_view>(character_source.name());
     table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
     table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
@@ -366,13 +358,13 @@ TEST_CASE("single-player active-character observation precedes the table update 
     counting_random random;
     executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
     const auto normal_events = log.active;
     log.active.clear();
 
     executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(table, random) == execution_state::active_character_changed);
+    REQUIRE(observed.step(library, table, random) == execution_state::active_character_changed);
     const auto view = observed.view_in<execution_state::active_character_changed>();
     CHECK(view.character() == current);
     auto original_frame = detail::executor_access::stack(observed);
@@ -384,7 +376,7 @@ TEST_CASE("single-player active-character observation precedes the table update 
     CHECK(table[player_id{ 0 }].state().active_character == previous);
     CHECK(log.active.empty());
 
-    REQUIRE(observed.step(table, random) == execution_state::action);
+    REQUIRE(observed.step(library, table, random) == execution_state::action);
     CHECK(log.active == std::vector{ current, current });
     CHECK(log.active == normal_events);
     CHECK(table[player_id{ 0 }].state().active_character == normal_table[player_id{ 0 }].state().active_character);
@@ -402,7 +394,7 @@ TEST_CASE("initial active choices share their original frame before either respo
         std::tuple{ select_active_character_both{} }, std::tuple{ stop_entity_program{} },
         observer, character_source
     );
-    card_table table{ library };
+    card_table table{};
     table[player_id{ 0 }].add(ids.get_id<support_view>(observer.name()), { .count = 1 });
     const auto character = ids.get_id<character_view>(character_source.name());
     for(auto player : table.players())
@@ -414,7 +406,7 @@ TEST_CASE("initial active choices share their original frame before either respo
     executor target;
     target.enter_entry(library);
     counting_random random;
-    REQUIRE(target.step(table, random) == execution_state::initial_active_character_selection);
+    REQUIRE(target.step(library, table, random) == execution_state::initial_active_character_selection);
     const auto original_size = detail::executor_access::stack(target).size();
     const character_id first_choice{ first_player, 1 };
     target.view_in<execution_state::initial_active_character_selection>().select(first_choice);
@@ -422,7 +414,7 @@ TEST_CASE("initial active choices share their original frame before either respo
     CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
     REQUIRE(log.active.empty());
-    REQUIRE(target.step(table, random) == execution_state::remaining_active_character_selection);
+    REQUIRE(target.step(library, table, random) == execution_state::remaining_active_character_selection);
     CHECK(detail::executor_access::stack(target).size() == original_size);
     const auto remaining = target.view_in<execution_state::remaining_active_character_selection>();
     CHECK(remaining.selected() == first_choice);
@@ -433,7 +425,7 @@ TEST_CASE("initial active choices share their original frame before either respo
     CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
     REQUIRE(log.active.empty());
-    REQUIRE(target.step(table, random) == execution_state::initial_active_characters_selected);
+    REQUIRE(target.step(library, table, random) == execution_state::initial_active_characters_selected);
     CHECK(detail::executor_access::stack(target).size() == original_size);
     const auto view = target.view_in<execution_state::initial_active_characters_selected>();
     static_assert(std::is_empty_v<decltype(view)>);
@@ -450,13 +442,13 @@ TEST_CASE("initial active choices share their original frame before either respo
         log.active.clear();
         if(behavior == 2)
         {
-            REQUIRE(execution.step(current_table, random) == execution_state::active_character_changed);
+            REQUIRE(execution.step(library, current_table, random) == execution_state::active_character_changed);
             const auto changed = execution.view_in<execution_state::active_character_changed>();
             CHECK(changed.character() == character_id{ player_id{ 1 }, 0 });
             CHECK(current_table[player_id{ 1 }].state().active_character == character_id{ player_id{ 1 }, 1 });
             CHECK(log.active == std::vector{ character_id{ player_id{ 0 }, 1 } });
         }
-        const auto state = execution.step(current_table, random);
+        const auto state = execution.step(library, current_table, random);
         if(behavior == 0)
         {
             REQUIRE(state == execution_state::action);
@@ -488,7 +480,7 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
         std::tuple{ set_active_character{ next } }, std::tuple{ stop_entity_program{} },
         response, character_source
     );
-    card_table table{ library };
+    card_table table{};
     const auto character = ids.get_id<character_view>(character_source.name());
     table[player_id{ 0 }].add(character, { .max_health = 10, .health = 10 });
     table[player_id{ 0 }].add(character, { .max_health = 10, .health = 10 });
@@ -498,13 +490,13 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
     executor normal;
     normal.enter_entry(library);
     counting_random random;
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
     CHECK(log.active == std::vector{ next, previous });
     log.active.clear();
 
     executor target;
     target.enter_entry(library);
-    REQUIRE(target.step(table, random) == execution_state::active_character_changed);
+    REQUIRE(target.step(library, table, random) == execution_state::active_character_changed);
     CHECK(target.view_in<execution_state::active_character_changed>().character() == next);
     CHECK(table[player_id{ 0 }].state().active_character == previous);
     REQUIRE(log.active.empty());
@@ -513,11 +505,11 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
     const auto resume = [&](executor& execution, card_table& current_table)
     {
         log.active.clear();
-        REQUIRE(execution.step(current_table, random) == execution_state::active_character_changed);
+        REQUIRE(execution.step(library, current_table, random) == execution_state::active_character_changed);
         CHECK(execution.view_in<execution_state::active_character_changed>().character() == previous);
         CHECK(current_table[player_id{ 0 }].state().active_character == next);
         CHECK(log.active == std::vector{ next });
-        REQUIRE(execution.step(current_table, random) == execution_state::action);
+        REQUIRE(execution.step(library, current_table, random) == execution_state::action);
         CHECK(current_table[player_id{ 0 }].state().active_character == previous);
         CHECK(log.active == std::vector{ next, previous });
         CHECK(current_table[player_id{ 0 }].state().active_character

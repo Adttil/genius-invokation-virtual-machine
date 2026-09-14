@@ -8,9 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include <givm/definition/source_library.hpp>
-#include <givm/executor/instructions/test_command.hpp>
-#include <givm/executor/instructions/end_game.hpp>
+#include <givm/definition.hpp>
 #include <givm/executor.hpp>
 #include <givm/table.hpp>
 
@@ -39,7 +37,7 @@ namespace
 
         response_observation* observation;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
         {
             auto&& [broadcast, activation] = context.stack().top<
                 frame<
@@ -74,7 +72,7 @@ namespace
 
         response_observation* observation;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
         {
             observation->execution_order.push_back(2);
             return context.enter_next();
@@ -163,7 +161,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -215,7 +213,7 @@ TEST_CASE("ordinary broadcasts resume across fixed responses", "[broadcast][fixe
         std::tuple{ test_command{} },
         std::tuple{ stop_execution{} }
     );
-    card_table table{ library };
+    card_table table{};
 
     const auto fixed_entity = table[player_id{ 0 }].add(
         id_map.get_id<support_view>(fixed_source.name()),
@@ -228,9 +226,9 @@ TEST_CASE("ordinary broadcasts resume across fixed responses", "[broadcast][fixe
     );
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
     fixed_random random;
-    REQUIRE(target.run(table, random) == execution_state::action);
+    REQUIRE(target.run(library, table, random) == execution_state::action);
 
     CHECK(observation.fixed_context_observed);
     CHECK(observation.execution_order == std::vector{ 1, 2 });
@@ -246,16 +244,16 @@ TEST_CASE("a fixed response may terminate the game without discarding its stack"
         std::tuple{ test_command{} },
         std::tuple{ stop_execution{} }
     );
-    card_table table{ library };
+    card_table table{};
     const auto handler = table[player_id{ 0 }].add(
         id_map.get_id<support_view>(source.name()),
         { .count = 1 }
     ).id();
 
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
     fixed_random random;
-    auto state = observed ? target.step(table, random) : target.run(table, random);
+    auto state = observed ? target.step(library, table, random) : target.run(library, table, random);
     REQUIRE(state == execution_state::finished);
     CHECK(target.view_in<execution_state::finished>().result() == game_result::player_1_win);
     const auto [result] = detail::executor_access::stack(target).top<game_result>();

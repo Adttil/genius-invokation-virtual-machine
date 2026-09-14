@@ -51,7 +51,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::replace_cards_both{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");
     for(const givm::player_id player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
@@ -62,18 +62,18 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::bitset<givm::selection_capacity> selected{};
     selected.set(0);
     execution.view_in<givm::execution_state::initial_card_selection>().select(givm::player_id{ 1 }, selected);
-    execution.run(table, random);
+    execution.run(library, table, random);
     const auto remaining = execution.view_in<givm::execution_state::card_selection>();
     std::println("剩余玩家为玩家 0: {}", remaining.player() == givm::player_id{ 0 });
     remaining.select(selected);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::println("玩家 0 的手牌数量: {}", table[givm::player_id{ 0 }].hand_card_count());
     std::println("玩家 0 抽到另一种牌: {}",
-        (*table[givm::player_id{ 0 }].hand_cards().begin()).definition().id().value() == b.value());
+        (*table[givm::player_id{ 0 }].hand_cards().begin()).definition_id().value() == b.value());
 }
 ```
 

@@ -94,16 +94,10 @@ namespace givm
             };
         }
 
-        constexpr auto definition() const
+        constexpr auto definition_id() const
         {
             GIVM_ASSERT(is_valid());
-            return (*storage_.table->definition_library_)[storage_.data->definition_id];
-        }
-
-        template<class TEvent>
-        bool can_handle() const
-        {
-            return is_valid() && definition().template can_handle<TEvent, skill_view>();
+            return storage_.data->definition_id;
         }
 
         constexpr auto& state() const

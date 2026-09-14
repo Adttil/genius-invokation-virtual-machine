@@ -43,8 +43,7 @@ class deck_card_status_entity;
 | [`end`](deck_card_status_entity/end.md) | 取得单实体范围的终点 |
 | [`player`](deck_card_status_entity/player.md) | 取得所属玩家 |
 | [`id`](deck_card_status_entity/id.md) | 取得实体 ID |
-| [`definition`](deck_card_status_entity/definition.md) | 取得实体定义 |
-| [`can_handle`](deck_card_status_entity/can_handle.md) | 判断是否具有某事件的处理程序 |
+| [`definition_id`](deck_card_status_entity/definition_id.md) | 取得实体的定义 ID |
 | [`state`](deck_card_status_entity/state.md) | 访问实体状态 |
 | [`erase`](deck_card_status_entity/erase.md) | 移除实体 |
 | [`card`](deck_card_status_entity/card.md) | 取得所属卡牌 |
@@ -79,7 +78,7 @@ int main()
     const example_source<givm::status_definition> status_source{};
     sources.add(card_source, status_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto card_definition = id_map.get_id<givm::card_definition>("示例");
     const auto definition = id_map.get_id<givm::status_definition>("示例");

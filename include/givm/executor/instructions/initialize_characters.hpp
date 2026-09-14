@@ -22,14 +22,15 @@ namespace givm
         {
             template<bool Observed>
             static execution_state execute(
-                const givm::initialize_characters& instruction, card_table& table, execution_context& context, random_fn& random
+                const givm::initialize_characters& instruction, const definition_library& library,
+                card_table& table, execution_context& context, random_fn& random
             )
             {
                 for(const auto character : table[instruction.player].characters())
                 {
                     character_initialization event{};
                     const auto entity = std::as_const(table)[character.id()];
-                    (void)entity.definition().template handle<character_initialization>(
+                    (void)library[entity.definition_id()].template handle<character_initialization>(
                         entity,
                         event,
                         std::as_const(table),

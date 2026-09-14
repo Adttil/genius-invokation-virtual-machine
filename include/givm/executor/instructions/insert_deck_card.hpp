@@ -29,7 +29,8 @@ namespace givm
         {
             template<bool Observed>
             static execution_state execute(
-                const givm::insert_deck_card& instruction, card_table& table, execution_context& context, random_fn&
+                const givm::insert_deck_card& instruction, const definition_library&,
+                card_table& table, execution_context& context, random_fn&
             )
             {
                 auto player_entity = table[instruction.player];

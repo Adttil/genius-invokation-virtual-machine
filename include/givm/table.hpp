@@ -15,7 +15,7 @@
 #include "table/table_accessor.hpp"
 #include "table/entities/status_entity.hpp"
 #include "table/entities/player_entity.hpp"
-#include "definition.hpp"
+#include "table/linked_deck.hpp"
 #include "table/table_storage.hpp"
 #include "utils/debug.hpp"
 
@@ -28,23 +28,11 @@ namespace givm
         friend detail::table_accessor;
 
     public:
-        using definition_library_type = definition_library;
         using game_state = table_state;
 
-        constexpr card_table(
-            const definition_library_type& definition_library,
-            game_parameters parameters = {}
-        )
-        : storage_{
-            .definition_library_ = &definition_library,
-            .parameters = parameters
-        }
+        constexpr card_table(game_parameters parameters = {})
+        : storage_{ .parameters = parameters }
         {}
-
-        constexpr const definition_library_type& definition_library() const
-        {
-            return *storage_.definition_library_;
-        }
 
         template<class Self>
         constexpr auto& parameters(this Self& self) noexcept

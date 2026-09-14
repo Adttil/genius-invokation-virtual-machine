@@ -74,7 +74,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const givm::player_id first{ 0 };
     table[first].state().dice[givm::elemental_dice::pyro] = 2;
     std::println("玩家 {} 的火骰: {}", first.index, table[first].state().dice[givm::elemental_dice::pyro]);

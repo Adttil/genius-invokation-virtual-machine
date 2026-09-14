@@ -14,16 +14,11 @@
 
 #include "instruction.hpp"
 #include "subscribed_events.hpp"
-#include "types.hpp"
+#include "definition_categories.hpp"
 
 namespace givm
 {
     class definition_compile_context;
-    class definition_library;
-    class definition_source_library;
-
-    template<class TCategory>
-    class definition_source_view;
 
     namespace detail
     {
@@ -65,6 +60,35 @@ namespace givm
         friend class definition_compile_context;
         friend class detail::execution_context;
     };
+
+    template<class TEvent>
+    struct handler_program_context
+    {
+        using type = TEvent;
+    };
+
+    template<>
+    struct handler_program_context<cost_of_switch>
+    {
+        using type = onpay_context<cost_of_switch>;
+    };
+
+    template<class TEvent>
+    using handler_program_context_t = typename handler_program_context<TEvent>::type;
+
+    template<class TEvent>
+    using handler_program_entry_t = program_entry<handler_program_context_t<TEvent>>;
+
+    using definition_data = std::any;
+
+    template<class TEntity, class TEvent>
+    using handle_fn_t = handler_program_entry_t<TEvent> (*)(
+        const definition_data&,
+        const TEntity&,
+        TEvent&,
+        const card_table&,
+        random_fn&
+    );
 
     namespace detail
     {

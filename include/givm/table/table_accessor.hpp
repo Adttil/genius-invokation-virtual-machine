@@ -1,7 +1,15 @@
 #ifndef GIVM_TABLE_TABLE_ACCESSOR_HPP
 #define GIVM_TABLE_TABLE_ACCESSOR_HPP
 
-#include "../definition.hpp"
+#include "entity_fwd.hpp"
+
+namespace givm
+{
+    class card_table;
+
+    template<class TStorage, class TStatusEntity, class TOwnerId>
+    class card_status_range;
+}
 
 namespace givm::detail
 {

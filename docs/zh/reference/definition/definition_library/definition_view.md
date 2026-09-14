@@ -32,7 +32,7 @@ class definition_view;
 
 ## 注意
 
-由 [`definition_library::operator[]`](operator_at.md) 或实体的 `definition()` 取得。视图不拥有定义库，所引用的定义库应保持有效。
+由 [`definition_library::operator[]`](operator_at.md) 取得。查询实体定义时，显式使用 `library[entity.definition_id()]`。视图不拥有定义库，所引用的定义库应保持有效。
 
 ## 示例
 

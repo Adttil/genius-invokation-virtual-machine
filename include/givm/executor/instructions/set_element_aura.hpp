@@ -20,7 +20,8 @@ namespace givm
     {
         template<bool Observed>
         static execution_state execute(
-            const givm::set_element_aura& instruction, card_table& table, execution_context& context, random_fn&
+            const givm::set_element_aura& instruction, const definition_library&,
+            card_table& table, execution_context& context, random_fn&
         )
         {
             table[instruction.target].state().aura = instruction.aura;

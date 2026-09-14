@@ -50,7 +50,7 @@ class character_entity;
 using character_view = character_entity<const detail::table_storage>;
 ```
 
-这样可以避免 `handle` 同时表示“事件处理”和“实体句柄”。事件响应仍使用 `handle` 语义，例如 `handle_fn_t` 和实体上的 `can_handle<TEvent>()`；实体访问对象则统一叫 entity/view。source 的可选响应能力接口则是 `can_handle<TEntityView, TEvent>()`。
+这样可以避免 `handle` 同时表示“事件处理”和“实体句柄”。事件响应仍使用 `handle` 语义，例如 `handle_fn_t` 和定义库上的 `can_handle<TEvent, TView>(definition_id)`；实体访问对象则统一叫 entity/view。source 的可选响应能力接口则是 `can_handle<TEntityView, TEvent>()`。
 
 ### 2.3 table_accessor 与强耦合边界
 

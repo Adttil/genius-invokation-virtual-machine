@@ -32,7 +32,7 @@ linked_deck link_deck(
 
 ## 返回值
 
-持有对应定义 ID 的 [`linked_deck`](linked_deck.md)。
+持有对应定义 ID 的 [`linked_deck`](../table/linked_deck.md)。
 
 ## 异常
 

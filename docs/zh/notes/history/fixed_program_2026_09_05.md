@@ -8,7 +8,7 @@
 
 - `root_context`、省略 `context_type` 表示自由指令的规则已经更改；当前自由指令显式使用 `context_type = void`。
 - `make_data`、`programs`、`program_item` 及 setter 补写属于旧定义源接口。当前定义源通过 `compile(definition_compile_context&)` 直接生成完整定义数据，见[定义编译记录](../definition_compilation.md)。
-- 独立 `fixed_program` 类型和 `table.instruction(...)` 等旧命名不能照抄；当前定义库拥有程序存储，执行器从牌桌配套的定义库取指。内部跳转/返回由执行器收束，详见[固定程序记录](../fixed_program.md)。
+- 独立 `fixed_program` 类型和 `table.instruction(...)` 等旧命名不能照抄；当前定义库拥有程序存储，执行器从每次推进时显式传入的定义库取指。内部跳转/返回由执行器收束，详见[固定程序记录](../fixed_program.md)。
 - 旧稿把完整帧作为跨入口 ABI 讨论；当前公开边界保留事件语境，观察与输入由 execution_view 提供，executor 不公开原始栈。`onpay_context` 是费用事件的一项映射，不是另立的事件分类。
 - 出牌、技能的 action 矩阵与执行过程包含未接入的设计。不能因为下方列出 `cost_of_card`、`cost_of_skill` 或事件顺序，就认为当前 `begin_action` 已经提供这些行动。
 - 下文的三个特殊终局入口和固定终局前缀已经废弃，当前只保留空入口占位，根程序从内部位置 1 开始。公开 end_game 指令携带结果，定义源通过 add_program 编入程序，不再使用 program_entry 的结果工厂。指令槽尺寸、返回位置的数值关系和后续优化仍只是内部记录，不能反推为公开数值 ABI。当前推进统一返回 finished，栈顶仅追加结果值，旧现场被逻辑废弃；旧终局观察与继续执行约定也不再适用。

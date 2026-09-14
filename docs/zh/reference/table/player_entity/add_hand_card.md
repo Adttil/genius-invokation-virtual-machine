@@ -21,7 +21,7 @@ constexpr hand_card_entity<TStorage> add_hand_card(card_data data) const
 
 |  |  |
 | --- | --- |
-| [`definition_id`](../../definition/definition_id.md) | 配套定义库中的卡牌定义 ID |
+| [`definition_id`](../definition_id.md) | 配套定义库中的卡牌定义 ID |
 | `state` | 新卡牌的初始状态 |
 | `data` | 从同一张牌桌取出的 [`card_data`](../card_data.md) |
 
@@ -58,7 +58,7 @@ int main()
     const example_source<givm::card_definition> card_source{};
     sources.add(card_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::card_definition>("示例");
     player.add_hand_card(definition, {});

@@ -2,7 +2,7 @@
 
 # givm::player_view
 
-定义于头文件 `<givm/definition/types.hpp>`
+定义于头文件 `<givm/table.hpp>`
 
 ```cpp
 using player_view = player_entity<const detail::table_storage>;
@@ -24,7 +24,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto entity = table[givm::player_id{ 0 }];
     const givm::player_view view = entity;
     std::println("骰子数: {}", view.state().dice.total());

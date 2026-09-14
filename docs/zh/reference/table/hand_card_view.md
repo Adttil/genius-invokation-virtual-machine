@@ -2,7 +2,7 @@
 
 # givm::hand_card_view
 
-定义于头文件 `<givm/definition/types.hpp>`
+定义于头文件 `<givm/table.hpp>`
 
 ```cpp
 using hand_card_view = hand_card_entity<const detail::table_storage>;
@@ -37,7 +37,7 @@ int main()
     const example_source<givm::card_definition> card_source{};
     sources.add(card_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::card_definition>("示例");
     const auto entity = player.add_hand_card(definition, {});

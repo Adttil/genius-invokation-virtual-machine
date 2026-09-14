@@ -3,7 +3,8 @@
 
 #include <cstdint>
 
-#include "../../definition.hpp"
+#include "../entity_fwd.hpp"
+#include "../issued_id.hpp"
 
 namespace givm
 {

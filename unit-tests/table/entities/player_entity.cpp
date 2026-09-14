@@ -18,7 +18,7 @@ namespace
         std::vector<size_t> result;
         for(const auto card : player.hand_cards())
         {
-            result.push_back(card.definition().id().value());
+            result.push_back(card.definition_id().value());
         }
         return result;
     }
@@ -45,7 +45,7 @@ TEST_CASE("player_entity preserves logical deck order across insertion and extra
     const auto beta_id = id_map.get_id<card_definition>("Beta");
     const auto gamma_id = id_map.get_id<card_definition>("Gamma");
 
-    card_table table{ library };
+    card_table table{};
     const auto player = table[player_id{ 0 }];
     player.add_deck_card(alpha_id, {});
     player.add_deck_card(beta_id, {});
@@ -79,7 +79,7 @@ TEST_CASE("player_entity cleanup preserves deck order", "[player_entity]")
     const auto gamma_id = id_map.get_id<card_definition>("Gamma");
     const auto delta_id = id_map.get_id<card_definition>("Delta");
 
-    card_table table{ library };
+    card_table table{};
     const auto player = table[player_id{ 0 }];
     player.add_deck_card(alpha_id, {});
     player.add_deck_card(beta_id, {});
@@ -109,7 +109,7 @@ TEST_CASE("player_entity cleanup preserves hand order after erased cards are rem
     const auto beta_id = id_map.get_id<card_definition>("Beta");
     const auto gamma_id = id_map.get_id<card_definition>("Gamma");
 
-    card_table table{ library };
+    card_table table{};
     const auto player = table[player_id{ 0 }];
     player.add_hand_card(alpha_id, {});
     player.add_hand_card(beta_id, {});

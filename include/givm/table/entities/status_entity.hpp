@@ -31,7 +31,7 @@ namespace givm
         constexpr size_t add_status(
             TStorage& storage,
             card_data& card,
-            definition_id<status_definition> definition_id,
+            givm::definition_id<status_definition> definition_id,
             const status_state& state
         )
         {
@@ -243,16 +243,10 @@ namespace givm
             return { storage_.owner, storage_.slot };
         }
 
-        constexpr auto definition() const
+        constexpr auto definition_id() const
         {
             GIVM_ASSERT(is_valid());
-            return (*storage_.table->definition_library_)[storage_.data->data.definition_id];
-        }
-
-        template<class TEvent>
-        bool can_handle() const
-        {
-            return is_valid() && definition().template can_handle<TEvent, hand_card_status_view>();
+            return storage_.data->data.definition_id;
         }
 
         constexpr auto& state() const
@@ -347,16 +341,10 @@ namespace givm
             return { storage_.owner, storage_.slot };
         }
 
-        constexpr auto definition() const
+        constexpr auto definition_id() const
         {
             GIVM_ASSERT(is_valid());
-            return (*storage_.table->definition_library_)[storage_.data->data.definition_id];
-        }
-
-        template<class TEvent>
-        bool can_handle() const
-        {
-            return is_valid() && definition().template can_handle<TEvent, deck_card_status_view>();
+            return storage_.data->data.definition_id;
         }
 
         constexpr auto& state() const
@@ -375,6 +363,9 @@ namespace givm
 
         storage_type storage_;
     };
+
+    using hand_card_status_view = hand_card_status_entity<const detail::table_storage>;
+    using deck_card_status_view = deck_card_status_entity<const detail::table_storage>;
 }
 
 #include "../../macro_undef.hpp"

@@ -22,7 +22,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto entity = table[givm::player_id{ 0 }];
     const givm::player_view view = entity;
     std::println("实体允许修改: {}", decltype(entity)::is_mutable);

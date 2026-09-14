@@ -151,6 +151,7 @@ namespace givm
         template<bool Observed>
         static execution_state execute(
             const givm::start_dice_roll_phase& instruction,
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             random_fn& random
@@ -160,6 +161,7 @@ namespace givm
             if(stage == stage_type::prepare_broadcast)
             {
                 detail::prepare_broadcast(
+                    library,
                     dice_roll_preparation{
                         .count = instruction.count,
                         .reroll_count = instruction.reroll_count
@@ -173,7 +175,7 @@ namespace givm
 
             if(stage == stage_type::apply_preparation)
             {
-                if(not detail::continue_broadcast<dice_roll_preparation>(table, context, random))
+                if(not detail::continue_broadcast<dice_roll_preparation>(library, table, context, random))
                 {
                     return continue_execution;
                 }

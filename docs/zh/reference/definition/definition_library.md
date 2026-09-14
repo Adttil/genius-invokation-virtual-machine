@@ -38,7 +38,7 @@ class definition_library;
 
 ## 注意
 
-通过 [`definition_source_library::compile`](definition_source_library/compile.md) 创建。配套 ID 与程序入口应始终用于产生它们的定义库；使用它的牌桌和定义视图不能比定义库存续更久。名称和标签的字符存储仍须保持有效。
+通过 [`definition_source_library::compile`](definition_source_library/compile.md) 创建。配套 ID 与程序入口应始终用于产生它们的定义库；定义视图的使用期不能超出定义库的生命期。牌桌不持有定义库，执行时由调用方显式传入配套的库。名称和标签的字符存储仍须保持有效。
 
 ## 示例
 

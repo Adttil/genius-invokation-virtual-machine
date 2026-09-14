@@ -55,7 +55,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::draw_cards{ .count = 2 } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     auto player = table[givm::player_id{ 0 }];
     const auto card = ids.get_id<givm::card_definition>("first");
     player.insert_deck_card(0, card, {});
@@ -63,7 +63,7 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::println("手牌数量: {}", player.hand_card_count());
     std::println("牌堆数量: {}", player.deck_card_count());
 }

@@ -1,7 +1,7 @@
 #ifndef GIVM_TEST_EXECUTOR_ACCESS_HPP
 #define GIVM_TEST_EXECUTOR_ACCESS_HPP
 
-#include <givm/executor/executor.hpp>
+#include <givm/executor.hpp>
 
 namespace givm::detail
 {
@@ -18,13 +18,14 @@ namespace givm::detail
         }
 
         template<bool Observed = false, class TRandom>
-        static execution_state execute_next(executor& target, card_table& table, TRandom& source)
+        static execution_state execute_next(
+            executor& target, const definition_library& library, card_table& table, TRandom& source
+        )
         {
-            const auto& library = table.definition_library();
             target.settle_control_instructions(library);
             random_fn random{ source };
             const auto instruction = library.instruction(target.context_.position_);
-            const auto state = instruction.template execute<Observed>(table, target.context_, random);
+            const auto state = instruction.template execute<Observed>(library, table, target.context_, random);
             if(state == continue_execution)
                 target.settle_control_instructions(library);
 #ifndef NDEBUG

@@ -452,6 +452,8 @@ namespace givm
             storage_.data->deck_card_order.erase(order);
         }
     };
+
+    using player_view = player_entity<const detail::table_storage>;
 }
 
 #include "../../macro_undef.hpp"

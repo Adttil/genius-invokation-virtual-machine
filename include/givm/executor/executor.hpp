@@ -175,17 +175,17 @@ namespace givm
         }
 
         template<class TRandom>
-        execution_state step(card_table& table, TRandom& random_source)
+        execution_state step(const definition_library& library, card_table& table, TRandom& random_source)
         {
             GIVM_ASSERT(last_state_ != execution_state::finished);
-            return advance<true>(table, random_source);
+            return advance<true>(library, table, random_source);
         }
 
         template<class TRandom>
-        execution_state run(card_table& table, TRandom& random_source)
+        execution_state run(const definition_library& library, card_table& table, TRandom& random_source)
         {
             GIVM_ASSERT(last_state_ == detail::continue_execution || detail::is_input_state(last_state_));
-            return advance<false>(table, random_source);
+            return advance<false>(library, table, random_source);
         }
 
         template<execution_state State>
@@ -206,15 +206,14 @@ namespace givm
         friend struct detail::executor_access;
 
         template<bool Observed, class TRandom>
-        execution_state advance(card_table& table, TRandom& random_source)
+        execution_state advance(const definition_library& library, card_table& table, TRandom& random_source)
         {
-            const auto& library = table.definition_library();
             random_fn random{ random_source };
             while(true)
             {
                 settle_control_instructions(library);
                 const auto instruction = library.instruction(context_.position_);
-                const auto state = instruction.template execute<Observed>(table, context_, random);
+                const auto state = instruction.template execute<Observed>(library, table, context_, random);
                 if(state != detail::continue_execution)
                 {
 #ifndef NDEBUG

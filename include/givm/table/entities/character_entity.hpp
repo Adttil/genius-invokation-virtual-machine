@@ -85,16 +85,10 @@ namespace givm
             };
         }
 
-        constexpr auto definition() const
+        constexpr auto definition_id() const
         {
             GIVM_ASSERT(is_valid());
-            return (*storage_.table->definition_library_)[storage_.data->definition_id];
-        }
-
-        template<class TEvent>
-        bool can_handle() const
-        {
-            return is_valid() && definition().template can_handle<TEvent, character_view>();
+            return storage_.data->definition_id;
         }
 
         constexpr auto& state() const
@@ -168,7 +162,7 @@ namespace givm
             }
         }
 
-        constexpr skill_entity<TStorage> add(definition_id<skill_view> definition_id, const skill_state& state) const requires is_mutable
+        constexpr skill_entity<TStorage> add(givm::definition_id<skill_view> definition_id, const skill_state& state) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
             storage_.data->skill_datas.emplace_back(definition_id, state);
@@ -182,7 +176,7 @@ namespace givm
             return result;
         }
 
-        constexpr attachment_entity<TStorage> add(definition_id<attachment_view> definition_id, const attachment_state& state) const requires is_mutable
+        constexpr attachment_entity<TStorage> add(givm::definition_id<attachment_view> definition_id, const attachment_state& state) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
             storage_.data->attachment_datas.emplace_back(definition_id, state);

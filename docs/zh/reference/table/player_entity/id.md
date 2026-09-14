@@ -26,7 +26,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto entity = table[givm::player_id{ 0 }];
     const auto id = entity.id();
     std::println("再次找到同一实体: {}", table[id].id() == id);

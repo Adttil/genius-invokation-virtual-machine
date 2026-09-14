@@ -43,16 +43,16 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::start_dice_roll_phase{ .count = 8 } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     // 双方保留首次投出的骰子，不进行重投。
     for(int submission = 0; submission < 2; ++submission)
     {
         execution.view_in<givm::execution_state::dice_selection>().select({});
-        execution.run(table, random);
+        execution.run(library, table, random);
     }
     std::println("玩家 0 的骰子数量: {}", table[givm::player_id{ 0 }].state().dice.total());
     std::println("玩家 1 的骰子数量: {}", table[givm::player_id{ 1 }].state().dice.total());

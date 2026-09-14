@@ -8,9 +8,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <givm/definition/source_library.hpp>
-#include <givm/executor/events.hpp>
-#include <givm/executor/executor.hpp>
+#include <givm/definition.hpp>
+#include <givm/executor.hpp>
 #include <givm/table.hpp>
 
 using namespace givm;
@@ -24,6 +23,7 @@ namespace
         definition_id<support_view> beta_support;
         tag_id chosen_tag;
         std::vector<definition_id<support_view>> filtered_supports;
+        std::vector<support_id> matching_entities;
     };
 
     struct tagged_support_source
@@ -103,7 +103,7 @@ namespace
             const definition_type& definition,
             const hand_card_view&,
             test_event&,
-            const card_table&,
+            const card_table& table,
             random_fn&
         )
         {
@@ -112,6 +112,13 @@ namespace
             definition.observation->beta_support = definition.beta_support;
             definition.observation->chosen_tag = definition.chosen_tag;
             definition.observation->filtered_supports = definition.filtered_supports;
+            for(const auto support : table[player_id{ 0 }].supports())
+            {
+                if(support.definition_id() == definition.alpha_support)
+                {
+                    definition.observation->matching_entities.push_back(support.id());
+                }
+            }
             return handler_program_entry_t<test_event>::null();
         }
     };
@@ -132,7 +139,7 @@ namespace
 
         definition_id<support_view> resolved_support;
 
-        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return resolved_support.is_valid() ? detail::continue_execution : execution_state::action;
         }
@@ -142,7 +149,7 @@ namespace
     {
         using context_type = onpay_context<cost_of_switch>;
 
-        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return detail::continue_execution;
         }
@@ -152,7 +159,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return detail::continue_execution;
         }
@@ -344,18 +351,22 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     const auto [library, id_map] = source_library.compile(program, program);
     const auto card_id = id_map.get_id<card_definition>(card.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto card_entity = table[player_id{ 0 }].add_hand_card(card_id, {});
+    table[player_id{ 0 }].add(id_map.get_id<support_view>(beta.name()), {});
+    const auto first_alpha = table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
+    const auto second_alpha = table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
     zero_random random_source;
     random_fn random{ random_source };
     test_event event;
     const hand_card_view card_view = card_entity;
-    CHECK_FALSE(card_view.definition().handle<test_event>(card_view, event, table, random));
+    CHECK_FALSE(library[card_view.definition_id()].handle<test_event>(card_view, event, table, random));
 
     REQUIRE(observation.handled);
     CHECK(observation.alpha_support.value() == id_map.get_id<support_view>("AlphaSupport").value());
     CHECK(observation.beta_support.value() == id_map.get_id<support_view>("BetaSupport").value());
     CHECK(observation.chosen_tag.value() == id_map.get_tag_id("chosen").value());
+    CHECK(observation.matching_entities == std::vector<support_id>{ first_alpha, second_alpha });
 
     REQUIRE(observation.filtered_supports.size() == 1);
     CHECK(
@@ -409,7 +420,7 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
         observation.resolved_support.value()
         == id_map.get_id<support_view>(support.name()).value()
     );
-    card_table table{ library };
+    card_table table{};
     const auto card_entity = table[player_id{ 0 }].add_hand_card(
         id_map.get_id<card_definition>(card.name()),
         {}
@@ -424,8 +435,8 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     test_event event;
     const hand_card_view card_view = card_entity;
     const support_view support_view_value = support_entity;
-    CHECK_FALSE(card_view.definition().handle<test_event>(card_view, event, table, random));
-    CHECK_FALSE(support_view_value.definition().handle<test_event>(
+    CHECK_FALSE(library[card_view.definition_id()].handle<test_event>(card_view, event, table, random));
+    CHECK_FALSE(library[support_view_value.definition_id()].handle<test_event>(
         support_view_value,
         event,
         table,

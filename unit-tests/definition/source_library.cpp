@@ -7,7 +7,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <givm/definition/source_library.hpp>
+#include <givm/definition.hpp>
 
 using namespace givm;
 
@@ -17,7 +17,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return execution_state{};
         }

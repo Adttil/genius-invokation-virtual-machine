@@ -3,20 +3,12 @@
 
 #include <stdexcept>
 #include <string_view>
-#include <vector>
 
-#include "issued_id.hpp"
+#include "../table.hpp"
 #include "issued_id_map.hpp"
-#include "types.hpp"
 
 namespace givm
 {
-    struct linked_deck
-    {
-        std::vector<definition_id<card_definition>> cards;
-        std::vector<definition_id<character_view>> characters;
-    };
-
     template<class TCardNames, class TCharacterNames>
     linked_deck link_deck(
         const issued_id_map& id_map,

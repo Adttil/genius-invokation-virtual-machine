@@ -19,7 +19,7 @@
 - `card_table` 保存一局游戏中持续存在的牌桌状态，例如实体、资源和回合信息。
 - `executor` 保存当前执行位置和结算过程中的临时状态，并负责推进规则。
 
-`definition_library` 可以被多局游戏共享，它不是游戏状态。在给定定义库下，一局游戏的可变状态由 `card_table` 与 `executor` 共同组成。table 引用相应的 definition library，因此该定义库必须在 table 的整个生命周期内保持有效。
+`definition_library` 可以被多局游戏共享，它不是游戏状态。在给定定义库下，一局游戏的可变状态由 `card_table` 与 `executor` 共同组成。table 只保存游戏状态与定义 ID，不持有 definition library。executor 也不保存库指针；每次 `step` 或 `run` 显式接收与程序现场和实体定义 ID 配套的定义库。
 
 牌组等每局输入不编入游戏规则程序。上层在对局开始前用 `issued_id_map` 链接名称，并把 `linked_deck` 装入 table；随机洗牌、角色初始化等规则步骤由游戏流程指令执行。具体接口见 [牌组链接与装载](deck_initialization.md)。
 
@@ -47,24 +47,27 @@ event 描述一次正在结算、允许响应者修改的规则事件。handler 
 
 ## 复制与清理
 
-分支模拟复制匹配的 table 与 executor，并继续引用同一份不可变 definition library。持久化时需要同时记录足以重建所用定义库的构建信息。
+分支模拟复制匹配的 table 与 executor，并在继续推进时显式传入配套的不可变 definition library。持久化时需要同时记录足以重建所用定义库的构建信息。
 
 实体离场先标记为无效，将压缩存储延后到安全点，避免结算期间的实体身份因搬迁改变。这一取舍及未采用 generation、free list 的原因见[牌桌存储设计](table_storage.md)；调用方的清理条件见 [`clean_up`](../reference/table/card_table/clean_up.md)。
 
 ## 模块入口
 
-三个核心模块的依赖方向为：
+三个核心模块的包含依赖方向如下，箭头指向被依赖的模块：
 
 ```text
-definition -> table -> executor
+executor -> definition -> table
+executor ----------------> table
 ```
 
-- `definition.hpp`：定义源、编译定义库、issued id、程序入口，以及牌组名称链接与 `linked_deck`。
-- `table.hpp`：牌桌状态、实体 ID、实体访问对象和 `card_table`。
+- `definition.hpp`：定义源、编译定义库、ID 映射、程序入口，以及牌组名称链接。
+- `table.hpp`：牌桌状态、`issued_id` 及其 `definition_id`、`tag_id` 别名、定义类别、实体 ID、实体访问对象、`linked_deck` 和 `card_table`。
 - `executor.hpp`：公开指令、事件、随机输入和 `executor`。
 - `utils/stack.hpp`：可独立使用的栈与 frame view 工具；其公开性不意味着 executor 提供原始栈访问。
 
-跨核心模块代码只包含对方的聚合入口头，不直接包含对方内部文件。依赖保持从上层指向下层，不能因 definition 存有执行函数指针，就反向包含 executor 的完整实现。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
+跨核心模块代码只包含对方的聚合入口头，不直接包含对方内部文件。例如 definition 使用 table 时包含 `table.hpp`，而不是 `table/` 下的内部头文件。跨模块包含保持从上层指向下层。table 的直接及传递包含均不进入 definition 或 executor；definition 使用 table 提供的游戏数据类型，并继续承担当下的最终编译。不能因 definition 存有执行函数指针，就反向包含 executor 的完整实现。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
+
+table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 
 execution_state 的完整定义属于 executor。definition 中的擦除函数签名使用 `enum class execution_state : std::uint8_t;` 前置声明，以保持底层类型一致；C++ 的枚举前置声明不是一个底层大小未知的类型声明，不能靠省略底层类型来回避这个边界。
 
@@ -77,6 +80,6 @@ execution_state 的完整定义属于 executor。definition 中的擦除函数�
 ## 维护时需要保留的区别
 
 - 定义库、牌组链接信息、牌桌和执行器分别承担规则、对局前名称解析、持久局面和临时结算，不应把随机生成器、界面展示或每局牌组重新塞入编译规则。
-- `definition -> table -> executor` 表示从底层到使用它的上层；并不是 definition 要依赖 table 的完整实现。跨模块声明可以使用前置声明，公共入口负责暴露模块内容。
+- table 是独立的游戏数据模块，definition 使用它的定义 ID 和实体类型。编译及编译后的 definition library 当前仍归 definition；后续职责迁移不改变 table 的独立性。
 - 复制牌桌和执行器并不自动复制外部随机源、输入日志或界面任务。每一部分都需要由持有者明确选择复制、共享或重建。
 - 此处保留的持久化设想是“保存足以重建定义库的信息”，没有承诺直接序列化运行时指针、type index 或栈字节。

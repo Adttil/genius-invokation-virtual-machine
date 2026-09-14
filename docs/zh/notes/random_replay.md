@@ -13,7 +13,7 @@
 `executor::run` 与 `executor::step` 以非常量左值引用接收可调用对象；其无参数调用结果必须可转换为 `std::uint32_t`：
 
 ```cpp
-executor.step(table, random);
+executor.step(library, table, random);
 ```
 
 本次同步调用内部会把它作为非持有 `random_fn` 传给当前指令和 definition handler。核心不会把该引用写入指令、table 或 executor stack，也不会在 `run` 或 `step` 返回后继续持有它。因此相邻两步可以使用不同的生成器、记录包装器或回放条带。
@@ -68,7 +68,7 @@ struct tape_random
 
 ## 模拟分叉
 
-模拟器可以在一次 `run` 或 `step` 返回后复制彼此匹配的 table 与 executor，并为不同分支提供不同随机源。两份 table 必须继续绑定同一份仍存活的不可变 definition library。
+模拟器可以在一次 `run` 或 `step` 返回后复制彼此匹配的 table 与 executor，并为不同分支提供不同随机源。两个分支每次推进时都须显式传入与其现场及定义 ID 配套的不可变 definition library。
 
 每个记录的 `std::uint32_t` 都是独立输入，可以单独替换。若替换导致后续控制流和随机调用次数发生变化，分支可以使用调整后的条带或在条带耗尽时切换到后备生成器。
 

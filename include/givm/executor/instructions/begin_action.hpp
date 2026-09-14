@@ -92,6 +92,7 @@ namespace givm
         template<bool Observed>
         static execution_state execute(
             const givm::begin_action& instruction,
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             random_fn& random
@@ -109,42 +110,42 @@ namespace givm
                     >();
                     table[event.current.player_id].state().active_character = event.current;
                     stored_stage = static_cast<stage_t>(stage_type::switch_action_broadcast);
-                    return broadcast_switch_action<Observed>(table, context, random);
+                    return broadcast_switch_action<Observed>(library, table, context, random);
                 }
             }
             switch(stage)
             {
             case stage_type::prepare_action_phase:
-                return prepare_action_phase<Observed>(table, context);
+                return prepare_action_phase<Observed>(library, table, context);
             case stage_type::action_phase_broadcast:
-                return broadcast_action_phase<Observed>(table, context, random);
+                return broadcast_action_phase<Observed>(library, table, context, random);
             case stage_type::before_action:
             case stage_type::before_action_with_switch:
-                return execute_before_action<Observed>(table, context);
+                return execute_before_action<Observed>(library, table, context);
             case stage_type::before_action_broadcast:
-                return broadcast_before_action<Observed>(table, context, random);
+                return broadcast_before_action<Observed>(library, table, context, random);
             case stage_type::prepare_input:
-                return prepare_input_frame<Observed>(table, context);
+                return prepare_input_frame<Observed>(library, table, context);
             case stage_type::wait_input:
-                return wait_input<Observed>(table, context, random);
+                return wait_input<Observed>(library, table, context, random);
             case stage_type::switch_onpay:
-                return continue_switch_onpay<Observed>(table, context);
+                return continue_switch_onpay<Observed>(library, table, context);
             case stage_type::after_fixed_switch_onpay:
                 context.stack().pop<
                     detail::handler_id<cost_of_switch>,
                     cost_effect_argument<cost_of_switch>,
                     stage_t
                 >();
-                return continue_switch_onpay<Observed>(table, context);
+                return continue_switch_onpay<Observed>(library, table, context);
             case stage_type::switch_payment_broadcast:
-                return broadcast_switch_payment<Observed>(table, context, random);
+                return broadcast_switch_payment<Observed>(library, table, context, random);
             case stage_type::switch_action:
-                return execute_switch_action<Observed>(table, context);
+                return execute_switch_action<Observed>(library, table, context);
             case stage_type::switch_action_broadcast:
-                return broadcast_switch_action<Observed>(table, context, random);
+                return broadcast_switch_action<Observed>(library, table, context, random);
             case stage_type::first_round_end_broadcast:
             case stage_type::second_round_end_broadcast:
-                return broadcast_round_end_declaration<Observed>(table, context, random, stage);
+                return broadcast_round_end_declaration<Observed>(library, table, context, random, stage);
             default:
                 break;
             }
@@ -194,21 +195,24 @@ namespace givm
         }
 
         template<bool Observed>
-        static execution_state prepare_action_phase(card_table& table, execution_context& context)
+        static execution_state prepare_action_phase(
+            const definition_library& library, card_table& table, execution_context& context
+        )
         {
-            detail::prepare_broadcast(action_phase_started{}, table, context.stack());
+            detail::prepare_broadcast(library, action_phase_started{}, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::action_phase_broadcast);
             return continue_execution;
         }
 
         template<bool Observed>
         static execution_state broadcast_action_phase(
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             random_fn& random
         )
         {
-            if(not detail::continue_broadcast<action_phase_started>(table, context, random))
+            if(not detail::continue_broadcast<action_phase_started>(library, table, context, random))
             {
                 return continue_execution;
             }
@@ -223,6 +227,7 @@ namespace givm
         }
 
         static void calculate_switch_cost(
+            const definition_library& library,
             stack_count_t action_index,
             card_table& table,
             execution_context& context,
@@ -258,6 +263,7 @@ namespace givm
                 const auto entry = std::visit([&](auto handler_id)
                 {
                     return detail::try_handle(
+                        library,
                         std::as_const(table)[handler_id],
                         cost,
                         table,
@@ -272,7 +278,9 @@ namespace givm
         }
 
         template<bool Observed>
-        static execution_state execute_before_action(card_table& table, execution_context& context)
+        static execution_state execute_before_action(
+            const definition_library& library, card_table& table, execution_context& context
+        )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
             auto& state = table.state();
@@ -284,7 +292,7 @@ namespace givm
                 state.active_player = other_player(state.active_player);
             }
 
-            detail::prepare_broadcast(before_action{}, table, context.stack());
+            detail::prepare_broadcast(library, before_action{}, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::before_action_broadcast);
             if constexpr(Observed)
             {
@@ -297,9 +305,11 @@ namespace givm
         }
 
         template<bool Observed>
-        static execution_state broadcast_before_action(card_table& table, execution_context& context, random_fn& random)
+        static execution_state broadcast_before_action(
+            const definition_library& library, card_table& table, execution_context& context, random_fn& random
+        )
         {
-            if(not detail::continue_broadcast<before_action>(table, context, random))
+            if(not detail::continue_broadcast<before_action>(library, table, context, random))
             {
                 return continue_execution;
             }
@@ -310,7 +320,9 @@ namespace givm
         }
 
         template<bool Observed>
-        static execution_state prepare_input_frame(card_table& table, execution_context& context)
+        static execution_state prepare_input_frame(
+            const definition_library& library, card_table& table, execution_context& context
+        )
         {
             const auto player = table[table.state().active_player];
             const auto active_character = player.state().active_character;
@@ -330,7 +342,7 @@ namespace givm
                 }
             }
 
-            const auto cost_handlers = detail::collect_all_broadcast_targets<cost_of_switch>(table);
+            const auto cost_handlers = detail::collect_all_broadcast_targets<cost_of_switch>(library, table);
             const auto handler_count = static_cast<stack_count_t>(cost_handlers.size());
             const auto matrix_size = switch_count * handler_count;
             auto&& [
@@ -375,7 +387,9 @@ namespace givm
         }
 
         template<bool Observed>
-        static execution_state wait_input(card_table& table, execution_context& context, random_fn& random)
+        static execution_state wait_input(
+            const definition_library& library, card_table& table, execution_context& context, random_fn& random
+        )
         {
             auto&& [
                 handlers,
@@ -408,7 +422,7 @@ namespace givm
                     state.first_ended = true;
                 }
 
-                detail::prepare_broadcast(round_end_declared{}, table, context.stack());
+                detail::prepare_broadcast(library, round_end_declared{}, table, context.stack());
                 context.current_stage() = static_cast<stage_t>(
                     is_first
                         ? stage_type::first_round_end_broadcast
@@ -427,14 +441,14 @@ namespace givm
             const auto action_index = request.action_index;
             if(request.request_kind == action_request_kind::calculate_cost)
             {
-                calculate_switch_cost(action_index, table, context, random);
+                calculate_switch_cost(library, action_index, table, context, random);
                 request = {};
                 return context.yield(execution_state::action);
             }
 
             if(request.request_kind == action_request_kind::do_action)
             {
-                calculate_switch_cost(action_index, table, context, random);
+                calculate_switch_cost(library, action_index, table, context, random);
             }
             else
             {
@@ -443,11 +457,13 @@ namespace givm
 
             onpay_cursor = 0;
             stage = static_cast<stage_t>(stage_type::switch_onpay);
-            return continue_switch_onpay<Observed>(table, context);
+            return continue_switch_onpay<Observed>(library, table, context);
         }
 
         template<bool Observed>
-        static execution_state continue_switch_onpay(card_table& table, execution_context& context)
+        static execution_state continue_switch_onpay(
+            const definition_library& library, card_table& table, execution_context& context
+        )
         {
             auto&& [
                 handlers,
@@ -482,11 +498,13 @@ namespace givm
                 }
             }
 
-            return pay_switch_cost<Observed>(table, context);
+            return pay_switch_cost<Observed>(library, table, context);
         }
 
         template<bool Observed>
-        static execution_state pay_switch_cost(card_table& table, execution_context& context)
+        static execution_state pay_switch_cost(
+            const definition_library& library, card_table& table, execution_context& context
+        )
         {
             auto&& [
                 handlers,
@@ -512,10 +530,11 @@ namespace givm
 
             if(paid_dice.total() == 0)
             {
-                return execute_switch_action<Observed>(table, context);
+                return execute_switch_action<Observed>(library, table, context);
             }
 
             detail::prepare_broadcast(
+                library,
                 dice_removed{
                     .player = player,
                     .dice = paid_dice
@@ -529,22 +548,25 @@ namespace givm
 
         template<bool Observed>
         static execution_state broadcast_switch_payment(
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             random_fn& random
         )
         {
-            if(not detail::continue_broadcast<dice_removed>(table, context, random))
+            if(not detail::continue_broadcast<dice_removed>(library, table, context, random))
             {
                 return continue_execution;
             }
 
             detail::pop_broadcast<dice_removed>(context);
-            return execute_switch_action<Observed>(table, context);
+            return execute_switch_action<Observed>(library, table, context);
         }
 
         template<bool Observed>
-        static execution_state execute_switch_action(card_table& table, execution_context& context)
+        static execution_state execute_switch_action(
+            const definition_library& library, card_table& table, execution_context& context
+        )
         {
             auto&& [
                 handlers,
@@ -566,25 +588,26 @@ namespace givm
             GIVM_ASSERT(static_cast<bool>(table[target]));
             if constexpr(Observed)
             {
-                detail::prepare_broadcast(active_character_changed{ .current = target }, table, context.stack());
+                detail::prepare_broadcast(library, active_character_changed{ .current = target }, table, context.stack());
                 context.current_stage() = static_cast<stage_t>(stage_type::switch_action_apply);
                 return execution_state::active_character_changed;
             }
             table[target.player_id].state().active_character = target;
 
-            detail::prepare_broadcast(active_character_changed{ .current = target }, table, context.stack());
+            detail::prepare_broadcast(library, active_character_changed{ .current = target }, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::switch_action_broadcast);
             return continue_execution;
         }
 
         template<bool Observed>
         static execution_state broadcast_switch_action(
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             random_fn& random
         )
         {
-            if(not detail::continue_broadcast<active_character_changed>(table, context, random))
+            if(not detail::continue_broadcast<active_character_changed>(library, table, context, random))
             {
                 return continue_execution;
             }
@@ -624,13 +647,14 @@ namespace givm
 
         template<bool Observed>
         static execution_state broadcast_round_end_declaration(
+            const definition_library& library,
             card_table& table,
             execution_context& context,
             random_fn& random,
             stage_type stage
         )
         {
-            if(not detail::continue_broadcast<round_end_declared>(table, context, random))
+            if(not detail::continue_broadcast<round_end_declared>(library, table, context, random))
             {
                 return continue_execution;
             }

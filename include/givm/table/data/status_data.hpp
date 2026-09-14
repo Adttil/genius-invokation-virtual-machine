@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "../../definition.hpp"
+#include "../issued_id.hpp"
 
 namespace givm
 {

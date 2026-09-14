@@ -4,7 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <givm/definition/source_library.hpp>
+#include <givm/definition.hpp>
 
 using namespace givm;
 
@@ -16,7 +16,7 @@ namespace
 
         int value;
 
-        execution_state execute(card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return value != 0 ? detail::continue_execution : execution_state::action;
         }

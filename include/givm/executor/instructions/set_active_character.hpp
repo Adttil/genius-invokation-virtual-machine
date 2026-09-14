@@ -33,7 +33,8 @@ namespace givm
 
             template<bool Observed>
             static execution_state execute(
-                const givm::set_active_character& instruction, card_table& table, execution_context& context, random_fn& random
+                const givm::set_active_character& instruction, const definition_library& library,
+                card_table& table, execution_context& context, random_fn& random
             )
             {
                 if constexpr(Observed)
@@ -59,18 +60,18 @@ namespace givm
                     {
                         if(state.active_character != instruction.target)
                         {
-                            detail::prepare_broadcast(event, table, context.stack());
+                            detail::prepare_broadcast(library, event, table, context.stack());
                             context.current_stage() = static_cast<stage_t>(stage_type::apply);
                             return execution_state::active_character_changed;
                         }
                     }
                     state.active_character = instruction.target;
 
-                    detail::prepare_broadcast(event, table, context.stack());
+                    detail::prepare_broadcast(library, event, table, context.stack());
                     context.current_stage() = static_cast<stage_t>(stage_type::broadcast);
                 }
 
-                if(not detail::continue_broadcast<active_character_changed>(table, context, random))
+                if(not detail::continue_broadcast<active_character_changed>(library, table, context, random))
                 {
                     return continue_execution;
                 }

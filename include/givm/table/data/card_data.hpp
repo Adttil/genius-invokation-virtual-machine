@@ -1,7 +1,7 @@
 #ifndef GIVM_TABLE_DATA_CARD_DATA_HPP
 #define GIVM_TABLE_DATA_CARD_DATA_HPP
 
-#include "../../definition.hpp"
+#include "../issued_id.hpp"
 #include "status_data.hpp"
 
 namespace givm

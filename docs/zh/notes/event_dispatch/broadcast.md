@@ -37,7 +37,7 @@ stack.top<
 3. 支援、召唤物、战斗状态；
 4. 角色，每名角色之后紧接其技能，再接其附件。
 
-各区域及子实体使用对应遍历接口的顺序，只加入 `can_handle<E>()` 为真的有效实体。frame 准备后新建的实体不加入其快照；已经进入快照但随后失效的实体在轮到时跳过。每个广播 frame 分别保存准备时的快照；前一次响应新建的实体只可能被尚未准备的后续广播采样，不会加入已经预备好的快照。领域指令采用非默认采样范围或顺序时，以其自身文档为准。
+各区域及子实体使用对应遍历接口的顺序，执行侧根据实体定义 ID 查询显式传入的定义库，只加入具有对应响应的有效实体。frame 准备后新建的实体不加入其快照；已经进入快照但随后失效的实体在轮到时跳过。每个广播 frame 分别保存准备时的快照；前一次响应新建的实体只可能被尚未准备的后续广播采样，不会加入已经预备好的快照。领域指令采用非默认采样范围或顺序时，以其自身文档为准。
 
 推进器在调用 handler 前写入当前响应者，并先推进游标。这样 handler 返回的固定程序完成后，产生事件的指令可以从下一响应者继续，而不会重复调用当前项。
 
@@ -63,7 +63,7 @@ handler 不能通过收到的 `const card_table&` 直接修改持久状态。需
 
 源码为 [`broadcast.hpp`](../../../../include/givm/executor/broadcast.hpp)。`handler_id<E>` 的 variant 不是手写通用实体引用：它依次展开 `definition_types`、`views_of_definition`，仅纳入 `subscribed_events<View>` 包含事件 `E` 的 view 所对应的实体 ID。实体身份为何区分区域，见[实体身份与区域](../entity_identity.md)。
 
-`prepare_broadcast` 在调用时完成整个目标列表采样；`continue_broadcast` 不重新采样。后者读取 `targets/cursor/event/current_handler/stage`，在调用前执行等价于 `current_handler = targets[cursor++]` 的操作。快照阶段先筛选 `can_handle<E>()`，调用阶段的 `try_handle` 只检查实体是否仍有效，不重新做一次全体订阅扫描。
+`prepare_broadcast` 在调用时完成整个目标列表采样；`continue_broadcast` 不重新采样。后者读取 `targets/cursor/event/current_handler/stage`，在调用前执行等价于 `current_handler = targets[cursor++]` 的操作。快照阶段先根据定义 ID 筛选定义库中的响应能力，调用阶段的 `try_handle` 只检查实体是否仍有效，不重新做一次全体订阅扫描。
 
 `current_handler` 保存当前响应者自身（self）的身份，不是事件的 `target`。事件指向的受伤角色可以与响应的护盾、支援或卡牌不同；`absorb_damage_by_count` 正是从这一槽取得应扣计数的实体。进入响应子程序后它留在下方广播 frame 中，activation 上的指令不需要把 self 复制进自身固定操作数。初始压帧时该槽只是默认构造，推进器写入当前项之后才具有这个“当前响应者”的意义。
 

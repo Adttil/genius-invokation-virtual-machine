@@ -73,16 +73,16 @@ int main()
     givm::definition_source_library sources{};
     const auto [library, ids] = sources.compile(
         std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
-    auto state = execution.step(table, random);
+    auto state = execution.step(library, table, random);
     while(state == givm::execution_state::round_started)
     {
         // 回合通知直接从牌桌取得信息。
         std::println("进入回合: {}", table.state().round_number);
-        state = execution.step(table, random);
+        state = execution.step(library, table, random);
     }
     std::println("超过回合上限后结束: {}", state == givm::execution_state::finished);
 }

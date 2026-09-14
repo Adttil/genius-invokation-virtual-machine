@@ -38,13 +38,13 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::end_round{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     table.state().active_player = givm::player_id{ 1 };
     table.state().first_ended = true;
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::println("下一回合由玩家 0 先手: {}", table.state().active_player == givm::player_id{ 0 });
     std::println("结束声明标记已清除: {}", !table.state().first_ended);
 }

@@ -13,6 +13,7 @@ namespace givm
     namespace detail
     {
         inline bool begin_element_application(
+            const definition_library& library,
             element_application_source_id source,
             character_id target,
             element incoming_element,
@@ -33,6 +34,7 @@ namespace givm
             }
 
             prepare_broadcast(
+                library,
                 elemental_reaction_will_occur{
                     .source = source,
                     .target = target,
@@ -112,13 +114,15 @@ namespace givm
 
         template<bool Observed>
         static execution_state execute(
-            const givm::apply_element& instruction, card_table& table, execution_context& context, random_fn& random
+            const givm::apply_element& instruction, const definition_library& library,
+            card_table& table, execution_context& context, random_fn& random
         )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
             if(stage == stage_type::apply)
             {
                 if(not begin_element_application(
+                    library,
                     instruction.source,
                     instruction.target,
                     instruction.element,
@@ -135,12 +139,13 @@ namespace givm
 
             if(stage == stage_type::reaction_broadcast)
             {
-                if(not detail::continue_broadcast<elemental_reaction_will_occur>(table, context, random))
+                if(not detail::continue_broadcast<elemental_reaction_will_occur>(library, table, context, random))
                 {
                     return continue_execution;
                 }
 
                 detail::prepare_broadcast(
+                    library,
                     detail::finish_elemental_reaction(table, context),
                     table,
                     context.stack()
@@ -149,7 +154,7 @@ namespace givm
                 return continue_execution;
             }
 
-            if(not detail::continue_broadcast<after_elemental_reaction>(table, context, random))
+            if(not detail::continue_broadcast<after_elemental_reaction>(library, table, context, random))
             {
                 return continue_execution;
             }

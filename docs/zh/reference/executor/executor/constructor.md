@@ -47,13 +47,13 @@ int main()
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-    givm::card_table table{ library };
+    givm::card_table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
     givm::card_table branch_table{ table };
     givm::executor branch{ execution };
-    branch.run(branch_table, random);
+    branch.run(library, branch_table, random);
     std::println("原对局尚未开始回合: {}", table.state().round_number == 0);
     std::println("分支双方告负: {}",
         branch.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);

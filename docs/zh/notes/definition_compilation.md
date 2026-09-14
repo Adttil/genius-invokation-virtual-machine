@@ -412,7 +412,7 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 **上层格式的设计记录。**以下描述哪些信息适合作为可重建的稳定描述；当前核心没有因此提供任意 C++/Lua definition 的序列化器，也没有承诺 `table`、`executor` 的内存布局可直接作为存档格式。
 
-`definition_library` 是定义源集和游戏流程规则共同编译出的不可变游戏规则，不是一局游戏的可变状态。table 引用一份 definition library；table 与 executor 共同构成对局状态。
+`definition_library` 是定义源集和游戏流程规则共同编译出的不可变游戏规则，不是一局游戏的可变状态。table 与 executor 共同构成对局状态，都不保存 definition library 指针。执行器每次推进显式接收配套的定义库，table 仅保存实体的定义 ID。
 
 definition library 通过 issued id 提供 definition view、名称、标签和事件分派查询；游戏入口和取指仅供内部执行器使用。编译后的具体 definition 对象由核心传给对应 handler；名称到 issued id 的查找由 `issued_id_map` 提供。其内部容器和程序布局不是公开接口。
 

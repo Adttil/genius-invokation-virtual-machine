@@ -63,11 +63,11 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::enter_character{ .player = givm::player_id{ 0 }, .definition = definition } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     const auto character = table[givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }];
     std::println("初始生命: {}", character.state().health);
 }

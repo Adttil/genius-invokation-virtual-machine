@@ -26,7 +26,7 @@ enum class element_application_cause : std::uint8_t
 ```cpp
 #include <print>
 
-#include <givm/executor/events.hpp>
+#include <givm/executor.hpp>
 
 int main()
 {

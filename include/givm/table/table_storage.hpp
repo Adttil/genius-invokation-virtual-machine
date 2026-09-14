@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "../definition.hpp"
 #include "../enums/game_result.hpp"
 #include "data/player_data.hpp"
 #include "data/status_data.hpp"
@@ -30,7 +29,6 @@ namespace givm
     {
         struct table_storage
         {
-            const definition_library* definition_library_;
             game_parameters parameters;
             table_state state;
             player_data player_datas[2]{};

@@ -1,10 +1,14 @@
 #ifndef GIVM_DEFINITION_SUBSCRIBED_EVENTS_HPP
 #define GIVM_DEFINITION_SUBSCRIBED_EVENTS_HPP
 
-#include "types.hpp"
+#include "../table.hpp"
+#include "../utils/type_list.hpp"
 
 namespace givm
 {
+    template<class EntityView>
+    struct subscribed_events;
+
     template<>
     struct subscribed_events<hand_card_view> : type_list<
         struct test_event,

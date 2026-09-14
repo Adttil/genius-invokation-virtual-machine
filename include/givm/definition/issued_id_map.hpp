@@ -11,8 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "issued_id.hpp"
-#include "types.hpp"
+#include "../table.hpp"
+#include "definition_categories.hpp"
 
 namespace givm
 {

@@ -94,6 +94,7 @@ namespace
 
     template<class TRandom>
     bool perform_first_available_switch(
+        const definition_library& library,
         executor& target,
         card_table& table,
         TRandom& random,
@@ -127,7 +128,7 @@ namespace
         }
         const auto dice_before = table[acting_player].state().dice.total();
         current.execute_action(0, argument);
-        state = target.run(table, random);
+        state = target.run(library, table, random);
 
         const auto active_after = table[acting_player].state().active_character;
         return active_after.has_value()
@@ -138,14 +139,17 @@ namespace
     }
 
     template<class TRandom>
-    bool submit_round_end(executor& target, card_table& table, TRandom& random, execution_state& state)
+    bool submit_round_end(
+        const definition_library& library,
+        executor& target, card_table& table, TRandom& random, execution_state& state
+    )
     {
         if(state != execution_state::action)
         {
             return false;
         }
         target.view_in<execution_state::action>().declare_round_end();
-        state = target.run(table, random);
+        state = target.run(library, table, random);
         return true;
     }
 
@@ -187,7 +191,6 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const auto deck = link_deck(id_map, card_names, character_names);
 
     card_table table{
-        library,
         game_parameters{
             .hand_limit = 10
         }
@@ -195,12 +198,12 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     table.load_deck(player_id{ 0 }, deck);
     table.load_deck(player_id{ 1 }, deck);
     executor target;
-    target.enter_entry(table.definition_library());
+    target.enter_entry(library);
     increasing_random random;
 
     table.state().active_player = player_id{ 0 };
 
-    auto state = target.run(table, random);
+    auto state = target.run(library, table, random);
     REQUIRE(state == execution_state::initial_card_selection);
     REQUIRE(table[player_id{ 0 }].hand_card_count() == 5);
     REQUIRE(table[player_id{ 1 }].hand_card_count() == 5);
@@ -210,11 +213,11 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     target.view_in<execution_state::initial_card_selection>().select(
         first_selection_player, std::bitset<selection_capacity>{ 0b11 }
     );
-    state = target.run(table, random);
+    state = target.run(library, table, random);
     REQUIRE(state == execution_state::card_selection);
     REQUIRE(target.view_in<execution_state::card_selection>().player() == second_selection_player);
     target.view_in<execution_state::card_selection>().select({});
-    state = target.run(table, random);
+    state = target.run(library, table, random);
 
     REQUIRE(table[player_id{ 0 }].hand_card_count() == 5);
     REQUIRE(table[player_id{ 0 }].deck_card_count() == 5);
@@ -225,14 +228,14 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     target.view_in<execution_state::initial_active_character_selection>().select(
         character_id{ .player_id = first_selection_player, .index = 0 }
     );
-    state = target.run(table, random);
+    state = target.run(library, table, random);
 
     REQUIRE(state == execution_state::remaining_active_character_selection);
     const auto remaining = target.view_in<execution_state::remaining_active_character_selection>();
     REQUIRE(remaining.player() == second_selection_player);
     CHECK(remaining.selected() == character_id{ .player_id = first_selection_player, .index = 0 });
     remaining.select(0);
-    state = target.run(table, random);
+    state = target.run(library, table, random);
 
     REQUIRE(table[player_id{ 0 }].state().active_character.has_value());
     REQUIRE(table[player_id{ 1 }].state().active_character.has_value());
@@ -251,28 +254,28 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
         target.view_in<execution_state::dice_selection>().select(
             first_selection_player, std::bitset<selection_capacity>{ 1 }
         );
-        state = target.run(table, random);
+        state = target.run(library, table, random);
         REQUIRE(state == execution_state::dice_selection);
 
         REQUIRE(target.view_in<execution_state::dice_selection>().player() == second_selection_player);
         REQUIRE(target.view_in<execution_state::dice_selection>().remaining(first_selection_player) == 0);
         CHECK(random.value == prepared_random_count);
         target.view_in<execution_state::dice_selection>().select({});
-        state = target.run(table, random);
+        state = target.run(library, table, random);
         CHECK(random.value == prepared_random_count);
         REQUIRE(state == execution_state::action);
         REQUIRE(table.state().active_player == player_id{ 0 });
 
-        REQUIRE(perform_first_available_switch(target, table, random, state));
-        REQUIRE(perform_first_available_switch(target, table, random, state));
+        REQUIRE(perform_first_available_switch(library, target, table, random, state));
+        REQUIRE(perform_first_available_switch(library, target, table, random, state));
         REQUIRE(table.state().active_player == player_id{ 0 });
 
-        REQUIRE(submit_round_end(target, table, random, state));
+        REQUIRE(submit_round_end(library, target, table, random, state));
         REQUIRE(state != execution_state::finished);
         REQUIRE(table.state().first_ended);
         REQUIRE(table.state().active_player == player_id{ 1 });
 
-        REQUIRE(submit_round_end(target, table, random, state));
+        REQUIRE(submit_round_end(library, target, table, random, state));
         REQUIRE(table[player_id{ 0 }].hand_card_count() == 5 + round * 2);
         REQUIRE(table[player_id{ 1 }].hand_card_count() == 5 + round * 2);
         if(round < max_rounds)
@@ -309,7 +312,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     std::array<std::string_view, 3> characters;
     characters.fill(character_source.name());
     const auto deck = link_deck(id_map, cards, characters);
-    card_table table{ library, game_parameters{ .hand_limit = 10 } };
+    card_table table{ game_parameters{ .hand_limit = 10 } };
     table.load_deck(player_id{ 0 }, deck);
     table.load_deck(player_id{ 1 }, deck);
     table.state().active_player = player_id{ 0 };
@@ -317,18 +320,18 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     target.enter_entry(library);
     increasing_random random;
 
-    REQUIRE(target.run(table, random) == execution_state::initial_card_selection);
+    REQUIRE(target.run(library, table, random) == execution_state::initial_card_selection);
     const auto prepared_random_count = random.value;
     const std::bitset<selection_capacity> replaced{ 0b11 };
     target.view_in<execution_state::initial_card_selection>().select(player_id{ 1 }, replaced);
-    REQUIRE(target.step(table, random) == execution_state::card_selection);
+    REQUIRE(target.step(library, table, random) == execution_state::card_selection);
     CHECK(table[player_id{ 1 }].hand_card_count() == 5);
     CHECK(table[player_id{ 1 }].deck_card_count() == 5);
     CHECK(random.value == prepared_random_count);
 
     REQUIRE(target.view_in<execution_state::card_selection>().player() == player_id{ 0 });
     target.view_in<execution_state::card_selection>().select({});
-    REQUIRE(target.step(table, random) == execution_state::initial_active_character_selection);
+    REQUIRE(target.step(library, table, random) == execution_state::initial_active_character_selection);
     CHECK(random.value == prepared_random_count);
 
     const character_id player1_choice{ .player_id = player_id{ 1 }, .index = 1 };
@@ -336,7 +339,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     target.view_in<execution_state::initial_active_character_selection>().select(player1_choice);
     CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
-    REQUIRE(target.step(table, random) == execution_state::remaining_active_character_selection);
+    REQUIRE(target.step(library, table, random) == execution_state::remaining_active_character_selection);
     CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
     const auto remaining = target.view_in<execution_state::remaining_active_character_selection>();
@@ -347,12 +350,12 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     CHECK(remaining.player() == player_id{ 0 });
     CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
-    REQUIRE(target.step(table, random) == execution_state::initial_active_characters_selected);
+    REQUIRE(target.step(library, table, random) == execution_state::initial_active_characters_selected);
 
     const auto view = target.view_in<execution_state::initial_active_characters_selected>();
     static_assert(std::is_empty_v<decltype(view)>);
     CHECK(table[player_id{ 0 }].state().active_character == player0_choice);
     CHECK(table[player_id{ 1 }].state().active_character == player1_choice);
-    REQUIRE(target.step(table, random) == execution_state::action_started);
-    REQUIRE(target.step(table, random) == execution_state::action);
+    REQUIRE(target.step(library, table, random) == execution_state::action_started);
+    REQUIRE(target.step(library, table, random) == execution_state::action);
 }

@@ -35,7 +35,7 @@ TEST_CASE("card_table cleanup preserves every card status chain", "[table]")
     const auto gamma_id = id_map.get_id<card_definition>("Gamma");
     const auto status_id = id_map.get_id<status_definition>("Status");
 
-    card_table table{ library };
+    card_table table{};
     const auto player = table[player_id{ 0 }];
     player.add_hand_card(alpha_id, {});
     player.add_hand_card(beta_id, {});

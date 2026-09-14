@@ -14,6 +14,15 @@
 | --- | --- |
 | [`card_table`](table/card_table.md) | 一场游戏的牌桌 |
 
+### 定义身份与牌组
+
+|  |  |
+| --- | --- |
+| [`issued_id`](table/issued_id.md) | 按类别区分的已发行 ID |
+| [`card_definition`](table/card_definition.md) | 卡牌定义类别 |
+| [`status_definition`](table/status_definition.md) | 卡牌状态定义类别 |
+| [`linked_deck`](table/linked_deck.md) | 已确定卡牌与角色定义的牌组 |
+
 ### 实体
 
 |  |  |
@@ -70,6 +79,13 @@
 | [`card_status_range`](table/card_status_range.md) | 一张卡牌所带的状态序列 |
 
 ## 类型别名
+
+### 定义与标签 ID
+
+|  |  |
+| --- | --- |
+| [`definition_id`](table/definition_id.md) | 实体采用的定义身份 |
+| [`tag_id`](table/tag_id.md) | 分类标签的身份 |
 
 ### 只读视图
 

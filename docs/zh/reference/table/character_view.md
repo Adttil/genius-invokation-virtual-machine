@@ -2,7 +2,7 @@
 
 # givm::character_view
 
-定义于头文件 `<givm/definition/types.hpp>`
+定义于头文件 `<givm/table.hpp>`
 
 ```cpp
 using character_view = character_entity<const detail::table_storage>;
@@ -37,7 +37,7 @@ int main()
     const example_source<givm::character_view> character_source{};
     sources.add(character_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::character_view>("示例");
     const auto entity = player.add(definition, { .max_health = 10, .health = 10 });

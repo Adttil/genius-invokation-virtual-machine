@@ -54,12 +54,12 @@ int main()
     const example_source<givm::combat_status_view> combat_status_source{};
     sources.add(combat_status_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::combat_status_view>("示例");
     const auto entity = player.add(definition, { .count = 3 });
     const givm::combat_status_id id = entity.id();
-    std::println("通过 ID 取得定义: {}", table[id].definition().name());
+    std::println("通过 ID 取得定义: {}", library[table[id].definition_id()].name());
 }
 ```
 

@@ -17,13 +17,11 @@
 | [`definition_compile_context`](definition/definition_compile_context.md) | 单项定义的编译上下文 |
 | [`definition_compile_result`](definition/definition_compile_result.md) | 配套的定义库与 ID 映射 |
 | [`definition_library`](definition/definition_library.md) | 对局使用的定义与流程 |
-| [`linked_deck`](definition/linked_deck.md) | 已确定卡牌与角色定义的牌组 |
 
 ### 名称、ID 与标签
 
 |  |  |
 | --- | --- |
-| [`issued_id`](definition/issued_id.md) | 按类别区分的定义或标签 ID |
 | [`issued_id_map`](definition/issued_id_map.md) | 定义名称、分类标签与 ID 的对应表 |
 | [`tag_mask`](definition/tag_mask.md) | 分类标签集合 |
 
@@ -38,8 +36,6 @@
 
 |  |  |
 | --- | --- |
-| [`card_definition`](definition/card_definition.md) | 卡牌定义类别 |
-| [`status_definition`](definition/status_definition.md) | 卡牌状态定义类别 |
 | [`views_of_definition`](definition/views_of_definition.md) | 定义对应的实体形态 |
 | [`subscribed_events`](definition/subscribed_events.md) | 实体形态可响应的事件 |
 | [`handler_program_context`](definition/handler_program_context.md) | 事件响应 context 的映射 |
@@ -49,8 +45,6 @@
 |  |  |
 | --- | --- |
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
-| [`definition_id`](definition/definition_id.md) | 实体定义的身份标识 |
-| [`tag_id`](definition/tag_id.md) | 分类标签的身份标识 |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`support_subscribed_events`](definition/support_subscribed_events.md) | 场上实体共用的事件列表 |
 | [`handler_program_context_t`](definition/handler_program_context_t.md) | 事件响应所用的 context 类型 |

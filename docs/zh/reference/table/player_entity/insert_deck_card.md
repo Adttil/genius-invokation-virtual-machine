@@ -22,7 +22,7 @@ constexpr deck_card_entity<TStorage> insert_deck_card(
 |  |  |
 | --- | --- |
 | `index` | 插入前的牌库顺序位置，范围为 0 到 deck_card_count()，包含两端 |
-| [`definition_id`](../../definition/definition_id.md) | 新卡牌的定义 ID |
+| [`definition_id`](../definition_id.md) | 新卡牌的定义 ID |
 | `state` | 新卡牌的初始状态 |
 | `data` | 从同一张牌桌取出的 [`card_data`](../card_data.md) |
 
@@ -59,7 +59,7 @@ int main()
     const example_source<givm::card_definition> card_source{};
     sources.add(card_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::card_definition>("示例");
     const auto first_id = player.add_deck_card(definition, {}).id();

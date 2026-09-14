@@ -39,7 +39,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     table.state().round_number = 2;
     table.state().active_player = givm::player_id{ 1 };
     std::println("当前回合: {}", table.state().round_number);

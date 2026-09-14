@@ -43,11 +43,11 @@ int main()
     givm::definition_source_library sources{};
     const auto [library, ids] = sources.compile(
         std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 2 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::println("回合数: {}", table.state().round_number);
     std::println("超过上限后双败: {}", execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }

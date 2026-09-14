@@ -50,7 +50,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");
     auto player = table[givm::player_id{ 0 }];
@@ -59,7 +59,7 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(table, random);
+    execution.run(library, table, random);
     std::println("洗牌后牌数: {}", player.deck_card_count());
     std::println("原底牌变为顶牌: {}", player.deck_card_definition(1).value() == a.value());
 }

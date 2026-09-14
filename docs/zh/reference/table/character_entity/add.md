@@ -20,7 +20,7 @@ constexpr attachment_entity<TStorage> add(
 
 |  |  |
 | --- | --- |
-| [`definition_id`](../../definition/definition_id.md) | 配套定义库中的技能或附属实体定义 ID |
+| [`definition_id`](../definition_id.md) | 配套定义库中的技能或附属实体定义 ID |
 | `state` | 新实体的初始状态 |
 
 ## 返回值
@@ -57,7 +57,7 @@ int main()
     const example_source<givm::skill_view> skill_source{};
     sources.add(character_source, skill_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto character_definition = id_map.get_id<givm::character_view>("示例");
     const auto definition = id_map.get_id<givm::skill_view>("示例");

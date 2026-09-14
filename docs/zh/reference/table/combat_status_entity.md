@@ -44,8 +44,7 @@ class combat_status_entity;
 | [`end`](combat_status_entity/end.md) | 取得单实体范围的终点 |
 | [`player`](combat_status_entity/player.md) | 取得所属玩家 |
 | [`id`](combat_status_entity/id.md) | 取得实体 ID |
-| [`definition`](combat_status_entity/definition.md) | 取得实体定义 |
-| [`can_handle`](combat_status_entity/can_handle.md) | 判断是否具有某事件的处理程序 |
+| [`definition_id`](combat_status_entity/definition_id.md) | 取得实体的定义 ID |
 | [`state`](combat_status_entity/state.md) | 访问实体状态 |
 | [`erase`](combat_status_entity/erase.md) | 移除实体 |
 
@@ -78,7 +77,7 @@ int main()
     const example_source<givm::combat_status_view> combat_status_source{};
     sources.add(combat_status_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::combat_status_view>("示例");
     const auto entity = player.add(definition, { .count = 3 });

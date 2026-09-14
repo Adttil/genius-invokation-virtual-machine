@@ -62,7 +62,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::begin_action{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     const auto attacker = table[givm::player_id{ 0 }].add(
         definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
@@ -73,14 +73,14 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    auto state = execution.run(table, random);
+    auto state = execution.run(library, table, random);
     int declarations = 0;
     while(state == givm::execution_state::action)
     {
         // 当前玩家宣布本回合结束。
         execution.view_in<givm::execution_state::action>().declare_round_end();
         ++declarations;
-        state = execution.run(table, random);
+        state = execution.run(library, table, random);
     }
     std::println("双方结束声明次数: {}", declarations);
 }

@@ -44,7 +44,7 @@ int main()
     const example_source<givm::attachment_view> attachment_source{};
     sources.add(character_source, attachment_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto character_definition = id_map.get_id<givm::character_view>("示例");
     const auto definition = id_map.get_id<givm::attachment_view>("示例");

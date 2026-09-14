@@ -27,7 +27,8 @@ namespace givm
 
             template<bool Observed>
             static execution_state execute(
-                const givm::start_round& instruction, card_table& table, execution_context& context, random_fn&
+                const givm::start_round& instruction, const definition_library&,
+                card_table& table, execution_context& context, random_fn&
             )
             {
                 auto& state = table.state();

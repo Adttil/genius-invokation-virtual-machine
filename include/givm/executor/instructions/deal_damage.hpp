@@ -113,7 +113,8 @@ namespace givm
 
         template<bool Observed>
         static execution_state execute(
-            const givm::deal_damage& instruction, card_table& table, execution_context& context, random_fn& random
+            const givm::deal_damage& instruction, const definition_library& library,
+            card_table& table, execution_context& context, random_fn& random
         )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
@@ -122,12 +123,13 @@ namespace givm
                 if(stage == stage_type::prepare_after_damage)
                 {
                     auto&& [event, stored_stage] = context.stack().top<after_damage, stage_t>();
-                    return apply_damage_element(event, table, context);
+                    return apply_damage_element(library, event, table, context);
                 }
             }
             if(stage == stage_type::prepare_damage_calculation)
             {
                 detail::prepare_broadcast(
+                    library,
                     damage_calculation{ .source = instruction.source,
                                         .target = instruction.target,
                                         .value = instruction.value,
@@ -144,7 +146,7 @@ namespace givm
 
             if(stage == stage_type::damage_calculation_broadcast)
             {
-                if(not detail::continue_broadcast<damage_calculation>(table, context, random))
+                if(not detail::continue_broadcast<damage_calculation>(library, table, context, random))
                 {
                     return continue_execution;
                 }
@@ -181,14 +183,14 @@ namespace givm
                 };
                 detail::pop_broadcast<damage_calculation>(context);
 
-                detail::prepare_broadcast(next_event, table, context.stack());
+                detail::prepare_broadcast(library, next_event, table, context.stack());
                 context.current_stage() = static_cast<stage_t>(stage_type::damage_effect_broadcast);
                 return continue_execution;
             }
 
             if(stage == stage_type::damage_effect_broadcast)
             {
-                if(not detail::continue_broadcast<damage_effect>(table, context, random))
+                if(not detail::continue_broadcast<damage_effect>(library, table, context, random))
                 {
                     return continue_execution;
                 }
@@ -227,17 +229,18 @@ namespace givm
                         return context.yield(execution_state::health_reduced);
                     }
                 }
-                return apply_damage_element(next_event, table, context);
+                return apply_damage_element(library, next_event, table, context);
             }
 
             if(stage == stage_type::damage_element_reaction_broadcast)
             {
-                if(not detail::continue_broadcast<elemental_reaction_will_occur>(table, context, random))
+                if(not detail::continue_broadcast<elemental_reaction_will_occur>(library, table, context, random))
                 {
                     return continue_execution;
                 }
 
                 detail::prepare_broadcast(
+                    library,
                     detail::finish_elemental_reaction(table, context),
                     table,
                     context.stack()
@@ -248,17 +251,17 @@ namespace givm
 
             if(stage == stage_type::damage_after_elemental_reaction_broadcast)
             {
-                if(not detail::continue_broadcast<after_elemental_reaction>(table, context, random))
+                if(not detail::continue_broadcast<after_elemental_reaction>(library, table, context, random))
                 {
                     return continue_execution;
                 }
 
                 detail::pop_broadcast<after_elemental_reaction>(context);
-                return prepare_after_damage_broadcast(table, context);
+                return prepare_after_damage_broadcast(library, table, context);
             }
 
             GIVM_ASSERT(stage == stage_type::after_damage_broadcast);
-            if(not detail::continue_broadcast<after_damage>(table, context, random))
+            if(not detail::continue_broadcast<after_damage>(library, table, context, random))
             {
                 return continue_execution;
             }
@@ -274,6 +277,7 @@ namespace givm
 
     private:
         static execution_state apply_damage_element(
+            const definition_library& library,
             const after_damage& event, card_table& table, execution_context& context
         )
         {
@@ -281,6 +285,7 @@ namespace givm
             if(incoming_element != element::none)
             {
                 if(begin_element_application(
+                    library,
                     event.source,
                     event.target,
                     incoming_element,
@@ -293,10 +298,11 @@ namespace givm
                     return continue_execution;
                 }
             }
-            return prepare_after_damage_broadcast(table, context);
+            return prepare_after_damage_broadcast(library, table, context);
         }
 
         static execution_state prepare_after_damage_broadcast(
+            const definition_library& library,
             const card_table& table,
             execution_context& context
         )
@@ -305,7 +311,7 @@ namespace givm
             (void)stored_stage;
             const auto next_event = event;
             context.stack().pop<after_damage, stage_t>();
-            detail::prepare_broadcast(next_event, table, context.stack());
+            detail::prepare_broadcast(library, next_event, table, context.stack());
             context.current_stage() = static_cast<stage_t>(stage_type::after_damage_broadcast);
             return continue_execution;
         }

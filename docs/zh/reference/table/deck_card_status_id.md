@@ -55,14 +55,14 @@ int main()
     const example_source<givm::status_definition> status_source{};
     sources.add(card_source, status_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto card_definition = id_map.get_id<givm::card_definition>("示例");
     const auto definition = id_map.get_id<givm::status_definition>("示例");
     const auto card = player.add_deck_card(card_definition, {});
     const auto entity = card.add(definition, { .count = 3 });
     const givm::deck_card_status_id id = entity.id();
-    std::println("通过 ID 取得定义: {}", table[id].definition().name());
+    std::println("通过 ID 取得定义: {}", library[table[id].definition_id()].name());
 }
 ```
 

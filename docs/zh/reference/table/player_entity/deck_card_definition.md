@@ -18,7 +18,7 @@ constexpr definition_id<card_definition> deck_card_definition(size_t index) cons
 
 ## 返回值
 
-该位置上的 [`definition_id<card_definition>`](../../definition/definition_id.md)。
+该位置上的 [`definition_id<card_definition>`](../definition_id.md)。
 
 ## 示例
 
@@ -45,7 +45,7 @@ int main()
     const example_source<givm::card_definition> card_source{};
     sources.add(card_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto definition = id_map.get_id<givm::card_definition>("示例");
     player.add_deck_card(definition, {});

@@ -21,7 +21,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -116,7 +116,7 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
         std::array<std::string_view, 2>{ "Second", "First" }
     );
 
-    card_table table{ library };
+    card_table table{};
     table.load_deck(player_id{ 0 }, deck);
     const auto player = table[player_id{ 0 }];
 
@@ -129,7 +129,7 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
     std::vector<size_t> character_definitions;
     for(const auto character : player.characters())
     {
-        character_definitions.push_back(character.definition().id().value());
+        character_definitions.push_back(character.definition_id().value());
         CHECK(character.state().max_health == 0);
     }
     CHECK(character_definitions == std::vector<size_t>{
@@ -169,7 +169,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
         }
     };
 
-    card_table table{ library };
+    card_table table{};
     table.load_deck(player_id{ 0 }, deck);
     const std::array original_ids{
         deck_card_id{ .player_id = player_id{ 0 }, .index = 0 },
@@ -183,8 +183,8 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     sequence_random random{
         .values = { std::numeric_limits<std::uint32_t>::max(), 0, std::uint32_t{ 0x80000000u } }
     };
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
-    CHECK_FALSE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
+    CHECK_FALSE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
     CHECK(random.position == 3);
 
     CHECK(deck_definition_values(table[player_id{ 0 }]) == std::vector<size_t>{
@@ -194,19 +194,19 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
         id_map.get_id<card_definition>("Delta").value()
     });
     CHECK(
-        table[original_ids[0]].definition().id().value()
+        table[original_ids[0]].definition_id().value()
         == id_map.get_id<card_definition>("Alpha").value()
     );
     CHECK(
-        table[original_ids[1]].definition().id().value()
+        table[original_ids[1]].definition_id().value()
         == id_map.get_id<card_definition>("Beta").value()
     );
     CHECK(
-        table[original_ids[2]].definition().id().value()
+        table[original_ids[2]].definition_id().value()
         == id_map.get_id<card_definition>("Gamma").value()
     );
     CHECK(
-        table[original_ids[3]].definition().id().value()
+        table[original_ids[3]].definition_id().value()
         == id_map.get_id<card_definition>("Delta").value()
     );
 }
@@ -230,13 +230,13 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
         }
     };
 
-    card_table table{ library };
+    card_table table{};
     table.load_deck(player_id{ 0 }, deck);
     executor target;
     target.enter_entry(library);
     sequence_random random{ .values = { 2, 3 } };
 
-    REQUIRE((detail::executor_access::execute_next(target, table, random) == detail::continue_execution));
+    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
     REQUIRE(initialization_order.size() == 2);
     CHECK(bool(initialization_order[0] == "Beta"));
     CHECK(bool(initialization_order[1] == "Alpha"));

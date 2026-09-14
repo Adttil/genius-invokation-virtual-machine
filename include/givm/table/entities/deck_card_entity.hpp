@@ -81,16 +81,10 @@ template<class TStorage>
             return { player().id(), storage_.slot };
         }
 
-        constexpr auto definition() const
+        constexpr auto definition_id() const
         {
             GIVM_ASSERT(is_valid());
-            return (*storage_.table->definition_library_)[storage_.data->definition_id];
-        }
-
-        template<class TEvent>
-        bool can_handle() const
-        {
-            return is_valid() && definition().template can_handle<TEvent, deck_card_view>();
+            return storage_.data->definition_id;
         }
 
         constexpr auto& state() const
@@ -109,7 +103,7 @@ template<class TStorage>
         }
 
         constexpr deck_card_status_entity<TStorage> add(
-            definition_id<status_definition> definition_id,
+            givm::definition_id<status_definition> definition_id,
             const status_state& state
         ) const requires is_mutable
         {
@@ -139,6 +133,8 @@ template<class TStorage>
 
         storage_type storage_;
     };
+
+    using deck_card_view = deck_card_entity<const detail::table_storage>;
 }
 
 #include "../../macro_undef.hpp"

@@ -18,7 +18,7 @@
 #include "library.hpp"
 #include "source_view.hpp"
 #include "issued_id_map.hpp"
-#include "types.hpp"
+#include "definition_categories.hpp"
 #include "../utils/type_list.hpp"
 
 namespace givm

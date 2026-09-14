@@ -45,8 +45,7 @@ class skill_entity;
 | [`end`](skill_entity/end.md) | 取得单实体范围的终点 |
 | [`player`](skill_entity/player.md) | 取得所属玩家 |
 | [`id`](skill_entity/id.md) | 取得实体 ID |
-| [`definition`](skill_entity/definition.md) | 取得实体定义 |
-| [`can_handle`](skill_entity/can_handle.md) | 判断是否具有某事件的处理程序 |
+| [`definition_id`](skill_entity/definition_id.md) | 取得实体的定义 ID |
 | [`state`](skill_entity/state.md) | 访问实体状态 |
 | [`erase`](skill_entity/erase.md) | 移除实体 |
 | [`character`](skill_entity/character.md) | 取得所属角色 |
@@ -81,7 +80,7 @@ int main()
     const example_source<givm::skill_view> skill_source{};
     sources.add(character_source, skill_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto player = table[givm::player_id{ 0 }];
     const auto character_definition = id_map.get_id<givm::character_view>("示例");
     const auto definition = id_map.get_id<givm::skill_view>("示例");

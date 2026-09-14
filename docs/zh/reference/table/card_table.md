@@ -10,13 +10,12 @@ class card_table;
 
 一场游戏的牌桌。
 
-它记录双方玩家的手牌、牌库、角色、骰子，以及支援、召唤物等持续影响对局的实体和状态。
+它记录双方玩家的手牌、牌库、角色、骰子，以及支援、召唤物等持续影响对局的实体和状态。牌桌不持有定义库，实体通过定义 ID 标识所采用的定义。
 
 ## 成员类型
 
 |  |  |
 | --- | --- |
-| `definition_library_type` | [`definition_library`](../definition/definition_library.md) |
 | `game_state` | [`table_state`](table_state.md) |
 
 ## 成员函数
@@ -24,7 +23,6 @@ class card_table;
 |  |  |
 | --- | --- |
 | [`(构造函数)`](card_table/constructor.md) | 构造一个 `card_table` |
-| [`definition_library`](card_table/definition_library.md) | 取得配套定义库 |
 | [`parameters`](card_table/parameters.md) | 访问对局参数 |
 | [`state`](card_table/state.md) | 访问对局的共同状态 |
 | [`players`](card_table/players.md) | 遍历双方玩家 |
@@ -36,15 +34,12 @@ class card_table;
 
 ```cpp
 #include <print>
-#include <tuple>
 
-#include <givm/givm.hpp>
+#include <givm/table.hpp>
 
 int main()
 {
-    givm::definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{ library };
+    givm::card_table table{};
     table[givm::player_id{ 0 }].state().dice[givm::elemental_dice::omni] = 3;
     for(const auto player : table.players())
     {

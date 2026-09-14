@@ -80,7 +80,7 @@ int main()
     );
     const auto id = ids.get_id<givm::support_view>("重投助手");
 
-    givm::card_table table{ library };
+    givm::card_table table{};
     const givm::support_view entity = table[givm::player_id{ 0 }].add(id, { .count = 1 });
     auto random_source = []() -> std::uint32_t { return 0; };
     givm::random_fn random{ random_source };

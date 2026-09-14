@@ -62,7 +62,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::set_active_character{ .target = { .player_id = givm::player_id{ 1 }, .index = 1 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     const auto attacker = table[givm::player_id{ 0 }].add(
         definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
@@ -74,11 +74,11 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.step(table, random);
+    execution.step(library, table, random);
     const auto view = execution.view_in<givm::execution_state::active_character_changed>();
     std::println("本次将设置为目标角色: {}", view.character() == target);
     std::println("牌桌仍保留原出战角色: {}", table[view.character().player_id].state().active_character == original);
-    execution.step(table, random);
+    execution.step(library, table, random);
     std::println("出战角色设置成功: {}", table[givm::player_id{ 1 }].state().active_character == target);
 }
 ```

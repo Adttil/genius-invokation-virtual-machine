@@ -6,9 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include <givm/executor/instructions/absorb_damage_by_count.hpp>
-#include <givm/executor/instructions/deal_damage.hpp>
-#include <givm/executor/views/damage.hpp>
+#include <givm/executor.hpp>
 
 #include "../../table/test_definition_library.hpp"
 
@@ -77,7 +75,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
         {
             if(context.current_stage() == detail::stage_t{})
             {
@@ -88,10 +86,10 @@ namespace
         }
     };
 
-    void run_until_blocked(executor& execution, card_table& table)
+    void run_until_blocked(const definition_library& library, executor& execution, card_table& table)
     {
         zero_random random;
-        REQUIRE(execution.run(table, random) == execution_state::action);
+        REQUIRE(execution.run(library, table, random) == execution_state::action);
     }
 }
 
@@ -133,7 +131,7 @@ TEST_CASE(
     const auto shield_definition = id_map.get_id<combat_status_view>(shield_source.name());
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto attacker = table[player_id{ 0 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
@@ -156,15 +154,15 @@ TEST_CASE(
     ).id();
 
     executor execution;
-    execution.enter_entry(table.definition_library());
-    run_until_blocked(execution, table);
+    execution.enter_entry(library);
+    run_until_blocked(library, execution, table);
 
     CHECK(table[other_side_shield].state().count == 7);
     CHECK(table[first_shield].state().count == 1);
     CHECK(table[second_shield].state().count == 0);
     CHECK(table[damaged_character].state().health == 6);
 
-    run_until_blocked(execution, table);
+    run_until_blocked(library, execution, table);
 
     CHECK(table[first_shield].state().count == 0);
     CHECK(table[second_shield].state().count == 0);
@@ -198,7 +196,7 @@ TEST_CASE(
     const auto shield_definition = id_map.get_id<combat_status_view>(shield_source.name());
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto attacker = table[player_id{ 0 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
@@ -221,8 +219,8 @@ TEST_CASE(
     ).id();
 
     executor execution;
-    execution.enter_entry(table.definition_library());
-    run_until_blocked(execution, table);
+    execution.enter_entry(library);
+    run_until_blocked(library, execution, table);
 
     CHECK(table[first_shield].state().count == 0);
     CHECK(table[second_shield].state().count == 2);
@@ -257,7 +255,7 @@ TEST_CASE(
     const auto shield_definition = id_map.get_id<combat_status_view>(shield_source.name());
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
 
-    card_table table{ library };
+    card_table table{};
     const auto attacker = table[player_id{ 0 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
@@ -272,8 +270,8 @@ TEST_CASE(
     ).id();
 
     executor execution;
-    execution.enter_entry(table.definition_library());
-    run_until_blocked(execution, table);
+    execution.enter_entry(library);
+    run_until_blocked(library, execution, table);
 
     CHECK(table[shield].state().count == 3);
     CHECK(table[damaged_character].state().health == 8);
@@ -291,7 +289,7 @@ TEST_CASE("step reports only final damage after shield responses", "[absorb_dama
                                  .type = damage_type::physical }, pause_once{} },
         std::tuple{}, shield_source, character_source
     );
-    card_table table{ library };
+    card_table table{};
     const auto character_definition = ids.get_id<character_view>(character_source.name());
     table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
     table[player_id{ 1 }].add(character_definition, { .max_health = 10, .health = 10 });
@@ -301,18 +299,18 @@ TEST_CASE("step reports only final damage after shield responses", "[absorb_dama
     executor normal;
     normal.enter_entry(library);
     zero_random random;
-    REQUIRE(normal.run(normal_table, random) == execution_state::action);
+    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
 
     executor observed;
     observed.enter_entry(library);
     if(maximum < 3)
     {
-        REQUIRE(observed.step(table, random) == execution_state::health_reduced);
+        REQUIRE(observed.step(library, table, random) == execution_state::health_reduced);
         CHECK(observed.view_in<execution_state::health_reduced>().value() == 3 - maximum);
         CHECK(table[shield].state().count == 4 - maximum);
         CHECK(table[target].state().health == 7 + maximum);
     }
-    REQUIRE(observed.step(table, random) == execution_state::action);
+    REQUIRE(observed.step(library, table, random) == execution_state::action);
     CHECK(table[target].state().health == normal_table[target].state().health);
     CHECK(table[shield].state().count == normal_table[shield].state().count);
 }

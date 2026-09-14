@@ -16,6 +16,7 @@ namespace givm
     enum class execution_state : std::uint8_t;
 
     class card_table;
+    class definition_library;
     class random_fn;
 
     template<class TCostEvent>
@@ -34,16 +35,19 @@ namespace givm
         {
             template<bool Observed>
             static execution_state execute(
-                const TInstruction& instruction, card_table& table, execution_context& context, random_fn& random
+                const TInstruction& instruction, const definition_library& library,
+                card_table& table, execution_context& context, random_fn& random
             )
             {
-                return instruction.execute(table, context, random);
+                return instruction.execute(library, table, context, random);
             }
         };
 
         inline constexpr std::size_t instruction_storage_size = 64;
 
-        using instruction_execute_fn = execution_state (*)(const void*, card_table&, execution_context&, random_fn&);
+        using instruction_execute_fn = execution_state (*)(
+            const void*, const definition_library&, card_table&, execution_context&, random_fn&
+        );
 
         struct instruction_rtti
         {
@@ -53,15 +57,17 @@ namespace givm
 
         template<class TInstruction>
         inline constexpr instruction_rtti instruction_rtti_of{
-            +[](const void* storage, card_table& table, execution_context& context, random_fn& random)
+            +[](const void* storage, const definition_library& library,
+                card_table& table, execution_context& context, random_fn& random)
             {
                 const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
-                return instruction_implementation<TInstruction>::template execute<false>(instruction, table, context, random);
+                return instruction_implementation<TInstruction>::template execute<false>(instruction, library, table, context, random);
             },
-            +[](const void* storage, card_table& table, execution_context& context, random_fn& random)
+            +[](const void* storage, const definition_library& library,
+                card_table& table, execution_context& context, random_fn& random)
             {
                 const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
-                return instruction_implementation<TInstruction>::template execute<true>(instruction, table, context, random);
+                return instruction_implementation<TInstruction>::template execute<true>(instruction, library, table, context, random);
             }
         };
 
@@ -86,12 +92,14 @@ namespace givm
             }
 
             template<bool Observed>
-            constexpr execution_state execute(card_table& table, execution_context& context, random_fn& random) const
+            constexpr execution_state execute(
+                const definition_library& library, card_table& table, execution_context& context, random_fn& random
+            ) const
             {
                 if constexpr(Observed)
-                    return rtti_->execute_observed(storage_, table, context, random);
+                    return rtti_->execute_observed(storage_, library, table, context, random);
                 else
-                    return rtti_->execute(storage_, table, context, random);
+                    return rtti_->execute(storage_, library, table, context, random);
             }
 
             constexpr const void* type_index() const noexcept
@@ -127,12 +135,14 @@ namespace givm
             }
 
             template<bool Observed>
-            constexpr execution_state execute(card_table& table, execution_context& context, random_fn& random) const
+            constexpr execution_state execute(
+                const definition_library& library, card_table& table, execution_context& context, random_fn& random
+            ) const
             {
                 if constexpr(Observed)
-                    return rtti_->execute_observed(storage_, table, context, random);
+                    return rtti_->execute_observed(storage_, library, table, context, random);
                 else
-                    return rtti_->execute(storage_, table, context, random);
+                    return rtti_->execute(storage_, library, table, context, random);
             }
 
         private:

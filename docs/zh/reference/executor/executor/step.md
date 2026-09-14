@@ -6,7 +6,11 @@
 
 ```cpp
 template<class TRandom>
-execution_state step(card_table& table, TRandom& random_source);
+execution_state step(
+    const definition_library& library,
+    card_table& table,
+    TRandom& random_source
+);
 ```
 [`execution_state`](../execution_state.md)
 [`card_table`](../../table/card_table.md)
@@ -25,7 +29,8 @@ execution_state step(card_table& table, TRandom& random_source);
 
 | | |
 | --- | --- |
-| `table` | 与当前执行现场配套的牌桌，使用建立现场时的定义库 |
+| `library` | 与当前执行现场配套的定义库；执行器不会在返回后持有它 |
+| `table` | 与当前执行现场配套的牌桌，其中的定义 ID 须属于本次使用的定义库 |
 | `random_source` | 本次推进使用的随机源，以左值传入；执行器不会在返回后持有它 |
 
 ## 返回值
@@ -33,6 +38,8 @@ execution_state step(card_table& table, TRandom& random_source);
 本次到达的 [`execution_state`](../execution_state.md)。通过 [`view_in`](view_in.md) 取得相应视图；纯通知现场返回空视图，信息直接从牌桌读取。
 
 ## 注意
+
+每次推进须使用与建立当前现场时相同的编译产物。牌桌与执行器都不保存定义库指针；调用方负责保持程序现场、实体定义 ID 和所传定义库相匹配。
 
 首次推进前须由 [`enter_entry`](enter_entry.md) 准备开始，或取得有效执行器的副本。在输入现场按相应视图的约定填写输入后，再继续推进。`finished` 不能继续执行。
 
@@ -77,7 +84,7 @@ int main()
                 .target = { .player_id = givm::player_id{ 1 }, .index = 0 },
                 .value = 999, .type = givm::damage_type::physical, .flags = {} } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{ library };
+    givm::card_table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     const auto original = table[givm::player_id{ 0 }].add(
         definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
@@ -89,17 +96,17 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.step(table, random);
+    execution.step(library, table, random);
     const auto switch_view = execution.view_in<givm::execution_state::active_character_changed>();
     std::println("切人现场指向新角色: {}", switch_view.character() == attacker);
     std::println("牌桌仍为原出战角色: {}", table[switch_view.character().player_id].state().active_character == original);
-    const auto state = execution.step(table, random);
+    const auto state = execution.step(library, table, random);
     std::println("切人后到达伤害现场: {}", state == givm::execution_state::health_reduced);
     std::println("新出战角色已写入牌桌: {}", table[givm::player_id{ 0 }].state().active_character == attacker);
     const auto view = execution.view_in<givm::execution_state::health_reduced>();
     std::println("本次伤害: {}", view.value());
     std::println("剩余生命: {}", table[target].state().health);
-    std::println("继续推进至终局: {}", execution.step(table, random) == givm::execution_state::finished);
+    std::println("继续推进至终局: {}", execution.step(library, table, random) == givm::execution_state::finished);
 }
 ```
 

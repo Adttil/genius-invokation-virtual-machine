@@ -26,7 +26,7 @@ enum class action_speed : std::uint8_t
 ```cpp
 #include <print>
 
-#include <givm/executor/events.hpp>
+#include <givm/executor.hpp>
 
 int main()
 {
