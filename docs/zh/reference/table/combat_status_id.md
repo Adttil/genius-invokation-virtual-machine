@@ -2,7 +2,7 @@
 
 # givm::combat_status_id
 
-定义于头文件 `<givm/table/entity_id.hpp>`
+定义于头文件 `<givm/table.hpp>`
 
 ```cpp
 struct combat_status_id;

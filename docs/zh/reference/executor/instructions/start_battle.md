@@ -2,7 +2,7 @@
 
 # givm::start_battle
 
-定义于头文件 `<givm/executor/instructions/start_battle.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct start_battle;
@@ -18,7 +18,7 @@ struct start_battle;
 
 ## 注意
 
-只有牌桌回合数为 1 时发出 [`battle_started`](../events/battle_started.md)；在其他回合执行时直接继续。
+只有牌桌回合数为 1 时发出 [`battle_started`](../events/battle_started.md)；在其他回合执行时直接继续。本指令不随机选择先手，自身不调用随机源；事件响应可以使用随机值。
 
 ## 示例
 

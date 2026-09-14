@@ -1,264 +1,79 @@
-#include "../executor_access.hpp"
 #include <cstdint>
 #include <string_view>
 #include <tuple>
-#include <variant>
 #include <vector>
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
-
-#include <givm/definition.hpp>
-#include <givm/executor.hpp>
-#include <givm/table.hpp>
+#include <givm/givm.hpp>
 
 using namespace givm;
 
 namespace
 {
-    struct fixed_random
+    struct response_source
     {
-        std::uint32_t operator()() const noexcept
-        {
-            return 0;
-        }
-    };
-
-    struct response_observation
-    {
-        support_id expected_handler{};
-        std::vector<int> execution_order;
-        bool fixed_context_observed = false;
-    };
-
-    struct observe_fixed_response
-    {
-        using context_type = test_event;
-
-        response_observation* observation;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const
-        {
-            auto&& [broadcast, activation] = context.stack().top<
-                frame<
-                    detail::handler_id<test_event>[],
-                    stack_count_t,
-                    test_event,
-                    detail::handler_id<test_event>,
-                    detail::stage_t
-                >,
-                frame<detail::execution_context::return_info, detail::stage_t>
-            >();
-            auto&& [handlers, cursor, event, current_handler, broadcast_stage] = broadcast;
-            auto&& [return_info, activation_stage] = activation;
-            (void)event;
-            (void)broadcast_stage;
-            (void)return_info;
-
-            observation->fixed_context_observed =
-                handlers.size() == 2
-                && cursor == 1
-                && std::holds_alternative<support_id>(current_handler)
-                && std::get<support_id>(current_handler) == observation->expected_handler
-                && activation_stage == detail::stage_t{};
-            observation->execution_order.push_back(1);
-            return context.enter_next();
-        }
-    };
-
-    struct observe_second_response
-    {
-        using context_type = test_event;
-
-        response_observation* observation;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const
-        {
-            observation->execution_order.push_back(2);
-            return context.enter_next();
-        }
-    };
-
-    struct fixed_response_source
-    {
-        using definition_category = support_view;
-
+        using definition_category = character_view;
         struct definition_type
         {
-            response_observation* observation;
+            std::vector<character_id>* handlers;
             program_entry<test_event> entry;
         };
-
-        response_observation* observation;
-
-        constexpr std::string_view name() const noexcept
-        {
-            return "fixed-response";
-        }
-
+        std::string_view source_name;
+        std::vector<character_id>* handlers;
+        bool terminal;
+        std::string_view name() const noexcept { return source_name; }
         definition_type compile(definition_compile_context& context) const
         {
-            return {
-                .observation = observation,
-                .entry = context.add_program<test_event>(
-                    std::tuple{ observe_fixed_response{ observation } }
-                )
-            };
-        }
-
-        static program_entry<test_event> handle(
-            const definition_type& data,
-            const support_view&,
-            test_event&,
-            const card_table&,
-            random_fn&
-        )
-        {
-            return data.entry;
-        }
-    };
-
-    struct second_response_source
-    {
-        using definition_category = support_view;
-
-        struct definition_type
-        {
-            response_observation* observation;
-            program_entry<test_event> entry;
-        };
-
-        response_observation* observation;
-
-        constexpr std::string_view name() const noexcept
-        {
-            return "second-response";
-        }
-
-        definition_type compile(definition_compile_context& context) const
-        {
-            return {
-                .observation = observation,
-                .entry = context.add_program<test_event>(
-                    std::tuple{ observe_second_response{ observation } }
-                )
-            };
-        }
-
-        static program_entry<test_event> handle(
-            const definition_type& data,
-            const support_view&,
-            test_event&,
-            const card_table&,
-            random_fn&
-        )
-        {
-            return data.entry;
-        }
-    };
-
-    struct stop_execution
-    {
-        using context_type = void;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
-        {
-            return context.yield(execution_state::action);
-        }
-    };
-
-    struct terminal_response_source
-    {
-        using definition_category = support_view;
-
-        struct definition_type
-        {
-            program_entry<test_event> entry;
-        };
-
-        constexpr std::string_view name() const noexcept
-        {
-            return "terminal-response";
-        }
-
-        definition_type compile(definition_compile_context& context) const
-        {
-            return { context.add_program<test_event>(std::tuple{
-                end_game{ .result = game_result::player_1_win }
+            if(terminal)
+                return { handlers, context.add_program<test_event>(std::tuple{
+                    end_game{ .result = game_result::player_1_win }
+                }) };
+            return { handlers, context.add_program<test_event>(std::tuple{
+                set_element_aura{ .target = character_id{ player_id{ 0 }, 0 }, .aura = element_aura::hydro }
             }) };
         }
-
         static program_entry<test_event> handle(
-            const definition_type& data,
-            const support_view&,
-            test_event&,
-            const card_table&,
-            random_fn&
-        )
+            const definition_type& data, const character_view& self, test_event&,
+            const card_table& table, random_fn&)
         {
+            if(not data.handlers->empty())
+                CHECK(table[character_id{ player_id{ 0 }, 0 }].state().aura == element_aura::hydro);
+            data.handlers->push_back(self.id());
             return data.entry;
         }
     };
+    struct zero_random { std::uint32_t operator()() const noexcept { return 0; } };
 }
 
-TEST_CASE("ordinary broadcasts resume across fixed responses", "[broadcast][fixed-program]")
-{
-    response_observation observation;
-    const fixed_response_source fixed_source{ &observation };
-    const second_response_source second_source{ &observation };
-
-    definition_source_library sources;
-    REQUIRE(sources.add(fixed_source, second_source));
-    const auto [library, id_map] = sources.compile(
-        std::tuple{ test_command{} },
-        std::tuple{ stop_execution{} }
-    );
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-
-    const auto fixed_entity = mutable_table[player_id{ 0 }].add(
-        id_map.get_id<support_view>(fixed_source.name()),
-        { .count = 1 }
-    );
-    observation.expected_handler = fixed_entity.id();
-    mutable_table[player_id{ 0 }].add(
-        id_map.get_id<support_view>(second_source.name()),
-        { .count = 1 }
-    );
-
-    executor target;
-    target.enter_entry(library);
-    fixed_random random;
-    REQUIRE(target.run(library, table, random) == execution_state::action);
-
-    CHECK(observation.fixed_context_observed);
-    CHECK(observation.execution_order == std::vector{ 1, 2 });
-}
-
-TEST_CASE("a fixed response may terminate the game without discarding its stack", "[broadcast][fixed-program]")
+TEST_CASE("broadcast responses finish before the next handler and may end the game", "[broadcast]")
 {
     const bool observed = GENERATE(false, true);
-    const terminal_response_source source;
+    const bool terminal = GENERATE(false, true);
+    std::vector<character_id> handlers;
+    const response_source first{ "First", &handlers, terminal };
+    const response_source second{ "Second", &handlers, false };
     definition_source_library sources;
-    REQUIRE(sources.add(source));
-    const auto [library, id_map] = sources.compile(
-        std::tuple{ test_command{} },
-        std::tuple{ stop_execution{} }
+    REQUIRE(sources.add(first, second));
+    const auto [library, ids] = sources.compile(
+        std::tuple{ test_command{}, end_game{ .result = game_result::both_loss } }, std::tuple{}
     );
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    const auto handler = mutable_table[player_id{ 0 }].add(
-        id_map.get_id<support_view>(source.name()),
-        { .count = 1 }
-    ).id();
-
+    card_table table;
+    table.load_deck(player_id{ 0 }, { .characters = {
+        ids.get_id<character_view>(first.name()), ids.get_id<character_view>(second.name())
+    } });
     executor target;
     target.enter_entry(library);
-    fixed_random random;
-    auto state = observed ? target.step(library, table, random) : target.run(library, table, random);
-    REQUIRE(state == execution_state::finished);
-    CHECK(target.view_in<execution_state::finished>().result() == game_result::player_1_win);
-    const auto [result] = detail::executor_access::stack(target).top<game_result>();
-    CHECK(result == game_result::player_1_win);
-    CHECK(detail::executor_access::stack(target).size() > sizeof(game_result));
+    zero_random random;
+    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random))
+        == execution_state::finished);
+    if(terminal)
+    {
+        CHECK(handlers == std::vector{ character_id{ player_id{ 0 }, 0 } });
+        CHECK(target.view_in<execution_state::finished>().result() == game_result::player_1_win);
+    }
+    else
+    {
+        CHECK(handlers == std::vector{ character_id{ player_id{ 0 }, 0 }, character_id{ player_id{ 0 }, 1 } });
+        CHECK(target.view_in<execution_state::finished>().result() == game_result::both_loss);
+    }
 }

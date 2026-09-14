@@ -2,7 +2,7 @@
 
 # givm::set_active_character
 
-定义于头文件 `<givm/executor/instructions/set_active_character.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct set_active_character;

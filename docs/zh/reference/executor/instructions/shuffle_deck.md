@@ -2,7 +2,7 @@
 
 # givm::shuffle_deck
 
-定义于头文件 `<givm/executor/instructions/shuffle_deck.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct shuffle_deck;
@@ -21,6 +21,16 @@ struct shuffle_deck;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 要洗牌的玩家 |
+
+## 注意
+
+对 `N` 张牌调用随机源 `max(N - 1, 0)` 次。按牌序从底至顶编号为 `0` 至 `N - 1`，洗牌结果由以下规则确定：
+
+1. 依次令 `m` 为 `N`、`N - 1`，直到 `2`。
+2. 每次取得一个 `std::uint32_t` 随机值 `r`，令 `j = floor(r × m / 2^32)`。
+3. 交换当前位置 `m - 1` 与位置 `j` 的牌。
+
+这里的乘除按数学整数计算，`r` 的范围为 `0` 至 `2^32 - 1`。每次 `j` 都在 `0` 至 `m - 1` 内；即使两位置相同，也消耗该随机值。空牌堆和单张牌堆不调用随机源。例如两张牌由底至顶为 `[A, B]` 时，`r = 0` 得到 `[B, A]`，`r = 2^32 - 1` 保持 `[A, B]`。
 
 ## 示例
 

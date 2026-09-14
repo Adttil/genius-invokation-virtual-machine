@@ -2,7 +2,7 @@
 
 # givm::action_target
 
-定义于头文件 `<givm/executor/instructions/begin_action.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct action_target;

@@ -2,7 +2,7 @@
 
 # givm::end_round
 
-定义于头文件 `<givm/executor/instructions/end_round.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct end_round;

@@ -1,4 +1,3 @@
-#include "executor_access.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -17,16 +16,6 @@ using namespace givm;
 
 namespace
 {
-    struct stop_execution
-    {
-        using context_type = void;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
-        {
-            return context.yield(execution_state::action);
-        }
-    };
-
     struct sequence_random
     {
         std::vector<std::uint32_t> values;
@@ -108,7 +97,7 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
 
     definition_source_library sources;
     REQUIRE(sources.add(alpha, beta, first, second));
-    const auto program = std::tuple{ stop_execution{} };
+    const auto program = std::tuple{ end_game{ .result = game_result::both_loss } };
     const auto [library, id_map] = sources.compile(program, program);
     const auto deck = link_deck(
         id_map,
@@ -158,7 +147,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     REQUIRE(sources.add(alpha, beta, gamma, delta));
     const auto [library, id_map] = sources.compile(
         std::tuple{ shuffle_deck{ .player = player_id{ 0 } } },
-        std::tuple{ stop_execution{} }
+        std::tuple{ end_game{ .result = game_result::both_loss } }
     );
     const linked_deck deck{
         .cards = {
@@ -171,20 +160,19 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
 
     card_table table{};
     table.load_deck(player_id{ 0 }, deck);
-    const std::array original_ids{
-        deck_card_id{ .player_id = player_id{ 0 }, .index = 0 },
-        deck_card_id{ .player_id = player_id{ 0 }, .index = 1 },
-        deck_card_id{ .player_id = player_id{ 0 }, .index = 2 },
-        deck_card_id{ .player_id = player_id{ 0 }, .index = 3 }
-    };
+    std::vector<deck_card_id> original_ids;
+    for(const auto card : table[player_id{ 0 }].deck_cards())
+    {
+        original_ids.push_back(card.id());
+    }
+    REQUIRE(original_ids.size() == 4);
 
     executor target;
     target.enter_entry(library);
     sequence_random random{
         .values = { std::numeric_limits<std::uint32_t>::max(), 0, std::uint32_t{ 0x80000000u } }
     };
-    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
-    CHECK_FALSE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
+    REQUIRE(target.run(library, table, random) == execution_state::finished);
     CHECK(random.position == 3);
 
     CHECK(deck_definition_values(table[player_id{ 0 }]) == std::vector<size_t>{
@@ -221,7 +209,7 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
     REQUIRE(sources.add(alpha, beta));
     const auto [library, id_map] = sources.compile(
         std::tuple{ initialize_characters{ .player = player_id{ 0 } } },
-        std::tuple{ stop_execution{} }
+        std::tuple{ end_game{ .result = game_result::both_loss } }
     );
     const linked_deck deck{
         .characters = {
@@ -236,7 +224,7 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
     target.enter_entry(library);
     sequence_random random{ .values = { 2, 3 } };
 
-    REQUIRE((detail::executor_access::execute_next(target, library, table, random) == detail::continue_execution));
+    REQUIRE(target.run(library, table, random) == execution_state::finished);
     REQUIRE(initialization_order.size() == 2);
     CHECK(bool(initialization_order[0] == "Beta"));
     CHECK(bool(initialization_order[1] == "Alpha"));

@@ -1,14 +1,15 @@
-#include "../../executor_access.hpp"
 #include <cstdint>
 #include <string_view>
 #include <tuple>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <givm/executor.hpp>
 
 #include "../../table/test_definition_library.hpp"
+#include "../test_character_source.hpp"
 
 using namespace givm;
 
@@ -27,7 +28,7 @@ namespace
 
     struct reaction_observer_source
     {
-        using definition_category = support_view;
+        using definition_category = character_view;
 
         struct definition_type
         {
@@ -42,51 +43,19 @@ namespace
             return "ReactionObserver";
         }
 
-        struct replace_reaction_aura
-        {
-            using context_type = elemental_reaction_will_occur;
-
-            element_aura aura;
-
-            execution_state execute(const definition_library&, detail::unrestricted_table& table, detail::execution_context& context, random_fn&) const
-            {
-                auto&& [broadcast, activation] = context.stack().top<
-                    frame<
-                        detail::handler_id<elemental_reaction_will_occur>[],
-                        stack_count_t,
-                        elemental_reaction_will_occur,
-                        detail::handler_id<elemental_reaction_will_occur>,
-                        detail::stage_t
-                    >,
-                    frame<detail::execution_context::return_info, detail::stage_t>
-                >();
-                auto&& [handlers, cursor, event, current_handler, broadcast_stage] = broadcast;
-                auto&& [return_info, activation_stage] = activation;
-                (void)handlers;
-                (void)cursor;
-                (void)current_handler;
-                (void)broadcast_stage;
-                (void)return_info;
-                (void)activation_stage;
-
-                table[event.target].state().aura = aura;
-                return context.enter_next();
-            }
-        };
-
         definition_type compile(definition_compile_context& context) const
         {
             return {
                 .log = log,
                 .replacement_entry = context.add_program<elemental_reaction_will_occur>(
-                    std::tuple{ replace_reaction_aura{ log->replacement_aura } }
+                    std::tuple{ set_element_aura{ .target = character_id{ player_id{ 1 }, 0 }, .aura = log->replacement_aura } }
                 )
             };
         }
 
         static program_entry<elemental_reaction_will_occur> handle(
             const definition_type& data,
-            const support_view&,
+            const character_view&,
             elemental_reaction_will_occur& event,
             const card_table&,
             random_fn&
@@ -107,7 +76,7 @@ namespace
 
         static program_entry<after_elemental_reaction> handle(
             const definition_type& data,
-            const support_view&,
+            const character_view&,
             after_elemental_reaction&,
             const card_table&,
             random_fn&
@@ -126,233 +95,62 @@ namespace
         }
     };
 
-    struct stop_execution
-    {
-        using context_type = void;
+}
 
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
-        {
-            return context.yield(execution_state::action);
-        }
-    };
-
-    bool run_until_blocked(const definition_library& library, executor& target, card_table& table)
+TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply_element]")
+{
+    const bool observed = GENERATE(false, true);
+    reaction_log log;
+    element incoming = element::hydro;
+    element_aura initial_aura = element_aura::none;
+    element_aura expected_aura = element_aura::hydro;
+    SECTION("non-reactive application") {}
+    SECTION("default reaction")
     {
-        zero_random random;
-        return target.run(library, table, random) == execution_state::action;
+        initial_aura = element_aura::cryo;
+        incoming = element::pyro;
+        expected_aura = element_aura::none;
     }
-}
-
-TEST_CASE("apply_element stores a non-reactive aura without broadcasting a reaction", "[apply_element]")
-{
-    reaction_log log;
-    const reaction_observer_source observer_source{ &log };
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    constexpr support_id observer_entity_id{ .player_id = player_id{ 0 }, .index = 0 };
-    constexpr character_id character_entity_id{ .player_id = player_id{ 1 }, .index = 0 };
-    const auto [library, id_map] = test::compile_definitions_with_program(
-        std::tuple{
-            apply_element{
-                .source = observer_entity_id,
-                .target = character_entity_id,
-                .element = element::hydro
-            }
-        },
-        std::tuple{ stop_execution{} },
-        observer_source,
-        character_source
-    );
-    const auto observer_id = id_map.get_id<support_view>(observer_source.name());
-    const auto definition_id = id_map.get_id<character_view>(character_source.name());
-
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
-    REQUIRE(observer.id() == observer_entity_id);
-    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
-        .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
-    });
-    REQUIRE(character.id() == character_entity_id);
-
-    executor target;
-    target.enter_entry(library);
-
-    REQUIRE(run_until_blocked(library, target, table));
-    CHECK(character.state().aura == element_aura::hydro);
-    CHECK(log.order.empty());
-}
-
-TEST_CASE("apply_element broadcasts both sides of a default reaction", "[apply_element]")
-{
-    reaction_log log;
-    const reaction_observer_source observer_source{ &log };
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    constexpr support_id observer_entity_id{ .player_id = player_id{ 0 }, .index = 0 };
-    constexpr character_id character_entity_id{ .player_id = player_id{ 1 }, .index = 0 };
-    const auto [library, id_map] = test::compile_definitions_with_program(
-        std::tuple{
-            apply_element{
-                .source = observer_entity_id,
-                .target = character_entity_id,
-                .element = element::pyro,
-                .cause = element_application_cause::effect
-            }
-        },
-        std::tuple{ stop_execution{} },
-        observer_source,
-        character_source
-    );
-    const auto observer_id = id_map.get_id<support_view>(observer_source.name());
-    const auto definition_id = id_map.get_id<character_view>(character_source.name());
-
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
-    REQUIRE(observer.id() == observer_entity_id);
-    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
-        .max_health = 10,
-        .max_energy = 3,
-        .health = 10,
-        .energy = 0,
-        .aura = element_aura::cryo
-    });
-    REQUIRE(character.id() == character_entity_id);
-
-    executor target;
-    target.enter_entry(library);
-
-    REQUIRE(run_until_blocked(library, target, table));
-    CHECK(log.order == std::vector{ 1, 2 });
-    CHECK(log.incoming == element::pyro);
-    CHECK(log.reacted_aura == element_aura::cryo);
-    CHECK(log.reaction == elemental_reaction::melt);
-    CHECK(log.cause == element_application_cause::effect);
-    CHECK(character.state().aura == element_aura::none);
-}
-
-TEST_CASE("a response can replace apply_element default reaction handling", "[apply_element]")
-{
-    reaction_log log{
-        .take_over = true,
-        .replacement_aura = element_aura::dendro
-    };
-    const reaction_observer_source observer_source{ &log };
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    constexpr support_id observer_entity_id{ .player_id = player_id{ 0 }, .index = 0 };
-    constexpr character_id character_entity_id{ .player_id = player_id{ 1 }, .index = 0 };
-    const auto [library, id_map] = test::compile_definitions_with_program(
-        std::tuple{
-            apply_element{
-                .source = observer_entity_id,
-                .target = character_entity_id,
-                .element = element::pyro
-            }
-        },
-        std::tuple{ stop_execution{} },
-        observer_source,
-        character_source
-    );
-    const auto observer_id = id_map.get_id<support_view>(observer_source.name());
-    const auto definition_id = id_map.get_id<character_view>(character_source.name());
-
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
-    REQUIRE(observer.id() == observer_entity_id);
-    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
-        .max_health = 10,
-        .max_energy = 3,
-        .health = 10,
-        .energy = 0,
-        .aura = element_aura::hydro
-    });
-    REQUIRE(character.id() == character_entity_id);
-
-    executor target;
-    target.enter_entry(library);
-
-    REQUIRE(run_until_blocked(library, target, table));
-    CHECK(log.order == std::vector{ 1, 2 });
-    CHECK(log.reaction == elemental_reaction::vaporize);
-    CHECK(character.state().aura == element_aura::dendro);
-}
-
-TEST_CASE("step crosses aura changes without an observation stop", "[apply_element][set_element_aura][observation]")
-{
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    constexpr character_id source{ .player_id = player_id{ 0 }, .index = 0 };
-    constexpr character_id affected{ .player_id = player_id{ 1 }, .index = 0 };
-    const auto [library, ids] = test::compile_definitions_with_program(
-        std::tuple{
-            set_element_aura{ .target = affected, .aura = element_aura::cryo },
-            set_element_aura{ .target = affected, .aura = element_aura::none },
-            apply_element{ .source = source, .target = affected, .element = element::hydro }
-        },
-        std::tuple{ stop_execution{} },
-        character_source
-    );
-    const auto definition = ids.get_id<character_view>(character_source.name());
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    mutable_table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
-    mutable_table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
-    auto normal_table = table;
-    zero_random random;
-    executor normal;
-    normal.enter_entry(library);
-    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
-
-    executor observed;
-    observed.enter_entry(library);
-    REQUIRE(observed.step(library, table, random) == execution_state::action);
-    CHECK(table[affected].state().aura == element_aura::hydro);
-    CHECK(table[affected].state().aura == normal_table[affected].state().aura);
-    CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
-}
-
-TEST_CASE("step crosses reaction responses while preserving settlement and broadcast ordering", "[apply_element][observation]")
-{
-    reaction_log log;
-    SECTION("default reaction") {}
-    SECTION("a response replaces the default result")
+    SECTION("response replaces the default reaction result")
     {
+        initial_aura = element_aura::hydro;
+        incoming = element::pyro;
         log.take_over = true;
         log.replacement_aura = element_aura::dendro;
+        expected_aura = element_aura::dendro;
     }
-
-    const reaction_observer_source observer_source{ &log };
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    constexpr support_id source{ .player_id = player_id{ 0 }, .index = 0 };
-    constexpr character_id affected{ .player_id = player_id{ 1 }, .index = 0 };
+    const reaction_observer_source observer{ &log };
+    const test::initialized_character_source victim{ "Victim" };
+    constexpr character_id source{ player_id{ 0 }, 0 };
+    constexpr character_id affected{ player_id{ 1 }, 0 };
     const auto [library, ids] = test::compile_definitions_with_program(
-        std::tuple{ apply_element{ .source = source, .target = affected, .element = element::pyro } },
-        std::tuple{ stop_execution{} },
-        observer_source, character_source
+        std::tuple{
+            initialize_characters{ player_id{ 1 } },
+            set_element_aura{ .target = affected, .aura = initial_aura },
+            apply_element{ .source = source, .target = affected, .element = incoming },
+            end_game{ .result = game_result::both_loss }
+        }, std::tuple{}, observer, victim
     );
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
-    mutable_table[player_id{ 1 }].add(ids.get_id<character_view>(character_source.name()), {
-        .max_health = 10, .health = 10, .aura = element_aura::hydro
-    });
-    auto normal_table = table;
+    card_table table;
+    table.load_deck(player_id{ 0 }, { .characters = { ids.get_id<character_view>(observer.name()) } });
+    table.load_deck(player_id{ 1 }, { .characters = { ids.get_id<character_view>(victim.name()) } });
+    executor target;
+    target.enter_entry(library);
     zero_random random;
-    executor normal;
-    normal.enter_entry(library);
-    REQUIRE(normal.run(library, normal_table, random) == execution_state::action);
-    const auto normal_order = log.order;
-    log.order.clear();
-
-    executor observed;
-    observed.enter_entry(library);
-    REQUIRE(observed.step(library, table, random) == execution_state::action);
-    CHECK(log.order == normal_order);
-    CHECK(log.order == std::vector{ 1, 2 });
-    CHECK(log.incoming == element::pyro);
-    CHECK(log.reacted_aura == element_aura::hydro);
-    CHECK(log.reaction == elemental_reaction::vaporize);
-    CHECK(log.cause == element_application_cause::effect);
-    CHECK(table[affected].state().aura == (log.take_over ? element_aura::dendro : element_aura::none));
-    CHECK(table[affected].state().aura == normal_table[affected].state().aura);
-    CHECK(detail::executor_access::stack(observed).size() == detail::executor_access::stack(normal).size());
+    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random))
+        == execution_state::finished);
+    CHECK(table[affected].state().aura == expected_aura);
+    if(initial_aura == element_aura::none)
+    {
+        CHECK(log.order.empty());
+    }
+    else
+    {
+        CHECK(log.order == std::vector{ 1, 2 });
+        CHECK(log.incoming == element::pyro);
+        CHECK(log.reacted_aura == initial_aura);
+        CHECK(log.reaction == (initial_aura == element_aura::cryo
+            ? elemental_reaction::melt : elemental_reaction::vaporize));
+        CHECK(log.cause == element_application_cause::effect);
+    }
 }

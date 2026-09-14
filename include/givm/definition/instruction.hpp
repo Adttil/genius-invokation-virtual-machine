@@ -28,7 +28,6 @@ namespace givm
     {
         class unrestricted_table;
         class execution_context;
-        struct executor_access;
 
         template<class TInstruction>
         struct instruction_implementation

@@ -2,7 +2,7 @@
 
 # givm::before_action
 
-定义于头文件 `<givm/executor/events.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct before_action;

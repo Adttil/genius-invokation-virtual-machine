@@ -2,7 +2,7 @@
 
 # givm::start_round
 
-定义于头文件 `<givm/executor/instructions/start_round.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct start_round;

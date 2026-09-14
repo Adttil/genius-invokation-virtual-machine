@@ -2,7 +2,7 @@
 
 # givm::counted_entity_id
 
-定义于头文件 `<givm/executor/events.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 using counted_entity_id = std::variant<hand_card_status_id, deck_card_status_id, support_id, summon_id,

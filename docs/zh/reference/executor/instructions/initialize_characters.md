@@ -2,7 +2,7 @@
 
 # givm::initialize_characters
 
-定义于头文件 `<givm/executor/instructions/initialize_characters.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct initialize_characters;

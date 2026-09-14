@@ -12,7 +12,7 @@ class execution_view;
 
 一处对局执行现场的视图，例如需要换牌的玩家、已经生效的伤害，或已结束对局的结果。
 
-该模板组织各类现场视图。调用方通过 [`executor::view_in`](executor/view_in.md) 取得当前现场的访问对象，可用 `auto` 接收。不同现场提供不同的信息；需要外部输入的现场还提供相应输入操作。只作通知的现场使用空视图，相关信息直接从牌桌读取。
+该模板组织各类现场视图。调用方通过 [`executor::view_in`](executor/view_in.md) 取得当前现场的访问对象，可用 `auto` 接收。不同现场提供不同的信息；需要外部输入的现场还提供相应输入操作。只作通知的现场不提供额外的读取或输入操作，相关信息直接从牌桌读取。
 
 ## 模板参数
 
@@ -36,9 +36,9 @@ class execution_view;
 
 表中的模板实参均为 `execution_state` 的枚举项。
 
-## 空视图
+## 纯通知现场
 
-主模板用于 `initial_active_characters_selected`、`round_started`、`action_started`、`round_end_declared` 和 `round_ending`。这些视图不保存数据，也不提供读取或输入操作；对应的出战角色、玩家及回合数等信息直接从牌桌读取。
+主模板用于 `initial_active_characters_selected`、`round_started`、`action_started`、`round_end_declared` 和 `round_ending`。这些视图不提供读取或输入操作；对应的出战角色、玩家及回合数等信息直接从牌桌读取。
 
 ## 注意
 

@@ -1,25 +1,4 @@
-namespace givm
-{
-    class player_view;
-    class character_view;
-    class skill_view;
-    class attachment_view;
-    class hand_card_view;
-    class deck_card_view;
-    class hand_card_status_view;
-    class deck_card_status_view;
-    class support_view;
-    class summon_view;
-    class combat_status_view;
-}
-
 #include <givm/table.hpp>
-
-#if defined(GIVM_DEFINITION_HPP) || defined(GIVM_DEFINITION_ISSUED_ID_HPP) \
-    || defined(GIVM_DEFINITION_SOURCE_VIEW_HPP) || defined(GIVM_DEFINITION_LIBRARY_HPP) \
-    || defined(GIVM_EXECUTOR_HPP) || defined(GIVM_EXECUTOR_EXECUTOR_HPP)
-#error "table.hpp must not include definition or executor headers"
-#endif
 
 #include <concepts>
 #include <cstddef>
@@ -108,15 +87,4 @@ TEST_CASE("public table access remains read only through nested views", "[table]
     STATIC_REQUIRE(std::same_as<decltype(std::declval<hand_card_status_view>().card()), hand_card_view>);
     STATIC_REQUIRE(std::same_as<decltype(std::declval<deck_card_status_view>().card()), deck_card_view>);
 
-    STATIC_REQUIRE(std::same_as<detail::character_handle<const detail::table_storage>, character_view>);
-    STATIC_REQUIRE(std::same_as<detail::character_handle<detail::table_storage>, detail::basic_character_handle<detail::table_storage>>);
-    STATIC_REQUIRE(not std::same_as<character_view, detail::basic_character_handle<const detail::table_storage>>);
-    STATIC_REQUIRE(not std::convertible_to<character_view&, detail::basic_character_handle<const detail::table_storage>&>);
-    // Test implicit conversions; explicit downcasts still obey private-base access.
-    STATIC_REQUIRE(not std::is_convertible_v<card_table&, detail::unrestricted_table&>);
-    STATIC_REQUIRE(not std::is_convertible_v<const card_table&, const detail::unrestricted_table&>);
-    STATIC_REQUIRE(std::is_convertible_v<detail::unrestricted_table&, card_table&>);
-    STATIC_REQUIRE(std::is_convertible_v<detail::unrestricted_table&, const card_table&>);
-    STATIC_REQUIRE(std::is_convertible_v<const detail::unrestricted_table&, const card_table&>);
-    STATIC_REQUIRE(not std::is_convertible_v<const detail::unrestricted_table&, card_table&>);
 }

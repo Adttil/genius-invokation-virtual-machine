@@ -11,16 +11,6 @@
 
 namespace givm::test
 {
-    struct test_program_instruction
-    {
-        using context_type = void;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
-        {
-            return execution_state::action;
-        }
-    };
-
     template<class TDefinition>
     struct named_definition_source
     {
@@ -50,7 +40,7 @@ namespace givm::test
             throw std::logic_error{ "invalid unit-test definition sources" };
         }
 
-        const auto program = std::tuple{ test_program_instruction{} };
+        const auto program = std::tuple{ end_game{ game_result::both_loss } };
         return source_library.compile(program, program);
     }
 

@@ -9,7 +9,7 @@ template<class... T>
 constexpr auto push();
 
 template<class... T>
-    requires detail::dynamic_array_prefix<detail::stack_push_element_t<T>...>
+    requires /* 动态数组实参位于所有固定元素之前 */
 constexpr auto push(const T&... t);
 ```
 

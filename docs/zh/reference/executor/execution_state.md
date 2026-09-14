@@ -47,7 +47,7 @@ enum class execution_state : std::uint8_t
 
 ## 注意
 
-[`run`](executor/run.md) 返回输入现场或 `finished`；[`step`](executor/step.md) 还会返回观察现场。每种现场均可取得相应 [`execution_view`](execution_view.md)。`initial_active_characters_selected` 和四种流程通知的视图为空，相关信息直接从牌桌读取。
+[`run`](executor/run.md) 返回输入现场或 `finished`；[`step`](executor/step.md) 还会返回观察现场。每种现场均可取得相应 [`execution_view`](execution_view.md)。`initial_active_characters_selected` 和四种流程通知的视图不提供额外读取或输入操作，相关信息直接从牌桌读取。
 
 `card_selection` 的玩家已由当前流程确定，不一定是牌桌上的行动方；`initial_card_selection` 和 `initial_active_character_selection` 允许任选先提交的一方。首次出战选择被接受后，`remaining_active_character_selection` 固定等待另一方；双方选择全部被接受后才同时设置出战角色。以 `step` 推进时，先报告 `initial_active_characters_selected`，随后推进才处理相应变更响应。
 

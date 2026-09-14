@@ -2,7 +2,7 @@
 
 # givm::replace_cards
 
-定义于头文件 `<givm/executor/instructions/replace_cards.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct replace_cards;
@@ -24,7 +24,21 @@ struct replace_cards;
 
 ## 注意
 
-等待输入时，执行器返回 `execution_state::card_selection`，通过相应的[现场视图](../execution_view/card_selection.md)提交选择。选择位按当前有效手牌的遍历顺序，空选择表示保留全部手牌。替换完成后，逐张发出 [`card_drawn`](../events/card_drawn.md)。
+等待输入时，执行器返回 `execution_state::card_selection`，通过相应的[现场视图](../execution_view/card_selection.md)提交选择。选择位按换牌前有效手牌的遍历顺序，空选择不改变手牌与牌堆。
+
+### 替换结果
+
+设本次选择了 `k` 张牌：
+
+1. 按手牌遍历顺序，逐张把选中的牌放回牌堆。每张取得一个 `std::uint32_t` 随机值 `r`；若放回前牌堆有 `n` 张牌，插入位置为 `floor(r × (n + 1) / 2^32)`，从牌堆底部的 `0` 数到顶部的 `n`。乘除按数学整数计算，`r` 的范围为 `0` 至 `2^32 - 1`；空牌堆也使用一个随机值。
+2. 全部放回后，从牌堆顶至底优先选取定义 ID 不属于本次所选牌的 `k` 张牌；若不足 `k` 张，再从顶至底选取所选定义的牌补足。
+3. 将选中的这 `k` 张牌按它们在牌堆中从顶至底的顺序取出并补入手牌；未抽到的牌保持相对次序。抽取不再使用随机值。
+
+避免换回同一定义优先于牌的位置；需要补足时，同一定义的牌仍可能被抽回。
+
+### 随机调用与事件
+
+首次返回 `card_selection` 前不调用随机源。提交选择并继续推进后，按上述放回顺序取得恰好 `k` 个值。替换全部完成后，再按补入手牌的顺序发出 [`card_drawn`](../events/card_drawn.md)。事件响应及其后续效果可以继续调用同一随机源，这些调用不包含在上述 `k` 次之内。
 
 ## 示例
 

@@ -5,14 +5,20 @@
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-constexpr const hand_card_view* end() const;
+constexpr auto end(this const auto& self);
 ```
 
 取得这个手牌的单实体范围终点。
 
+## 参数
+
+|  |  |
+| --- | --- |
+| `self` | 当前实体的只读视图 |
+
 ## 返回值
 
-实体有效时为单实体范围的尾后指针，否则与 `begin()` 相等。
+单实体范围的尾后迭代器。实体有效时范围包含一个元素，否则与 `begin()` 相等。
 
 
 ## 示例
@@ -50,7 +56,7 @@ int main()
     execution.enter_entry(library);
     execution.run(library, table, random);
     const givm::hand_card_view view = table[givm::hand_card_id{ givm::player_id{ 0 }, 0 }];
-    std::println("范围长度: {}", view.end() - view.begin());
+    std::println("范围长度: {}", std::ranges::distance(view.begin(), view.end()));
 }
 ```
 

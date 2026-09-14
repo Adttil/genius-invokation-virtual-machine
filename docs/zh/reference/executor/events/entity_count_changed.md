@@ -2,7 +2,7 @@
 
 # givm::entity_count_changed
 
-定义于头文件 `<givm/executor/events.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct entity_count_changed;

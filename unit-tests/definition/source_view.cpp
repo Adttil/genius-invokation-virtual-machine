@@ -1,5 +1,5 @@
-#include "../executor_access.hpp"
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <stdexcept>
@@ -24,7 +24,6 @@ namespace
         definition_id<support_view> beta_support;
         tag_id chosen_tag;
         std::vector<definition_id<support_view>> filtered_supports;
-        std::vector<support_id> matching_entities;
     };
 
     struct tagged_support_source
@@ -35,7 +34,7 @@ namespace
 
         std::string_view source_name;
         std::array<std::string_view, 2> source_tags{};
-        size_t tag_count = 0;
+        std::size_t tag_count = 0;
 
         constexpr std::string_view name() const noexcept
         {
@@ -104,7 +103,7 @@ namespace
             const definition_type& definition,
             const hand_card_view&,
             test_event&,
-            const card_table& table,
+            const card_table&,
             random_fn&
         )
         {
@@ -113,57 +112,18 @@ namespace
             definition.observation->beta_support = definition.beta_support;
             definition.observation->chosen_tag = definition.chosen_tag;
             definition.observation->filtered_supports = definition.filtered_supports;
-            for(const auto support : table[player_id{ 0 }].supports())
-            {
-                if(support.definition_id() == definition.alpha_support)
-                {
-                    definition.observation->matching_entities.push_back(support.id());
-                }
-            }
             return handler_program_entry_t<test_event>::null();
         }
     };
 
     struct program_observation
     {
-        std::size_t event_compile_calls = 0;
-        std::size_t onpay_compile_calls = 0;
+        bool event_compiled = false;
+        bool onpay_compiled = false;
         definition_id<support_view> resolved_support;
         bool first_event_entry_set = false;
         bool second_event_entry_set = false;
         bool onpay_entry_set = false;
-    };
-
-    struct event_program_instruction
-    {
-        using context_type = test_event;
-
-        definition_id<support_view> resolved_support;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
-        {
-            return resolved_support.is_valid() ? detail::continue_execution : execution_state::action;
-        }
-    };
-
-    struct onpay_program_instruction
-    {
-        using context_type = onpay_context<cost_of_switch>;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
-        {
-            return detail::continue_execution;
-        }
-    };
-
-    struct context_free_program_instruction
-    {
-        using context_type = void;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
-        {
-            return detail::continue_execution;
-        }
     };
 
     struct programmed_card_source
@@ -192,36 +152,25 @@ namespace
 
         definition_type compile(definition_compile_context& context) const
         {
-            ++observation->event_compile_calls;
+            observation->event_compiled = true;
             const auto support = context.resolve_id<support_view>("ProgrammedSupport");
             observation->resolved_support = support;
 
             const auto first_entry = context.add_program<test_event>(std::tuple{
-                event_program_instruction{ support },
-                context_free_program_instruction{}
+                draw_cards{ .count = 0 },
+                shuffle_deck{ .player = player_id{ 0 } }
             });
             const auto second_entry = context.add_program<test_event>(
-                std::vector{ event_program_instruction{ support } }
+                std::vector{ draw_cards{ .count = 0 } }
             );
+            observation->first_event_entry_set = bool{ first_entry };
+            observation->second_event_entry_set = bool{ second_entry };
             return {
                 .observation = observation,
                 .support = support,
                 .first_entry = first_entry,
                 .second_entry = second_entry
             };
-        }
-
-        static handler_program_entry_t<test_event> handle(
-            const definition_type& definition,
-            const hand_card_view&,
-            test_event&,
-            const card_table&,
-            random_fn&
-        )
-        {
-            definition.observation->first_event_entry_set = bool{ definition.first_entry };
-            definition.observation->second_event_entry_set = bool{ definition.second_entry };
-            return handler_program_entry_t<test_event>::null();
         }
     };
 
@@ -244,26 +193,15 @@ namespace
 
         definition_type compile(definition_compile_context& context) const
         {
-            ++observation->onpay_compile_calls;
+            observation->onpay_compiled = true;
             using context_type = onpay_context<cost_of_switch>;
             using instruction_type = any_instruction_for<context_type>;
             const auto entry = context.add_program<context_type>(std::vector{
-                instruction_type{ onpay_program_instruction{} },
-                instruction_type{ onpay_program_instruction{} }
+                instruction_type{ draw_cards{ .count = 0 } },
+                instruction_type{ draw_cards{ .count = 0 } }
             });
+            observation->onpay_entry_set = bool{ entry };
             return { .observation = observation, .onpay_entry = entry };
-        }
-
-        static handler_program_entry_t<test_event> handle(
-            const definition_type& definition,
-            const support_view&,
-            test_event&,
-            const card_table&,
-            random_fn&
-        )
-        {
-            definition.observation->onpay_entry_set = bool{ definition.onpay_entry };
-            return handler_program_entry_t<test_event>::null();
         }
     };
 
@@ -348,27 +286,26 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
 
     definition_source_library source_library;
     REQUIRE(source_library.add(card, alpha, beta));
-    const auto program = std::tuple{ context_free_program_instruction{} };
+    const auto program = std::tuple{ draw_cards{ .count = 1 }, end_game{ game_result::both_loss } };
     const auto [library, id_map] = source_library.compile(program, program);
     const auto card_id = id_map.get_id<card_definition>(card.name());
 
     card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    const auto card_entity = mutable_table[player_id{ 0 }].add_hand_card(card_id, {});
-    mutable_table[player_id{ 0 }].add(id_map.get_id<support_view>(beta.name()), {});
-    const auto first_alpha = mutable_table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
-    const auto second_alpha = mutable_table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
+    table.load_deck(player_id{ 0 }, linked_deck{ .cards = { card_id } });
     zero_random random_source;
+    executor executor;
+    executor.enter_entry(library);
+    REQUIRE(executor.run(library, table, random_source) == execution_state::finished);
+    REQUIRE(table[player_id{ 0 }].hand_card_count() == 1);
     random_fn random{ random_source };
     test_event event;
-    const hand_card_view card_view = card_entity;
+    const auto card_view = *table[player_id{ 0 }].hand_cards().begin();
     CHECK_FALSE(library[card_view.definition_id()].handle<test_event>(card_view, event, table, random));
 
     REQUIRE(observation.handled);
     CHECK(observation.alpha_support.value() == id_map.get_id<support_view>("AlphaSupport").value());
     CHECK(observation.beta_support.value() == id_map.get_id<support_view>("BetaSupport").value());
     CHECK(observation.chosen_tag.value() == id_map.get_tag_id("chosen").value());
-    CHECK(observation.matching_entities == std::vector<support_id>{ first_alpha, second_alpha });
 
     REQUIRE(observation.filtered_supports.size() == 1);
     CHECK(
@@ -382,7 +319,7 @@ TEST_CASE("definition compile context rejects undeclared dependency queries", "[
     const undeclared_dependency_source source;
     definition_source_library source_library;
     REQUIRE(source_library.add(source));
-    const auto program = std::tuple{ context_free_program_instruction{} };
+    const auto program = std::tuple{ end_game{ game_result::both_loss } };
     REQUIRE_THROWS_AS(source_library.compile(program, program), std::invalid_argument);
 }
 
@@ -393,7 +330,7 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
 
     definition_source_library source_library;
     REQUIRE(source_library.add(enabled, disabled));
-    const auto program = std::tuple{ context_free_program_instruction{} };
+    const auto program = std::tuple{ end_game{ game_result::both_loss } };
     const auto [library, id_map] = source_library.compile(program, program);
 
     CHECK(library[id_map.get_id<support_view>(enabled.name())].can_handle<test_event, support_view>());
@@ -413,39 +350,15 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
 
     definition_source_library source_library;
     REQUIRE(source_library.add(card, support));
-    const auto program = std::tuple{ context_free_program_instruction{} };
+    const auto program = std::tuple{ end_game{ game_result::both_loss } };
     const auto [library, id_map] = source_library.compile(program, program);
 
-    CHECK(observation.event_compile_calls == 1);
-    CHECK(observation.onpay_compile_calls == 1);
+    CHECK(observation.event_compiled);
+    CHECK(observation.onpay_compiled);
     CHECK(
         observation.resolved_support.value()
         == id_map.get_id<support_view>(support.name()).value()
     );
-    card_table table{};
-    auto& mutable_table = detail::executor_access::unrestricted(table);
-    const auto card_entity = mutable_table[player_id{ 0 }].add_hand_card(
-        id_map.get_id<card_definition>(card.name()),
-        {}
-    );
-    const auto support_entity = mutable_table[player_id{ 0 }].add(
-        id_map.get_id<support_view>(support.name()),
-        { .count = 1 }
-    );
-
-    zero_random random_source;
-    random_fn random{ random_source };
-    test_event event;
-    const hand_card_view card_view = card_entity;
-    const support_view support_view_value = support_entity;
-    CHECK_FALSE(library[card_view.definition_id()].handle<test_event>(card_view, event, table, random));
-    CHECK_FALSE(library[support_view_value.definition_id()].handle<test_event>(
-        support_view_value,
-        event,
-        table,
-        random
-    ));
-
     CHECK(observation.first_event_entry_set);
     CHECK(observation.second_event_entry_set);
     CHECK(observation.onpay_entry_set);

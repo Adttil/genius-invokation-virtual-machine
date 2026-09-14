@@ -1,11 +1,9 @@
-#include "executor_access.hpp"
 #include <array>
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
 #include <tuple>
-#include <type_traits>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -196,14 +194,12 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
             .hand_limit = 10
         }
     };
-    auto& mutable_table = detail::executor_access::unrestricted(table);
     table.load_deck(player_id{ 0 }, deck);
     table.load_deck(player_id{ 1 }, deck);
     executor target;
     target.enter_entry(library);
     increasing_random random;
 
-    mutable_table.state().active_player = player_id{ 0 };
 
     auto state = target.run(library, table, random);
     REQUIRE(state == execution_state::initial_card_selection);
@@ -315,15 +311,13 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     characters.fill(character_source.name());
     const auto deck = link_deck(id_map, cards, characters);
     card_table table{ game_parameters{ .hand_limit = 10 } };
-    auto& mutable_table = detail::executor_access::unrestricted(table);
     table.load_deck(player_id{ 0 }, deck);
     table.load_deck(player_id{ 1 }, deck);
-    mutable_table.state().active_player = player_id{ 0 };
     executor target;
     target.enter_entry(library);
     increasing_random random;
 
-    REQUIRE(target.run(library, table, random) == execution_state::initial_card_selection);
+    REQUIRE(target.step(library, table, random) == execution_state::initial_card_selection);
     const auto prepared_random_count = random.value;
     const std::bitset<selection_capacity> replaced{ 0b11 };
     target.view_in<execution_state::initial_card_selection>().select(player_id{ 1 }, replaced);
@@ -355,8 +349,6 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
     REQUIRE(target.step(library, table, random) == execution_state::initial_active_characters_selected);
 
-    const auto view = target.view_in<execution_state::initial_active_characters_selected>();
-    static_assert(std::is_empty_v<decltype(view)>);
     CHECK(table[player_id{ 0 }].state().active_character == player0_choice);
     CHECK(table[player_id{ 1 }].state().active_character == player1_choice);
     REQUIRE(target.step(library, table, random) == execution_state::action_started);

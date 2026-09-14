@@ -1,6 +1,5 @@
 #include <concepts>
 #include <cstddef>
-#include <type_traits>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -19,7 +18,6 @@ TEST_CASE("program entries preserve their context and null identity", "[definiti
     using entry_type = program_entry<event_context>;
 
     STATIC_REQUIRE(std::regular<entry_type>);
-    STATIC_REQUIRE(std::is_trivially_copyable_v<entry_type>);
     STATIC_REQUIRE(not std::constructible_from<entry_type, std::size_t>);
     STATIC_REQUIRE(not std::constructible_from<entry_type, program_entry<other_context>>);
     STATIC_REQUIRE(not std::convertible_to<entry_type, program_entry<other_context>>);

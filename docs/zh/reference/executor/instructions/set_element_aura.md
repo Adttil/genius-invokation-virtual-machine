@@ -2,7 +2,7 @@
 
 # givm::set_element_aura
 
-定义于头文件 `<givm/executor/instructions/set_element_aura.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct set_element_aura;

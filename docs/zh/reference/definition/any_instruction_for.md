@@ -31,7 +31,7 @@ class any_instruction_for;
 
 ## 注意
 
-保存的是指令副本。指令须为隐式生命周期类型，可平凡复制、可平凡析构，大小不超过 64 字节，对齐不超过 `alignof(std::max_align_t)`。
+保存指令的值，原指令对象在构造后可以销毁。可用指令及其参数要求见各[指令页面](../executor/instructions.md)。
 
 ## 示例
 

@@ -50,9 +50,9 @@ definition_compile_result compile(
 
 ## 注意
 
-两段流程只能使用[核心给定的指令](../../executor/instructions.md)，也可用 [`any_instruction_for`](../any_instruction_for.md) 保存。指令须与 `void` context 兼容，并满足该容器的存储要求。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
+两段流程只能使用[核心给定的指令](../../executor/instructions.md)，也可用 [`any_instruction_for`](../any_instruction_for.md) 保存。指令须与 `void` context 兼容。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
 
-指令与编译所得定义数据由返回的定义库持有；源名称和标签的字符存储仍须保持有效。
+编译返回后，初始化和回合流程的输入序列及其中的指令对象可以销毁，不影响定义库的使用。定义源编译所得配置数据随定义库保持有效；源名称、标签以及配置数据借用的对象仍须由调用方保证存活。
 
 ## 示例
 

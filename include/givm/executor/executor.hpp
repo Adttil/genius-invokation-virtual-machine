@@ -130,7 +130,6 @@ namespace givm
 
         private:
             friend class ::givm::executor;
-            friend struct executor_access;
             constexpr execution_context() noexcept = default;
 
             constexpr void return_from_subroutine()
@@ -203,22 +202,10 @@ namespace givm
         }
 
     private:
-        friend struct detail::executor_access;
-
-        static constexpr detail::unrestricted_table& unrestricted(card_table& table) noexcept
-        {
-            return table;
-        }
-
-        static constexpr const detail::unrestricted_table& unrestricted(const card_table& table) noexcept
-        {
-            return table;
-        }
-
         template<bool Observed, class TRandom>
         execution_state advance(const definition_library& library, card_table& table, TRandom& random_source)
         {
-            auto& runtime_table = unrestricted(table);
+            detail::unrestricted_table& runtime_table = table;
             random_fn random{ random_source };
             while(true)
             {

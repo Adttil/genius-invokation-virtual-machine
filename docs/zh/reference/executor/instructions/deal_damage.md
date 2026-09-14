@@ -2,7 +2,7 @@
 
 # givm::deal_damage
 
-定义于头文件 `<givm/executor/instructions/deal_damage.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct deal_damage;

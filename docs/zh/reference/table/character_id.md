@@ -2,7 +2,7 @@
 
 # givm::character_id
 
-定义于头文件 `<givm/table/entity_id.hpp>`
+定义于头文件 `<givm/table.hpp>`
 
 ```cpp
 struct character_id;
@@ -15,7 +15,7 @@ struct character_id;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player_id` | [`player_id`](player_id.md) | 所属玩家的 ID |
-| `index` | `size_t` | 该实体的标识值；不表示筛除已移除实体后的排列位置 |
+| `index` | `size_t` | 角色区中从 0 起算的位置；不表示筛除已移除角色后的排列位置 |
 
 ## 非成员函数
 
@@ -26,6 +26,8 @@ friend constexpr bool operator==(character_id, character_id) = default;
 比较各成员是否相等；比较不检查实体是否尚未移除。
 
 ## 注意
+
+通过 [`load_deck`](card_table/load_deck.md) 初次装载角色时，角色位置与 `linked_deck::characters` 中的下标对应。规则中新入场的角色应通过牌桌的角色视图取得 ID。
 
 ID 本身不包含牌桌身份。清理实体后，原有 ID 可能失效；详见[实体的身份与访问](entity_access.md)。
 

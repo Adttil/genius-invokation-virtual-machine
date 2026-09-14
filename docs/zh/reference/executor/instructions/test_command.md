@@ -2,7 +2,7 @@
 
 # givm::test_command
 
-定义于头文件 `<givm/executor/instructions/test_command.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct test_command;

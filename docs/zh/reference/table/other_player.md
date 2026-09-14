@@ -2,7 +2,7 @@
 
 # givm::other_player
 
-定义于头文件 `<givm/table/entity_id.hpp>`
+定义于头文件 `<givm/table.hpp>`
 
 ```cpp
 constexpr player_id other_player(player_id player) noexcept;

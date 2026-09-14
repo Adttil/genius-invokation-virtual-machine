@@ -2,7 +2,7 @@
 
 # givm::absorb_damage_by_count
 
-定义于头文件 `<givm/executor/instructions/absorb_damage_by_count.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct absorb_damage_by_count;

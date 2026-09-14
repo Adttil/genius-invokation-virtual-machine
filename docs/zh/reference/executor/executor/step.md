@@ -35,7 +35,7 @@ execution_state step(
 
 ## 返回值
 
-本次到达的 [`execution_state`](../execution_state.md)。通过 [`view_in`](view_in.md) 取得相应视图；纯通知现场返回空视图，信息直接从牌桌读取。
+本次到达的 [`execution_state`](../execution_state.md)。通过 [`view_in`](view_in.md) 取得相应视图；纯通知现场的信息直接从牌桌读取。
 
 ## 注意
 

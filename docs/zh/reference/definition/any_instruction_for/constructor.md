@@ -15,7 +15,7 @@ constexpr explicit any_instruction_for(const TInstruction& instruction) noexcept
 
 |  |  |
 | --- | --- |
-| `TInstruction` | [核心给定集合](../../executor/instructions.md)中的具体指令类型，须满足 [`instruction_compatible_with`](../instruction_compatible_with.md) 及所属类的存储要求 |
+| `TInstruction` | [核心给定集合](../../executor/instructions.md)中的具体指令类型，须满足 [`instruction_compatible_with`](../instruction_compatible_with.md) |
 
 ## 参数
 

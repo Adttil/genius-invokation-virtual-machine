@@ -197,7 +197,6 @@ namespace givm
     {
         friend class definition_source_library;
         friend class executor;
-        friend struct detail::executor_access;
 
     public:
         static constexpr size_t definition_count = definition_types::size();

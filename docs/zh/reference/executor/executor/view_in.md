@@ -23,7 +23,7 @@ constexpr auto view_in() noexcept;
 
 ## 返回值
 
-与 `State` 对应的现场访问对象，可用成员见相应[现场视图](../execution_view.md)的说明；纯通知现场返回空对象。调用方可用 `auto` 接收结果。
+与 `State` 对应的现场访问对象，可用成员见相应[现场视图](../execution_view.md)的说明；纯通知现场不提供额外的读取或输入操作。调用方可用 `auto` 接收结果。
 
 ## 注意
 

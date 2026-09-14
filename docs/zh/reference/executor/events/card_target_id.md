@@ -2,7 +2,7 @@
 
 # givm::card_target_id
 
-定义于头文件 `<givm/executor/events.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 using card_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;

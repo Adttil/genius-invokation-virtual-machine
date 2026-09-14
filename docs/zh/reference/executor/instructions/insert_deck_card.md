@@ -2,7 +2,7 @@
 
 # givm::insert_deck_card
 
-定义于头文件 `<givm/executor/instructions/insert_deck_card.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct insert_deck_card;
@@ -26,7 +26,7 @@ struct insert_deck_card;
 
 ## 注意
 
-位置非负时，从牌堆底起计数，`0` 表示最底端，牌堆大小表示最顶端；负数从顶端计数，`-1` 表示顶端、`-2` 表示顶端下一张的位置。位置必须落在现有牌之间或两端。
+位置非负时，从牌堆底起计数，`0` 表示最底端，牌堆大小表示最顶端；负数从顶端计数，`-1` 表示顶端、`-2` 表示顶端下一张的位置。位置必须落在现有牌之间或两端。本指令不调用随机源。
 
 ## 示例
 

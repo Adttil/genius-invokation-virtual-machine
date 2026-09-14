@@ -2,7 +2,7 @@
 
 # givm::end_game
 
-定义于头文件 `<givm/executor/instructions/end_game.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct end_game;

@@ -2,7 +2,7 @@
 
 # givm::draw_cards
 
-定义于头文件 `<givm/executor/instructions/draw_cards.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct draw_cards;

@@ -2,7 +2,7 @@
 
 # givm::apply_element
 
-定义于头文件 `<givm/executor/instructions/apply_element.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct apply_element;

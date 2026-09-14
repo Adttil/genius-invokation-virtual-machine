@@ -2,7 +2,7 @@
 
 # givm::character_will_be_defeated
 
-定义于头文件 `<givm/executor/events.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct character_will_be_defeated;

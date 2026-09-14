@@ -2,7 +2,7 @@
 
 # givm::summon_id
 
-定义于头文件 `<givm/table/entity_id.hpp>`
+定义于头文件 `<givm/table.hpp>`
 
 ```cpp
 struct summon_id;

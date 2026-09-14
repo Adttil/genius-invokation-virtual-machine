@@ -2,7 +2,7 @@
 
 # givm::calculating_card_payment
 
-定义于头文件 `<givm/executor/events.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct calculating_card_payment;

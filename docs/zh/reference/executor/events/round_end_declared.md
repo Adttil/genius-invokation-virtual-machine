@@ -2,7 +2,7 @@
 
 # givm::round_end_declared
 
-定义于头文件 `<givm/executor/events.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct round_end_declared;

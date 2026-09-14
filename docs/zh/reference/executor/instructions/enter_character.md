@@ -2,7 +2,7 @@
 
 # givm::enter_character
 
-定义于头文件 `<givm/executor/instructions/enter_character.hpp>`
+定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 struct enter_character;

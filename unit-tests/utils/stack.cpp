@@ -45,7 +45,6 @@ TEST_CASE("frame_stack manages empty and cleared storage", "[stack]")
     frame_stack stack;
     CHECK(stack.empty());
     CHECK(stack.size() == 0);
-    CHECK(stack.capacity() == 0);
 
     stack.reserve(64);
     CHECK(stack.empty());

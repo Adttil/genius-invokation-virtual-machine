@@ -8,21 +8,12 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <givm/definition.hpp>
+#include <givm/executor.hpp>
 
 using namespace givm;
 
 namespace
 {
-    struct test_program_instruction
-    {
-        using context_type = void;
-
-        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
-        {
-            return execution_state{};
-        }
-    };
-
     template<class TDefinition>
     struct plain_source
     {
@@ -160,7 +151,7 @@ TEST_CASE("selected definitions include transitive named dependencies", "[source
     definition_selection selection{};
     selection[definition_types::index_of<card_definition>()] = card_roots;
 
-    const auto program = std::tuple{ test_program_instruction{} };
+    const auto program = std::tuple{ end_game{ game_result::both_loss } };
     const auto [library, id_map] = sources.compile(selection, program, program);
     CHECK(id_map.has<card_definition>("Root"));
     CHECK(id_map.has<support_view>("Support"));
@@ -219,7 +210,7 @@ TEST_CASE("issued ids address the definitions produced by compilation", "[source
     definition_source_library sources;
     REQUIRE(sources.add(zulu, alpha));
 
-    const auto program = std::tuple{ test_program_instruction{} };
+    const auto program = std::tuple{ end_game{ game_result::both_loss } };
     const auto [library, id_map] = sources.compile(program, program);
     const auto alpha_id = id_map.get_id<card_definition>("Alpha");
     const auto zulu_id = id_map.get_id<card_definition>("Zulu");

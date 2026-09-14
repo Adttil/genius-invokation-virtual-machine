@@ -5,14 +5,20 @@
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-constexpr const summon_view* begin() const;
+constexpr auto begin(this const auto& self);
 ```
 
 取得这个召唤物的单实体范围起点。
 
+## 参数
+
+|  |  |
+| --- | --- |
+| `self` | 当前实体的只读视图 |
+
 ## 返回值
 
-指向该 [`summon_view`](../summon_view.md) 访问对象自身的只读指针。若实体无效，它等于 `end()`。
+单实体范围的起始迭代器。实体有效时，解引用取得该实体的只读 [`summon_view`](../summon_view.md)；实体无效时与 `end()` 相等。
 
 ## 注意
 
