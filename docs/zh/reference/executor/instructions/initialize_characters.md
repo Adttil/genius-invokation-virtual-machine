@@ -45,7 +45,7 @@ struct character_source
 
     static givm::program_entry<givm::character_initialization> handle(
         const definition_type&, const givm::character_view&,
-        givm::character_initialization& event, const givm::card_table&, givm::random_fn&)
+        givm::character_initialization& event, const givm::table&, givm::random_fn&)
     {
         event.state = { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 };
         return givm::program_entry<givm::character_initialization>::null();
@@ -60,7 +60,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("character") }
     });

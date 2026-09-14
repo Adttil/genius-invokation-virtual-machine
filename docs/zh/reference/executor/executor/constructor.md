@@ -29,7 +29,7 @@ constexpr executor(executor&& other) noexcept;     // (3)
 
 ## 注意
 
-复制执行器以建立模拟分支时，调用方应同时复制配套的 [`card_table`](../../table/card_table.md)。需要复现后续随机选择时，还应保存随机源状态。
+复制执行器以建立模拟分支时，调用方应同时复制配套的 [`table`](../../table/table.md)。需要复现后续随机选择时，还应保存随机源状态。
 
 ## 示例
 
@@ -47,11 +47,11 @@ int main()
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-    givm::card_table table{};
+    givm::table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
-    givm::card_table branch_table{ table };
+    givm::table branch_table{ table };
     givm::executor branch{ execution };
     branch.run(library, branch_table, random);
     std::println("原对局尚未开始回合: {}", table.state().round_number == 0);

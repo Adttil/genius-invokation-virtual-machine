@@ -86,7 +86,7 @@ namespace givm
         const definition_data&,
         const TEntity&,
         TEvent&,
-        const card_table&,
+        const table&,
         random_fn&
     );
 
@@ -516,7 +516,7 @@ namespace givm
                 const definition_type& definition,
                 const TView& entity,
                 TEvent& event,
-                const card_table& table,
+                const table& table,
                 random_fn& random
             )
             {
@@ -527,7 +527,7 @@ namespace givm
                     std::declval<const definition_type&>(),
                     std::declval<const TView&>(),
                     std::declval<TEvent&>(),
-                    std::declval<const card_table&>(),
+                    std::declval<const table&>(),
                     std::declval<random_fn&>()
                 ));
                 static_assert(std::same_as<result_type, handler_program_entry_t<TEvent>>);
@@ -548,7 +548,7 @@ namespace givm
                     const definition_data& data,
                     const TView& entity,
                     TEvent& event,
-                    const card_table& table,
+                    const table& table,
                     random_fn& random
                 )
                 {

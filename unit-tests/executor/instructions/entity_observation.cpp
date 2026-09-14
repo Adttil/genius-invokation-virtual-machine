@@ -12,8 +12,6 @@
 
 #include "../../table/test_definition_library.hpp"
 
-using namespace givm;
-
 namespace
 {
     struct counting_random
@@ -29,27 +27,27 @@ namespace
 
     struct initialized_character_source
     {
-        using definition_category = character_view;
+        using definition_category = givm::character_view;
         struct definition_type {};
 
         constexpr std::string_view name() const noexcept { return "ObservedCharacter"; }
-        constexpr definition_type compile(definition_compile_context&) const noexcept { return {}; }
+        constexpr definition_type compile(givm::definition_compile_context&) const noexcept { return {}; }
 
-        static handler_program_entry_t<character_initialization> handle(
-            const definition_type&, const character_view&, character_initialization& event,
-            const card_table&, random_fn& random
+        static givm::handler_program_entry_t<givm::character_initialization> handle(
+            const definition_type&, const givm::character_view&, givm::character_initialization& event,
+            const givm::table&, givm::random_fn& random
         )
         {
             const auto health = 10 + random();
             event.state = { .max_health = health, .max_energy = 3, .health = health, .energy = 1 };
-            return handler_program_entry_t<character_initialization>::null();
+            return givm::handler_program_entry_t<givm::character_initialization>::null();
         }
     };
 
     struct creation_program_source
     {
-        using definition_category = character_view;
-        struct definition_type { program_entry<test_event> entry; };
+        using definition_category = givm::character_view;
+        struct definition_type { givm::program_entry<givm::test_event> entry; };
 
         constexpr std::string_view name() const noexcept { return "CreationProgram"; }
         constexpr auto character_dependencies() const noexcept
@@ -61,20 +59,20 @@ namespace
             return std::array{ std::string_view{ "ObservedCard" }, std::string_view{ "OtherObservedCard" } };
         }
 
-        definition_type compile(definition_compile_context& context) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto character = context.resolve_id<character_view>("ObservedCharacter");
-            const auto card = context.resolve_id<card_definition>("ObservedCard");
-            const auto other_card = context.resolve_id<card_definition>("OtherObservedCard");
-            return { context.add_program<test_event>(std::tuple{
-                enter_character{ .player = player_id{ 1 }, .definition = character },
-                insert_deck_card{ .player = player_id{ 1 }, .definition = card },
-                insert_deck_card{ .player = player_id{ 1 }, .definition = other_card, .position = 0 }
+            const auto character = context.resolve_id<givm::character_view>("ObservedCharacter");
+            const auto card = context.resolve_id<givm::card_definition>("ObservedCard");
+            const auto other_card = context.resolve_id<givm::card_definition>("OtherObservedCard");
+            return { context.add_program<givm::test_event>(std::tuple{
+                givm::enter_character{ .player = givm::player_id{ 1 }, .definition = character },
+                givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = card },
+                givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = other_card, .position = 0 }
             }) };
         }
 
-        static program_entry<test_event> handle(
-            const definition_type& data, const character_view&, test_event&, const card_table&, random_fn&
+        static givm::program_entry<givm::test_event> handle(
+            const definition_type& data, const givm::character_view&, givm::test_event&, const givm::table&, givm::random_fn&
         )
         {
             return data.entry;
@@ -83,29 +81,29 @@ namespace
 
     struct entity_event_log
     {
-        std::vector<hand_card_id> drawn;
-        std::vector<character_id> active;
+        std::vector<givm::hand_card_id> drawn;
+        std::vector<givm::character_id> active;
     };
 
     struct empty_program_source
     {
-        using definition_category = character_view;
+        using definition_category = givm::character_view;
         struct definition_type
         {
-            program_entry<test_event> entry;
+            givm::program_entry<givm::test_event> entry;
             std::uint32_t* calls;
         };
         std::uint32_t* calls;
 
         constexpr std::string_view name() const noexcept { return "EmptyProgram"; }
 
-        definition_type compile(definition_compile_context& context) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program<test_event>(std::tuple{}), calls };
+            return { context.add_program<givm::test_event>(std::tuple{}), calls };
         }
 
-        static program_entry<test_event> handle(
-            const definition_type& data, const character_view&, test_event&, const card_table&, random_fn&
+        static givm::program_entry<givm::test_event> handle(
+            const definition_type& data, const givm::character_view&, givm::test_event&, const givm::table&, givm::random_fn&
         )
         {
             CHECK_FALSE(data.entry.is_null());
@@ -116,96 +114,96 @@ namespace
 
     struct entity_observer_source
     {
-        using definition_category = character_view;
+        using definition_category = givm::character_view;
         struct definition_type { entity_event_log* log; };
         entity_event_log* log;
 
         constexpr std::string_view name() const noexcept { return "EntityObserver"; }
-        constexpr definition_type compile(definition_compile_context&) const noexcept { return { log }; }
+        constexpr definition_type compile(givm::definition_compile_context&) const noexcept { return { log }; }
 
-        static program_entry<card_drawn> handle(
-            const definition_type& data, const character_view&, card_drawn& event,
-            const card_table&, random_fn&
+        static givm::program_entry<givm::card_drawn> handle(
+            const definition_type& data, const givm::character_view&, givm::card_drawn& event,
+            const givm::table&, givm::random_fn&
         )
         {
             data.log->drawn.push_back(event.card);
-            return program_entry<card_drawn>::null();
+            return givm::program_entry<givm::card_drawn>::null();
         }
 
-        static program_entry<active_character_changed> handle(
-            const definition_type& data, const character_view&, active_character_changed& event,
-            const card_table& table, random_fn&
+        static givm::program_entry<givm::active_character_changed> handle(
+            const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
+            const givm::table& table, givm::random_fn&
         )
         {
             CHECK(table[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            return program_entry<active_character_changed>::null();
+            return givm::program_entry<givm::active_character_changed>::null();
         }
     };
 
     struct initial_switch_response_source
     {
-        using definition_category = character_view;
+        using definition_category = givm::character_view;
         struct definition_type
         {
             entity_event_log* log;
-            program_entry<active_character_changed> entry;
+            givm::program_entry<givm::active_character_changed> entry;
         };
         entity_event_log* log;
         int behavior;
 
         constexpr std::string_view name() const noexcept { return "InitialSwitchResponse"; }
-        definition_type compile(definition_compile_context& context) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
             if(behavior == 1)
-                return { log, context.add_program<active_character_changed>(std::tuple{
-                    end_game{ .result = game_result::player_0_win }
+                return { log, context.add_program<givm::active_character_changed>(std::tuple{
+                    givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
             if(behavior == 2)
-                return { log, context.add_program<active_character_changed>(std::tuple{
-                    set_active_character{ .target = character_id{ player_id{ 1 }, 0 } },
-                    end_game{ .result = game_result::player_0_win }
+                return { log, context.add_program<givm::active_character_changed>(std::tuple{
+                    givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } },
+                    givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
-            return { log, program_entry<active_character_changed>::null() };
+            return { log, givm::program_entry<givm::active_character_changed>::null() };
         }
 
-        static program_entry<active_character_changed> handle(
-            const definition_type& data, const character_view&, active_character_changed& event,
-            const card_table& table, random_fn&
+        static givm::program_entry<givm::active_character_changed> handle(
+            const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
+            const givm::table& table, givm::random_fn&
         )
         {
             CHECK(table[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            return event.current.player_id == player_id{ 0 }
-                ? data.entry : program_entry<active_character_changed>::null();
+            return event.current.player_id == givm::player_id{ 0 }
+                ? data.entry : givm::program_entry<givm::active_character_changed>::null();
         }
     };
 
     struct switch_back_source
     {
-        using definition_category = character_view;
+        using definition_category = givm::character_view;
         struct definition_type
         {
             entity_event_log* log;
-            program_entry<active_character_changed> entry;
+            givm::program_entry<givm::active_character_changed> entry;
         };
         entity_event_log* log;
 
         constexpr std::string_view name() const noexcept { return "SwitchBack"; }
-        definition_type compile(definition_compile_context& context) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program<active_character_changed>(std::tuple{
-                set_active_character{ .target = character_id{ player_id{ 0 }, 0 } }
+            return { log, context.add_program<givm::active_character_changed>(std::tuple{
+                givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } }
             }) };
         }
-        static program_entry<active_character_changed> handle(
-            const definition_type& data, const character_view&, active_character_changed& event,
-            const card_table& table, random_fn&
+        static givm::program_entry<givm::active_character_changed> handle(
+            const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
+            const givm::table& table, givm::random_fn&
         )
         {
             CHECK(table[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            return event.current.index == 1 ? data.entry : program_entry<active_character_changed>::null();
+            return event.current.index == 1 ? data.entry : givm::program_entry<givm::active_character_changed>::null();
         }
     };
 
@@ -214,62 +212,62 @@ namespace
 TEST_CASE("step passes through creation responses and preserves initialization", "[entity-observation]")
 {
     const initialized_character_source character_source;
-    const test::named_definition_source<card_definition> card_source{ "ObservedCard" };
-    const test::named_definition_source<card_definition> other_card_source{ "OtherObservedCard" };
+    const givm::test::named_definition_source<givm::card_definition> card_source{ "ObservedCard" };
+    const givm::test::named_definition_source<givm::card_definition> other_card_source{ "OtherObservedCard" };
     const creation_program_source program_source;
-    const auto [library, ids] = test::compile_definitions_with_program(
-        std::tuple{ test_command{} }, std::tuple{ end_game{ .result = game_result::both_loss } },
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        std::tuple{ givm::test_command{} }, std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } },
         program_source, card_source, other_card_source, character_source
     );
-    card_table table{};
-    table.load_deck(player_id{ 0 }, { .characters = { ids.get_id<character_view>(program_source.name()) } });
+    givm::table table{};
+    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(program_source.name()) } });
     auto normal_table = table;
     counting_random normal_random;
-    executor normal;
+    givm::executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(library, normal_table, normal_random) == execution_state::finished);
+    REQUIRE(normal.run(library, normal_table, normal_random) == givm::execution_state::finished);
 
     counting_random random;
-    executor observed;
+    givm::executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(library, table, random) == execution_state::finished);
-    auto characters = table[player_id{ 1 }].characters();
+    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
+    auto characters = table[givm::player_id{ 1 }].characters();
     REQUIRE(std::ranges::distance(characters) == 1);
     const auto character = (*characters.begin()).id();
-    CHECK(table[character].definition_id().value() == ids.get_id<character_view>(character_source.name()).value());
+    CHECK(table[character].definition_id().value() == ids.get_id<givm::character_view>(character_source.name()).value());
     CHECK(table[character].state().max_health == 12);
     CHECK(table[character].state().health == 12);
     CHECK(table[character].state().energy == 1);
-    CHECK(table[player_id{ 1 }].deck_card_count() == 2);
-    CHECK(table[player_id{ 1 }].deck_card_definition(0) == ids.get_id<card_definition>(other_card_source.name()));
-    CHECK(table[player_id{ 1 }].deck_card_definition(1) == ids.get_id<card_definition>(card_source.name()));
+    CHECK(table[givm::player_id{ 1 }].deck_card_count() == 2);
+    CHECK(table[givm::player_id{ 1 }].deck_card_definition(0) == ids.get_id<givm::card_definition>(other_card_source.name()));
+    CHECK(table[givm::player_id{ 1 }].deck_card_definition(1) == ids.get_id<givm::card_definition>(card_source.name()));
     CHECK(random.calls == normal_random.calls);
     CHECK(random.calls == 1);
-    const auto normal_character = *normal_table[player_id{ 1 }].characters().begin();
+    const auto normal_character = *normal_table[givm::player_id{ 1 }].characters().begin();
     CHECK(table[character].state().health == normal_character.state().health);
-    CHECK(table[player_id{ 1 }].deck_card_count() == normal_table[player_id{ 1 }].deck_card_count());
+    CHECK(table[givm::player_id{ 1 }].deck_card_count() == normal_table[givm::player_id{ 1 }].deck_card_count());
 }
 
 TEST_CASE("step passes through an empty response without an observation", "[entity-observation]")
 {
     std::uint32_t handler_calls = 0;
     const empty_program_source source{ &handler_calls };
-    const auto [library, ids] = test::compile_definitions_with_program(
-        std::tuple{ test_command{} }, std::tuple{ end_game{ .result = game_result::both_loss } }, source
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        std::tuple{ givm::test_command{} }, std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, source
     );
-    card_table table{};
-    table.load_deck(player_id{ 0 }, { .characters = { ids.get_id<character_view>(source.name()) } });
+    givm::table table{};
+    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(source.name()) } });
     auto normal_table = table;
     counting_random random;
-    executor normal;
+    givm::executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(library, normal_table, random) == execution_state::finished);
+    REQUIRE(normal.run(library, normal_table, random) == givm::execution_state::finished);
     REQUIRE(handler_calls == 1);
     handler_calls = 0;
 
-    executor observed;
+    givm::executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(library, table, random) == execution_state::finished);
+    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
     CHECK(handler_calls == 1);
     CHECK(random.calls == 0);
 }
@@ -282,42 +280,42 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
 
     entity_event_log log;
     const entity_observer_source observer_source{ &log };
-    const test::named_definition_source<card_definition> card_source{ "ObservedCard" };
-    const auto [library, ids] = test::compile_definitions_with_program(
+    const givm::test::named_definition_source<givm::card_definition> card_source{ "ObservedCard" };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
         std::tuple{
-            draw_cards{ .count = static_cast<std::uint32_t>(initial_hand_count), .player = relative_player::current },
-            draw_cards{ .count = 5, .player = relative_player::current },
-            draw_cards{ .count = 1, .player = relative_player::current }
+            givm::draw_cards{ .count = static_cast<std::uint32_t>(initial_hand_count), .player = givm::relative_player::current },
+            givm::draw_cards{ .count = 5, .player = givm::relative_player::current },
+            givm::draw_cards{ .count = 1, .player = givm::relative_player::current }
         },
-        std::tuple{ end_game{ .result = game_result::both_loss } }, observer_source, card_source
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, observer_source, card_source
     );
-    card_table table{ { .hand_limit = 2 } };
-    table.load_deck(player_id{ 1 }, { .characters = { ids.get_id<character_view>(observer_source.name()) } });
+    givm::table table{ { .hand_limit = 2 } };
+    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(observer_source.name()) } });
     const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
-    linked_deck deck;
+    givm::linked_deck deck;
     deck.cards.assign(initial_hand_count + 3, card_definition);
-    table.load_deck(player_id{ 0 }, deck);
-    const auto player = table[player_id{ 0 }];
+    table.load_deck(givm::player_id{ 0 }, deck);
+    const auto player = table[givm::player_id{ 0 }];
 
     auto normal_table = table;
     counting_random random;
-    executor normal;
+    givm::executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(library, normal_table, random) == execution_state::finished);
+    REQUIRE(normal.run(library, normal_table, random) == givm::execution_state::finished);
     log.drawn.clear();
 
-    executor observed;
+    givm::executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(library, table, random) == execution_state::finished);
+    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
     CHECK(player.deck_card_count() == 0);
     CHECK(player.hand_card_count() == 2);
     CHECK(log.drawn.size() == 2);
-    std::vector<hand_card_id> hand_ids;
+    std::vector<givm::hand_card_id> hand_ids;
     for(const auto card : player.hand_cards()) hand_ids.push_back(card.id());
     CHECK(log.drawn == hand_ids);
     for(const auto card : log.drawn) CHECK(table[card].definition_id() == card_definition);
-    CHECK(player.hand_card_count() == normal_table[player_id{ 0 }].hand_card_count());
-    CHECK(player.deck_card_count() == normal_table[player_id{ 0 }].deck_card_count());
+    CHECK(player.hand_card_count() == normal_table[givm::player_id{ 0 }].hand_card_count());
+    CHECK(player.deck_card_count() == normal_table[givm::player_id{ 0 }].deck_card_count());
     CHECK(random.calls == 0);
 }
 
@@ -325,109 +323,109 @@ TEST_CASE("single-player active-character observation precedes the table update 
 {
     entity_event_log log;
     const entity_observer_source observer_source{ &log };
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    constexpr character_id previous{ .player_id = player_id{ 0 }, .index = 0 };
-    constexpr character_id current{ .player_id = player_id{ 0 }, .index = 1 };
-    const auto [library, ids] = test::compile_definitions_with_program(
-        std::tuple{ set_active_character{ previous }, set_active_character{ current }, set_active_character{ current } },
-        std::tuple{ end_game{ .result = game_result::both_loss } }, observer_source, character_source
+    const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
+    constexpr givm::character_id previous{ .player_id = givm::player_id{ 0 }, .index = 0 };
+    constexpr givm::character_id current{ .player_id = givm::player_id{ 0 }, .index = 1 };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        std::tuple{ givm::set_active_character{ previous }, givm::set_active_character{ current }, givm::set_active_character{ current } },
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, observer_source, character_source
     );
-    card_table table{};
-    const auto definition = ids.get_id<character_view>(character_source.name());
-    table.load_deck(player_id{ 0 }, { .characters = { ids.get_id<character_view>(observer_source.name()), definition } });
+    givm::table table{};
+    const auto definition = ids.get_id<givm::character_view>(character_source.name());
+    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer_source.name()), definition } });
 
     auto normal_table = table;
     counting_random random;
-    executor normal;
+    givm::executor normal;
     normal.enter_entry(library);
-    REQUIRE(normal.run(library, normal_table, random) == execution_state::finished);
+    REQUIRE(normal.run(library, normal_table, random) == givm::execution_state::finished);
     const std::vector normal_events(log.active.begin() + 1, log.active.end());
     log.active.clear();
 
-    executor observed;
+    givm::executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(library, table, random) == execution_state::active_character_changed);
-    CHECK(observed.view_in<execution_state::active_character_changed>().character() == previous);
-    REQUIRE(observed.step(library, table, random) == execution_state::active_character_changed);
+    REQUIRE(observed.step(library, table, random) == givm::execution_state::active_character_changed);
+    CHECK(observed.view_in<givm::execution_state::active_character_changed>().character() == previous);
+    REQUIRE(observed.step(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
-    const auto view = observed.view_in<execution_state::active_character_changed>();
+    const auto view = observed.view_in<givm::execution_state::active_character_changed>();
     CHECK(view.character() == current);
-    CHECK(table[player_id{ 0 }].state().active_character == previous);
+    CHECK(table[givm::player_id{ 0 }].state().active_character == previous);
     CHECK(log.active.empty());
 
-    REQUIRE(observed.step(library, table, random) == execution_state::finished);
+    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
     CHECK(log.active == std::vector{ current, current });
     CHECK(log.active == normal_events);
-    CHECK(table[player_id{ 0 }].state().active_character == normal_table[player_id{ 0 }].state().active_character);
+    CHECK(table[givm::player_id{ 0 }].state().active_character == normal_table[givm::player_id{ 0 }].state().active_character);
 }
 
 TEST_CASE("initial active choices update both players before either response", "[entity-observation][select_active_character_both]")
 {
-    const auto first_player = GENERATE(player_id{ 0 }, player_id{ 1 });
+    const auto first_player = GENERATE(givm::player_id{ 0 }, givm::player_id{ 1 });
     const auto behavior = GENERATE(0, 1, 2);
     entity_event_log log;
     const initial_switch_response_source observer{ &log, behavior };
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    const auto [library, ids] = test::compile_definitions_with_program(
-        std::tuple{ select_active_character_both{} }, std::tuple{ end_game{ .result = game_result::both_loss } },
+    const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        std::tuple{ givm::select_active_character_both{} }, std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } },
         observer, character_source
     );
-    card_table table{};
-    const auto character = ids.get_id<character_view>(character_source.name());
-    table.load_deck(player_id{ 0 }, { .characters = { ids.get_id<character_view>(observer.name()), character } });
-    table.load_deck(player_id{ 1 }, { .characters = { character, character } });
+    givm::table table{};
+    const auto character = ids.get_id<givm::character_view>(character_source.name());
+    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer.name()), character } });
+    table.load_deck(givm::player_id{ 1 }, { .characters = { character, character } });
 
-    executor target;
+    givm::executor target;
     target.enter_entry(library);
     counting_random random;
-    REQUIRE(target.step(library, table, random) == execution_state::initial_active_character_selection);
-    const character_id first_choice{ first_player, 1 };
-    target.view_in<execution_state::initial_active_character_selection>().select(first_choice);
-    CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
-    CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
+    REQUIRE(target.step(library, table, random) == givm::execution_state::initial_active_character_selection);
+    const givm::character_id first_choice{ first_player, 1 };
+    target.view_in<givm::execution_state::initial_active_character_selection>().select(first_choice);
+    CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
+    CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     REQUIRE(log.active.empty());
-    REQUIRE(target.step(library, table, random) == execution_state::remaining_active_character_selection);
-    const auto remaining = target.view_in<execution_state::remaining_active_character_selection>();
+    REQUIRE(target.step(library, table, random) == givm::execution_state::remaining_active_character_selection);
+    const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
     CHECK(remaining.selected() == first_choice);
     CHECK(remaining.player() == other_player(first_player));
     remaining.select(1);
     CHECK(remaining.selected() == first_choice);
     CHECK(remaining.player() == other_player(first_player));
-    CHECK_FALSE(table[player_id{ 0 }].state().active_character.has_value());
-    CHECK_FALSE(table[player_id{ 1 }].state().active_character.has_value());
+    CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
+    CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     REQUIRE(log.active.empty());
-    REQUIRE(target.step(library, table, random) == execution_state::initial_active_characters_selected);
-    CHECK(table[player_id{ 0 }].state().active_character == character_id{ player_id{ 0 }, 1 });
-    CHECK(table[player_id{ 1 }].state().active_character == character_id{ player_id{ 1 }, 1 });
+    REQUIRE(target.step(library, table, random) == givm::execution_state::initial_active_characters_selected);
+    CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 1 });
+    CHECK(table[givm::player_id{ 1 }].state().active_character == givm::character_id{ givm::player_id{ 1 }, 1 });
     REQUIRE(log.active.empty());
 
     auto copied = target;
     auto copied_table = table;
-    const auto advance = [&](executor& execution, card_table& current_table)
+    const auto advance = [&](givm::executor& execution, givm::table& current_table)
     {
         log.active.clear();
         if(behavior == 2)
         {
-            REQUIRE(execution.step(library, current_table, random) == execution_state::active_character_changed);
-            const auto changed = execution.view_in<execution_state::active_character_changed>();
-            CHECK(changed.character() == character_id{ player_id{ 1 }, 0 });
-            CHECK(current_table[player_id{ 1 }].state().active_character == character_id{ player_id{ 1 }, 1 });
-            CHECK(log.active == std::vector{ character_id{ player_id{ 0 }, 1 } });
+            REQUIRE(execution.step(library, current_table, random) == givm::execution_state::active_character_changed);
+            const auto changed = execution.view_in<givm::execution_state::active_character_changed>();
+            CHECK(changed.character() == givm::character_id{ givm::player_id{ 1 }, 0 });
+            CHECK(current_table[givm::player_id{ 1 }].state().active_character == givm::character_id{ givm::player_id{ 1 }, 1 });
+            CHECK(log.active == std::vector{ givm::character_id{ givm::player_id{ 0 }, 1 } });
         }
         const auto state = execution.step(library, current_table, random);
         if(behavior == 0)
         {
-            REQUIRE(state == execution_state::finished);
-            CHECK(log.active == std::vector{ character_id{ player_id{ 0 }, 1 }, character_id{ player_id{ 1 }, 1 } });
+            REQUIRE(state == givm::execution_state::finished);
+            CHECK(log.active == std::vector{ givm::character_id{ givm::player_id{ 0 }, 1 }, givm::character_id{ givm::player_id{ 1 }, 1 } });
         }
         else
         {
-            REQUIRE(state == execution_state::finished);
-            CHECK(execution.view_in<execution_state::finished>().result() == game_result::player_0_win);
-            CHECK(log.active.front() == character_id{ player_id{ 0 }, 1 });
+            REQUIRE(state == givm::execution_state::finished);
+            CHECK(execution.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
+            CHECK(log.active.front() == givm::character_id{ givm::player_id{ 0 }, 1 });
             CHECK(log.active.size() == static_cast<std::size_t>(behavior));
             if(behavior == 2)
-                CHECK(current_table[player_id{ 1 }].state().active_character == character_id{ player_id{ 1 }, 0 });
+                CHECK(current_table[givm::player_id{ 1 }].state().active_character == givm::character_id{ givm::player_id{ 1 }, 0 });
         }
     };
     advance(target, table);
@@ -439,47 +437,47 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
 {
     entity_event_log log;
     const switch_back_source response{ &log };
-    const test::named_definition_source<character_view> character_source{ "Character" };
-    constexpr character_id previous{ player_id{ 0 }, 0 };
-    constexpr character_id next{ player_id{ 0 }, 1 };
-    const auto [library, ids] = test::compile_definitions_with_program(
-        std::tuple{ set_active_character{ previous }, set_active_character{ next } }, std::tuple{ end_game{ .result = game_result::both_loss } },
+    const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
+    constexpr givm::character_id previous{ givm::player_id{ 0 }, 0 };
+    constexpr givm::character_id next{ givm::player_id{ 0 }, 1 };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        std::tuple{ givm::set_active_character{ previous }, givm::set_active_character{ next } }, std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } },
         response, character_source
     );
-    card_table table{};
-    const auto character = ids.get_id<character_view>(character_source.name());
-    table.load_deck(player_id{ 0 }, { .characters = { ids.get_id<character_view>(response.name()), character } });
+    givm::table table{};
+    const auto character = ids.get_id<givm::character_view>(character_source.name());
+    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(response.name()), character } });
     auto normal_table = table;
-    executor normal;
+    givm::executor normal;
     normal.enter_entry(library);
     counting_random random;
-    REQUIRE(normal.run(library, normal_table, random) == execution_state::finished);
+    REQUIRE(normal.run(library, normal_table, random) == givm::execution_state::finished);
     CHECK(log.active == std::vector{ previous, next, previous });
     log.active.clear();
 
-    executor target;
+    givm::executor target;
     target.enter_entry(library);
-    REQUIRE(target.step(library, table, random) == execution_state::active_character_changed);
-    CHECK(target.view_in<execution_state::active_character_changed>().character() == previous);
-    REQUIRE(target.step(library, table, random) == execution_state::active_character_changed);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
+    CHECK(target.view_in<givm::execution_state::active_character_changed>().character() == previous);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
-    CHECK(target.view_in<execution_state::active_character_changed>().character() == next);
-    CHECK(table[player_id{ 0 }].state().active_character == previous);
+    CHECK(target.view_in<givm::execution_state::active_character_changed>().character() == next);
+    CHECK(table[givm::player_id{ 0 }].state().active_character == previous);
     REQUIRE(log.active.empty());
     auto copied = target;
     auto copied_table = table;
-    const auto resume = [&](executor& execution, card_table& current_table)
+    const auto resume = [&](givm::executor& execution, givm::table& current_table)
     {
         log.active.clear();
-        REQUIRE(execution.step(library, current_table, random) == execution_state::active_character_changed);
-        CHECK(execution.view_in<execution_state::active_character_changed>().character() == previous);
-        CHECK(current_table[player_id{ 0 }].state().active_character == next);
+        REQUIRE(execution.step(library, current_table, random) == givm::execution_state::active_character_changed);
+        CHECK(execution.view_in<givm::execution_state::active_character_changed>().character() == previous);
+        CHECK(current_table[givm::player_id{ 0 }].state().active_character == next);
         CHECK(log.active == std::vector{ next });
-        REQUIRE(execution.step(library, current_table, random) == execution_state::finished);
-        CHECK(current_table[player_id{ 0 }].state().active_character == previous);
+        REQUIRE(execution.step(library, current_table, random) == givm::execution_state::finished);
+        CHECK(current_table[givm::player_id{ 0 }].state().active_character == previous);
         CHECK(log.active == std::vector{ next, previous });
-        CHECK(current_table[player_id{ 0 }].state().active_character
-            == normal_table[player_id{ 0 }].state().active_character);
+        CHECK(current_table[givm::player_id{ 0 }].state().active_character
+            == normal_table[givm::player_id{ 0 }].state().active_character);
     };
     resume(target, table);
     resume(copied, copied_table);

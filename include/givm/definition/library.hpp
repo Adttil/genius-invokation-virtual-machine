@@ -248,12 +248,12 @@ namespace givm
             handler_program_entry_t<TEvent> handle(
                 const TView& entity,
                 TEvent& event,
-                const card_table& table,
+                const table& card_table,
                 random_fn& random
             ) const
             {
                 return library_->template handle<TEvent>(
-                    id_, entity, event, table, random
+                    id_, entity, event, card_table, random
                 );
             }
 
@@ -337,14 +337,14 @@ namespace givm
             definition_id<TDefinitionType> id,
             const TView& entity,
             TEvent& event,
-            const card_table& table,
+            const table& card_table,
             random_fn& random
         ) const
         {
             const auto& bucket = bucket_for<TDefinitionType>();
             const size_t index = id.value();
             const auto handle_fn = get_handle_fn<TEvent, TView>(id);
-            return handle_fn(bucket.data[index], entity, event, table, random);
+            return handle_fn(bucket.data[index], entity, event, card_table, random);
         }
 
     private:

@@ -8,7 +8,7 @@
 struct player_id;
 ```
 
-玩家在一张牌桌中的身份。使用此 ID 可以通过 [`card_table::operator[]`](card_table/operator_subscript.md) 再次取得相应实体。
+玩家在一张牌桌中的身份。使用此 ID 可以通过 [`table::operator[]`](table/operator_subscript.md) 再次取得相应实体。
 
 ## 成员对象
 
@@ -40,7 +40,7 @@ int main()
 {
     givm::definition_source_library sources{};
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{};
+    givm::table table{};
     const givm::player_id id{ 1 };
     std::println("目标玩家: {}", table[id].id().index);
 }

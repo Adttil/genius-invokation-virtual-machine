@@ -303,7 +303,7 @@ static handler_program_entry_t<TEvent> handle(
     const TDefinition& definition,
     const TEntityView& self,
     TEvent& event,
-    const card_table& table,
+    const table& table,
     random_fn& random
 );
 ```
@@ -331,7 +331,7 @@ static program_entry<damage_effect> handle(
     const definition_type& definition,
     const combat_status_view& self,
     damage_effect& event,
-    const card_table&,
+    const table&,
     random_fn&
 )
 {

@@ -69,7 +69,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::draw_cards{ .count = 1 }, givm::draw_cards{ .count = 1, .player = givm::relative_player::other }, givm::replace_cards_both{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");
     for(const givm::player_id player : { givm::player_id{ 0 }, givm::player_id{ 1 } })

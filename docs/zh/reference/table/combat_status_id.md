@@ -8,7 +8,7 @@
 struct combat_status_id;
 ```
 
-出战状态在一张牌桌中的身份。使用此 ID 可以通过 [`card_table::operator[]`](card_table/operator_subscript.md) 再次取得相应实体。
+出战状态在一张牌桌中的身份。使用此 ID 可以通过 [`table::operator[]`](table/operator_subscript.md) 再次取得相应实体。
 
 ## 成员对象
 

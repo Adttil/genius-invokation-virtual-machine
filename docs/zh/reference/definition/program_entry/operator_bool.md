@@ -40,7 +40,7 @@ struct result_source
     }
     static entry_type handle(
         const entry_type& entry, const givm::support_view&, givm::round_ended&,
-        const givm::card_table&, givm::random_fn&)
+        const givm::table&, givm::random_fn&)
     {
         return entry;
     }

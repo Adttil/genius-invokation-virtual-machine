@@ -21,7 +21,7 @@
 
 | | |
 | --- | --- |
-| [`card_table`](reference/table/card_table.md) | 牌桌 |
+| [`table`](reference/table/table.md) | 牌桌 |
 | [`definition_id`](reference/table/definition_id.md) | 实体采用的定义身份 |
 | [`linked_deck`](reference/table/linked_deck.md) | 已确定卡牌与角色定义的牌组 |
 | [`player_view`](reference/table/player_view.md) | 玩家的只读视图 |

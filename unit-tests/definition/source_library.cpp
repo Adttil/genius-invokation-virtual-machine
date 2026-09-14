@@ -10,8 +10,6 @@
 #include <givm/definition.hpp>
 #include <givm/executor.hpp>
 
-using namespace givm;
-
 namespace
 {
     template<class TDefinition>
@@ -35,7 +33,7 @@ namespace
             return { source_tags.data(), tag_count };
         }
 
-        constexpr definition_type compile(definition_compile_context&) const noexcept
+        constexpr definition_type compile(givm::definition_compile_context&) const noexcept
         {
             return {};
         }
@@ -43,11 +41,11 @@ namespace
 
     struct card_with_support_dependency
     {
-        using definition_category = card_definition;
+        using definition_category = givm::card_definition;
 
         struct definition_type
         {
-            definition_id<support_view> support;
+            givm::definition_id<givm::support_view> support;
         };
 
         std::string_view source_name;
@@ -63,19 +61,19 @@ namespace
             return std::array{ support_name };
         }
 
-        definition_type compile(definition_compile_context& context) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
-            return { .support = context.resolve_id<support_view>(support_name) };
+            return { .support = context.resolve_id<givm::support_view>(support_name) };
         }
     };
 
     struct card_with_tag_dependency
     {
-        using definition_category = card_definition;
+        using definition_category = givm::card_definition;
 
         struct definition_type
         {
-            std::vector<definition_id<card_definition>> cards;
+            std::vector<givm::definition_id<givm::card_definition>> cards;
         };
 
         std::string_view source_name;
@@ -91,10 +89,10 @@ namespace
             return std::array{ filter };
         }
 
-        definition_type compile(definition_compile_context& context) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
             return {
-                .cards = context.resolve_ids_by_tag<card_definition>(filter)
+                .cards = context.resolve_ids_by_tag<givm::card_definition>(filter)
             };
         }
     };
@@ -103,117 +101,117 @@ namespace
 TEST_CASE("definition_source_library adds a dependent batch atomically", "[source_library]")
 {
     const card_with_support_dependency card{ "Card", "Support" };
-    const plain_source<support_view> support{ .source_name = "Support" };
+    const plain_source<givm::support_view> support{ .source_name = "Support" };
 
-    definition_source_library library;
+    givm::definition_source_library library;
     CHECK_FALSE(library.add(card));
-    CHECK_FALSE(library.has<card_definition>("Card"));
+    CHECK_FALSE(library.has<givm::card_definition>("Card"));
 
     REQUIRE(library.add(card, support));
-    CHECK(library.has<card_definition>("Card"));
-    CHECK(library.has<support_view>("Support"));
+    CHECK(library.has<givm::card_definition>("Card"));
+    CHECK(library.has<givm::support_view>("Support"));
 
-    definition_source_library duplicate_batch;
-    const plain_source<card_definition> duplicate{ .source_name = "Card" };
+    givm::definition_source_library duplicate_batch;
+    const plain_source<givm::card_definition> duplicate{ .source_name = "Card" };
     CHECK_FALSE(duplicate_batch.add(card, duplicate, support));
-    CHECK_FALSE(duplicate_batch.has<card_definition>("Card"));
-    CHECK_FALSE(duplicate_batch.has<support_view>("Support"));
+    CHECK_FALSE(duplicate_batch.has<givm::card_definition>("Card"));
+    CHECK_FALSE(duplicate_batch.has<givm::support_view>("Support"));
 }
 
 TEST_CASE("definition_source_library rejects a conflicting library without partial merge", "[source_library]")
 {
-    const plain_source<card_definition> card{ .source_name = "Card" };
-    const plain_source<support_view> support{ .source_name = "Support" };
-    const plain_source<summon_view> summon{ .source_name = "Summon" };
+    const plain_source<givm::card_definition> card{ .source_name = "Card" };
+    const plain_source<givm::support_view> support{ .source_name = "Support" };
+    const plain_source<givm::summon_view> summon{ .source_name = "Summon" };
 
-    definition_source_library base;
+    givm::definition_source_library base;
     REQUIRE(base.add(card, support));
 
-    definition_source_library extension;
+    givm::definition_source_library extension;
     REQUIRE(extension.add(card, summon));
 
     CHECK_FALSE(base.add(extension));
-    CHECK(base.has<card_definition>("Card"));
-    CHECK(base.has<support_view>("Support"));
-    CHECK_FALSE(base.has<summon_view>("Summon"));
+    CHECK(base.has<givm::card_definition>("Card"));
+    CHECK(base.has<givm::support_view>("Support"));
+    CHECK_FALSE(base.has<givm::summon_view>("Summon"));
 }
 
 TEST_CASE("selected definitions include transitive named dependencies", "[source_library]")
 {
     const card_with_support_dependency selected_card{ "Root", "Support" };
-    const plain_source<support_view> support{ .source_name = "Support" };
-    const plain_source<card_definition> unused{ .source_name = "Unused" };
+    const plain_source<givm::support_view> support{ .source_name = "Support" };
+    const plain_source<givm::card_definition> unused{ .source_name = "Unused" };
 
-    definition_source_library sources;
+    givm::definition_source_library sources;
     REQUIRE(sources.add(selected_card, support, unused));
 
     const std::array card_roots{ std::string_view{ "Root" } };
-    definition_selection selection{};
-    selection[definition_types::index_of<card_definition>()] = card_roots;
+    givm::definition_selection selection{};
+    selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
 
-    const auto program = std::tuple{ end_game{ game_result::both_loss } };
+    const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = sources.compile(selection, program, program);
-    CHECK(id_map.has<card_definition>("Root"));
-    CHECK(id_map.has<support_view>("Support"));
-    CHECK_FALSE(id_map.has<card_definition>("Unused"));
+    CHECK(id_map.has<givm::card_definition>("Root"));
+    CHECK(id_map.has<givm::support_view>("Support"));
+    CHECK_FALSE(id_map.has<givm::card_definition>("Unused"));
 
-    CHECK(bool(library.name(id_map.get_id<card_definition>("Root")) == "Root"));
-    CHECK(bool(library.name(id_map.get_id<support_view>("Support")) == "Support"));
+    CHECK(bool(library.name(id_map.get_id<givm::card_definition>("Root")) == "Root"));
+    CHECK(bool(library.name(id_map.get_id<givm::support_view>("Support")) == "Support"));
 }
 
 TEST_CASE("tag dependencies select matching definitions only", "[source_library]")
 {
     const card_with_tag_dependency selected_card{ "Root", "selected & !excluded" };
-    const plain_source<card_definition> alpha{
+    const plain_source<givm::card_definition> alpha{
         .source_name = "Alpha",
         .source_tags = { "selected", "ordinary" },
         .tag_count = 2
     };
-    const plain_source<card_definition> beta{
+    const plain_source<givm::card_definition> beta{
         .source_name = "Beta",
         .source_tags = { "selected", "excluded" },
         .tag_count = 2
     };
-    const plain_source<card_definition> gamma{
+    const plain_source<givm::card_definition> gamma{
         .source_name = "Gamma",
         .source_tags = { "ordinary", {} },
         .tag_count = 1
     };
 
-    definition_source_library library;
+    givm::definition_source_library library;
     REQUIRE(library.add(selected_card, alpha, beta, gamma));
 
     const std::array card_roots{ std::string_view{ "Root" } };
-    definition_selection selection{};
-    selection[definition_types::index_of<card_definition>()] = card_roots;
+    givm::definition_selection selection{};
+    selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
 
     const auto ids = library.make_issued_id_map(selection);
-    CHECK(ids.has<card_definition>("Root"));
-    CHECK(ids.has<card_definition>("Alpha"));
-    CHECK_FALSE(ids.has<card_definition>("Beta"));
-    CHECK_FALSE(ids.has<card_definition>("Gamma"));
+    CHECK(ids.has<givm::card_definition>("Root"));
+    CHECK(ids.has<givm::card_definition>("Alpha"));
+    CHECK_FALSE(ids.has<givm::card_definition>("Beta"));
+    CHECK_FALSE(ids.has<givm::card_definition>("Gamma"));
 }
 
 TEST_CASE("issued ids address the definitions produced by compilation", "[source_library]")
 {
-    const plain_source<card_definition> zulu{
+    const plain_source<givm::card_definition> zulu{
         .source_name = "Zulu",
         .source_tags = { "zeta", {} },
         .tag_count = 1
     };
-    const plain_source<card_definition> alpha{
+    const plain_source<givm::card_definition> alpha{
         .source_name = "Alpha",
         .source_tags = { "alpha", {} },
         .tag_count = 1
     };
 
-    definition_source_library sources;
+    givm::definition_source_library sources;
     REQUIRE(sources.add(zulu, alpha));
 
-    const auto program = std::tuple{ end_game{ game_result::both_loss } };
+    const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = sources.compile(program, program);
-    const auto alpha_id = id_map.get_id<card_definition>("Alpha");
-    const auto zulu_id = id_map.get_id<card_definition>("Zulu");
+    const auto alpha_id = id_map.get_id<givm::card_definition>("Alpha");
+    const auto zulu_id = id_map.get_id<givm::card_definition>("Zulu");
     const auto alpha_tag = id_map.get_tag_id("alpha");
     const auto zeta_tag = id_map.get_tag_id("zeta");
 

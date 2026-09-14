@@ -1,11 +1,11 @@
-[givm](../../../reference.md) / [牌桌](../../table.md) / [card_table](../card_table.md) / **(构造函数)**
+[givm](../../../reference.md) / [牌桌](../../table.md) / [table](../table.md) / **(构造函数)**
 
-# givm::card_table::(构造函数)
+# givm::table::(构造函数)
 
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-constexpr card_table(game_parameters parameters = {});
+constexpr table(game_parameters parameters = {});
 ```
 
 准备一张尚未装载牌组的牌桌，使用指定的对局参数。
@@ -35,8 +35,8 @@ constexpr card_table(game_parameters parameters = {});
 
 int main()
 {
-    givm::card_table table{};
-    givm::card_table configured{ { .hand_limit = 12 } };
+    givm::table table{};
+    givm::table configured{ { .hand_limit = 12 } };
     std::println("手牌上限: {}", configured.parameters().hand_limit);
     std::println("初始回合数: {}", configured.state().round_number);
 }

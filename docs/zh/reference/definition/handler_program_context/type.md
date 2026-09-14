@@ -39,7 +39,7 @@ struct support_source
         const givm::handler_program_entry_t<givm::round_ended>& entry,
         const givm::support_view&,
         givm::round_ended&,
-        const givm::card_table&,
+        const givm::table&,
         givm::random_fn&
     )
     {

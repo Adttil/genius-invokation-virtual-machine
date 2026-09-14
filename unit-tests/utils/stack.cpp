@@ -11,11 +11,9 @@
 
 #include <givm/utils/stack.hpp>
 
-using namespace givm;
-
 namespace
 {
-    struct alignas(max_alignment) aligned_record
+    struct alignas(givm::max_alignment) aligned_record
     {
         std::uint64_t first;
         std::uint32_t second;
@@ -26,7 +24,7 @@ namespace
     static_assert(std::is_trivially_copyable_v<aligned_record>);
 
     template<class... T>
-    concept stack_pushable = requires(frame_stack& stack, const T&... values)
+    concept stack_pushable = requires(givm::frame_stack& stack, const T&... values)
     {
         stack.push(values...);
     };
@@ -34,7 +32,7 @@ namespace
 
 TEST_CASE("frame_stack accepts dynamic arrays only as a frame prefix", "[stack]")
 {
-    using dynamic_values = decltype(dynamic_array<std::uint16_t>(stack_count_t{ 1 }));
+    using dynamic_values = decltype(givm::dynamic_array<std::uint16_t>(givm::stack_count_t{ 1 }));
 
     STATIC_REQUIRE(stack_pushable<dynamic_values, std::uint8_t>);
     STATIC_REQUIRE_FALSE(stack_pushable<std::uint8_t, dynamic_values>);
@@ -42,7 +40,7 @@ TEST_CASE("frame_stack accepts dynamic arrays only as a frame prefix", "[stack]"
 
 TEST_CASE("frame_stack manages empty and cleared storage", "[stack]")
 {
-    frame_stack stack;
+    givm::frame_stack stack;
     CHECK(stack.empty());
     CHECK(stack.size() == 0);
 
@@ -71,7 +69,7 @@ TEST_CASE("frame_stack manages empty and cleared storage", "[stack]")
 
 TEST_CASE("frame_stack stores and mutates a fixed frame", "[stack]")
 {
-    frame_stack stack{ 1 };
+    givm::frame_stack stack{ 1 };
 
     auto&& [integer, real] = stack.push(std::uint32_t{ 7 }, 2.5);
     CHECK(integer == 7);
@@ -98,9 +96,9 @@ TEST_CASE("frame_stack stores and mutates a fixed frame", "[stack]")
 TEST_CASE("frame_stack preserves dynamic arrays while growing", "[stack]")
 {
     const std::array<std::uint32_t, 3> initial{ 3, 5, 8 };
-    frame_stack stack{ 1 };
+    givm::frame_stack stack{ 1 };
 
-    stack.push(dynamic_array<std::uint32_t>(initial), std::uint16_t{ 13 });
+    stack.push(givm::dynamic_array<std::uint32_t>(initial), std::uint16_t{ 13 });
     const auto size_before_reserve = stack.size();
     stack.reserve(stack.capacity() + 64);
 
@@ -118,7 +116,7 @@ TEST_CASE("frame_stack preserves dynamic arrays while growing", "[stack]")
 
 TEST_CASE("frame_stack preserves earlier frames during automatic growth", "[stack]")
 {
-    frame_stack stack{ 1 };
+    givm::frame_stack stack{ 1 };
 
     for(std::uint32_t i = 0; i < 64; ++i)
     {
@@ -144,8 +142,8 @@ TEST_CASE("frame_stack initializes dynamic arrays from their public source forms
 {
     SECTION("a count creates writable storage")
     {
-        frame_stack stack;
-        auto pushed = stack.push(dynamic_array<std::uint32_t>(4u), std::uint16_t{ 19 });
+        givm::frame_stack stack;
+        auto pushed = stack.push(givm::dynamic_array<std::uint32_t>(4u), std::uint16_t{ 19 });
         auto values = get<0>(pushed);
         REQUIRE(values.size() == 4);
 
@@ -164,11 +162,11 @@ TEST_CASE("frame_stack initializes dynamic arrays from their public source forms
             aligned_record{ 13, 21 },
             aligned_record{ 34, 55 }
         };
-        frame_stack stack{ 1 };
+        givm::frame_stack stack{ 1 };
 
         stack.push(
-            dynamic_array<std::uint16_t>(linked_values),
-            dynamic_array<aligned_record>(aligned_values),
+            givm::dynamic_array<std::uint16_t>(linked_values),
+            givm::dynamic_array<aligned_record>(aligned_values),
             std::uint8_t{ 2 },
             std::uint32_t{ 89 }
         );
@@ -197,8 +195,8 @@ TEST_CASE("frame_stack initializes dynamic arrays from their public source forms
     SECTION("an empty source creates an empty array")
     {
         const std::array<std::uint8_t, 0> empty_values{};
-        frame_stack stack;
-        stack.push(dynamic_array<std::uint8_t>(empty_values), std::uint16_t{ 23 });
+        givm::frame_stack stack;
+        stack.push(givm::dynamic_array<std::uint8_t>(empty_values), std::uint16_t{ 23 });
 
         auto&& [stored_values, marker] = stack.top<std::uint8_t[], std::uint16_t>();
         CHECK(marker == 23);
@@ -212,9 +210,9 @@ TEST_CASE("frame_stack initializes dynamic arrays from their public source forms
 TEST_CASE("frame_stack exposes the fixed suffix of its top frame", "[stack]")
 {
     const std::array<std::uint16_t, 3> initial{ 3, 5, 8 };
-    frame_stack stack;
+    givm::frame_stack stack;
     stack.push(
-        dynamic_array<std::uint16_t>(initial),
+        givm::dynamic_array<std::uint16_t>(initial),
         std::uint32_t{ 13 },
         std::uint8_t{ 21 }
     );
@@ -239,11 +237,11 @@ TEST_CASE("frame_stack exposes the fixed suffix of its top frame", "[stack]")
 TEST_CASE("frame_stack copies frames independently", "[stack]")
 {
     const std::array<std::uint32_t, 3> initial{ 3, 5, 8 };
-    frame_stack original;
+    givm::frame_stack original;
     original.push(std::uint16_t{ 2 });
-    original.push(dynamic_array<std::uint32_t>(initial), aligned_record{ 13, 21 });
+    original.push(givm::dynamic_array<std::uint32_t>(initial), aligned_record{ 13, 21 });
 
-    frame_stack copy = original;
+    givm::frame_stack copy = original;
     auto&& [copy_values, copy_record] = copy.top<std::uint32_t[], aligned_record>();
     copy_values[0] = 34;
     copy_record.second = 55;
@@ -254,7 +252,7 @@ TEST_CASE("frame_stack copies frames independently", "[stack]")
     CHECK(copy_values[0] == 34);
     CHECK(copy_record == aligned_record{ 13, 55 });
 
-    frame_stack assigned;
+    givm::frame_stack assigned;
     assigned.push(std::uint8_t{ 1 });
     assigned = original;
     original.clear();
@@ -269,10 +267,10 @@ TEST_CASE("frame_stack copies frames independently", "[stack]")
 
 TEST_CASE("frame_stack supports move and swap through observable contents", "[stack]")
 {
-    frame_stack source;
+    givm::frame_stack source;
     source.push(std::uint32_t{ 17 });
 
-    frame_stack moved = std::move(source);
+    givm::frame_stack moved = std::move(source);
     auto&& [moved_value] = moved.top<std::uint32_t>();
     CHECK(moved_value == 17);
 
@@ -280,7 +278,7 @@ TEST_CASE("frame_stack supports move and swap through observable contents", "[st
     auto&& [reused_source_value] = source.top<std::uint16_t>();
     CHECK(reused_source_value == 23);
 
-    frame_stack other;
+    givm::frame_stack other;
     other.push(std::uint32_t{ 29 });
     swap(moved, other);
     auto&& [left_value] = moved.top<std::uint32_t>();
@@ -288,7 +286,7 @@ TEST_CASE("frame_stack supports move and swap through observable contents", "[st
     CHECK(left_value == 29);
     CHECK(right_value == 17);
 
-    frame_stack move_assigned;
+    givm::frame_stack move_assigned;
     move_assigned = std::move(other);
     auto&& [assigned_value] = move_assigned.top<std::uint32_t>();
     CHECK(assigned_value == 17);
@@ -300,13 +298,13 @@ TEST_CASE("frame_stack supports move and swap through observable contents", "[st
 
 TEST_CASE("frame_stack addresses and removes multiple frames together", "[stack]")
 {
-    frame_stack stack;
+    givm::frame_stack stack;
     stack.push(std::uint32_t{ 1 });
     stack.push(std::uint16_t{ 2 }, std::uint8_t{ 3 });
 
     auto [first, second] = stack.top<
-        frame_t<std::uint32_t>{},
-        frame_t<std::uint16_t, std::uint8_t>{}
+        givm::frame_t<std::uint32_t>{},
+        givm::frame_t<std::uint16_t, std::uint8_t>{}
     >();
     auto&& [first_value] = first;
     auto&& [second_value, third_value] = second;
@@ -314,17 +312,17 @@ TEST_CASE("frame_stack addresses and removes multiple frames together", "[stack]
     CHECK(second_value == 2);
     CHECK(third_value == 3);
 
-    frame_stack copy = stack;
+    givm::frame_stack copy = stack;
     stack.pop(first, second);
     CHECK(stack.empty());
 
     copy.pop<
-        frame_t<std::uint32_t>{},
-        frame_t<std::uint16_t, std::uint8_t>{}
+        givm::frame_t<std::uint32_t>{},
+        givm::frame_t<std::uint16_t, std::uint8_t>{}
     >();
     CHECK(copy.empty());
 
-    frame_stack single_pop;
+    givm::frame_stack single_pop;
     single_pop.push(std::uint32_t{ 5 });
     single_pop.push(std::uint16_t{ 8 }, std::uint8_t{ 13 });
     single_pop.pop<std::uint16_t, std::uint8_t>();

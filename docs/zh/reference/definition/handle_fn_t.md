@@ -10,7 +10,7 @@ using handle_fn_t = handler_program_entry_t<TEvent> (*)(
     const definition_data&,
     const TEntity&,
     TEvent&,
-    const card_table&,
+    const table&,
     random_fn&
 );
 ```
@@ -50,7 +50,7 @@ struct character_source
         const int& extra_rerolls,
         const givm::character_view&,
         givm::dice_roll_preparation& event,
-        const givm::card_table&,
+        const givm::table&,
         givm::random_fn&
     )
     {
@@ -69,7 +69,7 @@ int main()
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");
 
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { id } });
     const auto entity = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     auto random_source = []() -> std::uint32_t { return 0; };
@@ -80,11 +80,11 @@ int main()
         const givm::definition_data& data,
         const givm::character_view& entity,
         givm::dice_roll_preparation& event,
-        const givm::card_table& table,
+        const givm::table& card_table,
         givm::random_fn& random
     )
     {
-        return character_source::handle(std::any_cast<const int&>(data), entity, event, table, random);
+        return character_source::handle(std::any_cast<const int&>(data), entity, event, card_table, random);
     };
     const auto entry = handler(data, entity, event, table, random);
     std::println("玩家 0 重投次数: {}", event.reroll_count[0]);

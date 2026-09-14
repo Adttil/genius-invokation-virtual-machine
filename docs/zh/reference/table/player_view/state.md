@@ -24,7 +24,7 @@ constexpr const player_state& state() const;
 
 int main()
 {
-    givm::card_table table{};
+    givm::table table{};
     const givm::player_view player = table[givm::player_id{ 0 }];
     std::println("初始骰子数: {}", player.state().dice.total());
 }

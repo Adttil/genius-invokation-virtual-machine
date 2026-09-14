@@ -8,7 +8,7 @@
 struct hand_card_status_id;
 ```
 
-手牌上的状态在一张牌桌中的身份。使用此 ID 可以通过 [`card_table::operator[]`](card_table/operator_subscript.md) 再次取得相应实体。
+手牌上的状态在一张牌桌中的身份。使用此 ID 可以通过 [`table::operator[]`](table/operator_subscript.md) 再次取得相应实体。
 
 ## 成员对象
 

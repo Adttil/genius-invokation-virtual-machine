@@ -1,6 +1,6 @@
-[givm](../../../reference.md) / [牌桌](../../table.md) / [card_table](../card_table.md) / **state**
+[givm](../../../reference.md) / [牌桌](../../table.md) / [table](../table.md) / **state**
 
-# givm::card_table::state
+# givm::table::state
 
 定义于头文件 `<givm/table.hpp>`
 
@@ -24,7 +24,7 @@ constexpr const table_state& state() const noexcept;
 
 int main()
 {
-    givm::card_table table{};
+    givm::table table{};
     std::println("初始回合数: {}", table.state().round_number);
     std::println("初始行动玩家: {}", table.state().active_player.index);
 }

@@ -5,7 +5,7 @@
 
 namespace givm
 {
-    class card_table : private detail::unrestricted_table
+    class table : private detail::unrestricted_table
     {
         friend class detail::unrestricted_table;
         friend class executor;
@@ -13,7 +13,7 @@ namespace givm
     public:
         using game_state = table_state;
 
-        constexpr card_table(game_parameters parameters = {})
+        constexpr table(game_parameters parameters = {})
         : detail::unrestricted_table{ parameters }
         {}
 

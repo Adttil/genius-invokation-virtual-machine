@@ -8,12 +8,12 @@
 template<class TRandom>
 execution_state run(
     const definition_library& library,
-    card_table& table,
+    table& card_table,
     TRandom& random_source
 );
 ```
 [`execution_state`](../execution_state.md)
-[`card_table`](../../table/card_table.md)
+[`table`](../../table/table.md)
 
 推进对局，直到需要调用方输入或对局结束。
 
@@ -30,7 +30,7 @@ execution_state run(
 | | |
 | --- | --- |
 | `library` | 与当前执行现场配套的定义库；执行器不会在返回后持有它 |
-| `table` | 与当前执行现场配套的牌桌，其中的定义 ID 须属于本次使用的定义库 |
+| `card_table` | 与当前执行现场配套的牌桌，其中的定义 ID 须属于本次使用的定义库 |
 | `random_source` | 本次推进使用的随机源，以左值传入；执行器不会在返回后持有它 |
 
 ## 返回值
@@ -60,7 +60,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);

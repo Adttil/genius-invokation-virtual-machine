@@ -10,7 +10,7 @@ handler_program_entry_t<TEvent> handle(
     definition_id<TDefinitionType> id,
     const TView& entity,
     TEvent& event,
-    const card_table& table,
+    const table& card_table,
     random_fn& random
 ) const;
 ```
@@ -32,7 +32,7 @@ handler_program_entry_t<TEvent> handle(
 | `id` | 本定义库中的有效定义 ID |
 | `entity` | 响应事件的实体，只读 view 须属于该定义类别 |
 | `event` | 要响应的事件，可修改的成员用于反馈本次事件的调整 |
-| `table` | 事件发生的牌桌，须使用本定义库 |
+| `card_table` | 事件发生的牌桌，须使用本定义库 |
 | `random` | 响应过程中使用的随机源 |
 
 ## 返回值
@@ -64,7 +64,7 @@ struct character_source
         const int& extra_rerolls,
         const givm::character_view&,
         givm::dice_roll_preparation& event,
-        const givm::card_table&,
+        const givm::table&,
         givm::random_fn&
     )
     {
@@ -83,7 +83,7 @@ int main()
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");
 
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { id } });
     const auto entity = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     auto random_source = []() -> std::uint32_t { return 0; };

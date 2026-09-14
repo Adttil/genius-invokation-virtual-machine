@@ -43,7 +43,7 @@ int main()
     givm::definition_source_library sources{};
     const auto [library, ids] = sources.compile(
         std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 2 } });
-    givm::card_table table{};
+    givm::table table{};
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

@@ -2,9 +2,9 @@
 
 本篇保留牌桌内部存储方案的比较、拒绝理由和优化边界，供修改容器与实体访问实现时查阅。下面沿用原设计记录的编号，便于引用具体约束和候选方案；结构草图用于解释布局，不是要求调用方操作这些字段的公开 ABI。
 
-对照基线为 `b3d6c50`：`player_data` 仍采用方案 B，卡牌 status 仍采用方案 S1。候选方案 A、S2 和第 6 节的取舍属于设计历史；“第一版”指当时实验基线，不代表这些方案已经完成性能比较。公开使用约定见[实体的身份与访问](../reference/table/entity_access.md)及 [card_table::clean_up](../reference/table/card_table/clean_up.md)；卡牌内部搬运数据另见[牌与区域实体模型](entity_identity.md#card-data)。
+对照基线为 `b3d6c50`：`player_data` 仍采用方案 B，卡牌 status 仍采用方案 S1。候选方案 A、S2 和第 6 节的取舍属于设计历史；“第一版”指当时实验基线，不代表这些方案已经完成性能比较。公开使用约定见[实体的身份与访问](../reference/table/entity_access.md)及 [table::clean_up](../reference/table/table/clean_up.md)；卡牌内部搬运数据另见[牌与区域实体模型](entity_identity.md#card-data)。
 
-本文记录 `card_table` 内部实体存储结构的目标、约束、候选方案、已否决方案，以及第一版实验实现的取舍。它讨论的是内部布局与生命周期，不规定卡牌或 status 的具体规则语义。
+本文记录 `table` 内部实体存储结构的目标、约束、候选方案、已否决方案，以及第一版实验实现的取舍。它讨论的是内部布局与生命周期，不规定卡牌或 status 的具体规则语义。
 
 第一版实验选择下文的方案 B 与方案 S1；“候选方案”与“已否决或暂不采用的设计”保留比较依据，不代表同时提供的接口。本文的容器布局和优化方向属于可替换实现，实体语义见 [牌与区域实体模型](entity_identity.md)。
 
@@ -34,7 +34,7 @@
 
 ### 2.2 裸数据层与实体访问层（历史方案）
 
-以下保留原方案的名称、类型原型和取舍理由，不表示当前公开接口。当前完整牌桌为 `detail::unrestricted_table`，公开 `card_table` 通过私有继承限制直接修改；基础句柄模板改名为 `detail::basic_xxx_handle<TStorage>`。公开 `xxx_view` 是私有继承只读句柄特化的独立类，通过 `using` 开放读取成员；内部 `detail::xxx_handle<TStorage>` 别名在可变情况下选择基础句柄，在不可变情况下选择独立 view。`card_data` 及其搬运操作也已归入内部使用。
+以下保留原方案的名称、类型原型和取舍理由，不表示当前公开接口。当前完整牌桌为 `detail::unrestricted_table`，公开 `table` 通过私有继承限制直接修改；基础句柄模板改名为 `detail::basic_xxx_handle<TStorage>`。公开 `xxx_view` 是私有继承只读句柄特化的独立类，通过 `using` 开放读取成员；内部 `detail::xxx_handle<TStorage>` 别名在可变情况下选择基础句柄，在不可变情况下选择独立 view。`card_data` 及其搬运操作也已归入内部使用。
 
 原方案将 table 模块分为两层：
 

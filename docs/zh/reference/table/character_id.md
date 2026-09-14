@@ -8,7 +8,7 @@
 struct character_id;
 ```
 
-角色在一张牌桌中的身份。使用此 ID 可以通过 [`card_table::operator[]`](card_table/operator_subscript.md) 再次取得相应实体。
+角色在一张牌桌中的身份。使用此 ID 可以通过 [`table::operator[]`](table/operator_subscript.md) 再次取得相应实体。
 
 ## 成员对象
 
@@ -27,7 +27,7 @@ friend constexpr bool operator==(character_id, character_id) = default;
 
 ## 注意
 
-通过 [`load_deck`](card_table/load_deck.md) 初次装载角色时，角色位置与 `linked_deck::characters` 中的下标对应。规则中新入场的角色应通过牌桌的角色视图取得 ID。
+通过 [`load_deck`](table/load_deck.md) 初次装载角色时，角色位置与 `linked_deck::characters` 中的下标对应。规则中新入场的角色应通过牌桌的角色视图取得 ID。
 
 ID 本身不包含牌桌身份。清理实体后，原有 ID 可能失效；详见[实体的身份与访问](entity_access.md)。
 
@@ -52,7 +52,7 @@ struct example_source
 
     static givm::program_entry<givm::character_initialization> handle(
         const definition_type&, const givm::character_view&,
-        givm::character_initialization& event, const givm::card_table&, givm::random_fn&)
+        givm::character_initialization& event, const givm::table&, givm::random_fn&)
     {
         event.state = { .max_health = 10, .health = 10 };
         return givm::program_entry<givm::character_initialization>::null();
@@ -67,7 +67,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{});
     const auto definition = ids.get_id<givm::character_view>("示例");
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
 
     auto random = []() -> std::uint32_t { return 0; };

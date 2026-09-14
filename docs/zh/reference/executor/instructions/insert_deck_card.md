@@ -58,7 +58,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = card } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

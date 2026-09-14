@@ -10,7 +10,7 @@ class executor;
 
 游戏对局的执行器。
 
-它是所有牌桌（[`card_table`](../table/card_table.md)）以外状态的记录者，比如对局进行到了哪个阶段、结算进行到了哪一步、正在发生的事件等。
+它是所有牌桌（[`table`](../table/table.md)）以外状态的记录者，比如对局进行到了哪个阶段、结算进行到了哪一步、正在发生的事件等。
 
 ## 成员函数
 
@@ -39,7 +39,7 @@ int main()
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 2 } }
     );
-    givm::card_table table{};
+    givm::table table{};
     auto random = []() -> std::uint32_t { return 0; };
 
     givm::executor execution{};
@@ -64,5 +64,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`card_table`](../table/card_table.md) | 游戏对局的牌桌 |
+| [`table`](../table/table.md) | 游戏对局的牌桌 |
 | [`definition_library`](../definition/definition_library.md) | 编译后的定义库 |

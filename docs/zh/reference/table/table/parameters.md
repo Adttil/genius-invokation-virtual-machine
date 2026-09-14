@@ -1,6 +1,6 @@
-[givm](../../../reference.md) / [牌桌](../../table.md) / [card_table](../card_table.md) / **parameters**
+[givm](../../../reference.md) / [牌桌](../../table.md) / [table](../table.md) / **parameters**
 
-# givm::card_table::parameters
+# givm::table::parameters
 
 定义于头文件 `<givm/table.hpp>`
 
@@ -24,7 +24,7 @@ constexpr const game_parameters& parameters() const noexcept;
 
 int main()
 {
-    givm::card_table table{ givm::game_parameters{ .hand_limit = 12 } };
+    givm::table table{ givm::game_parameters{ .hand_limit = 12 } };
     std::println("手牌上限: {}", table.parameters().hand_limit);
 }
 ```

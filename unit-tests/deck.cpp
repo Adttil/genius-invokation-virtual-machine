@@ -12,14 +12,12 @@
 
 #include "table/test_definition_library.hpp"
 
-using namespace givm;
-
 namespace
 {
     struct sequence_random
     {
         std::vector<std::uint32_t> values;
-        size_t position = 0;
+        std::size_t position = 0;
 
         std::uint32_t operator()()
         {
@@ -29,7 +27,7 @@ namespace
 
     struct initializing_character_source
     {
-        using definition_category = character_view;
+        using definition_category = givm::character_view;
 
         struct definition_type
         {
@@ -47,7 +45,7 @@ namespace
             return source_name;
         }
 
-        definition_type compile(definition_compile_context&) const noexcept
+        definition_type compile(givm::definition_compile_context&) const noexcept
         {
             return {
                 .name = source_name,
@@ -56,12 +54,12 @@ namespace
             };
         }
 
-        static handler_program_entry_t<character_initialization> handle(
+        static givm::handler_program_entry_t<givm::character_initialization> handle(
             const definition_type& definition,
-            const character_view&,
-            character_initialization& event,
-            const card_table&,
-            random_fn& random
+            const givm::character_view&,
+            givm::character_initialization& event,
+            const givm::table&,
+            givm::random_fn& random
         )
         {
             definition.initialization_order->push_back(definition.name);
@@ -72,15 +70,15 @@ namespace
                 .health = health,
                 .energy = 0
             };
-            return handler_program_entry_t<character_initialization>::null();
+            return givm::handler_program_entry_t<givm::character_initialization>::null();
         }
     };
 
     template<class TPlayer>
-    std::vector<size_t> deck_definition_values(const TPlayer& player)
+    std::vector<std::size_t> deck_definition_values(const TPlayer& player)
     {
-        std::vector<size_t> result;
-        for(size_t index = 0; index < player.deck_card_count(); ++index)
+        std::vector<std::size_t> result;
+        for(std::size_t index = 0; index < player.deck_card_count(); ++index)
         {
             result.push_back(player.deck_card_definition(index).value());
         }
@@ -90,14 +88,14 @@ namespace
 
 TEST_CASE("deck linking resolves names and table loading preserves input order", "[deck]")
 {
-    const test::named_definition_source<card_definition> alpha{ "Alpha" };
-    const test::named_definition_source<card_definition> beta{ "Beta" };
-    const test::named_definition_source<character_view> first{ "First" };
-    const test::named_definition_source<character_view> second{ "Second" };
+    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::character_view> first{ "First" };
+    const givm::test::named_definition_source<givm::character_view> second{ "Second" };
 
-    definition_source_library sources;
+    givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta, first, second));
-    const auto program = std::tuple{ end_game{ .result = game_result::both_loss } };
+    const auto program = std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } };
     const auto [library, id_map] = sources.compile(program, program);
     const auto deck = link_deck(
         id_map,
@@ -105,25 +103,25 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
         std::array<std::string_view, 2>{ "Second", "First" }
     );
 
-    card_table table{};
-    table.load_deck(player_id{ 0 }, deck);
-    const auto player = table[player_id{ 0 }];
+    givm::table table{};
+    table.load_deck(givm::player_id{ 0 }, deck);
+    const auto player = table[givm::player_id{ 0 }];
 
-    CHECK(deck_definition_values(player) == std::vector<size_t>{
-        id_map.get_id<card_definition>("Beta").value(),
-        id_map.get_id<card_definition>("Alpha").value(),
-        id_map.get_id<card_definition>("Beta").value()
+    CHECK(deck_definition_values(player) == std::vector<std::size_t>{
+        id_map.get_id<givm::card_definition>("Beta").value(),
+        id_map.get_id<givm::card_definition>("Alpha").value(),
+        id_map.get_id<givm::card_definition>("Beta").value()
     });
 
-    std::vector<size_t> character_definitions;
+    std::vector<std::size_t> character_definitions;
     for(const auto character : player.characters())
     {
         character_definitions.push_back(character.definition_id().value());
         CHECK(character.state().max_health == 0);
     }
-    CHECK(character_definitions == std::vector<size_t>{
-        id_map.get_id<character_view>("Second").value(),
-        id_map.get_id<character_view>("First").value()
+    CHECK(character_definitions == std::vector<std::size_t>{
+        id_map.get_id<givm::character_view>("Second").value(),
+        id_map.get_id<givm::character_view>("First").value()
     });
 
     CHECK_THROWS_AS(
@@ -138,64 +136,64 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
 
 TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
 {
-    const test::named_definition_source<card_definition> alpha{ "Alpha" };
-    const test::named_definition_source<card_definition> beta{ "Beta" };
-    const test::named_definition_source<card_definition> gamma{ "Gamma" };
-    const test::named_definition_source<card_definition> delta{ "Delta" };
+    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
+    const givm::test::named_definition_source<givm::card_definition> delta{ "Delta" };
 
-    definition_source_library sources;
+    givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta, gamma, delta));
     const auto [library, id_map] = sources.compile(
-        std::tuple{ shuffle_deck{ .player = player_id{ 0 } } },
-        std::tuple{ end_game{ .result = game_result::both_loss } }
+        std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }
     );
-    const linked_deck deck{
+    const givm::linked_deck deck{
         .cards = {
-            id_map.get_id<card_definition>("Alpha"),
-            id_map.get_id<card_definition>("Beta"),
-            id_map.get_id<card_definition>("Gamma"),
-            id_map.get_id<card_definition>("Delta")
+            id_map.get_id<givm::card_definition>("Alpha"),
+            id_map.get_id<givm::card_definition>("Beta"),
+            id_map.get_id<givm::card_definition>("Gamma"),
+            id_map.get_id<givm::card_definition>("Delta")
         }
     };
 
-    card_table table{};
-    table.load_deck(player_id{ 0 }, deck);
-    std::vector<deck_card_id> original_ids;
-    for(const auto card : table[player_id{ 0 }].deck_cards())
+    givm::table table{};
+    table.load_deck(givm::player_id{ 0 }, deck);
+    std::vector<givm::deck_card_id> original_ids;
+    for(const auto card : table[givm::player_id{ 0 }].deck_cards())
     {
         original_ids.push_back(card.id());
     }
     REQUIRE(original_ids.size() == 4);
 
-    executor target;
+    givm::executor target;
     target.enter_entry(library);
     sequence_random random{
         .values = { std::numeric_limits<std::uint32_t>::max(), 0, std::uint32_t{ 0x80000000u } }
     };
-    REQUIRE(target.run(library, table, random) == execution_state::finished);
+    REQUIRE(target.run(library, table, random) == givm::execution_state::finished);
     CHECK(random.position == 3);
 
-    CHECK(deck_definition_values(table[player_id{ 0 }]) == std::vector<size_t>{
-        id_map.get_id<card_definition>("Gamma").value(),
-        id_map.get_id<card_definition>("Beta").value(),
-        id_map.get_id<card_definition>("Alpha").value(),
-        id_map.get_id<card_definition>("Delta").value()
+    CHECK(deck_definition_values(table[givm::player_id{ 0 }]) == std::vector<std::size_t>{
+        id_map.get_id<givm::card_definition>("Gamma").value(),
+        id_map.get_id<givm::card_definition>("Beta").value(),
+        id_map.get_id<givm::card_definition>("Alpha").value(),
+        id_map.get_id<givm::card_definition>("Delta").value()
     });
     CHECK(
         table[original_ids[0]].definition_id().value()
-        == id_map.get_id<card_definition>("Alpha").value()
+        == id_map.get_id<givm::card_definition>("Alpha").value()
     );
     CHECK(
         table[original_ids[1]].definition_id().value()
-        == id_map.get_id<card_definition>("Beta").value()
+        == id_map.get_id<givm::card_definition>("Beta").value()
     );
     CHECK(
         table[original_ids[2]].definition_id().value()
-        == id_map.get_id<card_definition>("Gamma").value()
+        == id_map.get_id<givm::card_definition>("Gamma").value()
     );
     CHECK(
         table[original_ids[3]].definition_id().value()
-        == id_map.get_id<card_definition>("Delta").value()
+        == id_map.get_id<givm::card_definition>("Delta").value()
     );
 }
 
@@ -205,32 +203,32 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
     const initializing_character_source alpha{ "Alpha", 10, &initialization_order };
     const initializing_character_source beta{ "Beta", 20, &initialization_order };
 
-    definition_source_library sources;
+    givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta));
     const auto [library, id_map] = sources.compile(
-        std::tuple{ initialize_characters{ .player = player_id{ 0 } } },
-        std::tuple{ end_game{ .result = game_result::both_loss } }
+        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }
     );
-    const linked_deck deck{
+    const givm::linked_deck deck{
         .characters = {
-            id_map.get_id<character_view>("Beta"),
-            id_map.get_id<character_view>("Alpha")
+            id_map.get_id<givm::character_view>("Beta"),
+            id_map.get_id<givm::character_view>("Alpha")
         }
     };
 
-    card_table table{};
-    table.load_deck(player_id{ 0 }, deck);
-    executor target;
+    givm::table table{};
+    table.load_deck(givm::player_id{ 0 }, deck);
+    givm::executor target;
     target.enter_entry(library);
     sequence_random random{ .values = { 2, 3 } };
 
-    REQUIRE(target.run(library, table, random) == execution_state::finished);
+    REQUIRE(target.run(library, table, random) == givm::execution_state::finished);
     REQUIRE(initialization_order.size() == 2);
     CHECK(bool(initialization_order[0] == "Beta"));
     CHECK(bool(initialization_order[1] == "Alpha"));
     CHECK(random.position == 2);
 
-    const auto player = table[player_id{ 0 }];
+    const auto player = table[givm::player_id{ 0 }];
     auto characters = player.characters();
     auto iterator = characters.begin();
     CHECK((*iterator).state().health == 22);

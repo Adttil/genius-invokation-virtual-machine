@@ -25,7 +25,7 @@ namespace givm::test
             return source_name;
         }
 
-        constexpr definition_type compile(definition_compile_context&) const noexcept
+        constexpr definition_type compile(givm::definition_compile_context&) const noexcept
         {
             return {};
         }
@@ -34,13 +34,13 @@ namespace givm::test
     template<class... TSources>
     auto compile_definitions(const TSources&... sources)
     {
-        definition_source_library source_library;
+        givm::definition_source_library source_library;
         if(not source_library.add(sources...))
         {
             throw std::logic_error{ "invalid unit-test definition sources" };
         }
 
-        const auto program = std::tuple{ end_game{ game_result::both_loss } };
+        const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
         return source_library.compile(program, program);
     }
 
@@ -51,7 +51,7 @@ namespace givm::test
         const TSources&... sources
     )
     {
-        definition_source_library source_library;
+        givm::definition_source_library source_library;
         if(not source_library.add(sources...))
         {
             throw std::logic_error{ "invalid unit-test definition sources" };

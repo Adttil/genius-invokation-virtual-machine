@@ -25,7 +25,7 @@ constexpr void enter_entry(const definition_library& library);
 
 ## 注意
 
-本函数不修改牌桌。调用方应准备与该次执行配套的 [`card_table`](../../table/card_table.md)，并在每次推进时显式传入配套的 `library`。本函数不保存定义库的指针或引用。
+本函数不修改牌桌。调用方应准备与该次执行配套的 [`table`](../../table/table.md)，并在每次推进时显式传入配套的 `library`。本函数不保存定义库的指针或引用。
 
 ## 示例
 
@@ -43,7 +43,7 @@ int main()
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );
-    givm::card_table table{};
+    givm::table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);

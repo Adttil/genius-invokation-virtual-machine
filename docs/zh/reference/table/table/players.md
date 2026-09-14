@@ -1,6 +1,6 @@
-[givm](../../../reference.md) / [牌桌](../../table.md) / [card_table](../card_table.md) / **players**
+[givm](../../../reference.md) / [牌桌](../../table.md) / [table](../table.md) / **players**
 
-# givm::card_table::players
+# givm::table::players
 
 定义于头文件 `<givm/table.hpp>`
 
@@ -28,7 +28,7 @@ constexpr auto players() const;
 
 int main()
 {
-    givm::card_table table{};
+    givm::table table{};
     for(const auto player : table.players())
     {
         std::println("玩家 {} 的骰子数: {}", player.id().index, player.state().dice.total());

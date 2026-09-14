@@ -24,7 +24,7 @@
 
 namespace givm
 {
-    class card_table;
+    class table;
 }
 
 namespace givm::detail
@@ -36,14 +36,14 @@ namespace givm::detail
     public:
         using game_state = table_state;
 
-        // Conversion requires this object to be the base subobject of a card_table.
-        template<std::same_as<card_table> T>
+        // Conversion requires this object to be the base subobject of a table.
+        template<std::same_as<table> T>
         constexpr operator T&() & noexcept
         {
             return static_cast<T&>(*this);
         }
 
-        template<std::same_as<card_table> T>
+        template<std::same_as<table> T>
         constexpr operator const T&() const & noexcept
         {
             return static_cast<const T&>(*this);

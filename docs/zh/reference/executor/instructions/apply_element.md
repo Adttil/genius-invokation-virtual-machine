@@ -48,7 +48,7 @@ struct character_source
 
     static givm::program_entry<givm::character_initialization> handle(
         const definition_type&, const givm::character_view&,
-        givm::character_initialization& event, const givm::card_table&, givm::random_fn&)
+        givm::character_initialization& event, const givm::table&, givm::random_fn&)
     {
         event.state = { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 };
         return givm::program_entry<givm::character_initialization>::null();
@@ -63,7 +63,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::initialize_characters{ .player = givm::player_id{ 1 } }, givm::apply_element{ .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }, .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .element = givm::element::hydro } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
     table.load_deck(givm::player_id{ 1 }, givm::linked_deck{ .characters = { definition } });

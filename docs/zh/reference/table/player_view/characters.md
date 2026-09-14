@@ -46,7 +46,7 @@ struct example_source
 
     static givm::program_entry<givm::character_initialization> handle(
         const definition_type&, const givm::character_view&,
-        givm::character_initialization& event, const givm::card_table&, givm::random_fn&)
+        givm::character_initialization& event, const givm::table&, givm::random_fn&)
     {
         event.state = { .max_health = 10, .health = 10 };
         return givm::program_entry<givm::character_initialization>::null();
@@ -61,7 +61,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{});
     const auto definition = ids.get_id<givm::character_view>("示例");
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
 
     auto random = []() -> std::uint32_t { return 0; };

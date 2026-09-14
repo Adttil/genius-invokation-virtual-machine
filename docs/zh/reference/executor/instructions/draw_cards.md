@@ -55,7 +55,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::draw_cards{ .count = 2 } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     auto player = table[givm::player_id{ 0 }];
     const auto card = ids.get_id<givm::card_definition>("first");
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { card, card } });

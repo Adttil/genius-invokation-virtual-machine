@@ -12,7 +12,7 @@
 
 |  |  |
 | --- | --- |
-| [`card_table`](table/card_table.md) | 一场游戏的牌桌 |
+| [`table`](table/table.md) | 一场游戏的牌桌 |
 
 ### 定义身份与牌组
 

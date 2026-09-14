@@ -45,7 +45,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } },
         std::tuple{});
-    givm::card_table table{};
+    givm::table table{};
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
 

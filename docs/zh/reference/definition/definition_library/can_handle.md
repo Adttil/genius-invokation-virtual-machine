@@ -53,7 +53,7 @@ struct support_source
         const int& extra_rerolls,
         const givm::support_view&,
         givm::dice_roll_preparation& event,
-        const givm::card_table&,
+        const givm::table&,
         givm::random_fn&
     )
     {

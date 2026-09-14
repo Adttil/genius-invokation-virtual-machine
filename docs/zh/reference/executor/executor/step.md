@@ -8,12 +8,12 @@
 template<class TRandom>
 execution_state step(
     const definition_library& library,
-    card_table& table,
+    table& card_table,
     TRandom& random_source
 );
 ```
 [`execution_state`](../execution_state.md)
-[`card_table`](../../table/card_table.md)
+[`table`](../../table/table.md)
 
 推进对局，直到下一处可观察现场、需要调用方输入或对局结束。
 
@@ -30,7 +30,7 @@ execution_state step(
 | | |
 | --- | --- |
 | `library` | 与当前执行现场配套的定义库；执行器不会在返回后持有它 |
-| `table` | 与当前执行现场配套的牌桌，其中的定义 ID 须属于本次使用的定义库 |
+| `card_table` | 与当前执行现场配套的牌桌，其中的定义 ID 须属于本次使用的定义库 |
 | `random_source` | 本次推进使用的随机源，以左值传入；执行器不会在返回后持有它 |
 
 ## 返回值
@@ -64,7 +64,7 @@ struct character_source
 
     static givm::program_entry<givm::character_initialization> handle(
         const definition_type&, const givm::character_view&,
-        givm::character_initialization& event, const givm::card_table&, givm::random_fn&)
+        givm::character_initialization& event, const givm::table&, givm::random_fn&)
     {
         event.state = { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 };
         return givm::program_entry<givm::character_initialization>::null();
@@ -87,7 +87,7 @@ int main()
                 .target = { .player_id = givm::player_id{ 1 }, .index = 0 },
                 .value = 999, .type = givm::damage_type::physical, .flags = {} } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition, definition } });
     table.load_deck(givm::player_id{ 1 }, givm::linked_deck{ .characters = { definition } });

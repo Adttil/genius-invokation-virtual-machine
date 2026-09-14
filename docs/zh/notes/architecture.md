@@ -16,10 +16,10 @@
 - `definition_library` 是定义源集与游戏流程规则共同编译得到的不可变游戏规则。
 - `issued_id_map` 是同次编译产生的对局前链接信息，用于把名称形式的输入转换为 issued ID。
 - `linked_deck` 是已经链接到相应定义库的牌组，只保存卡牌和角色的 issued ID。
-- `card_table` 保存一局游戏中持续存在的牌桌状态，例如实体、资源和回合信息。
+- `table` 保存一局游戏中持续存在的牌桌状态，例如实体、资源和回合信息。
 - `executor` 保存当前执行位置和结算过程中的临时状态，并负责推进规则。
 
-`definition_library` 可以被多局游戏共享，它不是游戏状态。在给定定义库下，一局游戏的可变状态由 `card_table` 与 `executor` 共同组成。table 只保存游戏状态与定义 ID，不持有 definition library。executor 也不保存库指针；每次 `step` 或 `run` 显式接收与程序现场和实体定义 ID 配套的定义库。
+`definition_library` 可以被多局游戏共享，它不是游戏状态。在给定定义库下，一局游戏的可变状态由 `table` 与 `executor` 共同组成。table 只保存游戏状态与定义 ID，不持有 definition library。executor 也不保存库指针；每次 `step` 或 `run` 显式接收与程序现场和实体定义 ID 配套的定义库。
 
 牌组等每局输入不编入游戏规则程序。上层在对局开始前用 `issued_id_map` 链接名称，并把 `linked_deck` 装入 table；随机洗牌、角色初始化等规则步骤由游戏流程指令执行。具体接口见 [牌组链接与装载](deck_initialization.md)。
 
@@ -49,7 +49,7 @@ event 描述一次正在结算、允许响应者修改的规则事件。handler 
 
 分支模拟复制匹配的 table 与 executor，并在继续推进时显式传入配套的不可变 definition library。持久化时需要同时记录足以重建所用定义库的构建信息。
 
-实体离场先标记为无效，将压缩存储延后到安全点，避免结算期间的实体身份因搬迁改变。这一取舍及未采用 generation、free list 的原因见[牌桌存储设计](table_storage.md)；调用方的清理条件见 [`clean_up`](../reference/table/card_table/clean_up.md)。
+实体离场先标记为无效，将压缩存储延后到安全点，避免结算期间的实体身份因搬迁改变。这一取舍及未采用 generation、free list 的原因见[牌桌存储设计](table_storage.md)；调用方的清理条件见 [`clean_up`](../reference/table/table/clean_up.md)。
 
 ## 模块入口
 
@@ -61,7 +61,7 @@ executor ----------------> table
 ```
 
 - `definition.hpp`：定义源、编译定义库、ID 映射、程序入口，以及牌组名称链接。
-- `table.hpp`：牌桌状态、`issued_id` 及其 `definition_id`、`tag_id` 别名、定义类别、实体 ID、实体访问对象、`linked_deck` 和 `card_table`。
+- `table.hpp`：牌桌状态、`issued_id` 及其 `definition_id`、`tag_id` 别名、定义类别、实体 ID、实体访问对象、`linked_deck` 和 `table`。
 - `executor.hpp`：公开指令、事件、随机输入和 `executor`。
 - `utils/stack.hpp`：可独立使用的栈与 frame view 工具；其公开性不意味着 executor 提供原始栈访问。
 

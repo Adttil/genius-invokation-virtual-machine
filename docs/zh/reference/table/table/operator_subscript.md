@@ -1,6 +1,6 @@
-[givm](../../../reference.md) / [牌桌](../../table.md) / [card_table](../card_table.md) / **operator[]**
+[givm](../../../reference.md) / [牌桌](../../table.md) / [table](../table.md) / **operator[]**
 
-# givm::card_table::operator[]
+# givm::table::operator[]
 
 定义于头文件 `<givm/table.hpp>`
 
@@ -54,7 +54,7 @@ ID 必须仍能定位其所属实体；本函数不检查越界或失效的 ID�
 
 int main()
 {
-    givm::card_table table{};
+    givm::table table{};
     const givm::player_view player = table[givm::player_id{ 0 }];
     std::println("玩家 {} 的骰子数: {}", player.id().index, player.state().dice.total());
 }

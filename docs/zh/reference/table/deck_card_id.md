@@ -8,7 +8,7 @@
 struct deck_card_id;
 ```
 
-牌库卡牌在一张牌桌中的身份。使用此 ID 可以通过 [`card_table::operator[]`](card_table/operator_subscript.md) 再次取得相应实体。
+牌库卡牌在一张牌桌中的身份。使用此 ID 可以通过 [`table::operator[]`](table/operator_subscript.md) 再次取得相应实体。
 
 ## 成员对象
 
@@ -57,7 +57,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{}, std::tuple{});
     const auto definition = ids.get_id<givm::card_definition>("示例");
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { definition } });
     const givm::deck_card_view view = table[givm::deck_card_id{ givm::player_id{ 0 }, 0 }];
     const givm::deck_card_id id = view.id();

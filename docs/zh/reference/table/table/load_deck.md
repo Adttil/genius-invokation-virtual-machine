@@ -1,6 +1,6 @@
-[givm](../../../reference.md) / [牌桌](../../table.md) / [card_table](../card_table.md) / **load_deck**
+[givm](../../../reference.md) / [牌桌](../../table.md) / [table](../table.md) / **load_deck**
 
-# givm::card_table::load_deck
+# givm::table::load_deck
 
 定义于头文件 `<givm/table.hpp>`
 
@@ -52,7 +52,7 @@ int main()
     const example_source<givm::character_view> character_source{};
     sources.add(card_source, character_source);
     const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{};
+    givm::table table{};
     givm::linked_deck deck{};
     deck.cards.push_back(id_map.get_id<givm::card_definition>("示例"));
     deck.characters.push_back(id_map.get_id<givm::character_view>("示例"));

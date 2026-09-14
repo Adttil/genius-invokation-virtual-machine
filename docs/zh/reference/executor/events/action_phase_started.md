@@ -36,7 +36,7 @@ struct observer_source
 
     static givm::program_entry<givm::action_phase_started> handle(
         const definition_type& definition, const givm::character_view&,
-        givm::action_phase_started&, const givm::card_table&, givm::random_fn&)
+        givm::action_phase_started&, const givm::table&, givm::random_fn&)
     {
         ++*definition.count;
         return givm::program_entry<givm::action_phase_started>::null();
@@ -51,7 +51,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{});
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("observer") }
     });

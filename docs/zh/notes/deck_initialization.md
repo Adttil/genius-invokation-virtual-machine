@@ -1,6 +1,6 @@
 # 牌组链接、装载与初始化的分工
 
-本篇保留牌组准备拆成多个阶段的理由、阶段之间的拥有关系和匹配约束，供修改对局创建流程时查阅。当前接口分别见 [link_deck](../reference/definition/link_deck.md)、[linked_deck](../reference/table/linked_deck.md) 和 [card_table::load_deck](../reference/table/card_table/load_deck.md)；以下保留跨接口组合时容易遗漏的条件，不另设一套牌组 API。
+本篇保留牌组准备拆成多个阶段的理由、阶段之间的拥有关系和匹配约束，供修改对局创建流程时查阅。当前接口分别见 [link_deck](../reference/definition/link_deck.md)、[linked_deck](../reference/table/linked_deck.md) 和 [table::load_deck](../reference/table/table/load_deck.md)；以下保留跨接口组合时容易遗漏的条件，不另设一套牌组 API。
 
 对照基线为 `b3d6c50`：链接对象与链接函数已经位于 definition 模块的 `include/givm/definition/deck.hpp`，装载仍是 table 的操作，洗牌和角色初始化仍由 executor 的公开指令完成。这项职责划分解释了为何仓库不需要第四个独立 deck 核心模块。
 
@@ -57,10 +57,10 @@ std::vector<definition_id<character_view>> linked_deck::characters;
 
 ## 装载牌组
 
-当前函数另带 `constexpr`，见 [card_table::load_deck](../reference/table/card_table/load_deck.md)；下面省略该修饰的声明只展示原记录中的阶段边界。
+当前函数另带 `constexpr`，见 [table::load_deck](../reference/table/table/load_deck.md)；下面省略该修饰的声明只展示原记录中的阶段边界。
 
 ```cpp
-void card_table::load_deck(player_id player, const linked_deck& deck);
+void table::load_deck(player_id player, const linked_deck& deck);
 ```
 
 `player` 指定接收牌组的玩家。该玩家的牌堆和角色区必须为空。

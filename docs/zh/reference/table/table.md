@@ -1,11 +1,11 @@
-[givm](../../reference.md) / [牌桌](../table.md) / **card_table**
+[givm](../../reference.md) / [牌桌](../table.md) / **table**
 
-# givm::card_table
+# givm::table
 
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-class card_table;
+class table;
 ```
 
 一场游戏的牌桌。
@@ -22,13 +22,13 @@ class card_table;
 
 |  |  |
 | --- | --- |
-| [`(构造函数)`](card_table/constructor.md) | 构造一个 `card_table` |
-| [`parameters`](card_table/parameters.md) | 访问对局参数 |
-| [`state`](card_table/state.md) | 访问对局的共同状态 |
-| [`players`](card_table/players.md) | 遍历双方玩家 |
-| [`operator[]`](card_table/operator_subscript.md) | 通过实体 ID 访问实体 |
-| [`load_deck`](card_table/load_deck.md) | 为玩家装载牌组 |
-| [`clean_up`](card_table/clean_up.md) | 清理已经移除的实体 |
+| [`(构造函数)`](table/constructor.md) | 构造一个 `table` |
+| [`parameters`](table/parameters.md) | 访问对局参数 |
+| [`state`](table/state.md) | 访问对局的共同状态 |
+| [`players`](table/players.md) | 遍历双方玩家 |
+| [`operator[]`](table/operator_subscript.md) | 通过实体 ID 访问实体 |
+| [`load_deck`](table/load_deck.md) | 为玩家装载牌组 |
+| [`clean_up`](table/clean_up.md) | 清理已经移除的实体 |
 
 
 ## 示例
@@ -40,7 +40,7 @@ class card_table;
 
 int main()
 {
-    givm::card_table table{};
+    givm::table table{};
     for(const auto player : table.players())
     {
         std::println("玩家 {} 的骰子数: {}", player.id().index, player.state().dice.total());

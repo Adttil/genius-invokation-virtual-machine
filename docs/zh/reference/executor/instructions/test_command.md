@@ -39,7 +39,7 @@ struct observer_source
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
     static givm::program_entry<givm::test_event> handle(
         const definition_type& data, const givm::character_view&,
-        givm::test_event&, const givm::card_table&, givm::random_fn&)
+        givm::test_event&, const givm::table&, givm::random_fn&)
     {
         ++*data.count;
         return givm::program_entry<givm::test_event>::null();
@@ -55,7 +55,7 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::test_command{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
-    givm::card_table table{};
+    givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("observer") }
     });
