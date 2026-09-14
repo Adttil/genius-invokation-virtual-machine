@@ -29,36 +29,51 @@ friend constexpr bool operator==(character_id, character_id) = default;
 
 ID 本身不包含牌桌身份。清理实体后，原有 ID 可能失效；详见[实体的身份与访问](entity_access.md)。
 
+
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <print>
+#include <ranges>
 #include <string_view>
 #include <tuple>
 
 #include <givm/givm.hpp>
 
-template<class Category>
 struct example_source
 {
-    using definition_category = Category;
+    using definition_category = givm::character_view;
     struct definition_type {};
-
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
+
+    static givm::program_entry<givm::character_initialization> handle(
+        const definition_type&, const givm::character_view&,
+        givm::character_initialization& event, const givm::card_table&, givm::random_fn&)
+    {
+        event.state = { .max_health = 10, .health = 10 };
+        return givm::program_entry<givm::character_initialization>::null();
+    }
 };
 
 int main()
 {
+    example_source source{};
     givm::definition_source_library sources{};
-    const example_source<givm::character_view> character_source{};
-    sources.add(character_source);
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
+    sources.add(source);
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{});
+    const auto definition = ids.get_id<givm::character_view>("示例");
     givm::card_table table{};
-    const auto player = table[givm::player_id{ 0 }];
-    const auto definition = id_map.get_id<givm::character_view>("示例");
-    const auto entity = player.add(definition, { .max_health = 10, .health = 10 });
-    const givm::character_id id = entity.id();
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
+
+    auto random = []() -> std::uint32_t { return 0; };
+    givm::executor execution{};
+    execution.enter_entry(library);
+    execution.run(library, table, random);
+    const givm::character_view view = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
+    const givm::character_id id = view.id();
     std::println("通过 ID 取得定义: {}", library[table[id].definition_id()].name());
 }
 ```

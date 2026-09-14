@@ -21,7 +21,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return execution_state::action;
         }
@@ -231,7 +231,8 @@ TEST_CASE("step passes through creation responses and preserves initialization",
         program_source, card_source, character_source
     );
     card_table table{};
-    table[player_id{ 0 }].add(ids.get_id<support_view>(program_source.name()), { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(program_source.name()), { .count = 1 });
     auto normal_table = table;
     counting_random normal_random;
     executor normal;
@@ -248,7 +249,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     CHECK(table[character].state().health == 12);
     CHECK(table[character].state().energy == 1);
     CHECK(table[player_id{ 1 }].deck_card_count() == 2);
-    const auto cards = table[player_id{ 1 }].deck_cards<false>();
+    const auto cards = mutable_table[player_id{ 1 }].deck_cards<false>();
     CHECK(cards.front().id().index == 1);
     CHECK(cards.back().id().index == 0);
     CHECK(random.calls == normal_random.calls);
@@ -266,7 +267,8 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
         std::tuple{ test_command{} }, std::tuple{ stop_entity_program{} }, source
     );
     card_table table{};
-    const auto entity = table[player_id{ 0 }].add(ids.get_id<support_view>(source.name()), { .count = 1 }).id();
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto entity = mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(source.name()), { .count = 1 }).id();
     auto normal_table = table;
     counting_random random;
     executor normal;
@@ -300,10 +302,11 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
         std::tuple{ stop_entity_program{} }, observer_source, card_source
     );
     card_table table{ { .hand_limit = 2 } };
-    table.state().active_player = player_id{ 1 };
-    table[player_id{ 1 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table.state().active_player = player_id{ 1 };
+    mutable_table[player_id{ 1 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
     const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
-    auto player = table[player_id{ 0 }];
+    auto player = mutable_table[player_id{ 0 }];
     for(std::size_t index = 0; index < initial_hand_count; ++index)
         player.add_hand_card(card_definition, {});
     std::array<deck_card_id, 3> deck;
@@ -348,11 +351,12 @@ TEST_CASE("single-player active-character observation precedes the table update 
         std::tuple{ stop_entity_program{} }, observer_source, character_source
     );
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const auto definition = ids.get_id<character_view>(character_source.name());
-    table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
-    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
-    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
-    table[player_id{ 0 }].state().active_character = previous;
+    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    mutable_table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 0 }].state().active_character = previous;
 
     auto normal_table = table;
     counting_random random;
@@ -395,9 +399,10 @@ TEST_CASE("initial active choices share their original frame before either respo
         observer, character_source
     );
     card_table table{};
-    table[player_id{ 0 }].add(ids.get_id<support_view>(observer.name()), { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(observer.name()), { .count = 1 });
     const auto character = ids.get_id<character_view>(character_source.name());
-    for(auto player : table.players())
+    for(auto player : mutable_table.players())
     {
         player.add(character, { .max_health = 10, .health = 10 });
         player.add(character, { .max_health = 10, .health = 10 });
@@ -481,11 +486,12 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
         response, character_source
     );
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const auto character = ids.get_id<character_view>(character_source.name());
-    table[player_id{ 0 }].add(character, { .max_health = 10, .health = 10 });
-    table[player_id{ 0 }].add(character, { .max_health = 10, .health = 10 });
-    table[player_id{ 0 }].add(ids.get_id<support_view>(response.name()), { .count = 1 });
-    table[player_id{ 0 }].state().active_character = previous;
+    mutable_table[player_id{ 0 }].add(character, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 0 }].add(character, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(response.name()), { .count = 1 });
+    mutable_table[player_id{ 0 }].state().active_character = previous;
     auto normal_table = table;
     executor normal;
     normal.enter_entry(library);

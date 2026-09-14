@@ -48,7 +48,7 @@ namespace
 
             element_aura aura;
 
-            execution_state execute(const definition_library&, card_table& table, detail::execution_context& context, random_fn&) const
+            execution_state execute(const definition_library&, detail::unrestricted_table& table, detail::execution_context& context, random_fn&) const
             {
                 auto&& [broadcast, activation] = context.stack().top<
                     frame<
@@ -130,7 +130,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -166,9 +166,10 @@ TEST_CASE("apply_element stores a non-reactive aura without broadcasting a react
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
-    const auto character = table[player_id{ 1 }].add(definition_id, {
+    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
     REQUIRE(character.id() == character_entity_id);
@@ -205,9 +206,10 @@ TEST_CASE("apply_element broadcasts both sides of a default reaction", "[apply_e
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
-    const auto character = table[player_id{ 1 }].add(definition_id, {
+    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 10,
         .max_energy = 3,
         .health = 10,
@@ -254,9 +256,10 @@ TEST_CASE("a response can replace apply_element default reaction handling", "[ap
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
-    const auto character = table[player_id{ 1 }].add(definition_id, {
+    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 10,
         .max_energy = 3,
         .health = 10,
@@ -290,8 +293,9 @@ TEST_CASE("step crosses aura changes without an observation stop", "[apply_eleme
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
     card_table table{};
-    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
-    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
     auto normal_table = table;
     zero_random random;
     executor normal;
@@ -326,8 +330,9 @@ TEST_CASE("step crosses reaction responses while preserving settlement and broad
         observer_source, character_source
     );
     card_table table{};
-    table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
-    table[player_id{ 1 }].add(ids.get_id<character_view>(character_source.name()), {
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    mutable_table[player_id{ 1 }].add(ids.get_id<character_view>(character_source.name()), {
         .max_health = 10, .health = 10, .aura = element_aura::hydro
     });
     auto normal_table = table;

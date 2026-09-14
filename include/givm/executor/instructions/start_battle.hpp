@@ -27,7 +27,7 @@ namespace givm
             template<bool Observed>
             static execution_state execute(
                 const givm::start_battle& instruction, const definition_library& library,
-                card_table& table, execution_context& context, random_fn& random
+                unrestricted_table& table, execution_context& context, random_fn& random
             )
             {
                 if(static_cast<stage_type>(context.current_stage()) == stage_type::prepare)

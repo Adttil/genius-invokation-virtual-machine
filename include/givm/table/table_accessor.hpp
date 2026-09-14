@@ -3,16 +3,11 @@
 
 #include "entity_fwd.hpp"
 
-namespace givm
-{
-    class card_table;
-
-    template<class TStorage, class TStatusEntity, class TOwnerId>
-    class card_status_range;
-}
-
 namespace givm::detail
 {
+    template<class TStorage, class TStatusHandle, class TOwnerId>
+    class card_status_range;
+
     struct uninitialized_entity_t
     {
         explicit constexpr uninitialized_entity_t() noexcept = default;
@@ -23,36 +18,36 @@ namespace givm::detail
     struct table_accessor
     {
     private:
-        friend class ::givm::card_table;
+        friend class unrestricted_table;
         template<class>
-        friend class ::givm::player_entity;
+        friend class basic_player_handle;
         template<class>
-        friend class ::givm::hand_card_entity;
+        friend class basic_hand_card_handle;
         template<class>
-        friend class ::givm::deck_card_entity;
+        friend class basic_deck_card_handle;
         template<class>
-        friend class ::givm::hand_card_status_entity;
+        friend class basic_hand_card_status_handle;
         template<class>
-        friend class ::givm::deck_card_status_entity;
+        friend class basic_deck_card_status_handle;
         template<class>
-        friend class ::givm::support_entity;
+        friend class basic_support_handle;
         template<class>
-        friend class ::givm::summon_entity;
+        friend class basic_summon_handle;
         template<class>
-        friend class ::givm::combat_status_entity;
+        friend class basic_combat_status_handle;
         template<class>
-        friend class ::givm::character_entity;
+        friend class basic_character_handle;
         template<class>
-        friend class ::givm::skill_entity;
+        friend class basic_skill_handle;
         template<class>
-        friend class ::givm::attachment_entity;
+        friend class basic_attachment_handle;
         template<class, class, class>
-        friend class ::givm::card_status_range;
+        friend class card_status_range;
 
-        template<class TEntity>
-        static constexpr TEntity make_uninitialized() noexcept
+        template<class THandle>
+        static constexpr THandle make_uninitialized() noexcept
         {
-            return TEntity{ uninitialized_entity };
+            return THandle{ uninitialized_entity };
         }
 
         template<class TStorageOwner>

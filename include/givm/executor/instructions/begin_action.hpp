@@ -93,7 +93,7 @@ namespace givm
         static execution_state execute(
             const givm::begin_action& instruction,
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )
@@ -196,7 +196,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state prepare_action_phase(
-            const definition_library& library, card_table& table, execution_context& context
+            const definition_library& library, unrestricted_table& table, execution_context& context
         )
         {
             detail::prepare_broadcast(library, action_phase_started{}, table, context.stack());
@@ -207,7 +207,7 @@ namespace givm
         template<bool Observed>
         static execution_state broadcast_action_phase(
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )
@@ -229,7 +229,7 @@ namespace givm
         static void calculate_switch_cost(
             const definition_library& library,
             stack_count_t action_index,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )
@@ -279,7 +279,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state execute_before_action(
-            const definition_library& library, card_table& table, execution_context& context
+            const definition_library& library, unrestricted_table& table, execution_context& context
         )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
@@ -306,7 +306,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state broadcast_before_action(
-            const definition_library& library, card_table& table, execution_context& context, random_fn& random
+            const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
         )
         {
             if(not detail::continue_broadcast<before_action>(library, table, context, random))
@@ -321,7 +321,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state prepare_input_frame(
-            const definition_library& library, card_table& table, execution_context& context
+            const definition_library& library, unrestricted_table& table, execution_context& context
         )
         {
             const auto player = table[table.state().active_player];
@@ -388,7 +388,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state wait_input(
-            const definition_library& library, card_table& table, execution_context& context, random_fn& random
+            const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
         )
         {
             auto&& [
@@ -462,7 +462,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state continue_switch_onpay(
-            const definition_library& library, card_table& table, execution_context& context
+            const definition_library& library, unrestricted_table& table, execution_context& context
         )
         {
             auto&& [
@@ -503,7 +503,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state pay_switch_cost(
-            const definition_library& library, card_table& table, execution_context& context
+            const definition_library& library, unrestricted_table& table, execution_context& context
         )
         {
             auto&& [
@@ -549,7 +549,7 @@ namespace givm
         template<bool Observed>
         static execution_state broadcast_switch_payment(
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )
@@ -565,7 +565,7 @@ namespace givm
 
         template<bool Observed>
         static execution_state execute_switch_action(
-            const definition_library& library, card_table& table, execution_context& context
+            const definition_library& library, unrestricted_table& table, execution_context& context
         )
         {
             auto&& [
@@ -602,7 +602,7 @@ namespace givm
         template<bool Observed>
         static execution_state broadcast_switch_action(
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )
@@ -648,7 +648,7 @@ namespace givm
         template<bool Observed>
         static execution_state broadcast_round_end_declaration(
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random,
             stage_type stage

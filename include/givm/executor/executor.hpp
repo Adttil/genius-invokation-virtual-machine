@@ -205,15 +205,26 @@ namespace givm
     private:
         friend struct detail::executor_access;
 
+        static constexpr detail::unrestricted_table& unrestricted(card_table& table) noexcept
+        {
+            return table;
+        }
+
+        static constexpr const detail::unrestricted_table& unrestricted(const card_table& table) noexcept
+        {
+            return table;
+        }
+
         template<bool Observed, class TRandom>
         execution_state advance(const definition_library& library, card_table& table, TRandom& random_source)
         {
+            auto& runtime_table = unrestricted(table);
             random_fn random{ random_source };
             while(true)
             {
                 settle_control_instructions(library);
                 const auto instruction = library.instruction(context_.position_);
-                const auto state = instruction.template execute<Observed>(library, table, context_, random);
+                const auto state = instruction.template execute<Observed>(library, runtime_table, context_, random);
                 if(state != detail::continue_execution)
                 {
 #ifndef NDEBUG

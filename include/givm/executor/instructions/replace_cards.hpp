@@ -23,7 +23,7 @@ namespace givm
     {
         template<class TNextRandom, class TOnDrawn>
         inline void replace_cards(
-            card_table& table,
+            unrestricted_table& table,
             player_id player,
             std::bitset<selection_capacity> selected,
             TNextRandom& next_random,
@@ -136,7 +136,7 @@ namespace givm
         static execution_state execute(
             const givm::replace_cards& instruction,
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )

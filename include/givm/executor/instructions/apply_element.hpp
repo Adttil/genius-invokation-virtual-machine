@@ -18,7 +18,7 @@ namespace givm
             character_id target,
             element incoming_element,
             element_application_cause cause,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context
         )
         {
@@ -51,7 +51,7 @@ namespace givm
         }
 
         inline after_elemental_reaction finish_elemental_reaction(
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context
         )
         {
@@ -115,7 +115,7 @@ namespace givm
         template<bool Observed>
         static execution_state execute(
             const givm::apply_element& instruction, const definition_library& library,
-            card_table& table, execution_context& context, random_fn& random
+            unrestricted_table& table, execution_context& context, random_fn& random
         )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());

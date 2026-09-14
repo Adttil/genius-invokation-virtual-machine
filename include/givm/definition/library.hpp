@@ -30,7 +30,7 @@ namespace givm
 
         struct null_instruction
         {
-            execution_state execute(const definition_library&, card_table&, execution_context&, random_fn&) const
+            execution_state execute(const definition_library&, unrestricted_table&, execution_context&, random_fn&) const
             {
                 GIVM_ASSERT(false);
                 return execution_state{};
@@ -39,7 +39,7 @@ namespace givm
 
         struct return_instruction
         {
-            execution_state execute(const definition_library&, card_table&, execution_context&, random_fn&) const
+            execution_state execute(const definition_library&, unrestricted_table&, execution_context&, random_fn&) const
             {
                 GIVM_ASSERT(false);
                 return execution_state{};
@@ -50,7 +50,7 @@ namespace givm
         {
             execution_position target;
 
-            execution_state execute(const definition_library&, card_table&, execution_context&, random_fn&) const
+            execution_state execute(const definition_library&, unrestricted_table&, execution_context&, random_fn&) const
             {
                 GIVM_ASSERT(false);
                 return execution_state{};

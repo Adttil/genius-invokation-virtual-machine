@@ -5,56 +5,31 @@
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-using support_view = support_entity<const detail::table_storage>;
+class support_view;
 ```
 
-支援的只读视图。它可以查看实体的状态和所属关系，不能修改该实体。
+玩家支援区中一个支援的只读视图。它承载该支援在本场对局中的状态。
 
-该视图仍然访问原牌桌中的实体；创建视图不会冻结或复制对局状态。
+## 成员函数
 
-## 示例
+|  |  |
+| --- | --- |
+| [`is_valid`](support_view/is_valid.md) | 判断实体是否尚未移除 |
+| [`operator bool`](support_view/operator_bool.md) | 判断实体是否尚未移除 |
+| [`size`](support_view/size.md) | 取得单实体范围的元素数 |
+| [`begin`](support_view/begin.md) | 取得单实体范围的起点 |
+| [`end`](support_view/end.md) | 取得单实体范围的终点 |
+| [`player`](support_view/player.md) | 取得所属玩家 |
+| [`id`](support_view/id.md) | 取得实体 ID |
+| [`definition_id`](support_view/definition_id.md) | 取得实体的定义 ID |
+| [`state`](support_view/state.md) | 访问实体状态 |
 
-```cpp
-#include <print>
-#include <string_view>
-#include <tuple>
+## 注意
 
-#include <givm/givm.hpp>
-
-template<class Category>
-struct example_source
-{
-    using definition_category = Category;
-    struct definition_type {};
-
-    std::string_view name() const { return "示例"; }
-    definition_type compile(givm::definition_compile_context&) const { return {}; }
-};
-
-int main()
-{
-    givm::definition_source_library sources{};
-    const example_source<givm::support_view> support_source{};
-    sources.add(support_source);
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{};
-    const auto player = table[givm::player_id{ 0 }];
-    const auto definition = id_map.get_id<givm::support_view>("示例");
-    const auto entity = player.add(definition, { .count = 3 });
-    const givm::support_view view = entity;
-    std::println("计数: {}", view.state().count);
-}
-```
-
-输出
-
-```text
-计数: 3
-```
+从牌桌或所属实体取得该对象；复制它仍然访问同一个支援。视图的存活和移除约定见[实体的身份与访问](entity_access.md)。
 
 ## 参阅
 
 |  |  |
 | --- | --- |
-| [`support_entity`](support_entity.md) | 实体的完整访问接口 |
-| [实体的身份与访问](entity_access.md) | 只读访问与存活约定 |
+| [`support_state`](support_state.md) | 该实体的状态 |

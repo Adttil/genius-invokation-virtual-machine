@@ -5,56 +5,87 @@
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-using character_view = character_entity<const detail::table_storage>;
+class character_view;
 ```
 
-角色的只读视图。它可以查看实体的状态和所属关系，不能修改该实体。
+对局中一名角色的只读视图。它承载角色的生命、充能、元素附着，以及角色拥有的技能和附属实体。
 
-该视图仍然访问原牌桌中的实体；创建视图不会冻结或复制对局状态。
+## 成员函数
+
+|  |  |
+| --- | --- |
+| [`is_valid`](character_view/is_valid.md) | 判断实体是否尚未移除 |
+| [`operator bool`](character_view/operator_bool.md) | 判断实体是否尚未移除 |
+| [`size`](character_view/size.md) | 取得单实体范围的元素数 |
+| [`begin`](character_view/begin.md) | 取得单实体范围的起点 |
+| [`end`](character_view/end.md) | 取得单实体范围的终点 |
+| [`player`](character_view/player.md) | 取得所属玩家 |
+| [`id`](character_view/id.md) | 取得实体 ID |
+| [`definition_id`](character_view/definition_id.md) | 取得实体的定义 ID |
+| [`state`](character_view/state.md) | 访问实体状态 |
+| [`skills`](character_view/skills.md) | 遍历角色的技能 |
+| [`attachments`](character_view/attachments.md) | 遍历角色的附属实体 |
+
+## 注意
+
+从牌桌或所属实体取得该对象；复制它仍然访问同一个角色。视图的存活和移除约定见[实体的身份与访问](entity_access.md)。
+
 
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <print>
+#include <ranges>
 #include <string_view>
 #include <tuple>
 
 #include <givm/givm.hpp>
 
-template<class Category>
 struct example_source
 {
-    using definition_category = Category;
+    using definition_category = givm::character_view;
     struct definition_type {};
-
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
+
+    static givm::program_entry<givm::character_initialization> handle(
+        const definition_type&, const givm::character_view&,
+        givm::character_initialization& event, const givm::card_table&, givm::random_fn&)
+    {
+        event.state = { .max_health = 10, .health = 10 };
+        return givm::program_entry<givm::character_initialization>::null();
+    }
 };
 
 int main()
 {
+    example_source source{};
     givm::definition_source_library sources{};
-    const example_source<givm::character_view> character_source{};
-    sources.add(character_source);
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
+    sources.add(source);
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{});
+    const auto definition = ids.get_id<givm::character_view>("示例");
     givm::card_table table{};
-    const auto player = table[givm::player_id{ 0 }];
-    const auto definition = id_map.get_id<givm::character_view>("示例");
-    const auto entity = player.add(definition, { .max_health = 10, .health = 10 });
-    const givm::character_view view = entity;
-    std::println("生命值: {}", view.state().health);
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
+
+    auto random = []() -> std::uint32_t { return 0; };
+    givm::executor execution{};
+    execution.enter_entry(library);
+    execution.run(library, table, random);
+    const givm::character_view view = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
+    std::println("初始化后的生命值: {}", view.state().health);
 }
 ```
 
 输出
 
 ```text
-生命值: 10
+初始化后的生命值: 10
 ```
 
 ## 参阅
 
 |  |  |
 | --- | --- |
-| [`character_entity`](character_entity.md) | 实体的完整访问接口 |
-| [实体的身份与访问](entity_access.md) | 只读访问与存活约定 |
+| [`character_state`](character_state.md) | 该实体的状态 |

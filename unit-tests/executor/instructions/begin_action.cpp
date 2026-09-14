@@ -43,7 +43,7 @@ namespace
 
         payment_log* log;
 
-        execution_state execute(const definition_library&, card_table& table, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table& table, detail::execution_context& context, random_fn&) const
         {
             auto&& [onpay, activation] = context.stack().top<
                 frame<
@@ -357,7 +357,7 @@ namespace
     {
         using context_type = before_action;
 
-        execution_state execute(const definition_library&, card_table& table, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table& table, detail::execution_context& context, random_fn&) const
         {
             ++table[table.state().active_player].state().dice[elemental_dice::pyro];
             return context.enter_next();
@@ -415,7 +415,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -476,38 +476,39 @@ TEST_CASE(
         id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const auto player = player_id{ 0 };
     const auto opponent = player_id{ 1 };
-    const auto tax = table[player].add(tax_definition, { .count = 10 }).id();
-    const auto first_fixed = table[player].add(
+    const auto tax = mutable_table[player].add(tax_definition, { .count = 10 }).id();
+    const auto first_fixed = mutable_table[player].add(
         first_fixed_definition,
         { .count = 10 }
     ).id();
-    const auto middle_fixed = table[player].add(
+    const auto middle_fixed = mutable_table[player].add(
         middle_fixed_definition,
         { .count = 10 }
     ).id();
-    const auto second_fixed = table[player].add(
+    const auto second_fixed = mutable_table[player].add(
         second_fixed_definition,
         { .count = 10 }
     ).id();
 
-    const auto active = table[player].add(character_definition, {
+    const auto active = mutable_table[player].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
-    table[player].add(character_definition, {
+    mutable_table[player].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
-    const auto selected_target = table[player].add(character_definition, {
+    const auto selected_target = mutable_table[player].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
-    const auto opponent_active = table[opponent].add(character_definition, {
+    const auto opponent_active = mutable_table[opponent].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
-    table[player].state().active_character = active;
-    table[opponent].state().active_character = opponent_active;
-    table.state().active_player = player;
-    table[player].state().dice[elemental_dice::pyro] = 5;
+    mutable_table[player].state().active_character = active;
+    mutable_table[opponent].state().active_character = opponent_active;
+    mutable_table.state().active_player = player;
+    mutable_table[player].state().dice[elemental_dice::pyro] = 5;
 
     executor target;
     target.enter_entry(library);
@@ -585,9 +586,10 @@ TEST_CASE(
     );
 
     card_table table{};
-    table[initial_player].add(id_map.get_id<support_view>(observer.name()), {});
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[initial_player].add(id_map.get_id<support_view>(observer.name()), {});
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
-    for(auto player : table.players())
+    for(auto player : mutable_table.players())
     {
         const auto active = player.add(character_definition, {
             .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
@@ -597,14 +599,14 @@ TEST_CASE(
         });
         player.state().active_character = active;
     }
-    table.state().active_player = initial_player;
+    mutable_table.state().active_player = initial_player;
 
     executor target;
     target.enter_entry(library);
     zero_random random;
     run_until_blocked(library, target, table, random);
     REQUIRE(before_actions == std::vector<player_id>{ initial_player });
-    for(auto player : table.players())
+    for(auto player : mutable_table.players())
     {
         player.state().dice[elemental_dice::pyro] = 3;
     }
@@ -656,7 +658,7 @@ TEST_CASE(
     REQUIRE(table.state().active_player == first_ended);
     REQUIRE(before_actions == std::vector<player_id>{ first_ended });
 
-    table[first_ended].state().dice[elemental_dice::pyro] = 1;
+    mutable_table[first_ended].state().dice[elemental_dice::pyro] = 1;
     switch_active();
     const auto next_player = speed == action_speed::combat ? continuing_player : first_ended;
     CHECK(table.state().active_player == next_player);
@@ -682,29 +684,30 @@ TEST_CASE(
     );
 
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const auto player = player_id{ 0 };
     const auto opponent = player_id{ 1 };
-    table[player].add(id_map.get_id<support_view>(observer.name()), {});
+    mutable_table[player].add(id_map.get_id<support_view>(observer.name()), {});
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
     std::vector<character_id> characters;
     for(const auto health : { 0u, 1u, 10u, 10u, 0u, 10u })
     {
-        characters.push_back(table[player].add(character_definition, {
+        characters.push_back(mutable_table[player].add(character_definition, {
             .max_health = 10, .max_energy = 3, .health = health, .energy = 0
         }).id());
     }
-    table[characters[3]].erase();
-    table[player].state().active_character = characters[2];
-    table[opponent].state().active_character = table[opponent].add(character_definition, {
+    mutable_table[characters[3]].erase();
+    mutable_table[player].state().active_character = characters[2];
+    mutable_table[opponent].state().active_character = mutable_table[opponent].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
-    table.state().active_player = player;
-    table[player].state().dice[elemental_dice::pyro] = 2;
+    mutable_table.state().active_player = player;
+    mutable_table[player].state().dice[elemental_dice::pyro] = 2;
 
     if(not has_living_targets)
     {
-        table[characters[1]].state().health = 0;
-        table[characters[5]].state().health = 0;
+        mutable_table[characters[1]].state().health = 0;
+        mutable_table[characters[5]].state().health = 0;
     }
 
     executor target;
@@ -787,14 +790,15 @@ TEST_CASE("an observed switch exposes its destination after payment and before a
         std::tuple{ begin_action{} }, std::tuple{ stop_execution{} }, observer, character_source
     );
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const player_id player{ 0 };
-    table[player].add(id_map.get_id<support_view>(observer.name()), {});
+    mutable_table[player].add(id_map.get_id<support_view>(observer.name()), {});
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
-    const auto previous = table[player].add(character_definition, { .health = 10 }).id();
-    const auto current = table[player].add(character_definition, { .health = 10 }).id();
-    table[player].state().active_character = previous;
-    table[player].state().dice[elemental_dice::pyro] = 1;
-    table.state().active_player = player;
+    const auto previous = mutable_table[player].add(character_definition, { .health = 10 }).id();
+    const auto current = mutable_table[player].add(character_definition, { .health = 10 }).id();
+    mutable_table[player].state().active_character = previous;
+    mutable_table[player].state().dice[elemental_dice::pyro] = 1;
+    mutable_table.state().active_player = player;
 
     executor target;
     target.enter_entry(library);
@@ -828,14 +832,15 @@ TEST_CASE("a terminal onpay entry waits for action confirmation", "[begin_action
         std::tuple{ begin_action{} }, std::tuple{ stop_execution{} }, terminal_source, character_source
     );
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const player_id player{ 0 };
-    table[player].add(id_map.get_id<support_view>(terminal_source.name()), {});
+    mutable_table[player].add(id_map.get_id<support_view>(terminal_source.name()), {});
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
-    const auto active = table[player].add(character_definition, { .health = 10 }).id();
-    table[player].add(character_definition, { .health = 10 });
-    table[player].state().active_character = active;
-    table[player].state().dice[elemental_dice::pyro] = 1;
-    table.state().active_player = player;
+    const auto active = mutable_table[player].add(character_definition, { .health = 10 }).id();
+    mutable_table[player].add(character_definition, { .health = 10 });
+    mutable_table[player].state().active_character = active;
+    mutable_table[player].state().dice[elemental_dice::pyro] = 1;
+    mutable_table.state().active_player = player;
     executor target;
     target.enter_entry(library);
     zero_random random;
@@ -876,14 +881,15 @@ TEST_CASE("an action starts before its responses and response entries add no obs
         skipped_source, response_source, character_source
     );
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const player_id player{ 0 };
-    table[player].add(id_map.get_id<support_view>(skipped_source.name()), {});
-    table[player].add(id_map.get_id<support_view>(response_source.name()), {});
-    const auto active = table[player].add(
+    mutable_table[player].add(id_map.get_id<support_view>(skipped_source.name()), {});
+    mutable_table[player].add(id_map.get_id<support_view>(response_source.name()), {});
+    const auto active = mutable_table[player].add(
         id_map.get_id<character_view>(character_source.name()), { .health = 10 }
     ).id();
-    table[player].state().active_character = active;
-    table.state().active_player = player;
+    mutable_table[player].state().active_character = active;
+    mutable_table.state().active_player = player;
     executor target;
     target.enter_entry(library);
     zero_random random;
@@ -919,18 +925,19 @@ TEST_CASE("action opportunities and round boundaries stop before their responses
         std::tuple{ stop_execution{} }, action_observer, round_observer, switch_observer, character_source
     );
     card_table table{};
-    table[initial_player].add(id_map.get_id<support_view>(action_observer.name()), {});
-    table[initial_player].add(id_map.get_id<support_view>(round_observer.name()), {});
-    table[initial_player].add(id_map.get_id<support_view>(switch_observer.name()), {});
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[initial_player].add(id_map.get_id<support_view>(action_observer.name()), {});
+    mutable_table[initial_player].add(id_map.get_id<support_view>(round_observer.name()), {});
+    mutable_table[initial_player].add(id_map.get_id<support_view>(switch_observer.name()), {});
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
-    for(auto player : table.players())
+    for(auto player : mutable_table.players())
     {
         const auto active = player.add(character_definition, { .health = 10 }).id();
         player.add(character_definition, { .health = 10 });
         player.state().active_character = active;
         player.state().dice[elemental_dice::pyro] = 3;
     }
-    table.state().active_player = initial_player;
+    mutable_table.state().active_player = initial_player;
     executor target;
     target.enter_entry(library);
     zero_random random;
@@ -1031,8 +1038,9 @@ TEST_CASE("a round starts before its limit check and dice reset", "[start_round]
         std::tuple{ stop_execution{} }
     );
     card_table table{};
-    table.state().round_number = exceeds_limit ? 2 : 1;
-    for(auto player : table.players())
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table.state().round_number = exceeds_limit ? 2 : 1;
+    for(auto player : mutable_table.players())
     {
         player.state().dice[elemental_dice::pyro] = 3;
     }

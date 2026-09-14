@@ -50,16 +50,16 @@ handler_program_entry_t<TEvent> handle(
 
 #include <givm/givm.hpp>
 
-struct support_source
+struct character_source
 {
-    using definition_category = givm::support_view;
+    using definition_category = givm::character_view;
 
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
 
     static givm::handler_program_entry_t<givm::dice_roll_preparation> handle(
         const int& extra_rerolls,
-        const givm::support_view&,
+        const givm::character_view&,
         givm::dice_roll_preparation& event,
         const givm::card_table&,
         givm::random_fn&
@@ -72,16 +72,17 @@ struct support_source
 
 int main()
 {
-    const support_source source{};
+    const character_source source{};
     givm::definition_source_library sources{};
     sources.add(source);
     const auto [library, ids] = sources.compile(
         std::tuple{}, std::tuple{ givm::start_round{} }
     );
-    const auto id = ids.get_id<givm::support_view>("重投助手");
+    const auto id = ids.get_id<givm::character_view>("重投助手");
 
     givm::card_table table{};
-    const givm::support_view entity = table[givm::player_id{ 0 }].add(id, { .count = 1 });
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { id } });
+    const auto entity = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     auto random_source = []() -> std::uint32_t { return 0; };
     givm::random_fn random{ random_source };
     givm::dice_roll_preparation event{ .count = 8 };

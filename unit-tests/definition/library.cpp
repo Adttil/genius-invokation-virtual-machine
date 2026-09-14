@@ -16,7 +16,7 @@ namespace
 
         int value;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return value != 0 ? detail::continue_execution : execution_state::action;
         }

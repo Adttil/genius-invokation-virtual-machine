@@ -60,20 +60,19 @@ int main()
     givm::definition_source_library sources{};
     sources.add(source);
     const auto [library, ids] = sources.compile(
-        std::tuple{ givm::set_active_character{ .target = { .player_id = givm::player_id{ 1 }, .index = 1 } } },
+        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::initialize_characters{ .player = givm::player_id{ 1 } }, givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } }, givm::set_active_character{ .target = { .player_id = givm::player_id{ 1 }, .index = 1 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::card_table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
-    const auto attacker = table[givm::player_id{ 0 }].add(
-        definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
-    const auto original = table[givm::player_id{ 1 }].add(
-        definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
-    const auto target = table[givm::player_id{ 1 }].add(
-        definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
-    table[givm::player_id{ 1 }].state().active_character = original;
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
+    table.load_deck(givm::player_id{ 1 }, givm::linked_deck{ .characters = { definition, definition } });
+    const givm::character_id attacker{ givm::player_id{ 0 }, 0 };
+    const givm::character_id original{ givm::player_id{ 1 }, 0 };
+    const givm::character_id target{ givm::player_id{ 1 }, 1 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
+    execution.step(library, table, random);
     execution.step(library, table, random);
     const auto view = execution.view_in<givm::execution_state::active_character_changed>();
     std::println("本次将设置为目标角色: {}", view.character() == target);

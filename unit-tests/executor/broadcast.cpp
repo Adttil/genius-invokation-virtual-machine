@@ -37,7 +37,7 @@ namespace
 
         response_observation* observation;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const
         {
             auto&& [broadcast, activation] = context.stack().top<
                 frame<
@@ -72,7 +72,7 @@ namespace
 
         response_observation* observation;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const
         {
             observation->execution_order.push_back(2);
             return context.enter_next();
@@ -161,7 +161,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -214,13 +214,14 @@ TEST_CASE("ordinary broadcasts resume across fixed responses", "[broadcast][fixe
         std::tuple{ stop_execution{} }
     );
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
 
-    const auto fixed_entity = table[player_id{ 0 }].add(
+    const auto fixed_entity = mutable_table[player_id{ 0 }].add(
         id_map.get_id<support_view>(fixed_source.name()),
         { .count = 1 }
     );
     observation.expected_handler = fixed_entity.id();
-    table[player_id{ 0 }].add(
+    mutable_table[player_id{ 0 }].add(
         id_map.get_id<support_view>(second_source.name()),
         { .count = 1 }
     );
@@ -245,7 +246,8 @@ TEST_CASE("a fixed response may terminate the game without discarding its stack"
         std::tuple{ stop_execution{} }
     );
     card_table table{};
-    const auto handler = table[player_id{ 0 }].add(
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto handler = mutable_table[player_id{ 0 }].add(
         id_map.get_id<support_view>(source.name()),
         { .count = 1 }
     ).id();

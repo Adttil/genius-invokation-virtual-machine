@@ -15,7 +15,6 @@ namespace givm
 {
     enum class execution_state : std::uint8_t;
 
-    class card_table;
     class definition_library;
     class random_fn;
 
@@ -27,6 +26,7 @@ namespace givm
 
     namespace detail
     {
+        class unrestricted_table;
         class execution_context;
         struct executor_access;
 
@@ -36,7 +36,7 @@ namespace givm
             template<bool Observed>
             static execution_state execute(
                 const TInstruction& instruction, const definition_library& library,
-                card_table& table, execution_context& context, random_fn& random
+                unrestricted_table& table, execution_context& context, random_fn& random
             )
             {
                 return instruction.execute(library, table, context, random);
@@ -46,7 +46,7 @@ namespace givm
         inline constexpr std::size_t instruction_storage_size = 64;
 
         using instruction_execute_fn = execution_state (*)(
-            const void*, const definition_library&, card_table&, execution_context&, random_fn&
+            const void*, const definition_library&, unrestricted_table&, execution_context&, random_fn&
         );
 
         struct instruction_rtti
@@ -58,13 +58,13 @@ namespace givm
         template<class TInstruction>
         inline constexpr instruction_rtti instruction_rtti_of{
             +[](const void* storage, const definition_library& library,
-                card_table& table, execution_context& context, random_fn& random)
+                unrestricted_table& table, execution_context& context, random_fn& random)
             {
                 const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
                 return instruction_implementation<TInstruction>::template execute<false>(instruction, library, table, context, random);
             },
             +[](const void* storage, const definition_library& library,
-                card_table& table, execution_context& context, random_fn& random)
+                unrestricted_table& table, execution_context& context, random_fn& random)
             {
                 const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
                 return instruction_implementation<TInstruction>::template execute<true>(instruction, library, table, context, random);
@@ -93,7 +93,7 @@ namespace givm
 
             template<bool Observed>
             constexpr execution_state execute(
-                const definition_library& library, card_table& table, execution_context& context, random_fn& random
+                const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
             ) const
             {
                 if constexpr(Observed)
@@ -136,7 +136,7 @@ namespace givm
 
             template<bool Observed>
             constexpr execution_state execute(
-                const definition_library& library, card_table& table, execution_context& context, random_fn& random
+                const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
             ) const
             {
                 if constexpr(Observed)

@@ -31,7 +31,7 @@ namespace
         int* value;
         int digit;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const
         {
             *value = *value * 10 + digit;
             return context.enter_next();
@@ -44,7 +44,7 @@ namespace
 
         int* execution_count;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const
         {
             ++*execution_count;
             if(context.current_stage() == detail::stage_t{})
@@ -60,7 +60,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -81,7 +81,7 @@ namespace
     concept publicly_executable_instruction = requires(
         const T& instruction,
         const definition_library& library,
-        card_table& table,
+        detail::unrestricted_table& table,
         detail::execution_context& context,
         random_fn& random
     )

@@ -34,7 +34,7 @@ namespace givm
             template<bool Observed>
             static execution_state execute(
                 const givm::set_active_character& instruction, const definition_library& library,
-                card_table& table, execution_context& context, random_fn& random
+                unrestricted_table& table, execution_context& context, random_fn& random
             )
             {
                 if constexpr(Observed)

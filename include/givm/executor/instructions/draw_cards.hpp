@@ -40,7 +40,7 @@ namespace givm
             template<bool Observed>
             static execution_state execute(
                 const givm::draw_cards& instruction, const definition_library& library,
-                card_table& table, execution_context& context, random_fn& random
+                unrestricted_table& table, execution_context& context, random_fn& random
             )
             {
                 const auto stage = static_cast<stage_type>(context.current_stage());

@@ -46,7 +46,6 @@ int main()
     givm::card_table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    table.state().round_number = 4;
     execution.enter_entry(library);
     std::println("牌桌回合数保持原值: {}", table.state().round_number);
     const auto state = execution.run(library, table, random);
@@ -57,7 +56,7 @@ int main()
 输出
 
 ```text
-牌桌回合数保持原值: 4
+牌桌回合数保持原值: 0
 随后推进至终局: true
 ```
 

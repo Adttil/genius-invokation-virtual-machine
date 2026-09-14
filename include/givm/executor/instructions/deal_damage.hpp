@@ -56,7 +56,7 @@ namespace givm
                 : static_cast<std::uint32_t>(result);
         }
 
-        inline bool all_characters_defeated(const card_table& table, player_id player)
+        inline bool all_characters_defeated(const unrestricted_table& table, player_id player)
         {
             for(auto character : table[player].characters())
             {
@@ -68,7 +68,7 @@ namespace givm
             return true;
         }
 
-        inline game_result result_after_health_reduction(const card_table& table)
+        inline game_result result_after_health_reduction(const unrestricted_table& table)
         {
             const bool player_0_defeated = all_characters_defeated(table, player_id{ 0 });
             const bool player_1_defeated = all_characters_defeated(table, player_id{ 1 });
@@ -114,7 +114,7 @@ namespace givm
         template<bool Observed>
         static execution_state execute(
             const givm::deal_damage& instruction, const definition_library& library,
-            card_table& table, execution_context& context, random_fn& random
+            unrestricted_table& table, execution_context& context, random_fn& random
         )
         {
             const auto stage = static_cast<stage_type>(context.current_stage());
@@ -278,7 +278,7 @@ namespace givm
     private:
         static execution_state apply_damage_element(
             const definition_library& library,
-            const after_damage& event, card_table& table, execution_context& context
+            const after_damage& event, unrestricted_table& table, execution_context& context
         )
         {
             const auto incoming_element = element_from_damage_type(event.type);
@@ -303,7 +303,7 @@ namespace givm
 
         static execution_state prepare_after_damage_broadcast(
             const definition_library& library,
-            const card_table& table,
+            const unrestricted_table& table,
             execution_context& context
         )
         {

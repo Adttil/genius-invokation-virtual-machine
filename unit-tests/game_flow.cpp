@@ -1,3 +1,4 @@
+#include "executor_access.hpp"
 #include <array>
 #include <bitset>
 #include <cstddef>
@@ -195,13 +196,14 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
             .hand_limit = 10
         }
     };
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     table.load_deck(player_id{ 0 }, deck);
     table.load_deck(player_id{ 1 }, deck);
     executor target;
     target.enter_entry(library);
     increasing_random random;
 
-    table.state().active_player = player_id{ 0 };
+    mutable_table.state().active_player = player_id{ 0 };
 
     auto state = target.run(library, table, random);
     REQUIRE(state == execution_state::initial_card_selection);
@@ -313,9 +315,10 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     characters.fill(character_source.name());
     const auto deck = link_deck(id_map, cards, characters);
     card_table table{ game_parameters{ .hand_limit = 10 } };
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     table.load_deck(player_id{ 0 }, deck);
     table.load_deck(player_id{ 1 }, deck);
-    table.state().active_player = player_id{ 0 };
+    mutable_table.state().active_player = player_id{ 0 };
     executor target;
     target.enter_entry(library);
     increasing_random random;

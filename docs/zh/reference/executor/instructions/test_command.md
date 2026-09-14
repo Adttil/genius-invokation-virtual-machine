@@ -32,13 +32,13 @@ struct test_command;
 
 struct observer_source
 {
-    using definition_category = givm::support_view;
+    using definition_category = givm::character_view;
     struct definition_type { int* count; };
     int* count;
     std::string_view name() const { return "observer"; }
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
     static givm::program_entry<givm::test_event> handle(
-        const definition_type& data, const givm::support_view&,
+        const definition_type& data, const givm::character_view&,
         givm::test_event&, const givm::card_table&, givm::random_fn&)
     {
         ++*data.count;
@@ -56,8 +56,9 @@ int main()
         std::tuple{ givm::test_command{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::card_table table{};
-    table[givm::player_id{ 0 }].add(ids.get_id<givm::support_view>("observer"), {});
-    table.state().round_number = 1;
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
+        .characters = { ids.get_id<givm::character_view>("observer") }
+    });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

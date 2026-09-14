@@ -140,7 +140,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const noexcept
         {
             return context.yield(execution_state::action);
         }
@@ -181,13 +181,14 @@ namespace
         );
 
         card_table table{};
-        table[player_id{ 0 }].add(definition_id, {
+        auto& mutable_table = detail::executor_access::unrestricted(table);
+        mutable_table[player_id{ 0 }].add(definition_id, {
             .max_health = 10,
             .max_energy = 3,
             .health = player_0_health,
             .energy = 0
         });
-        table[player_id{ 1 }].add(definition_id, {
+        mutable_table[player_id{ 1 }].add(definition_id, {
             .max_health = 10,
             .max_energy = 3,
             .health = player_1_health,
@@ -241,12 +242,13 @@ TEST_CASE("deal_damage exposes calculation and effect mutation before health los
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
-    table[player_id{ 0 }].add(definition_id, {
+    mutable_table[player_id{ 0 }].add(definition_id, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
-    const auto character = table[player_id{ 1 }].add(definition_id, {
+    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 20, .max_energy = 3, .health = 20, .energy = 0
     });
     REQUIRE(character.id() == character_entity_id);
@@ -289,12 +291,13 @@ TEST_CASE("elemental deal_damage applies its reaction between effect and after_d
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
-    table[player_id{ 0 }].add(definition_id, {
+    mutable_table[player_id{ 0 }].add(definition_id, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
-    const auto character = table[player_id{ 1 }].add(definition_id, {
+    const auto character = mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 10,
         .max_energy = 3,
         .health = 10,
@@ -345,15 +348,16 @@ TEST_CASE("deal_damage clamps lethal health loss without ending a living team", 
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
-    table[player_id{ 1 }].add(definition_id, {
+    mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 4, .max_energy = 3, .health = 4, .energy = 0
     });
-    table[player_id{ 1 }].add(definition_id, {
+    mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
-    table[player_id{ 0 }].add(definition_id, {
+    mutable_table[player_id{ 0 }].add(definition_id, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
 
@@ -392,12 +396,13 @@ TEST_CASE("deal_damage saturates reaction bonus and multiplier", "[deal_damage]"
     const auto definition_id = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto observer = table[player_id{ 0 }].add(observer_id, { .count = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto observer = mutable_table[player_id{ 0 }].add(observer_id, { .count = 1 });
     REQUIRE(observer.id() == observer_entity_id);
-    table[player_id{ 0 }].add(definition_id, {
+    mutable_table[player_id{ 0 }].add(definition_id, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
-    const auto target_character = table[player_id{ 1 }].add(definition_id, {
+    const auto target_character = mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = max_value,
         .max_energy = 3,
         .health = max_value,
@@ -405,7 +410,7 @@ TEST_CASE("deal_damage saturates reaction bonus and multiplier", "[deal_damage]"
         .aura = element_aura::cryo
     });
     REQUIRE(target_character.id() == target_character_id);
-    table[player_id{ 1 }].add(definition_id, {
+    mutable_table[player_id{ 1 }].add(definition_id, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     });
 
@@ -442,9 +447,10 @@ TEST_CASE("damage observation exposes the final value before elemental settlemen
     );
     const auto character_definition = ids.get_id<character_view>(character_source.name());
     card_table observed_table{};
-    observed_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
-    observed_table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
-    observed_table[player_id{ 1 }].add(character_definition, {
+    auto& mutable_observed_table = detail::executor_access::unrestricted(observed_table);
+    mutable_observed_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    mutable_observed_table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
+    mutable_observed_table[player_id{ 1 }].add(character_definition, {
         .max_health = 10, .health = 10, .aura = initial_aura
     });
     auto normal_table = observed_table;
@@ -503,8 +509,9 @@ TEST_CASE("earlier lethal damage supersedes an explicit terminal instruction", "
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
     card_table table{};
-    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
-    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = initial_health });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 1 }].add(definition, { .max_health = 10, .health = initial_health });
     executor execution;
     execution.enter_entry(library);
     zero_random random;
@@ -541,9 +548,10 @@ TEST_CASE("damage observation retains overkill damage after health reaches zero"
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
     card_table table{};
-    table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
-    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
-    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 1 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    mutable_table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 1 });
     executor execution;
     execution.enter_entry(library);
     zero_random random;
@@ -587,9 +595,10 @@ TEST_CASE("zero damage skips health observation while preserving element and aft
     );
     const auto definition = ids.get_id<character_view>(character_source.name());
     card_table table{};
-    table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
-    table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
-    table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    mutable_table[player_id{ 0 }].add(ids.get_id<support_view>(observer_source.name()), { .count = 1 });
+    mutable_table[player_id{ 0 }].add(definition, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 1 }].add(definition, { .max_health = 10, .health = 10 });
     executor execution;
     execution.enter_entry(library);
     zero_random random;

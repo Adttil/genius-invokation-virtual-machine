@@ -29,36 +29,38 @@ friend constexpr bool operator==(deck_card_id, deck_card_id) = default;
 
 ID 本身不包含牌桌身份。清理实体后，原有 ID 可能失效；详见[实体的身份与访问](entity_access.md)。
 
+
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <print>
+#include <ranges>
 #include <string_view>
 #include <tuple>
 
 #include <givm/givm.hpp>
 
-template<class Category>
 struct example_source
 {
-    using definition_category = Category;
+    using definition_category = givm::card_definition;
     struct definition_type {};
-
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
 };
 
 int main()
 {
+    example_source source{};
     givm::definition_source_library sources{};
-    const example_source<givm::card_definition> card_source{};
-    sources.add(card_source);
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
+    sources.add(source);
+    const auto [library, ids] = sources.compile(
+        std::tuple{}, std::tuple{});
+    const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::card_table table{};
-    const auto player = table[givm::player_id{ 0 }];
-    const auto definition = id_map.get_id<givm::card_definition>("示例");
-    const auto entity = player.add_deck_card(definition, {});
-    const givm::deck_card_id id = entity.id();
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { definition } });
+    const givm::deck_card_view view = table[givm::deck_card_id{ givm::player_id{ 0 }, 0 }];
+    const givm::deck_card_id id = view.id();
     std::println("通过 ID 取得定义: {}", library[table[id].definition_id()].name());
 }
 ```

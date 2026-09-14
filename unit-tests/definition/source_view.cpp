@@ -1,3 +1,4 @@
+#include "../executor_access.hpp"
 #include <array>
 #include <cstdint>
 #include <span>
@@ -139,7 +140,7 @@ namespace
 
         definition_id<support_view> resolved_support;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return resolved_support.is_valid() ? detail::continue_execution : execution_state::action;
         }
@@ -149,7 +150,7 @@ namespace
     {
         using context_type = onpay_context<cost_of_switch>;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return detail::continue_execution;
         }
@@ -159,7 +160,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const noexcept
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const noexcept
         {
             return detail::continue_execution;
         }
@@ -352,10 +353,11 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     const auto card_id = id_map.get_id<card_definition>(card.name());
 
     card_table table{};
-    const auto card_entity = table[player_id{ 0 }].add_hand_card(card_id, {});
-    table[player_id{ 0 }].add(id_map.get_id<support_view>(beta.name()), {});
-    const auto first_alpha = table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
-    const auto second_alpha = table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto card_entity = mutable_table[player_id{ 0 }].add_hand_card(card_id, {});
+    mutable_table[player_id{ 0 }].add(id_map.get_id<support_view>(beta.name()), {});
+    const auto first_alpha = mutable_table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
+    const auto second_alpha = mutable_table[player_id{ 0 }].add(id_map.get_id<support_view>(alpha.name()), {}).id();
     zero_random random_source;
     random_fn random{ random_source };
     test_event event;
@@ -421,11 +423,12 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
         == id_map.get_id<support_view>(support.name()).value()
     );
     card_table table{};
-    const auto card_entity = table[player_id{ 0 }].add_hand_card(
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto card_entity = mutable_table[player_id{ 0 }].add_hand_card(
         id_map.get_id<card_definition>(card.name()),
         {}
     );
-    const auto support_entity = table[player_id{ 0 }].add(
+    const auto support_entity = mutable_table[player_id{ 0 }].add(
         id_map.get_id<support_view>(support.name()),
         { .count = 1 }
     );

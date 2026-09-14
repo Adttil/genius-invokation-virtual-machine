@@ -23,7 +23,7 @@ struct battle_started;
 
 struct observer_source
 {
-    using definition_category = givm::support_view;
+    using definition_category = givm::character_view;
     struct definition_type { int* count; };
     int* count;
 
@@ -31,7 +31,7 @@ struct observer_source
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
 
     static givm::program_entry<givm::battle_started> handle(
-        const definition_type& definition, const givm::support_view&,
+        const definition_type& definition, const givm::character_view&,
         givm::battle_started&, const givm::card_table&, givm::random_fn&)
     {
         ++*definition.count;
@@ -48,8 +48,10 @@ int main()
     const auto [library, ids] = sources.compile(
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{});
     givm::card_table table{};
-    const auto observer = table[givm::player_id{ 0 }].add(
-        ids.get_id<givm::support_view>("observer"), givm::support_state{});
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
+        .characters = { ids.get_id<givm::character_view>("observer") }
+    });
+    const auto observer = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     auto random_source = []() -> std::uint32_t { return 0; };
     givm::random_fn random{ random_source };
     givm::battle_started event{};

@@ -59,14 +59,14 @@ int main()
     givm::definition_source_library sources{};
     sources.add(source);
     const auto [library, ids] = sources.compile(
-        std::tuple{ givm::set_element_aura{ .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .aura = givm::element_aura::hydro } },
+        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::initialize_characters{ .player = givm::player_id{ 1 } }, givm::set_element_aura{ .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .aura = givm::element_aura::hydro } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::card_table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
-    const auto attacker = table[givm::player_id{ 0 }].add(
-        definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
-    const auto target = table[givm::player_id{ 1 }].add(
-        definition, { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 }).id();
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
+    table.load_deck(givm::player_id{ 1 }, givm::linked_deck{ .characters = { definition } });
+    const givm::character_id attacker{ givm::player_id{ 0 }, 0 };
+    const givm::character_id target{ givm::player_id{ 1 }, 0 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

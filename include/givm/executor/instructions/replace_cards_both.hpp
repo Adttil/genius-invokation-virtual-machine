@@ -29,7 +29,7 @@ namespace givm
         static execution_state execute(
             const givm::replace_cards_both& instruction,
             const definition_library&,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )

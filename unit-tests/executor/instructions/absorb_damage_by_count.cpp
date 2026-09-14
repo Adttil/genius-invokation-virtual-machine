@@ -1,3 +1,4 @@
+#include "../../executor_access.hpp"
 #include <cstdint>
 #include <string_view>
 #include <tuple>
@@ -75,7 +76,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context& context, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context& context, random_fn&) const
         {
             if(context.current_stage() == detail::stage_t{})
             {
@@ -132,23 +133,24 @@ TEST_CASE(
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto attacker = table[player_id{ 0 }].add(character_definition, {
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto attacker = mutable_table[player_id{ 0 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
     REQUIRE(attacker == attacker_id);
-    const auto other_side_shield = table[player_id{ 0 }].add(
+    const auto other_side_shield = mutable_table[player_id{ 0 }].add(
         shield_definition,
         { .count = 7 }
     ).id();
-    const auto damaged_character = table[player_id{ 1 }].add(character_definition, {
+    const auto damaged_character = mutable_table[player_id{ 1 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
     REQUIRE(damaged_character == damaged_character_id);
-    const auto first_shield = table[player_id{ 1 }].add(
+    const auto first_shield = mutable_table[player_id{ 1 }].add(
         shield_definition,
         { .count = 3 }
     ).id();
-    const auto second_shield = table[player_id{ 1 }].add(
+    const auto second_shield = mutable_table[player_id{ 1 }].add(
         shield_definition,
         { .count = 1 }
     ).id();
@@ -197,23 +199,24 @@ TEST_CASE(
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto attacker = table[player_id{ 0 }].add(character_definition, {
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto attacker = mutable_table[player_id{ 0 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
     REQUIRE(attacker == attacker_id);
-    const auto damaged_character = table[player_id{ 1 }].add(character_definition, {
+    const auto damaged_character = mutable_table[player_id{ 1 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
     REQUIRE(damaged_character == damaged_character_id);
-    const auto first_shield = table[player_id{ 1 }].add(
+    const auto first_shield = mutable_table[player_id{ 1 }].add(
         shield_definition,
         { .count = 2 }
     ).id();
-    const auto second_shield = table[player_id{ 1 }].add(
+    const auto second_shield = mutable_table[player_id{ 1 }].add(
         shield_definition,
         { .count = 3 }
     ).id();
-    const auto third_shield = table[player_id{ 1 }].add(
+    const auto third_shield = mutable_table[player_id{ 1 }].add(
         shield_definition,
         { .count = 4 }
     ).id();
@@ -256,15 +259,16 @@ TEST_CASE(
     const auto character_definition = id_map.get_id<character_view>(character_source.name());
 
     card_table table{};
-    const auto attacker = table[player_id{ 0 }].add(character_definition, {
+    auto& mutable_table = detail::executor_access::unrestricted(table);
+    const auto attacker = mutable_table[player_id{ 0 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
     REQUIRE(attacker == attacker_id);
-    const auto damaged_character = table[player_id{ 1 }].add(character_definition, {
+    const auto damaged_character = mutable_table[player_id{ 1 }].add(character_definition, {
         .max_health = 10, .max_energy = 3, .health = 10, .energy = 0
     }).id();
     REQUIRE(damaged_character == damaged_character_id);
-    const auto shield = table[player_id{ 1 }].add(
+    const auto shield = mutable_table[player_id{ 1 }].add(
         shield_definition,
         { .count = 3 }
     ).id();
@@ -290,10 +294,11 @@ TEST_CASE("step reports only final damage after shield responses", "[absorb_dama
         std::tuple{}, shield_source, character_source
     );
     card_table table{};
+    auto& mutable_table = detail::executor_access::unrestricted(table);
     const auto character_definition = ids.get_id<character_view>(character_source.name());
-    table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
-    table[player_id{ 1 }].add(character_definition, { .max_health = 10, .health = 10 });
-    const auto shield = table[player_id{ 1 }].add(
+    mutable_table[player_id{ 0 }].add(character_definition, { .max_health = 10, .health = 10 });
+    mutable_table[player_id{ 1 }].add(character_definition, { .max_health = 10, .health = 10 });
+    const auto shield = mutable_table[player_id{ 1 }].add(
         ids.get_id<combat_status_view>(shield_source.name()), { .count = 4 }).id();
     auto normal_table = table;
     executor normal;

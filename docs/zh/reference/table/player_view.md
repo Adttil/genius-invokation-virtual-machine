@@ -5,41 +5,55 @@
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-using player_view = player_entity<const detail::table_storage>;
+class player_view;
 ```
 
-玩家的只读视图。它可以查看实体的状态和所属关系，不能修改该实体。
+一方玩家的只读视图，用于查看其角色、卡牌、骰子以及场上的持续效果。
 
-该视图仍然访问原牌桌中的实体；创建视图不会冻结或复制对局状态。
+## 成员函数
+
+|  |  |
+| --- | --- |
+| [`id`](player_view/id.md) | 取得实体 ID |
+| [`state`](player_view/state.md) | 访问实体状态 |
+| [`hand_cards`](player_view/hand_cards.md) | 遍历手牌 |
+| [`deck_cards`](player_view/deck_cards.md) | 遍历牌库卡牌 |
+| [`supports`](player_view/supports.md) | 遍历支援 |
+| [`summons`](player_view/summons.md) | 遍历召唤物 |
+| [`combat_statuses`](player_view/combat_statuses.md) | 遍历出战状态 |
+| [`characters`](player_view/characters.md) | 遍历角色 |
+| [`deck_card_count`](player_view/deck_card_count.md) | 取得牌库张数 |
+| [`hand_card_count`](player_view/hand_card_count.md) | 取得手牌张数 |
+| [`deck_card_definition`](player_view/deck_card_definition.md) | 取得指定牌库位置的卡牌定义 ID |
+
+## 注意
+
+从牌桌或所属实体取得该对象；复制它仍然访问同一个玩家。视图的存活和移除约定见[实体的身份与访问](entity_access.md)。
+
 
 ## 示例
 
 ```cpp
 #include <print>
-#include <tuple>
 
-#include <givm/givm.hpp>
+#include <givm/table.hpp>
 
 int main()
 {
-    givm::definition_source_library sources{};
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
     givm::card_table table{};
-    const auto entity = table[givm::player_id{ 0 }];
-    const givm::player_view view = entity;
-    std::println("骰子数: {}", view.state().dice.total());
+    const givm::player_view player = table[givm::player_id{ 0 }];
+    std::println("初始骰子数: {}", player.state().dice.total());
 }
 ```
 
 输出
 
 ```text
-骰子数: 0
+初始骰子数: 0
 ```
 
 ## 参阅
 
 |  |  |
 | --- | --- |
-| [`player_entity`](player_entity.md) | 实体的完整访问接口 |
-| [实体的身份与访问](entity_access.md) | 只读访问与存活约定 |
+| [`player_state`](player_state.md) | 该实体的状态 |

@@ -15,7 +15,7 @@
 
 ## Card Data
 
-公开搬运接口使用的 [card_data](../reference/table/card_data.md) 及 [status_state](../reference/table/status_state.md) 已有 reference；链首尾与共享池为何需要一起保留在这里说明。
+`card_data` 是内部牌桌搬运卡牌时使用的数据，不属于公开接口；可观察的附着状态见 [status_state](../reference/table/status_state.md)。链首尾与共享池为何需要一起保留在这里说明。
 
 手牌和牌堆中的真实牌都使用同一种 `card_data` 结构：
 
@@ -31,25 +31,25 @@ card status 数据存放在 table 级 `status_slots` 池中，牌只保存链首
 
 因此，牌在牌堆和手牌之间移动时，不需要重建牌的状态，也不需要重映射牌上 status 的 definition id。移动的是完整 `card_data` 及其 status 链首尾，但其运行期实体 id 会从来源区域的 ID 域变为目标区域的 ID 域。
 
-## 区域与 Entity/View
+## 区域与 View
 
-对应公开类型为 [hand_card_entity](../reference/table/hand_card_entity.md)、[deck_card_entity](../reference/table/deck_card_entity.md)、[hand_card_id](../reference/table/hand_card_id.md)、[deck_card_id](../reference/table/deck_card_id.md) 及 [card_id](../reference/executor/events/card_id.md)。
+对应公开类型为 [hand_card_view](../reference/table/hand_card_view.md)、[deck_card_view](../reference/table/deck_card_view.md)、[hand_card_id](../reference/table/hand_card_id.md)、[deck_card_id](../reference/table/deck_card_id.md) 及 [card_id](../reference/executor/events/card_id.md)。
 
-虽然 `card_data` 同构，但两个区域必须使用不同的 entity/view：
+虽然 `card_data` 同构，但两个区域必须使用不同的 view：
 
-- `deck_card_entity`
-- `hand_card_entity`
+- `deck_card_view`
+- `hand_card_view`
 
 对应的实体 id 也必须是不同的强类型：
 
 - `deck_card_id`
 - `hand_card_id`
 
-实体 id 保存玩家与区域内 index；entity/view 提供相应上下文的数据访问，并通过 `id()` 返回该 id。区域是实体身份的一部分，通过不同的强类型表达。
+实体 id 保存玩家与区域内 index；view 提供相应上下文的数据访问，并通过 `id()` 返回该 id。区域是实体身份的一部分，通过不同的强类型表达。内部可修改句柄也按区域区分。
 
 `hand_card_id.index` 标识手牌槽位；`deck_card_id.index` 标识牌堆槽位，而不是牌堆顺序中的位置。牌堆逻辑位置用于按顺序访问；插入或重排不改变 cleanup 前仍存活且未转移的牌堆实体的 ID。
 
-ID 用于保存实体身份，entity/view 用于访问实体。需要在新增、删除或转移后继续访问实体时，按仍有效的 ID 重新取得 entity/view。ID 的有效期与 entity/view 的可用期不能混同。
+ID 用于保存实体身份，view 用于访问实体。需要在新增、删除或转移后继续访问实体时，按仍有效的 ID 重新取得 view。ID 的有效期与 view 的可用期不能混同。
 
 两种实体仍指向相同结构的 `card_data`，并持有同一种 `definition_id<card_definition>`。这里共享的是定义 ID 类型，不是实体 ID 类型。
 
@@ -57,7 +57,7 @@ ID 用于保存实体身份，entity/view 用于访问实体。需要在新增�
 
 ## 同一张牌的转移
 
-操作入口见 [take_top_deck_card](../reference/table/player_entity/take_top_deck_card.md)、[take_hand_card](../reference/table/player_entity/take_hand_card.md) 与 [add_hand_card](../reference/table/player_entity/add_hand_card.md)。这里完整保留组合操作的四步不变量。
+`take_top_deck_card()`、`take_hand_card()` 与 `add_hand_card()` 属于内部玩家句柄的操作，由执行器取得 `unrestricted_table` 后使用。这里完整保留组合操作的四步不变量。
 
 牌在同一 table 的区域之间转移时，保留完整 `card_data` 及其 status 链。例如 `take_top_deck_card()` 取出牌后，可以用 `add_hand_card(card_data)` 将其加入手牌。
 
@@ -74,9 +74,9 @@ ID 用于保存实体身份，entity/view 用于访问实体。需要在新增�
 
 ## 弃牌语义
 
-当前牌桌操作见 [hand_card_entity::erase](../reference/table/hand_card_entity/erase.md)、[deck_card_entity::erase](../reference/table/deck_card_entity/erase.md)、[discard_top_deck_card](../reference/table/player_entity/discard_top_deck_card.md)。领域结算中的事件另由[指令](../reference/executor/instructions.md)组织。
+内部牌桌通过卡牌句柄的 `erase()` 和玩家句柄的 `discard_top_deck_card()` 完成数据删除。领域结算中的事件另由[指令](../reference/executor/instructions.md)组织，公开 view 不提供这些修改操作。
 
-弃牌不是区域转移。table 层的手牌和牌堆牌实体均提供 `erase()`，牌堆还提供 `discard_top_deck_card()`；这些操作同时删除牌上 status，不会自动广播弃牌事件。弃牌后不存在可通过“弃牌区 ID”继续访问的牌实体。
+弃牌不是区域转移。上述内部操作同时删除牌上 status，不会自动广播弃牌事件。弃牌后不存在可通过“弃牌区 ID”继续访问的牌实体。
 
 领域弃牌指令按规则在运行时确定目标：牌堆中的动态目标按位置、definition ID 或 tag ID 检索，不把一次对局中采样的 `deck_card_id` 固化到程序指令字段中。这不限制 table 层按该 ID 访问牌堆实体。
 

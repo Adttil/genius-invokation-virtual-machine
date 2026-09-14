@@ -23,21 +23,21 @@
 | [`status_definition`](table/status_definition.md) | 卡牌状态定义类别 |
 | [`linked_deck`](table/linked_deck.md) | 已确定卡牌与角色定义的牌组 |
 
-### 实体
+### 实体视图
 
 |  |  |
 | --- | --- |
-| [`player_entity`](table/player_entity.md) | 玩家的访问入口 |
-| [`hand_card_entity`](table/hand_card_entity.md) | 手牌的访问入口 |
-| [`deck_card_entity`](table/deck_card_entity.md) | 牌库卡牌的访问入口 |
-| [`hand_card_status_entity`](table/hand_card_status_entity.md) | 手牌上的状态的访问入口 |
-| [`deck_card_status_entity`](table/deck_card_status_entity.md) | 牌库卡牌上的状态的访问入口 |
-| [`support_entity`](table/support_entity.md) | 支援的访问入口 |
-| [`summon_entity`](table/summon_entity.md) | 召唤物的访问入口 |
-| [`combat_status_entity`](table/combat_status_entity.md) | 出战状态的访问入口 |
-| [`character_entity`](table/character_entity.md) | 角色的访问入口 |
-| [`skill_entity`](table/skill_entity.md) | 技能的访问入口 |
-| [`attachment_entity`](table/attachment_entity.md) | 角色附属实体的访问入口 |
+| [`player_view`](table/player_view.md) | 玩家的只读视图 |
+| [`hand_card_view`](table/hand_card_view.md) | 手牌的只读视图 |
+| [`deck_card_view`](table/deck_card_view.md) | 牌库卡牌的只读视图 |
+| [`hand_card_status_view`](table/hand_card_status_view.md) | 手牌上的状态的只读视图 |
+| [`deck_card_status_view`](table/deck_card_status_view.md) | 牌库卡牌上的状态的只读视图 |
+| [`support_view`](table/support_view.md) | 支援的只读视图 |
+| [`summon_view`](table/summon_view.md) | 召唤物的只读视图 |
+| [`combat_status_view`](table/combat_status_view.md) | 出战状态的只读视图 |
+| [`character_view`](table/character_view.md) | 角色的只读视图 |
+| [`skill_view`](table/skill_view.md) | 技能的只读视图 |
+| [`attachment_view`](table/attachment_view.md) | 角色附属实体的只读视图 |
 
 ### 实体 ID
 
@@ -71,13 +71,6 @@
 | [`status_state`](table/status_state.md) | 卡牌状态在对局中使用的计数状态 |
 | [`card_state`](table/card_state.md) | 卡牌自身的状态 |
 
-### 卡牌搬运与遍历
-
-|  |  |
-| --- | --- |
-| [`card_data`](table/card_data.md) | 保留状态的卡牌搬运数据 |
-| [`card_status_range`](table/card_status_range.md) | 一张卡牌所带的状态序列 |
-
 ## 类型别名
 
 ### 定义与标签 ID
@@ -86,22 +79,6 @@
 | --- | --- |
 | [`definition_id`](table/definition_id.md) | 实体采用的定义身份 |
 | [`tag_id`](table/tag_id.md) | 分类标签的身份 |
-
-### 只读视图
-
-|  |  |
-| --- | --- |
-| [`player_view`](table/player_view.md) | 玩家的只读视图 |
-| [`hand_card_view`](table/hand_card_view.md) | 手牌的只读视图 |
-| [`deck_card_view`](table/deck_card_view.md) | 牌库卡牌的只读视图 |
-| [`hand_card_status_view`](table/hand_card_status_view.md) | 手牌上的状态的只读视图 |
-| [`deck_card_status_view`](table/deck_card_status_view.md) | 牌库卡牌上的状态的只读视图 |
-| [`support_view`](table/support_view.md) | 支援的只读视图 |
-| [`summon_view`](table/summon_view.md) | 召唤物的只读视图 |
-| [`combat_status_view`](table/combat_status_view.md) | 出战状态的只读视图 |
-| [`character_view`](table/character_view.md) | 角色的只读视图 |
-| [`skill_view`](table/skill_view.md) | 技能的只读视图 |
-| [`attachment_view`](table/attachment_view.md) | 角色附属实体的只读视图 |
 
 ## 函数
 

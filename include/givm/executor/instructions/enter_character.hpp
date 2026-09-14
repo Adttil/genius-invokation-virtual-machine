@@ -25,7 +25,7 @@ namespace givm
             template<bool Observed>
             static execution_state execute(
                 const givm::enter_character& instruction, const definition_library& library,
-                card_table& table, execution_context& context, random_fn& random
+                unrestricted_table& table, execution_context& context, random_fn& random
             )
             {
                 const auto character = table[instruction.player].add(instruction.definition, character_state{}).id();

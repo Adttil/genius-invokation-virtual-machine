@@ -16,7 +16,7 @@ namespace
 
         int value;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const
         {
             return execution_state{};
         }
@@ -24,7 +24,7 @@ namespace
 
     struct unknown_context_instruction
     {
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const
         {
             return execution_state{};
         }
@@ -40,7 +40,7 @@ namespace
 
         int value;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const
         {
             return execution_state{};
         }
@@ -50,7 +50,7 @@ namespace
     {
         using context_type = void;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const
         {
             return execution_state{};
         }
@@ -60,7 +60,7 @@ namespace
     {
         using context_type = onpay_context<cost_event>;
 
-        execution_state execute(const definition_library&, card_table&, detail::execution_context&, random_fn&) const
+        execution_state execute(const definition_library&, detail::unrestricted_table&, detail::execution_context&, random_fn&) const
         {
             return execution_state{};
         }
@@ -70,7 +70,7 @@ namespace
     concept instruction_interface = requires(
         const T& instruction,
         const definition_library& library,
-        card_table& table,
+        detail::unrestricted_table& table,
         detail::execution_context& context,
         random_fn& random
     )

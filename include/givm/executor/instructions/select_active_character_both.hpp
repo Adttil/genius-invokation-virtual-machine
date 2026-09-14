@@ -36,7 +36,7 @@ namespace givm
         static execution_state execute(
             const givm::select_active_character_both& instruction,
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )
@@ -124,7 +124,7 @@ namespace givm
     private:
         static execution_state prepare_broadcasts(
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             character_id player0_selection,
             character_id player1_selection

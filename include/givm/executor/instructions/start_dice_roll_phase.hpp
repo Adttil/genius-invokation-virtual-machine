@@ -75,7 +75,7 @@ namespace givm
         }
 
         inline void draw_selected_dice(
-            card_table& table,
+            unrestricted_table& table,
             player_id player,
             dice_reroll_lane& lane,
             std::span<const std::uint32_t> pool,
@@ -98,7 +98,7 @@ namespace givm
         }
 
         inline void process_reroll_lane(
-            card_table& table,
+            unrestricted_table& table,
             player_id player,
             dice_reroll_lane& lane,
             std::span<const std::uint32_t> pool,
@@ -152,7 +152,7 @@ namespace givm
         static execution_state execute(
             const givm::start_dice_roll_phase& instruction,
             const definition_library& library,
-            card_table& table,
+            unrestricted_table& table,
             execution_context& context,
             random_fn& random
         )

@@ -5,59 +5,32 @@
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-using attachment_view = attachment_entity<const detail::table_storage>;
+class attachment_view;
 ```
 
-角色附属实体的只读视图。它可以查看实体的状态和所属关系，不能修改该实体。
+角色身上一个附属实体的只读视图，例如随角色持续存在的效果或装备。具体用途由定义决定。
 
-该视图仍然访问原牌桌中的实体；创建视图不会冻结或复制对局状态。
+## 成员函数
 
-## 示例
+|  |  |
+| --- | --- |
+| [`is_valid`](attachment_view/is_valid.md) | 判断实体是否尚未移除 |
+| [`operator bool`](attachment_view/operator_bool.md) | 判断实体是否尚未移除 |
+| [`size`](attachment_view/size.md) | 取得单实体范围的元素数 |
+| [`begin`](attachment_view/begin.md) | 取得单实体范围的起点 |
+| [`end`](attachment_view/end.md) | 取得单实体范围的终点 |
+| [`player`](attachment_view/player.md) | 取得所属玩家 |
+| [`id`](attachment_view/id.md) | 取得实体 ID |
+| [`definition_id`](attachment_view/definition_id.md) | 取得实体的定义 ID |
+| [`state`](attachment_view/state.md) | 访问实体状态 |
+| [`character`](attachment_view/character.md) | 取得所属角色 |
 
-```cpp
-#include <print>
-#include <string_view>
-#include <tuple>
+## 注意
 
-#include <givm/givm.hpp>
-
-template<class Category>
-struct example_source
-{
-    using definition_category = Category;
-    struct definition_type {};
-
-    std::string_view name() const { return "示例"; }
-    definition_type compile(givm::definition_compile_context&) const { return {}; }
-};
-
-int main()
-{
-    givm::definition_source_library sources{};
-    const example_source<givm::character_view> character_source{};
-    const example_source<givm::attachment_view> attachment_source{};
-    sources.add(character_source, attachment_source);
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
-    givm::card_table table{};
-    const auto player = table[givm::player_id{ 0 }];
-    const auto character_definition = id_map.get_id<givm::character_view>("示例");
-    const auto definition = id_map.get_id<givm::attachment_view>("示例");
-    const auto character = player.add(character_definition, { .max_health = 10, .health = 10 });
-    const auto entity = character.add(definition, { .count = 3 });
-    const givm::attachment_view view = entity;
-    std::println("计数: {}", view.state().count);
-}
-```
-
-输出
-
-```text
-计数: 3
-```
+从牌桌或所属实体取得该对象；复制它仍然访问同一个角色附属实体。视图的存活和移除约定见[实体的身份与访问](entity_access.md)。
 
 ## 参阅
 
 |  |  |
 | --- | --- |
-| [`attachment_entity`](attachment_entity.md) | 实体的完整访问接口 |
-| [实体的身份与访问](entity_access.md) | 只读访问与存活约定 |
+| [`attachment_state`](attachment_state.md) | 该实体的状态 |

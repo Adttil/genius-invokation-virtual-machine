@@ -8,6 +8,15 @@ namespace givm::detail
     // Internal protocol tests may inspect a single invocation without making it public API.
     struct executor_access
     {
+        static constexpr unrestricted_table& unrestricted(card_table& table) noexcept
+        {
+            return executor::unrestricted(table);
+        }
+        static constexpr const unrestricted_table& unrestricted(const card_table& table) noexcept
+        {
+            return executor::unrestricted(table);
+        }
+
         static frame_stack& stack(executor& target) { return target.context_.stack_; }
         static const frame_stack& stack(const executor& target) { return target.context_.stack_; }
         static execution_position position(const executor& target) { return target.context_.position_; }
@@ -25,7 +34,7 @@ namespace givm::detail
             target.settle_control_instructions(library);
             random_fn random{ source };
             const auto instruction = library.instruction(target.context_.position_);
-            const auto state = instruction.template execute<Observed>(library, table, target.context_, random);
+            const auto state = instruction.template execute<Observed>(library, unrestricted(table), target.context_, random);
             if(state == continue_execution)
                 target.settle_control_instructions(library);
 #ifndef NDEBUG

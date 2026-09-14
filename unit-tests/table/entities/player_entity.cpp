@@ -35,7 +35,7 @@ namespace
     }
 }
 
-TEST_CASE("player_entity preserves logical deck order across insertion and extraction", "[player_entity]")
+TEST_CASE("player_handle preserves logical deck order across insertion and extraction", "[player_handle]")
 {
     const test::named_definition_source<card_definition> alpha{ "Alpha" };
     const test::named_definition_source<card_definition> beta{ "Beta" };
@@ -45,7 +45,7 @@ TEST_CASE("player_entity preserves logical deck order across insertion and extra
     const auto beta_id = id_map.get_id<card_definition>("Beta");
     const auto gamma_id = id_map.get_id<card_definition>("Gamma");
 
-    card_table table{};
+    detail::unrestricted_table table{};
     const auto player = table[player_id{ 0 }];
     player.add_deck_card(alpha_id, {});
     player.add_deck_card(beta_id, {});
@@ -67,7 +67,7 @@ TEST_CASE("player_entity preserves logical deck order across insertion and extra
     CHECK(player.deck_card_count() == 0);
 }
 
-TEST_CASE("player_entity cleanup preserves deck order", "[player_entity]")
+TEST_CASE("player_handle cleanup preserves deck order", "[player_handle]")
 {
     const test::named_definition_source<card_definition> alpha{ "Alpha" };
     const test::named_definition_source<card_definition> beta{ "Beta" };
@@ -79,7 +79,7 @@ TEST_CASE("player_entity cleanup preserves deck order", "[player_entity]")
     const auto gamma_id = id_map.get_id<card_definition>("Gamma");
     const auto delta_id = id_map.get_id<card_definition>("Delta");
 
-    card_table table{};
+    detail::unrestricted_table table{};
     const auto player = table[player_id{ 0 }];
     player.add_deck_card(alpha_id, {});
     player.add_deck_card(beta_id, {});
@@ -99,7 +99,7 @@ TEST_CASE("player_entity cleanup preserves deck order", "[player_entity]")
     CHECK(deck_definition_values(cleaned_player) == expected);
 }
 
-TEST_CASE("player_entity cleanup preserves hand order after erased cards are removed", "[player_entity]")
+TEST_CASE("player_handle cleanup preserves hand order after erased cards are removed", "[player_handle]")
 {
     const test::named_definition_source<card_definition> alpha{ "Alpha" };
     const test::named_definition_source<card_definition> beta{ "Beta" };
@@ -109,7 +109,7 @@ TEST_CASE("player_entity cleanup preserves hand order after erased cards are rem
     const auto beta_id = id_map.get_id<card_definition>("Beta");
     const auto gamma_id = id_map.get_id<card_definition>("Gamma");
 
-    card_table table{};
+    detail::unrestricted_table table{};
     const auto player = table[player_id{ 0 }];
     player.add_hand_card(alpha_id, {});
     player.add_hand_card(beta_id, {});

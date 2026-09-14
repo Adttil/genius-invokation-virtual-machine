@@ -2,7 +2,7 @@
 
 本篇保留牌桌内部存储方案的比较、拒绝理由和优化边界，供修改容器与实体访问实现时查阅。下面沿用原设计记录的编号，便于引用具体约束和候选方案；结构草图用于解释布局，不是要求调用方操作这些字段的公开 ABI。
 
-对照基线为 `b3d6c50`：`player_data` 仍采用方案 B，卡牌 status 仍采用方案 S1。候选方案 A、S2 和第 6 节的取舍属于设计历史；“第一版”指当时实验基线，不代表这些方案已经完成性能比较。公开使用约定见[实体的身份与访问](../reference/table/entity_access.md)、[card_data](../reference/table/card_data.md)及 [card_table::clean_up](../reference/table/card_table/clean_up.md)。
+对照基线为 `b3d6c50`：`player_data` 仍采用方案 B，卡牌 status 仍采用方案 S1。候选方案 A、S2 和第 6 节的取舍属于设计历史；“第一版”指当时实验基线，不代表这些方案已经完成性能比较。公开使用约定见[实体的身份与访问](../reference/table/entity_access.md)及 [card_table::clean_up](../reference/table/card_table/clean_up.md)；卡牌内部搬运数据另见[牌与区域实体模型](entity_identity.md#card-data)。
 
 本文记录 `card_table` 内部实体存储结构的目标、约束、候选方案、已否决方案，以及第一版实验实现的取舍。它讨论的是内部布局与生命周期，不规定卡牌或 status 的具体规则语义。
 
@@ -21,7 +21,7 @@
 
 ### 2.1 实体与上下文
 
-公开的区域身份与转移约定见[实体的身份与访问](../reference/table/entity_access.md#卡牌的移动)。这里保留它对存储设计的限制。
+公开的区域身份与访问约定见[实体的身份与访问](../reference/table/entity_access.md)。这里保留它对存储设计的限制。
 
 实体是“数据 + 上下文”。同一份卡牌数据位于牌堆和位于手牌时，是两个不同的实体：
 
@@ -32,16 +32,16 @@
 
 因此，强类型的 `deck_card_id` 与 `hand_card_id` 不能只在类型名上不同，查询时还必须验证其上下文。
 
-### 2.2 裸数据层与实体访问层
+### 2.2 裸数据层与实体访问层（历史方案）
 
-**名称与公开边界的变化：**下文原记录把 `xxx_entity<TStorage>` 称为“内部模板名”，强调的是实现命名和通常由返回类型推导的使用方式。当前 reference 已逐一说明 [character_entity](../reference/table/character_entity.md) 等实体访问类及其成员，不能据这句旧称谓把实际可调用接口排除在公开文档外。`table_storage`、`player_data`、`status_data` 的容器仍是后台细节；`card_data` 则因公开搬运接口直接使用而另有 API 页。
+以下保留原方案的名称、类型原型和取舍理由，不表示当前公开接口。当前完整牌桌为 `detail::unrestricted_table`，公开 `card_table` 通过私有继承限制直接修改；基础句柄模板改名为 `detail::basic_xxx_handle<TStorage>`。公开 `xxx_view` 是私有继承只读句柄特化的独立类，通过 `using` 开放读取成员；内部 `detail::xxx_handle<TStorage>` 别名在可变情况下选择基础句柄，在不可变情况下选择独立 view。`card_data` 及其搬运操作也已归入内部使用。
 
-table 模块分为两层：
+原方案将 table 模块分为两层：
 
 - 裸数据层：`table_storage`、`player_data`、`card_data`、`status_data` 等只保存数据和内部容器，不提供面向用户的行为接口；
 - 访问层：`card_table` 与 `xxx_entity<TStorage>` 共同把裸数据解释为“数据 + 完整上下文”的实体。
 
-`xxx_entity<TStorage>` 是内部模板名，`xxx_view` 是只读别名，例如：
+当时 `xxx_entity<TStorage>` 是实体访问模板名，`xxx_view` 是只读别名，例如：
 
 ```cpp
 template<class TStorage>
@@ -50,19 +50,19 @@ class character_entity;
 using character_view = character_entity<const detail::table_storage>;
 ```
 
-这样可以避免 `handle` 同时表示“事件处理”和“实体句柄”。事件响应仍使用 `handle` 语义，例如 `handle_fn_t` 和定义库上的 `can_handle<TEvent, TView>(definition_id)`；实体访问对象则统一叫 entity/view。source 的可选响应能力接口则是 `can_handle<TEntityView, TEvent>()`。
+当时选择 entity/view 命名，是为了避免 `handle` 同时表示“事件处理”和“实体句柄”。当前名称则直接以 `xxx_handle` 表达句柄身份；事件响应函数仍使用 `handle`，二者由所在类型和接口区分。
 
 ### 2.3 table_accessor 与强耦合边界
 
 核对位置为 `include/givm/table/table_accessor.hpp` 及 `table/entities/`；桥的两个静态操作仍为 private，仅向列出的 table 家族开放。
 
-`card_table`、所有 `xxx_entity<TStorage>` 和 `card_status_range` 本质上是同一组 table 内部机制。为了热路径效率，它们需要直接读写原始 storage，而不是通过公开构造函数或防御性包装层反复绕路。例如从玩家实体遍历手牌时，最有效的形式是直接把 `table_storage*`、父级 `player_data*` 和子级 `card_data*` 填入新的实体访问对象。
+`unrestricted_table`、所有 `basic_xxx_handle<TStorage>` 和 `card_status_range` 本质上是同一组 table 内部机制。为了热路径效率，它们需要直接读写原始 storage，而不是通过公开构造函数或防御性包装层反复绕路。例如从玩家句柄遍历手牌时，最有效的形式是直接把 `table_storage*`、父级 `player_data*` 和子级 `card_data*` 填入新的实体访问对象。
 
 因此 table 模块使用 `detail::table_accessor` 作为单向桥：
 
-- `make_uninitialized<TEntity>()` 构造一个尚未填充 storage 的实体访问对象；
-- `storage_of(entity_or_table)` 打开 `card_table` 或实体访问对象的私有 `storage_`；
-- 只有 `card_table`、实体访问对象和 range 被声明为 friend；
+- `make_uninitialized<THandle>()` 构造一个尚未填充 storage 的实体访问对象；
+- `storage_of(entity_or_table)` 打开 `unrestricted_table` 或实体访问对象的私有 `storage_`；
+- 只有内部牌桌、基础句柄和 range 被声明为 friend；
 - 外部用户不能取得 `table_storage`，也不能随意构造一个有效实体。
 
 这不是为了隐藏 table 家族内部的实现细节，而是为了把强耦合限制在一个有规律的内部边界中。public 接口仍按实体能力表达，private/detail 命名则应暴露真实实现，以便维护和优化。
@@ -71,7 +71,7 @@ using character_view = character_entity<const detail::table_storage>;
 
 ### 2.4 生命周期与安全点
 
-公开使用时还应注意：[is_valid](../reference/table/hand_card_entity/is_valid.md) 不能检测已经悬空的访问对象。以下“不复用”是本设计的执行期分配策略，不是允许跨清理继续尝试旧 ID 的保护机制。
+公开使用时还应注意：[is_valid](../reference/table/hand_card_view/is_valid.md) 不能检测已经悬空的访问对象。以下“不复用”是本设计的执行期分配策略，不是允许跨清理继续尝试旧 ID 的保护机制。
 
 本项目不采用带 generation 的通用 slot map。执行过程中实体只会被标记删除或从所属链/顺序表中脱离，不复用其槽位。只有在仍有效的执行现场、日志和展示任务都不再依赖旧实体 ID 的安全点才调用 `table.clean_up()`。终局会逻辑废弃旧执行现场，不再要求主动清栈；上层仍须结束自身对旧实体身份的观察和展示任务。
 
@@ -144,7 +144,7 @@ std::vector<size_t> deck_order;
 
 ### 3.2 方案 B：牌堆稳定槽位池 + 牌堆顺序表，手牌保持连续数组
 
-**首版采用，核对基线仍在使用。**源码见 `include/givm/table/data/player_data.hpp` 与 `table/entities/player_entity.hpp`。稳定指槽位编号，不保证 `vector` 元素地址。
+**首版采用，核对基线仍在使用。**源码见 `include/givm/table/data/player_data.hpp` 与 `table/entities/player_handle.hpp`。稳定指槽位编号，不保证 `vector` 元素地址。
 
 牌堆保存两个数组：
 
@@ -179,7 +179,7 @@ std::vector<card_data> hand_card_datas; // 继续尾插、标记删除
 
 ### 4.1 方案 S1：扁平节点池 + 单向索引链表
 
-**首版采用，核对基线仍在使用。**源码分别在 `table/data/status_data.hpp` 和 `table/entities/status_entity.hpp`；此处的 O(1) 追加指已有容量时的链链接操作，节点池扩容仍有 `vector` 的搬移成本。
+**首版采用，核对基线仍在使用。**源码分别在 `table/data/status_data.hpp` 和 `table/entities/status_handle.hpp`；此处的 O(1) 追加指已有容量时的链链接操作，节点池扩容仍有 `vector` 的搬移成本。
 
 所有卡牌共用一个 table 级节点池：
 
@@ -270,7 +270,7 @@ address = pool_base + id.byte_offset;
 
 ### 5.2 保留 capacity 的原地填洞
 
-**复杂度适用范围：**下文 O(槽位数 + 卡牌数)、O(1) 额外空间指 status 池的扫描与重写。当前 `card_table::clean_up_statuses()` 用旧源槽 `next` 的最高位标记搬迁目标，并在 `resize` 前完成全部链接与链首尾重写。牌堆清理在 `player_data::clean_up()` 中每搬一张牌都对 `deck_card_order` 做一次线性 `find`；最坏情况下有线性次数搬移，其总成本可为 O(n²)，不能把 status 算法的线性界直接用于整个 `clean_up()`。
+**复杂度适用范围：**下文 O(槽位数 + 卡牌数)、O(1) 额外空间指 status 池的扫描与重写。当前 `unrestricted_table::clean_up_statuses()` 用旧源槽 `next` 的最高位标记搬迁目标，并在 `resize` 前完成全部链接与链首尾重写。牌堆清理在 `player_data::clean_up()` 中每搬一张牌都对 `deck_card_order` 做一次线性 `find`；最坏情况下有线性次数搬移，其总成本可为 O(n²)，不能把 status 算法的线性界直接用于整个 `clean_up()`。
 
 cleanup 不默认分配一个大小刚好的新数组。曾经达到过的容量通常以后还会再次需要；丢弃容量会让后续扩容重新付出分配和搬移代价。`resize(live_count)` 只缩短 size，不调用 `shrink_to_fit`。
 

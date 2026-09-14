@@ -54,8 +54,7 @@ int main()
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");
     auto player = table[givm::player_id{ 0 }];
-    player.insert_deck_card(0, a, {});
-    player.insert_deck_card(1, b, {});
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { a, b } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

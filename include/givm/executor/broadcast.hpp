@@ -47,7 +47,7 @@ namespace givm::detail
 
     template<class TEvent>
     std::vector<handler_id<TEvent>> collect_all_broadcast_targets(
-        const definition_library& library, const card_table& table
+        const definition_library& library, const unrestricted_table& table
     )
     {
         std::vector<handler_id<TEvent>> targets;
@@ -105,7 +105,7 @@ namespace givm::detail
 
     template<class TEvent>
     void prepare_broadcast(
-        const definition_library& library, const TEvent& event, const card_table& table, frame_stack& stack
+        const definition_library& library, const TEvent& event, const unrestricted_table& table, frame_stack& stack
     )
     {
         auto targets = collect_all_broadcast_targets<TEvent>(library, table);
@@ -123,7 +123,7 @@ namespace givm::detail
         const definition_library& library,
         TEntityView entity,
         TEvent& event,
-        const card_table& table,
+        const unrestricted_table& table,
         random_fn& random
     )
     {
@@ -139,7 +139,7 @@ namespace givm::detail
     template<class TEvent>
     bool continue_broadcast(
         const definition_library& library,
-        const card_table& table,
+        const unrestricted_table& table,
         execution_context& context,
         random_fn& random
     )

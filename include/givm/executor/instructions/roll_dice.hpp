@@ -39,7 +39,7 @@ namespace givm
         }
 
         inline void roll_selected_dice(
-            card_table& table,
+            unrestricted_table& table,
             player_id player,
             std::bitset<selection_capacity> selected_mask,
             random_fn& random
@@ -71,7 +71,7 @@ namespace givm
             template<bool Observed>
             static execution_state execute(
                 const givm::roll_dice& instruction, const definition_library&,
-                card_table& table, execution_context& context, random_fn& random
+                unrestricted_table& table, execution_context& context, random_fn& random
             )
             {
                 auto&& [input] = context.stack().top<selector>();

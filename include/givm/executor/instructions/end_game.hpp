@@ -19,7 +19,7 @@ namespace givm
         static execution_state execute(
             const givm::end_game& instruction,
             const definition_library&,
-            card_table&,
+            unrestricted_table&,
             execution_context& context,
             random_fn&
         )

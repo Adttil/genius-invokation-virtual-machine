@@ -61,8 +61,10 @@ int main()
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::card_table table{};
-    const auto character = table[givm::player_id{ 0 }].add(
-        ids.get_id<givm::character_view>("character"), givm::character_state{});
+    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
+        .characters = { ids.get_id<givm::character_view>("character") }
+    });
+    const auto character = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

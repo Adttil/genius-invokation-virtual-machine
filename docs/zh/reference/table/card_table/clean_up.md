@@ -18,9 +18,12 @@ constexpr void clean_up() noexcept;
 
 清理可能改变实体 ID，并使已取得的实体访问对象、范围和状态引用失效。清理后应重新从牌桌获取它们；不要在结算仍持有这些对象时调用。牌库中尚未移除卡牌的先后顺序保持不变。
 
+
 ## 示例
 
 ```cpp
+#include <bitset>
+#include <cstdint>
 #include <print>
 #include <ranges>
 #include <string_view>
@@ -28,38 +31,50 @@ constexpr void clean_up() noexcept;
 
 #include <givm/givm.hpp>
 
-template<class Category>
-struct example_source
+struct card_source
 {
-    using definition_category = Category;
+    using definition_category = givm::card_definition;
     struct definition_type {};
-
-    std::string_view name() const { return "示例"; }
+    std::string_view source_name;
+    std::string_view name() const { return source_name; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
 };
 
 int main()
 {
+    card_source first{ "first" };
+    card_source second{ "second" };
     givm::definition_source_library sources{};
-    const example_source<givm::card_definition> card_source{};
-    sources.add(card_source);
-    const auto [library, id_map] = sources.compile(std::tuple{}, std::tuple{});
+    sources.add(first, second);
+    const auto [library, ids] = sources.compile(
+        std::tuple{ givm::draw_cards{ .count = 1 }, givm::draw_cards{ .count = 1, .player = givm::relative_player::other }, givm::replace_cards{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::card_table table{};
-    const auto player = table[givm::player_id{ 0 }];
-    const auto definition = id_map.get_id<givm::card_definition>("示例");
-
-    player.add_hand_card(definition, {});
-    player.add_hand_card(definition, {});
-    table[givm::hand_card_id{ { 0 }, 0 }].erase();
-    std::println("清理前全部手牌位置: {}", std::ranges::distance(player.hand_cards<false>()));
+    const auto a = ids.get_id<givm::card_definition>("first");
+    const auto b = ids.get_id<givm::card_definition>("second");
+    for(const givm::player_id player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
+    {
+        table.load_deck(player, givm::linked_deck{ .cards = { b, a } });
+    }
+    auto random = []() -> std::uint32_t { return 0; };
+    givm::executor execution{};
+    execution.enter_entry(library);
+    execution.run(library, table, random);
+    std::bitset<givm::selection_capacity> selected{};
+    selected.set(0);
+    execution.view_in<givm::execution_state::card_selection>().select(selected);
+    execution.run(library, table, random);
+    std::println("清理前的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));
     table.clean_up();
-    std::println("清理后手牌数量: {}", table[givm::player_id{ 0 }].hand_card_count());
+    std::println("清理后的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));
+    std::println("保留的手牌张数: {}", table[givm::player_id{ 0 }].hand_card_count());
 }
 ```
 
 输出
 
 ```text
-清理前全部手牌位置: 2
-清理后手牌数量: 1
+清理前的手牌槽位数: 2
+清理后的手牌槽位数: 1
+保留的手牌张数: 1
 ```
