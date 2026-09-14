@@ -64,7 +64,8 @@ int main()
     const character_source source{};
     givm::definition_source_library sources{};
     sources.add(source);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{}, std::tuple{ givm::start_round{} }
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");

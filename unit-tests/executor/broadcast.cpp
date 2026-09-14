@@ -52,7 +52,7 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
     const response_source second{ "Second", &handlers, false };
     givm::definition_source_library sources;
     REQUIRE(sources.add(first, second));
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(sources,
         std::tuple{ givm::test_command{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}
     );
     givm::table table;

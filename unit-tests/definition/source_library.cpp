@@ -149,14 +149,19 @@ TEST_CASE("selected definitions include transitive named dependencies", "[source
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
 
+    const auto prepared_ids = sources.make_issued_id_map(selection);
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = sources.compile(selection, program, program);
+    const auto [library, id_map] = compile(sources, selection, program, program);
     CHECK(id_map.has<givm::card_definition>("Root"));
     CHECK(id_map.has<givm::support_view>("Support"));
     CHECK_FALSE(id_map.has<givm::card_definition>("Unused"));
 
-    CHECK(bool(library.name(id_map.get_id<givm::card_definition>("Root")) == "Root"));
-    CHECK(bool(library.name(id_map.get_id<givm::support_view>("Support")) == "Support"));
+    const auto root_id = prepared_ids.get_id<givm::card_definition>("Root");
+    const auto support_id = prepared_ids.get_id<givm::support_view>("Support");
+    CHECK(root_id == id_map.get_id<givm::card_definition>("Root"));
+    CHECK(support_id == id_map.get_id<givm::support_view>("Support"));
+    CHECK(bool(library.name(root_id) == "Root"));
+    CHECK(bool(library.name(support_id) == "Support"));
 }
 
 TEST_CASE("tag dependencies select matching definitions only", "[source_library]")
@@ -205,18 +210,27 @@ TEST_CASE("issued ids address the definitions produced by compilation", "[source
         .tag_count = 1
     };
 
-    givm::definition_source_library sources;
-    REQUIRE(sources.add(zulu, alpha));
+    for(const bool reverse_order : { false, true })
+    {
+        CAPTURE(reverse_order);
+        givm::definition_source_library sources;
+        REQUIRE((reverse_order ? sources.add(alpha, zulu) : sources.add(zulu, alpha)));
 
-    const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = sources.compile(program, program);
-    const auto alpha_id = id_map.get_id<givm::card_definition>("Alpha");
-    const auto zulu_id = id_map.get_id<givm::card_definition>("Zulu");
-    const auto alpha_tag = id_map.get_tag_id("alpha");
-    const auto zeta_tag = id_map.get_tag_id("zeta");
+        const auto prepared_ids = sources.make_issued_id_map();
+        const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
+        const auto [library, id_map] = compile(sources, program, program);
+        const auto alpha_id = prepared_ids.get_id<givm::card_definition>("Alpha");
+        const auto zulu_id = prepared_ids.get_id<givm::card_definition>("Zulu");
+        const auto alpha_tag = prepared_ids.get_tag_id("alpha");
+        const auto zeta_tag = prepared_ids.get_tag_id("zeta");
 
-    CHECK(bool(library.name(alpha_id) == "Alpha"));
-    CHECK(bool(library.name(zulu_id) == "Zulu"));
-    CHECK(bool(library.tag_name(alpha_tag) == "alpha"));
-    CHECK(bool(library.tag_name(zeta_tag) == "zeta"));
+        CHECK(alpha_id == id_map.get_id<givm::card_definition>("Alpha"));
+        CHECK(zulu_id == id_map.get_id<givm::card_definition>("Zulu"));
+        CHECK(alpha_tag == id_map.get_tag_id("alpha"));
+        CHECK(zeta_tag == id_map.get_tag_id("zeta"));
+        CHECK(bool(library.name(alpha_id) == "Alpha"));
+        CHECK(bool(library.name(zulu_id) == "Zulu"));
+        CHECK(bool(library.tag_name(alpha_tag) == "alpha"));
+        CHECK(bool(library.tag_name(zeta_tag) == "zeta"));
+    }
 }

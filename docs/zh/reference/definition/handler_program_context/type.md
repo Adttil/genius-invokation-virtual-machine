@@ -52,7 +52,8 @@ int main()
     const support_source source{};
     givm::definition_source_library sources{};
     sources.add(source);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{}, std::tuple{ givm::start_round{} }
     );
 }

@@ -35,7 +35,8 @@ int main()
 {
     givm::definition_source_library sources{};
     // 编译一个最大回合数为 2 的定义库
-    const auto [library, id_map] = sources.compile(
+    const auto [library, id_map] = compile(
+        sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 2 } }
     );
@@ -65,4 +66,4 @@ int main()
 | | |
 | --- | --- |
 | [`table`](../table/table.md) | 游戏对局的牌桌 |
-| [`definition_library`](../definition/definition_library.md) | 编译后的定义库 |
+| [`definition_library`](definition_library.md) | 编译后的定义库 |

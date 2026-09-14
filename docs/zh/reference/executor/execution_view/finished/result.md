@@ -27,7 +27,8 @@ constexpr game_result result() const noexcept;
 int main()
 {
     givm::definition_source_library sources{};
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::table table{};
     givm::executor execution{};

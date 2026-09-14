@@ -6,6 +6,8 @@
 
 源先加入 [`definition_source_library`](definition_source_library.md)，再与本场对局需要的其他源一起编译。源对象不由库拥有，应在源库使用期间保持有效；名称、标签及依赖字符串的字符存储也必须保持有效，编译后名称和标签仍由定义库使用。
 
+最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 和 [`program_entry`](../executor/program_entry.md) 在执行模块中完整定义；编写定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开指令和事件。
+
 ## 必需成员
 
 | | |
@@ -35,7 +37,9 @@
 
 `*_dependencies()` 列出名称，`*_dependencies_by_tag()` 列出形如 `治疗 & !料理` 的筛选表达式。每种查询须使用相应的声明：名称依赖通过 `resolve_id` 查询，标签依赖通过 `resolve_tag` 查询，筛选依赖通过 `resolve_ids_by_tag` 查询。只声明名称依赖不会顺带授权标签查询，反之亦然。
 
-当调用方只选择部分定义时，源库会自动加入所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
+登记后，名称、标签和依赖声明必须保持不变。登记、遍历和编译可以分别调用这些接口；每次返回的范围只消费一次，但多次调用须提供相同内容。
+
+当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会自动加入所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
 
 ## 事件响应
 
@@ -53,7 +57,7 @@ static givm::handler_program_entry_t<TEvent> handle(
 
 `TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。没有匹配的函数就表示不响应。
 
-响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的指令](../executor/instructions.md)，通过 [`add_program`](definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
+响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的指令](../executor/instructions.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
 
 入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](../executor/events/character_initialization.md)要求在响应函数内直接填写初始状态。
 
@@ -94,7 +98,8 @@ int main()
     const character_source source{};
     givm::definition_source_library sources{};
     sources.add(source);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{}, std::tuple{ givm::start_round{} }
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");

@@ -9,7 +9,7 @@ using definition_selection =
     std::array<std::span<const std::string_view>, definition_types::size()>;
 ```
 
-一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。它们声明的依赖由源库自动补入，无须调用方逐一列出。
+一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。建立 [ID 映射](definition_source_library/make_issued_id_map.md)或[编译定义库](../executor/compile.md)时会自动补入它们声明的依赖，无须调用方逐一列出。
 
 ## 注意
 

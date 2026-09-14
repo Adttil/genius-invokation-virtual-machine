@@ -58,7 +58,7 @@ int main()
     givm::issued_id_map ids{};
     ids.add<givm::card_definition>("恢复药剂", {});
     ids.add<givm::character_view>("测试角色", {});
-    const auto deck = givm::link_deck(
+    const auto deck = link_deck(
         ids,
         std::array<std::string_view, 2>{ "恢复药剂", "恢复药剂" },
         std::array<std::string_view, 1>{ "测试角色" }

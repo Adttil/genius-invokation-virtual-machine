@@ -7,7 +7,7 @@
 ```cpp
 constexpr void enter_entry(const definition_library& library);
 ```
-[`definition_library`](../../definition/definition_library.md)
+[`definition_library`](../definition_library.md)
 
 准备按照 `library` 提供的游戏流程开始一场对局。
 
@@ -39,7 +39,8 @@ constexpr void enter_entry(const definition_library& library);
 int main()
 {
     givm::definition_source_library sources{};
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 1 } }
     );

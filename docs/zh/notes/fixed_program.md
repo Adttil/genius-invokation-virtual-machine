@@ -136,7 +136,7 @@ handler 或领域指令可以根据运行时状态选择不同的固定入口。
 
 ## 程序的内部连接
 
-核对位置：[definition/library.hpp](../../../include/givm/definition/library.hpp)、[definition/source_library.hpp](../../../include/givm/definition/source_library.hpp)、[executor/executor.hpp](../../../include/givm/executor/executor.hpp)。
+核对位置：[executor/library.hpp](../../../include/givm/executor/library.hpp)、[executor/executor.hpp](../../../include/givm/executor/executor.hpp)。
 
 当前实现只保留位置 0 的空入口占位，根程序从内部位置 1 开始；不再预装三个特殊终局入口。旧设计以终局位置编码结果、让 definition 构建时安装终局前缀，其动机和热路径取舍保留在[历史稿](history/fixed_program_2026_09_05.md)。如今结果由 executor 的 `end_game` 指令参数携带，definition 无需依赖具体终局实现。
 
@@ -150,7 +150,7 @@ handler 或领域指令可以根据运行时状态选择不同的固定入口。
 
 ## 指令存储的实现约束
 
-[instruction.hpp](../../../include/givm/definition/instruction.hpp) 中的擦除容器保存最多 64 字节、按 `std::max_align_t` 对齐的指令数据，以及提供执行转发的类型信息指针。指令按字节复制；公开擦除入口要求平凡可复制、平凡可析构，并检查尺寸和对齐，具备对应标准库特性时还检查隐式生命周期类型。
+[instruction.hpp](../../../include/givm/executor/instruction.hpp) 中的擦除容器保存最多 64 字节、按 `std::max_align_t` 对齐的指令数据，以及提供执行转发的类型信息指针。指令按字节复制；公开擦除入口要求平凡可复制、平凡可析构，并检查尺寸和对齐，具备对应标准库特性时还检查隐式生命周期类型。
 
 内部取指对象借用该数据与类型信息，用函数指针做运行时分派，不依赖虚基类，也没有为每条指令保存一份可变执行状态。公开 execution_view 借用结算现场，与不可变指令数据的借用不同。这些数据结构说明了为何指令参数、运行状态与外部对象生命周期需要分开审查，不是新的跨版本二进制 ABI。
 

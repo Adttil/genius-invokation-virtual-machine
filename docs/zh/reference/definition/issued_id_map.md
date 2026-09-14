@@ -32,7 +32,7 @@ class issued_id_map;
 
 ## 注意
 
-映射不拥有名称字符串；名称、标签对应的字符存储应在映射及其使用者存续期间保持有效。通常使用 [`definition_source_library::compile`](definition_source_library/compile.md) 返回的配套映射。
+映射不拥有名称字符串；名称、标签对应的字符存储应在映射及其使用者存续期间保持有效。通常使用 [`compile`](../executor/compile.md) 返回的配套映射。
 
 ## 示例
 

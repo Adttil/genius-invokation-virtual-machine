@@ -49,7 +49,8 @@ int main()
     observer_source source{ &count };
     givm::definition_source_library sources{};
     sources.add(source);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{});
     givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{

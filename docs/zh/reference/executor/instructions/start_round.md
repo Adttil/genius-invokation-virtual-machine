@@ -41,7 +41,8 @@ struct start_round;
 int main()
 {
     givm::definition_source_library sources{};
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 2 } });
     givm::table table{};
     auto random = []() -> std::uint32_t { return 0; };

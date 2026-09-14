@@ -15,7 +15,6 @@
 #include <utility>
 #include <vector>
 
-#include "library.hpp"
 #include "source_view.hpp"
 #include "issued_id_map.hpp"
 #include "definition_categories.hpp"
@@ -23,12 +22,6 @@
 
 namespace givm
 {
-    struct definition_compile_result
-    {
-        definition_library library;
-        issued_id_map id_map;
-    };
-
     using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
 
     class definition_source_library
@@ -119,6 +112,16 @@ namespace givm
             return bucket.entries[bucket.name_to_index.at(name)].source;
         }
 
+        template<class TDefinitionType>
+        auto source_views() const
+        {
+            return bucket_for<TDefinitionType>().entries
+                | std::views::transform([](const auto& entry)
+                {
+                    return entry.source;
+                });
+        }
+
         issued_id_map make_issued_id_map() const
         {
             return make_issued_id_map(make_full_selection());
@@ -127,33 +130,6 @@ namespace givm
         issued_id_map make_issued_id_map(const definition_selection& selection) const
         {
             return make_issued_id_map(resolve_selection(selection));
-        }
-
-        template<class TInitializationSequence, class TRoundSequence>
-        definition_compile_result compile(
-            TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program
-        ) const
-        {
-            return compile(
-                make_full_selection(),
-                std::forward<TInitializationSequence>(initialization_program),
-                std::forward<TRoundSequence>(round_program)
-            );
-        }
-
-        template<class TInitializationSequence, class TRoundSequence>
-        definition_compile_result compile(
-            const definition_selection& selection,
-            TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program
-        ) const
-        {
-            return compile(
-                resolve_selection(selection),
-                std::forward<TInitializationSequence>(initialization_program),
-                std::forward<TRoundSequence>(round_program)
-            );
         }
 
     private:
@@ -649,39 +625,6 @@ namespace givm
             return id_map;
         }
 
-        template<class TInitializationSequence, class TRoundSequence>
-        definition_compile_result compile(
-            const selection_mask& selected,
-            TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program
-        ) const
-        {
-            auto id_map = make_issued_id_map(selected);
-            definition_library result{ id_map.tag_names() };
-            detail::append_instructions<void>(
-                result.program_,
-                std::forward<TInitializationSequence>(initialization_program)
-            );
-            const detail::execution_position round_entry_position = result.program_.size();
-            detail::append_instructions<void>(
-                result.program_,
-                std::forward<TRoundSequence>(round_program)
-            );
-            result.program_.push_back(detail::any_instruction{
-                detail::jump_instruction{ .target = round_entry_position }
-            });
-
-            [&]<size_t...I>(std::index_sequence<I...>)
-            {
-                (append_selected_sources<I>(selected[I], id_map, result), ...);
-            }(std::make_index_sequence<definition_count>{});
-
-            return {
-                .library = std::move(result),
-                .id_map = std::move(id_map)
-            };
-        }
-
         template<size_t I>
         void collect_selected_tags(
             const std::vector<bool>& selected,
@@ -729,26 +672,6 @@ namespace givm
                 id_map.template add<definition_category>(
                     entries[index].name,
                     entries[index].declarations.tags
-                );
-            }
-        }
-
-        template<size_t I>
-        void append_selected_sources(
-            const std::vector<bool>& selected,
-            const issued_id_map& id_map,
-            definition_library& library
-        ) const
-        {
-            using definition_category = typename definition_type_list::template type_at<I>;
-            const auto& entries = std::get<I>(buckets_).entries;
-            for(size_t index : ordered_selected_indices<I>(selected))
-            {
-                library.template append<definition_category>(
-                    entries[index].source,
-                    entries[index].name,
-                    id_map,
-                    entries[index].declarations
                 );
             }
         }

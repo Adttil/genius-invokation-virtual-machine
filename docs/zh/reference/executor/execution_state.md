@@ -71,7 +71,8 @@ enum class execution_state : std::uint8_t
 int main()
 {
     givm::definition_source_library sources{};
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } });
     givm::table table{};
     givm::executor execution{};

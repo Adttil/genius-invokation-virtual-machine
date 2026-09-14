@@ -96,7 +96,7 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
     givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta, first, second));
     const auto program = std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } };
-    const auto [library, id_map] = sources.compile(program, program);
+    const auto [library, id_map] = compile(sources, program, program);
     const auto deck = link_deck(
         id_map,
         std::array<std::string_view, 3>{ "Beta", "Alpha", "Beta" },
@@ -143,7 +143,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
 
     givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta, gamma, delta));
-    const auto [library, id_map] = sources.compile(
+    const auto [library, id_map] = compile(sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }
     );
@@ -205,7 +205,7 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
 
     givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta));
-    const auto [library, id_map] = sources.compile(
+    const auto [library, id_map] = compile(sources,
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }
     );

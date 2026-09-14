@@ -4,6 +4,8 @@
 
 对照基线为 `b3d6c50`。旧记录的 Context/栈 ABI 称法、源对象生命周期概括、逻辑编译步骤与实际写入顺序在相应位置标明差异。持久化一节记录上层格式的设计方向，不声称核心已经提供现成序列化器。
 
+当前模块边界：definition 保留定义源协议、源库、source view 和 ID 准备；executor 提供最终编译的非成员 `givm::compile`，并拥有完整的编译上下文、程序入口及编译后的定义库。source 协议只需前置声明上下文和入口；定义拓展者包含 `givm.hpp` 后取得完整类型。本文的 `source.compile(context)` 始终指单项源的编译操作，整库编译则通过 `compile(source_library, ...)` 调用。
+
 definition source 是一个描述单项游戏规则的 C++ 对象。它可以代表一张卡牌、一个角色、一种状态、一个召唤物或其他一种 definition。核心先读取它的身份与依赖，再调用它编译出不可变的 definition；对局执行规则时只读取编译结果，不再调用原 source 对象。原记录由此概括“source 仍需保持存活，因为源库和编译库可以保存由它提供的非拥有字符串视图”；源对象、字符存储和编译结果的具体拥有边界在下文“注册与生命周期”中分别核对。
 
 本文按照编写定义源时理解信息的顺序介绍接口：身份、依赖、编译和 handler。每个接口会分别说明是否必须、参数、返回值和语义。
@@ -156,7 +158,7 @@ std::array<std::string_view, 1> card_dependencies_by_tag() const
 
 ## 编译定义
 
-入口见 [definition_compile_context](../reference/definition/definition_compile_context.md)。依赖闭包和 ID 先确定，再允许 source 一次构造完整结果，是以下接口共同依赖的顺序。
+入口见 [definition_compile_context](../reference/executor/definition_compile_context.md)。依赖闭包和 ID 先确定，再允许 source 一次构造完整结果，是以下接口共同依赖的顺序。
 
 依赖闭包和本次编译的 issued id 全部确定后，核心调用 source 的 `compile(...)`。
 
@@ -187,7 +189,7 @@ definition_type compile(definition_compile_context&) const
 
 ### 解析名称依赖
 
-当前完整声明见 [resolve_id](../reference/definition/definition_compile_context/resolve_id.md)。
+当前完整声明见 [resolve_id](../reference/executor/definition_compile_context/resolve_id.md)。
 
 ```cpp
 template<class TCategory>
@@ -202,7 +204,7 @@ definition_id<TCategory> resolve_id(std::string_view name) const;
 
 ### 解析标签 ID 依赖
 
-当前完整声明见 [resolve_tag](../reference/definition/definition_compile_context/resolve_tag.md)。
+当前完整声明见 [resolve_tag](../reference/executor/definition_compile_context/resolve_tag.md)。
 
 ```cpp
 tag_id resolve_tag(std::string_view name) const;
@@ -214,7 +216,7 @@ tag_id resolve_tag(std::string_view name) const;
 
 ### 解析标签筛选依赖
 
-返回与异常见 [resolve_ids_by_tag](../reference/definition/definition_compile_context/resolve_ids_by_tag.md)。下文“不表示名称排序”强调返回顺序由配套 ID 映射决定，不能据此断言当前结果一定与名称序不同：当前 `ordered_selected_indices` 在各类别内按名称排序后分配 ID。筛选表达式必须与声明字符串完全一致，逻辑等价而拼写不同不够。
+返回与异常见 [resolve_ids_by_tag](../reference/executor/definition_compile_context/resolve_ids_by_tag.md)。下文“不表示名称排序”强调返回顺序由配套 ID 映射决定，不能据此断言当前结果一定与名称序不同：当前 ID 准备实现在各类别内按名称排序后分配 ID。筛选表达式必须与声明字符串完全一致，逻辑等价而拼写不同不够。
 
 ```cpp
 template<class TCategory>
@@ -229,7 +231,7 @@ std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter
 
 ### 加入响应程序
 
-**旧称谓与当前理解：**原记录把 `TContext` 概括为“这段程序进入时采用的栈 ABI”。这里保留这个实现来源，但不能由此推出指令作者要在相邻指令之间配合完整帧布局。现在公开的约束是这段程序在哪种事件 context 下可执行；事件映射到内部栈形状是实现。比如 `absorb_damage_by_count` 在 `damage_effect` 广播触发的响应程序中工作，并非在结算伤害指令后直接拼接并接管它的局部帧。每次执行一条指令都是完整的一次执行；同一指令可能自重入或进入子程序，并在彻底退出时恢复进入前的栈形状。参阅 [add_program](../reference/definition/definition_compile_context/add_program.md) 和[固定程序模型](fixed_program.md)。
+**旧称谓与当前理解：**原记录把 `TContext` 概括为“这段程序进入时采用的栈 ABI”。这里保留这个实现来源，但不能由此推出指令作者要在相邻指令之间配合完整帧布局。现在公开的约束是这段程序在哪种事件 context 下可执行；事件映射到内部栈形状是实现。比如 `absorb_damage_by_count` 在 `damage_effect` 广播触发的响应程序中工作，并非在结算伤害指令后直接拼接并接管它的局部帧。每次执行一条指令都是完整的一次执行；同一指令可能自重入或进入子程序，并在彻底退出时恢复进入前的栈形状。参阅 [add_program](../reference/executor/definition_compile_context/add_program.md) 和[固定程序模型](fixed_program.md)。
 
 原记录：
 
@@ -375,7 +377,7 @@ Lua 等动态来源通过 C++ adapter 实现与静态 source 相同的接口，�
 
 ## 注册与生命周期
 
-对应公开接口为 [add](../reference/definition/definition_source_library/add.md)、[compile](../reference/definition/definition_source_library/compile.md)、[definition_selection](../reference/definition/definition_selection.md)、[definition_compile_result](../reference/definition/definition_compile_result.md) 和 [make_issued_id_map](../reference/definition/definition_source_library/make_issued_id_map.md)。
+对应公开接口为 [add](../reference/definition/definition_source_library/add.md)、[compile](../reference/executor/compile.md)、[definition_selection](../reference/definition/definition_selection.md) 和 [make_issued_id_map](../reference/definition/definition_source_library/make_issued_id_map.md)。
 
 **生命周期表述的细化：**下面原记录要求 source 覆盖源库及其编译库的全部使用期，是把源对象与它可能拥有的字符串一并保活的保守约束。当前源码中，源库的 `definition_source_view::source_` 非拥有地指向源对象；编译后的库保存 definition 数据、字符视图和不捕获 source 的静态 handler 函数指针，不再保存这个源对象指针。因此需要分别保证：源库使用期间 source 有效；所有仍借用的名称/标签字符在相应库或映射使用期间有效；definition 若另存 Lua 状态、回调句柄或其他非拥有对象，其目标也必须存活。字符属于 source 自身时，source 当然仍要覆盖字符使用期。不能因为运行期不调用 source 就把尚被借用的数据销毁。
 
@@ -390,10 +392,10 @@ bool definition_source_library::add(const TSource& source);
 
 同时添加多个 source 的重载是原子的：它允许同一批 source 互相依赖，任一名称或依赖检查失败时整批都不加入。源库之间也可以在没有同类别名称冲突时合并。
 
-源库可以编译全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition，并自动包含它们的依赖闭包。初始化程序和回合程序必须在同一次编译中提供。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
+整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition，并自动包含它们的依赖闭包。源库提供 source view 遍历和成员 `make_issued_id_map`；后者利用登记时保留的声明信息完成选择、依赖闭包和 ID 分配。executor 中的非成员 `compile` 调用这个成员取得映射，再通过 source view 完成最终编译。初始化程序和回合程序必须在同一次编译中提供。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
 
 ```cpp
-auto [library, id_map] = source_library.compile(initialization_program, round_program);
+auto [library, id_map] = compile(source_library, initialization_program, round_program);
 ```
 
 `initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都是无 Context 依赖的公开指令序列。`compile(...)` 不提供省略这两段程序的重载。
@@ -404,9 +406,11 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 需要只编译部分定义时，使用接受 `const definition_selection& selection` 的重载。`selection` 按 definition 类别保存名称序列；每个选中的 definition 及其传递依赖都会进入编译结果。
 
-返回类型是 `definition_compile_result`。其 `library` 成员是编译后的游戏规则，`id_map` 成员是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。两者对应同一个定义集合和 ID 分配结果，也可以按该顺序结构化绑定；对局运行时只需要 `library`。
+[`compile` 的返回值](../reference/executor/compile.md#返回值)类型未指定。其 `library` 成员是编译后的游戏规则，`id_map` 成员是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。两者对应同一个定义集合和 ID 分配结果，也可以按该顺序结构化绑定；对局运行时只需要 `library`。
 
-当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `make_issued_id_map(...)`。提前生成映射与随后 `compile(...)` 必须使用相同的定义集合、标签声明及选择范围；生成映射后改变源库或选择范围可能改变 ID 分配。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
+当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `source_library.make_issued_id_map(...)`。提前生成映射与随后 `compile(source_library, ...)` 必须使用相同的定义集合、标签声明及选择范围；生成映射后改变源库或选择范围可能改变 ID 分配。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
+
+名称、标签和依赖声明在登记后保持不变。ID 准备复用源库登记时保留的声明数据；最终编译仍会通过 source view 读取元数据，每次返回的 input range 只消费一次，多次调用必须提供相同内容。编译器按配套 ID 装配定义，不能把源库的遍历顺序直接当成 ID 顺序。
 
 ## 编译库与持久化
 

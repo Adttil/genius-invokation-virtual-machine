@@ -139,7 +139,7 @@ TEST_CASE("initial replacements assign random values by player and selected card
 TEST_CASE("rerolls continue each player's random dice sequence across partial selections", "[random][dice]")
 {
     givm::definition_source_library sources;
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(sources,
         std::tuple{ givm::start_dice_roll_phase{ .count = 6, .reroll_count = { 3, 1 } },
                     givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}

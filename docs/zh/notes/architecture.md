@@ -60,26 +60,28 @@ executor -> definition -> table
 executor ----------------> table
 ```
 
-- `definition.hpp`：定义源、编译定义库、ID 映射、程序入口，以及牌组名称链接。
+- `definition.hpp`：定义源协议、源库及其视图、依赖选择、ID 映射，以及牌组名称链接。
 - `table.hpp`：牌桌状态、`issued_id` 及其 `definition_id`、`tag_id` 别名、定义类别、实体 ID、实体访问对象、`linked_deck` 和 `table`。
-- `executor.hpp`：公开指令、事件、随机输入和 `executor`。
+- `executor.hpp`：最终编译、编译上下文、程序入口、编译后的定义库、公开指令、事件、随机输入和 `executor`。
 - `utils/stack.hpp`：可独立使用的栈与 frame view 工具；其公开性不意味着 executor 提供原始栈访问。
 
-跨核心模块代码只包含对方的聚合入口头，不直接包含对方内部文件。例如 definition 使用 table 时包含 `table.hpp`，而不是 `table/` 下的内部头文件。跨模块包含保持从上层指向下层。table 的直接及传递包含均不进入 definition 或 executor；definition 使用 table 提供的游戏数据类型，并继续承担当下的最终编译。不能因 definition 存有执行函数指针，就反向包含 executor 的完整实现。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
+跨核心模块代码只包含对方的聚合入口头，不直接包含对方内部文件。例如 definition 使用 table 时包含 `table.hpp`，而不是 `table/` 下的内部头文件。跨模块包含保持从上层指向下层。table 的直接及传递包含均不进入 definition 或 executor；definition 使用 table 提供的游戏数据类型，executor 通过 source view 完成最终编译。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
 
 table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 
-execution_state 的完整定义属于 executor。definition 中的擦除函数签名使用 `enum class execution_state : std::uint8_t;` 前置声明，以保持底层类型一致；C++ 的枚举前置声明不是一个底层大小未知的类型声明，不能靠省略底层类型来回避这个边界。
+definition 中的 source 适配只传递 `definition_compile_context&`，handler 协议只需声明返回 `program_entry<TContext>`，因此可以使用前置声明。完整上下文、入口表示、公开擦除指令及其当前执行实现均归 executor。定义拓展者编写 source 时包含 `givm.hpp`，在实际调用 `add_program`、保存入口和定义 handler 前取得完整类型。不能为了让 definition 独立完成所有拓展者代码而把编译实现或桥接接口放回下层。
 
-内部类型按功能放在所属模块的文件中，可继续使用 `givm::detail` 命名空间，不另建 `detail/` 目录。函数声明和定义保持在一起，不为调整包含顺序把函数体拆到另一处。这些约束要求从类型归属、前置声明和依赖方向解决包含问题，而不是用头文件拼接顺序掩盖循环。
+源库提供登记、名称查找、按类别遍历 source view 和建立 ID 映射的能力，不提供成员编译函数。成员 `sources.make_issued_id_map(...)` 使用登记时保留的声明信息完成选择、依赖闭包和 ID 分配；executor 中的非成员 `compile(sources, ..., initialization_program, round_program)` 调用这个成员取得映射，再通过 source view 构建完整定义库。`source.compile(context)` 仍是单项定义源协议，不与整库编译入口混淆。
 
-终局是 executor 的公开指令能力，definition 构建程序时不再预装三条终局指令，也不需要为了让这些指令可见而引入 `append_sequences` 等额外拼接层。程序的具体连接仍不构成公开接口，详见[固定程序记录](fixed_program.md#程序的内部连接)。
+`definition_library`、整库 `compile` 及相关程序装配细节集中在 [`executor/library.hpp`](../../../include/givm/executor/library.hpp)。内部类型按功能放在所属模块的文件中，可继续使用 `givm::detail` 命名空间，不另建 `detail/` 目录；较大的内部实现块直接写成 `namespace givm::detail`，保持单层命名空间缩进。函数在定义处完整给出，不另写重复签名的声明。这也适用于 `friend` 函数：不能在类内只写友元函数声明，再到类外重复签名定义。这些约束要求从类型归属、前置声明和依赖方向解决包含问题，而不是用头文件拼接顺序掩盖循环。
+
+终局是 executor 的公开指令能力，构建程序时不预装三条终局指令。公开指令是规则描述，最终编译产物的表示由 executor 决定，两者不必保持一一对应。程序的具体连接仍不构成公开接口，详见[固定程序记录](fixed_program.md#程序的内部连接)。
 
 [返回文档入口](../notes.md)
 
 ## 维护时需要保留的区别
 
 - 定义库、牌组链接信息、牌桌和执行器分别承担规则、对局前名称解析、持久局面和临时结算，不应把随机生成器、界面展示或每局牌组重新塞入编译规则。
-- table 是独立的游戏数据模块，definition 使用它的定义 ID 和实体类型。编译及编译后的 definition library 当前仍归 definition；后续职责迁移不改变 table 的独立性。
+- table 是独立的游戏数据模块，definition 使用它的定义 ID 和实体类型。最终编译及编译后的 definition library 归 executor，源库继续归 definition。
 - 复制牌桌和执行器并不自动复制外部随机源、输入日志或界面任务。每一部分都需要由持有者明确选择复制、共享或重建。
 - 此处保留的持久化设想是“保存足以重建定义库的信息”，没有承诺直接序列化运行时指针、type index 或栈字节。

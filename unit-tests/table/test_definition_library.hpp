@@ -41,7 +41,7 @@ namespace givm::test
         }
 
         const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-        return source_library.compile(program, program);
+        return compile(source_library, program, program);
     }
 
     template<class TInitialization, class TRound, class... TSources>
@@ -57,7 +57,7 @@ namespace givm::test
             throw std::logic_error{ "invalid unit-test definition sources" };
         }
 
-        return source_library.compile(
+        return compile(source_library,
             std::forward<TInitialization>(initialization),
             std::forward<TRound>(round)
         );

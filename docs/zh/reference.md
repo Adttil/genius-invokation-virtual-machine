@@ -15,7 +15,7 @@
 | --- | --- |
 | [`definition_source_view`](reference/definition/definition_source_view.md) | 定义源的类型擦除视图 |
 | [`definition_source_library`](reference/definition/definition_source_library.md) | 定义源库 |
-| [`definition_library`](reference/definition/definition_library.md) | 定义库 |
+| [`definition_source_library::make_issued_id_map`](reference/definition/definition_source_library/make_issued_id_map.md) | 为选定定义建立 ID 映射 |
 
 ## [牌桌](reference/table.md)
 
@@ -33,6 +33,8 @@
 
 | | |
 | --- | --- |
+| [`compile`](reference/executor/compile.md) | 编译定义源与对局流程 |
+| [`definition_library`](reference/executor/definition_library.md) | 定义库 |
 | [`executor`](reference/executor/executor.md) | 游戏对局的执行器 |
 | [`execution_state`](reference/executor/execution_state.md) | 对局执行现场的种类 |
 | [`execution_view`](reference/executor/execution_view.md) | 对局执行现场的视图 |

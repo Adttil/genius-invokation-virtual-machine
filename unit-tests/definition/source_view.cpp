@@ -285,7 +285,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(card, alpha, beta));
     const auto program = std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = source_library.compile(program, program);
+    const auto [library, id_map] = compile(source_library, program, program);
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 
     givm::table table{};
@@ -318,7 +318,7 @@ TEST_CASE("definition compile context rejects undeclared dependency queries", "[
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(source));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    REQUIRE_THROWS_AS(source_library.compile(program, program), std::invalid_argument);
+    REQUIRE_THROWS_AS(compile(source_library, program, program), std::invalid_argument);
 }
 
 TEST_CASE("compiled definitions expose only enabled source handlers", "[source_view]")
@@ -329,7 +329,7 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(enabled, disabled));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = source_library.compile(program, program);
+    const auto [library, id_map] = compile(source_library, program, program);
 
     CHECK(library[id_map.get_id<givm::support_view>(enabled.name())].can_handle<givm::test_event, givm::support_view>());
     CHECK_FALSE(
@@ -349,7 +349,7 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(card, support));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = source_library.compile(program, program);
+    const auto [library, id_map] = compile(source_library, program, program);
 
     CHECK(observation.event_compiled);
     CHECK(observation.onpay_compiled);

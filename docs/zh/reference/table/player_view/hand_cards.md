@@ -50,7 +50,8 @@ int main()
     example_source source{};
     givm::definition_source_library sources{};
     sources.add(source);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{});
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{};

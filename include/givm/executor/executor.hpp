@@ -6,7 +6,7 @@
 
 #include "random_fn.hpp"
 #include "events.hpp"
-#include "../definition.hpp"
+#include "library.hpp"
 #include "../table.hpp"
 #include "../utils/debug.hpp"
 #include "../utils/stack.hpp"
@@ -74,79 +74,81 @@ namespace givm
             return result;
         }
     };
+}
 
-    namespace detail
+namespace givm::detail
+{
+    using stage_t = std::uint8_t;
+
+    class execution_context
     {
-        using stage_t = std::uint8_t;
+    public:
+        struct return_info { execution_position return_position; };
+        constexpr execution_context(const execution_context&) = default;
+        constexpr execution_context(execution_context&&) noexcept = default;
+        constexpr execution_context& operator=(const execution_context&) = default;
+        constexpr execution_context& operator=(execution_context&&) noexcept = default;
+        constexpr ~execution_context() = default;
 
-        class execution_context
+        constexpr auto& stack(this auto& self) noexcept { return self.stack_; }
+
+        constexpr execution_state enter_next() noexcept
         {
-        public:
-            struct return_info { execution_position return_position; };
-            constexpr execution_context(const execution_context&) = default;
-            constexpr execution_context(execution_context&&) noexcept = default;
-            constexpr execution_context& operator=(const execution_context&) = default;
-            constexpr execution_context& operator=(execution_context&&) noexcept = default;
-            constexpr ~execution_context() = default;
+            current_stage() = stage_t{};
+            ++position_;
+            return continue_execution;
+        }
 
-            constexpr auto& stack(this auto& self) noexcept { return self.stack_; }
+        constexpr execution_state yield_next(execution_state state) noexcept
+        {
+            enter_next();
+            return state;
+        }
 
-            constexpr execution_state enter_next() noexcept
-            {
-                current_stage() = stage_t{};
-                ++position_;
-                return continue_execution;
-            }
+        constexpr execution_state yield(execution_state state) const noexcept { return state; }
 
-            constexpr execution_state yield_next(execution_state state) noexcept
-            {
-                enter_next();
-                return state;
-            }
+        template<class TContext>
+        constexpr execution_state enter(program_entry<TContext> entry)
+        {
+            GIVM_ASSERT(not entry.is_null());
+            stack_.push(return_info{ position_ }, stage_t{});
+            position_ = entry.position_;
+            return continue_execution;
+        }
 
-            constexpr execution_state yield(execution_state state) const noexcept { return state; }
+        constexpr execution_state end_game(game_result result)
+        {
+            GIVM_ASSERT(result != game_result::no_result);
+            stack_.push(result);
+            return execution_state::finished;
+        }
 
-            template<class TContext>
-            constexpr execution_state enter(program_entry<TContext> entry)
-            {
-                GIVM_ASSERT(not entry.is_null());
-                stack_.push(return_info{ position_ }, stage_t{});
-                position_ = entry.position_;
-                return continue_execution;
-            }
+        constexpr stage_t& current_stage() noexcept
+        {
+            auto&& [stage] = stack_.top<stage_t>();
+            return stage;
+        }
 
-            constexpr execution_state end_game(game_result result)
-            {
-                GIVM_ASSERT(result != game_result::no_result);
-                stack_.push(result);
-                return execution_state::finished;
-            }
+    private:
+        friend class ::givm::executor;
+        constexpr execution_context() noexcept = default;
 
-            constexpr stage_t& current_stage() noexcept
-            {
-                auto&& [stage] = stack_.top<stage_t>();
-                return stage;
-            }
+        constexpr void return_from_subroutine()
+        {
+            auto&& [info_ref, stage] = stack_.top<return_info, stage_t>();
+            GIVM_ASSERT(stage == stage_t{});
+            const auto info = info_ref;
+            stack_.pop<return_info, stage_t>();
+            position_ = info.return_position;
+        }
 
-        private:
-            friend class ::givm::executor;
-            constexpr execution_context() noexcept = default;
+        execution_position position_ = null_program_position;
+        frame_stack stack_;
+    };
+}
 
-            constexpr void return_from_subroutine()
-            {
-                auto&& [info_ref, stage] = stack_.top<return_info, stage_t>();
-                GIVM_ASSERT(stage == stage_t{});
-                const auto info = info_ref;
-                stack_.pop<return_info, stage_t>();
-                position_ = info.return_position;
-            }
-
-            execution_position position_ = null_program_position;
-            frame_stack stack_;
-        };
-
-    }
-
+namespace givm
+{
     struct assume_enabled_t
     {
         explicit constexpr assume_enabled_t() noexcept = default;

@@ -60,7 +60,8 @@ int main()
     sources.add(source);
     const auto issued = sources.make_issued_id_map();
     const auto definition = issued.get_id<givm::character_view>("character");
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::enter_character{ .player = givm::player_id{ 0 }, .definition = definition } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::table table{};

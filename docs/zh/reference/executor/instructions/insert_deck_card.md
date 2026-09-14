@@ -55,7 +55,8 @@ int main()
     sources.add(first, second);
     const auto issued = sources.make_issued_id_map();
     const auto card = issued.get_id<givm::card_definition>("first");
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = card } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::table table{};

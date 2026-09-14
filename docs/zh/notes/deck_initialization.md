@@ -10,12 +10,12 @@
 
 ## 编译结果
 
-准确的成员与绑定顺序见 [definition_compile_result](../reference/definition/definition_compile_result.md)；下文的非拥有关系在[定义编译备忘](definition_compilation.md#注册与生命周期)中分别说明源对象和字符存储。
+准确的成员与绑定顺序见 [`compile` 的返回值](../reference/executor/compile.md#返回值)；下文的非拥有关系在[定义编译备忘](definition_compilation.md#注册与生命周期)中分别说明源对象和字符存储。
 
-`definition_source_library::compile(...)` 返回 `definition_compile_result`。其 `library` 成员是编译后的 `definition_library`，`id_map` 成员是同一次编译产生的 `issued_id_map`：
+执行模块的非成员 `compile(source_library, ...)` 返回类型未指定的对象。其 `library` 成员是编译后的 `definition_library`，`id_map` 成员是同一次编译产生的 `issued_id_map`：
 
 ```cpp
-auto [library, id_map] = source_library.compile(...);
+auto [library, id_map] = compile(source_library, ...);
 ```
 
 两个成员对应同一个定义集合和 issued ID 分配结果；返回值也可以按该顺序结构化绑定。

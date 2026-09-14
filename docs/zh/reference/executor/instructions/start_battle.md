@@ -52,7 +52,8 @@ int main()
     observer_source source{ &count };
     givm::definition_source_library sources{};
     sources.add(source);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::start_round{}, givm::start_battle{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::table table{};

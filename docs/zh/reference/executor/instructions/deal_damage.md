@@ -65,7 +65,8 @@ int main()
     character_source source{};
     givm::definition_source_library sources{};
     sources.add(source);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::initialize_characters{ .player = givm::player_id{ 1 } }, givm::deal_damage{ .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }, .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .value = 3, .type = givm::damage_type::physical, .flags = {} } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::table table{};

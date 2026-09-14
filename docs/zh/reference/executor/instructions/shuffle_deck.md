@@ -57,7 +57,8 @@ int main()
     card_source second{ "second" };
     givm::definition_source_library sources{};
     sources.add(first, second);
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } });
     givm::table table{};

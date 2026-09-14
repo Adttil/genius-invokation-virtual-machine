@@ -180,7 +180,7 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
         givm::draw_cards{ .count = 2, .player = givm::relative_player::current },
         givm::draw_cards{ .count = 2, .player = givm::relative_player::other }
     };
-    const auto [library, id_map] = source_library.compile(initialization, round);
+    const auto [library, id_map] = compile(source_library, initialization, round);
     std::array<std::string_view, 10> card_names;
     card_names.fill(card_source.name());
     std::array<std::string_view, 3> character_names;
@@ -291,7 +291,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     const test_character_definition_source character_source;
     givm::definition_source_library sources;
     REQUIRE(sources.add(card_source, character_source));
-    const auto [library, id_map] = sources.compile(
+    const auto [library, id_map] = compile(sources,
         std::tuple{
             givm::initialize_characters{ .player = givm::player_id{ 0 } },
             givm::initialize_characters{ .player = givm::player_id{ 1 } },

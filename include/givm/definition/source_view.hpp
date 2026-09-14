@@ -5,61 +5,26 @@
 #include <array>
 #include <concepts>
 #include <cstddef>
-#include <ranges>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
-#include "instruction.hpp"
 #include "subscribed_events.hpp"
 #include "definition_categories.hpp"
 
 namespace givm
 {
     class definition_compile_context;
-
-    namespace detail
-    {
-        using execution_position = std::size_t;
-        inline constexpr execution_position null_program_position = 0;
-        inline constexpr execution_position entry_position = 1;
-    }
+    class definition_library;
+    class random_fn;
 
     template<class TContext>
-    class program_entry
-    {
-    public:
-        constexpr program_entry() noexcept = default;
+    class program_entry;
 
-        [[nodiscard]] static constexpr program_entry null() noexcept
-        {
-            return {};
-        }
-
-        [[nodiscard]] constexpr bool is_null() const noexcept
-        {
-            return position_ == detail::null_program_position;
-        }
-
-        [[nodiscard]] constexpr explicit operator bool() const noexcept
-        {
-            return not is_null();
-        }
-
-        friend constexpr bool operator==(program_entry, program_entry) noexcept = default;
-
-    private:
-        constexpr explicit program_entry(std::size_t position) noexcept
-        : position_{ position }
-        {}
-
-        std::size_t position_ = detail::null_program_position;
-
-        friend class definition_compile_context;
-        friend class detail::execution_context;
-    };
+    template<class TCostEvent>
+    struct onpay_context;
 
     template<class TEvent>
     struct handler_program_context
@@ -89,193 +54,168 @@ namespace givm
         const table&,
         random_fn&
     );
+}
 
-    namespace detail
+namespace givm::detail
+{
+    using definition_dependency_lists =
+        std::array<std::vector<std::string_view>, definition_types::size()>;
+
+    struct definition_source_declarations
     {
-        using definition_dependency_lists =
-            std::array<std::vector<std::string_view>, definition_types::size()>;
+        std::vector<std::string_view> tags;
+        definition_dependency_lists dependencies;
+        std::vector<std::string_view> tag_dependencies;
+        definition_dependency_lists dependencies_by_tag;
+    };
 
-        struct definition_source_declarations
+    template<class TItems>
+    std::vector<std::string_view> collect_definition_strings(TItems&& items)
+    {
+        std::vector<std::string_view> result;
+        for(auto&& item : items)
         {
-            std::vector<std::string_view> tags;
-            definition_dependency_lists dependencies;
-            std::vector<std::string_view> tag_dependencies;
-            definition_dependency_lists dependencies_by_tag;
-        };
-
-        template<class TItems>
-        std::vector<std::string_view> collect_definition_strings(TItems&& items)
-        {
-            std::vector<std::string_view> result;
-            for(auto&& item : items)
-            {
-                result.emplace_back(std::string_view{ item });
-            }
-            return result;
+            result.emplace_back(std::string_view{ item });
         }
-
-        template<class TSource>
-        constexpr decltype(auto) definition_tags(const TSource& source)
-        {
-            if constexpr(requires { source.tags(); })
-            {
-                return source.tags();
-            }
-            else
-            {
-                return std::array<std::string_view, 0>{};
-            }
-        }
-
-        template<class TSource>
-        constexpr decltype(auto) definition_tag_dependencies(const TSource& source)
-        {
-            if constexpr(requires { source.tag_dependencies(); })
-            {
-                return source.tag_dependencies();
-            }
-            else
-            {
-                return std::array<std::string_view, 0>{};
-            }
-        }
-
-        template<class TCategory, class TSource>
-        constexpr decltype(auto) definition_dependencies(const TSource& source)
-        {
-            if constexpr(std::same_as<TCategory, card_definition>)
-            {
-                if constexpr(requires { source.card_dependencies(); }) return source.card_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, status_definition>)
-            {
-                if constexpr(requires { source.status_dependencies(); }) return source.status_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, support_view>)
-            {
-                if constexpr(requires { source.support_dependencies(); }) return source.support_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, summon_view>)
-            {
-                if constexpr(requires { source.summon_dependencies(); }) return source.summon_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, combat_status_view>)
-            {
-                if constexpr(requires { source.combat_status_dependencies(); })
-                    return source.combat_status_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, character_view>)
-            {
-                if constexpr(requires { source.character_dependencies(); }) return source.character_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, skill_view>)
-            {
-                if constexpr(requires { source.skill_dependencies(); }) return source.skill_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-            else
-            {
-                static_assert(std::same_as<TCategory, attachment_view>);
-                if constexpr(requires { source.attachment_dependencies(); })
-                    return source.attachment_dependencies();
-                else return std::array<std::string_view, 0>{};
-            }
-        }
-
-        template<class TCategory, class TSource>
-        constexpr decltype(auto) definition_dependencies_by_tag(const TSource& source)
-        {
-            if constexpr(std::same_as<TCategory, card_definition>)
-            {
-                if constexpr(requires { source.card_dependencies_by_tag(); })
-                    return source.card_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, status_definition>)
-            {
-                if constexpr(requires { source.status_dependencies_by_tag(); })
-                    return source.status_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, support_view>)
-            {
-                if constexpr(requires { source.support_dependencies_by_tag(); })
-                    return source.support_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, summon_view>)
-            {
-                if constexpr(requires { source.summon_dependencies_by_tag(); })
-                    return source.summon_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, combat_status_view>)
-            {
-                if constexpr(requires { source.combat_status_dependencies_by_tag(); })
-                    return source.combat_status_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, character_view>)
-            {
-                if constexpr(requires { source.character_dependencies_by_tag(); })
-                    return source.character_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-            else if constexpr(std::same_as<TCategory, skill_view>)
-            {
-                if constexpr(requires { source.skill_dependencies_by_tag(); })
-                    return source.skill_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-            else
-            {
-                static_assert(std::same_as<TCategory, attachment_view>);
-                if constexpr(requires { source.attachment_dependencies_by_tag(); })
-                    return source.attachment_dependencies_by_tag();
-                else return std::array<std::string_view, 0>{};
-            }
-        }
-
-        template<class TContext, class TSequence>
-        void append_instructions(std::vector<any_instruction>& program, TSequence&& instructions)
-        {
-            const auto append = [&]<class TInstruction>(TInstruction&& instruction)
-            {
-                const any_instruction_for<TContext> contextual_instruction{
-                    std::forward<TInstruction>(instruction)
-                };
-                program.push_back(any_instruction{ contextual_instruction });
-            };
-
-            if constexpr(std::ranges::range<TSequence>)
-            {
-                for(auto&& instruction : instructions)
-                {
-                    append(std::forward<decltype(instruction)>(instruction));
-                }
-            }
-            else
-            {
-                [&]<std::size_t... I>(std::index_sequence<I...>)
-                {
-                    using std::get;
-                    (append(get<I>(std::forward<TSequence>(instructions))), ...);
-                }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TSequence>>>{});
-            }
-        }
-
-        template<class TSource>
-        using definition_for_source_t = std::remove_cvref_t<decltype(
-            std::declval<const TSource&>().compile(std::declval<definition_compile_context&>())
-        )>;
+        return result;
     }
 
+    template<class TSource>
+    constexpr decltype(auto) definition_tags(const TSource& source)
+    {
+        if constexpr(requires { source.tags(); })
+        {
+            return source.tags();
+        }
+        else
+        {
+            return std::array<std::string_view, 0>{};
+        }
+    }
+
+    template<class TSource>
+    constexpr decltype(auto) definition_tag_dependencies(const TSource& source)
+    {
+        if constexpr(requires { source.tag_dependencies(); })
+        {
+            return source.tag_dependencies();
+        }
+        else
+        {
+            return std::array<std::string_view, 0>{};
+        }
+    }
+
+    template<class TCategory, class TSource>
+    constexpr decltype(auto) definition_dependencies(const TSource& source)
+    {
+        if constexpr(std::same_as<TCategory, card_definition>)
+        {
+            if constexpr(requires { source.card_dependencies(); }) return source.card_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, status_definition>)
+        {
+            if constexpr(requires { source.status_dependencies(); }) return source.status_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, support_view>)
+        {
+            if constexpr(requires { source.support_dependencies(); }) return source.support_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, summon_view>)
+        {
+            if constexpr(requires { source.summon_dependencies(); }) return source.summon_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, combat_status_view>)
+        {
+            if constexpr(requires { source.combat_status_dependencies(); })
+                return source.combat_status_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, character_view>)
+        {
+            if constexpr(requires { source.character_dependencies(); }) return source.character_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, skill_view>)
+        {
+            if constexpr(requires { source.skill_dependencies(); }) return source.skill_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+        else
+        {
+            static_assert(std::same_as<TCategory, attachment_view>);
+            if constexpr(requires { source.attachment_dependencies(); })
+                return source.attachment_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
+    }
+
+    template<class TCategory, class TSource>
+    constexpr decltype(auto) definition_dependencies_by_tag(const TSource& source)
+    {
+        if constexpr(std::same_as<TCategory, card_definition>)
+        {
+            if constexpr(requires { source.card_dependencies_by_tag(); })
+                return source.card_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, status_definition>)
+        {
+            if constexpr(requires { source.status_dependencies_by_tag(); })
+                return source.status_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, support_view>)
+        {
+            if constexpr(requires { source.support_dependencies_by_tag(); })
+                return source.support_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, summon_view>)
+        {
+            if constexpr(requires { source.summon_dependencies_by_tag(); })
+                return source.summon_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, combat_status_view>)
+        {
+            if constexpr(requires { source.combat_status_dependencies_by_tag(); })
+                return source.combat_status_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, character_view>)
+        {
+            if constexpr(requires { source.character_dependencies_by_tag(); })
+                return source.character_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, skill_view>)
+        {
+            if constexpr(requires { source.skill_dependencies_by_tag(); })
+                return source.skill_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else
+        {
+            static_assert(std::same_as<TCategory, attachment_view>);
+            if constexpr(requires { source.attachment_dependencies_by_tag(); })
+                return source.attachment_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+    }
+
+    template<class TSource>
+    using definition_for_source_t = std::remove_cvref_t<decltype(
+        std::declval<const TSource&>().compile(std::declval<definition_compile_context&>())
+    )>;
+}
+
+namespace givm
+{
     template<class TCategory>
     class definition_source_view
     {

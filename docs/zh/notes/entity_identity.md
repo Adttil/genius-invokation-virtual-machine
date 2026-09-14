@@ -136,7 +136,7 @@ ID 用于保存实体身份，view 用于访问实体。需要在新增、删除
 
 ## 与支援、召唤物等实体的关系
 
-类别和依赖的公开写法见[定义源协议](../reference/definition/source_protocol.md)及 [resolve_id](../reference/definition/definition_compile_context/resolve_id.md)。
+类别和依赖的公开写法见[定义源协议](../reference/definition/source_protocol.md)及 [resolve_id](../reference/executor/definition_compile_context/resolve_id.md)。
 
 支援、召唤物、角色装备等场上实体和“对应卡牌”不是同一个运行时 data。原因是卡牌与场上实体的状态不同：
 

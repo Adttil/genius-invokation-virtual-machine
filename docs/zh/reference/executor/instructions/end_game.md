@@ -42,7 +42,8 @@ struct end_game;
 int main()
 {
     givm::definition_source_library sources{};
-    const auto [library, ids] = sources.compile(
+    const auto [library, ids] = compile(
+        sources,
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } },
         std::tuple{});
     givm::table table{};
@@ -74,5 +75,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`program_entry`](../../definition/program_entry.md) | 响应程序入口 |
+| [`program_entry`](../program_entry.md) | 响应程序入口 |
 | [`execution_view<finished>`](../execution_view/finished.md) | 已结束对局的结果视图 |

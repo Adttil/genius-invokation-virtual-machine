@@ -18,6 +18,7 @@
 #include "../enums/elemental_reaction.hpp"
 #include "../enums/skill_kind.hpp"
 #include "../definition.hpp"
+#include "program_entry.hpp"
 
 namespace givm
 {
