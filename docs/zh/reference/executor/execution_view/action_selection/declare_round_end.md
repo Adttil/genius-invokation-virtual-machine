@@ -1,6 +1,6 @@
-[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action>](../action.md) / **declare_round_end**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **declare_round_end**
 
-# givm::execution_view<execution_state::action>::declare_round_end
+# givm::execution_view<execution_state::action_selection>::declare_round_end
 
 定义于头文件 `<givm/executor.hpp>`
 

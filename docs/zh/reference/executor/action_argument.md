@@ -8,14 +8,17 @@
 struct action_argument;
 ```
 
-执行一次行动时由调用方提交的支付骰子与目标。
+执行一次行动时由调用方提交的支付骰子。
 
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `paid_dice` | [`dice_counts`](../enums/dice_counts.md) | 实际选择支付的骰子；必须拥有这些骰子并满足本次费用 |
-| `target` | [`action_target`](action_target.md) | 行动目标 |
+
+## 注意
+
+当前主动切换的目标由行动候选下标确定，无需另行填写目标。可以先用行动现场的 [`check_payment`](execution_view/action_selection/check_payment.md) 检查 `paid_dice`；提交接口不会自动检查。
 
 ## 示例
 

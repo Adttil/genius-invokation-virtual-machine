@@ -3,7 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <givm/definition/program_entry.hpp>
+#include <givm/definition.hpp>
 
 namespace
 {

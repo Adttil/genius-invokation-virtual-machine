@@ -19,6 +19,10 @@ struct action_target;
 | `support` | [`support_id`](../table/support_id.md) | 支援目标 |
 | `summon` | [`summon_id`](../table/summon_id.md) | 召唤物目标 |
 
+## 注意
+
+当前主动切换通过行动候选下标确定目标，提交用的 [`action_argument`](action_argument.md) 只包含支付骰子，不接收本类型。
+
 ## 示例
 
 ```cpp
@@ -46,4 +50,4 @@ int main()
 
 | | |
 | --- | --- |
-| [`begin_action`](../definition/commands/begin_action.md) | 行动阶段的处理命令 |
+| [`action_target_kind`](action_target_kind.md) | 行动目标种类 |

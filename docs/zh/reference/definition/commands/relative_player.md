@@ -2,7 +2,7 @@
 
 # givm::relative_player
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 enum class relative_player : std::uint8_t

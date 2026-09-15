@@ -25,9 +25,8 @@
 
 |  |  |
 | --- | --- |
-| [`action_argument`](executor/action_argument.md) | 行动支付与目标参数 |
+| [`action_argument`](executor/action_argument.md) | 行动支付参数 |
 | [`action_target`](executor/action_target.md) | 行动目标 |
-| [`action_target_kind`](executor/action_target_kind.md) | 行动目标种类 |
 
 ## 函数
 
@@ -41,6 +40,8 @@
 | --- | --- |
 | [`compile_mode`](executor/compile_mode.md) | 编译时选择普通推进或额外观察 |
 | [`execution_state`](executor/execution_state.md) | 执行器交回控制权时的执行现场种类 |
+| [`payment_check_result`](executor/payment_check_result.md) | 骰子支付检查的结果 |
+| [`action_target_kind`](executor/action_target_kind.md) | 行动目标种类 |
 
 ## 常量
 

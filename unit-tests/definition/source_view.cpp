@@ -179,7 +179,7 @@ namespace
         struct definition_type
         {
             program_observation* observation;
-            givm::program_entry<givm::onpay_context<givm::cost_of_switch>> onpay_entry;
+            givm::handler_program_entry_t<givm::cost_of_switch> onpay_entry;
         };
 
         program_observation* observation;
@@ -192,7 +192,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             observation->onpay_compiled = true;
-            using context_type = givm::onpay_context<givm::cost_of_switch>;
+            using context_type = givm::handler_program_context_t<givm::cost_of_switch>;
             using instruction_type = givm::any_command_for<context_type>;
             const auto entry = context.add_program<context_type>(std::vector{
                 instruction_type{ givm::draw_cards{ .count = 0 } },

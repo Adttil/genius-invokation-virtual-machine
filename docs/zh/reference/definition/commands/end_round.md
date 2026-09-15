@@ -67,10 +67,10 @@ int main()
     givm::executor execution{};
     execution.enter_entry(library);
     auto state = execution.step(library, table, random);
-    while(state == givm::execution_state::action)
+    while(state == givm::execution_state::action_selection)
     {
         // 当前玩家宣布本回合结束。
-        execution.view_in<givm::execution_state::action>().declare_round_end();
+        execution.view_in<givm::execution_state::action_selection>().declare_round_end();
         state = execution.step(library, table, random);
     }
     std::println("下一回合由玩家 0 先手: {}", table.state().active_player == givm::player_id{ 0 });

@@ -27,7 +27,7 @@ namespace givm
         initial_active_character_selection,
         remaining_active_character_selection,
         dice_selection,
-        action,
+        action_selection,
         health_reduced,
         active_character_changed,
         initial_active_characters_selected,

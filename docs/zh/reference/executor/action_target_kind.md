@@ -14,7 +14,7 @@ enum class action_target_kind : std::uint8_t
 };
 ```
 
-行动参数中的目标种类，决定读取哪一个目标标识。
+[`action_target`](action_target.md) 中的目标种类，决定读取哪一个目标标识。
 
 ## 枚举值
 
@@ -24,6 +24,10 @@ enum class action_target_kind : std::uint8_t
 | `character` | 角色目标 |
 | `support` | 支援目标 |
 | `summon` | 召唤物目标 |
+
+## 注意
+
+当前主动切换通过行动候选下标确定目标，不使用本枚举提交目标。
 
 ## 示例
 

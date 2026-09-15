@@ -161,9 +161,10 @@ namespace givm
 
     struct cost_of_switch
     {
-        character_id target;
+        const character_id target;
         action_cost_requirement requirement;
         cost_effect_argument<cost_of_switch> effect_argument;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_switch);
     };
 
     // Card-zone and candidate events.

@@ -61,6 +61,8 @@ static givm::handler_program_entry_t<TEvent> handle(
 
 入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](events/character_initialization.md)要求在响应函数内直接填写初始状态。
 
+[费用响应](events/cost_of_switch.md)可以反复用于预览，按约定不得使用随机数；确认行动后才执行其返回的程序入口。费用响应仍接收调用方的随机源，这项约定不由库额外检查。
+
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
 
 ## 示例

@@ -98,7 +98,7 @@ namespace
         givm::execution_state& state
     )
     {
-        if(state != givm::execution_state::action)
+        if(state != givm::execution_state::action_selection)
         {
             return false;
         }
@@ -118,7 +118,7 @@ namespace
             return false;
         }
 
-        const auto current = target.view_in<givm::execution_state::action>();
+        const auto current = target.view_in<givm::execution_state::action_selection>();
         if(current.costs().empty())
         {
             return false;
@@ -132,7 +132,7 @@ namespace
             && *active_after != *active_before
             && table[acting_player].state().dice.total() == dice_before - 1
             && table.state().active_player == other_player(acting_player)
-            && state == givm::execution_state::action;
+            && state == givm::execution_state::action_selection;
     }
 
     template<class TRandom>
@@ -141,11 +141,11 @@ namespace
         givm::executor& target, givm::table& table, TRandom& random, givm::execution_state& state
     )
     {
-        if(state != givm::execution_state::action)
+        if(state != givm::execution_state::action_selection)
         {
             return false;
         }
-        target.view_in<givm::execution_state::action>().declare_round_end();
+        target.view_in<givm::execution_state::action_selection>().declare_round_end();
         state = target.step(library, table, random);
         return true;
     }
@@ -259,7 +259,7 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
         target.view_in<givm::execution_state::dice_selection>().select({});
         state = target.step(library, table, random);
         CHECK(random.value == prepared_random_count);
-        REQUIRE(state == givm::execution_state::action);
+        REQUIRE(state == givm::execution_state::action_selection);
         REQUIRE(table.state().active_player == givm::player_id{ 0 });
 
         REQUIRE(perform_first_available_switch(library, target, table, random, state));
@@ -350,5 +350,5 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     CHECK(table[givm::player_id{ 0 }].state().active_character == player0_choice);
     CHECK(table[givm::player_id{ 1 }].state().active_character == player1_choice);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_started);
-    REQUIRE(target.step(library, table, random) == givm::execution_state::action);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
 }

@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <variant>
 
@@ -21,7 +22,6 @@ namespace givm
         enum class action_request_kind : std::uint8_t
         {
             none,
-            calculate_cost,
             do_action_with_cost,
             do_action
         };
@@ -59,7 +59,6 @@ namespace givm
     struct action_argument
     {
         dice_counts paid_dice;
-        action_target target;
     };
 }
 
@@ -96,9 +95,9 @@ namespace givm::detail
             return context.jump(context.position() - From * sizeof(execute_fn) + To * sizeof(execute_fn));
         }
 
-        inline auto action_frame(execution_context& context) noexcept
+        inline auto action_frame(frame_stack& stack) noexcept
         {
-            return context.stack().top<
+            return stack.top<
                 switch_handler_id[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
@@ -106,6 +105,11 @@ namespace givm::detail
                 action_argument,
                 action_request
             >();
+        }
+
+        inline auto action_frame(execution_context& context) noexcept
+        {
+            return action_frame(context.stack());
         }
 
         inline void pop_action_frame(execution_context& context) noexcept
@@ -131,32 +135,39 @@ namespace givm::detail
             };
         }
 
-        inline void calculate_switch_cost(
+        inline const cost_of_switch& calculate_switch_cost(
             const definition_library& library,
             stack_count_t action_index,
-            unrestricted_table& table,
-            execution_context& context,
+            const table& card_table,
+            frame_stack& stack,
             random_fn& random
         )
         {
-            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
+            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(stack);
             GIVM_ASSERT(action_index < costs.size());
             auto& cost = costs[action_index];
-            cost = default_switch_cost(cost.target);
+            cost.requirement = default_switch_cost(cost.target).requirement;
 
             const auto handler_count = static_cast<stack_count_t>(handlers.size());
             const auto row_begin = action_index * handler_count;
             for(stack_count_t column = 0; column < handler_count; ++column)
             {
                 auto& onpay = onpay_items[row_begin + column];
-                onpay = {};
                 cost.effect_argument = {};
                 const auto entry = std::visit([&](auto handler)
                 {
-                    return try_handle(library, std::as_const(table)[handler], cost, table, random);
+                    const auto entity = card_table[handler];
+                    if(not entity)
+                    {
+                        return handler_program_entry_t<cost_of_switch>::null();
+                    }
+                    return library[entity.definition_id()].template handle<cost_of_switch>(
+                        entity, cost, card_table, random
+                    );
                 }, handlers[column]);
                 onpay = { .entry = entry, .argument = cost.effect_argument };
             }
+            return cost;
         }
 
         inline execution_state prepare_action_phase(
@@ -244,19 +255,15 @@ namespace givm::detail
                 action_request{}
             );
 
-            for(auto& item : onpay_items)
-            {
-                item = {};
-            }
             stack_count_t index = 0;
             for(auto character : player.characters())
             {
                 if(is_switch_target(character))
                 {
-                    costs[index++] = default_switch_cost(character.id());
+                    std::construct_at(&costs[index++], default_switch_cost(character.id()));
                 }
             }
-            return context.yield(execution_state::action);
+            return context.yield(execution_state::action_selection);
         }
 
         inline execution_state broadcast_before_action(
@@ -282,7 +289,7 @@ namespace givm::detail
             auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
             if(request.request_kind == action_request_kind::none)
             {
-                return context.yield(execution_state::action);
+                return context.yield(execution_state::action_selection);
             }
 
             if(request.action_kind == action_kind::declare_round_end)
@@ -313,15 +320,9 @@ namespace givm::detail
             GIVM_ASSERT(request.action_kind == action_kind::switch_active);
             GIVM_ASSERT(request.action_index < costs.size());
             const auto action_index = request.action_index;
-            if(request.request_kind == action_request_kind::calculate_cost)
-            {
-                calculate_switch_cost(library, action_index, table, context, random);
-                request = {};
-                return context.yield(execution_state::action);
-            }
             if(request.request_kind == action_request_kind::do_action)
             {
-                calculate_switch_cost(library, action_index, table, context, random);
+                calculate_switch_cost(library, action_index, table, context.stack(), random);
             }
             else
             {
@@ -355,14 +356,15 @@ namespace givm::detail
             }
 
             const auto paid_dice = argument.paid_dice;
-            const auto player = table.state().active_player;
-            auto& player_dice = table[player].state().dice;
-            GIVM_ASSERT(player_dice.contains(paid_dice));
-            player_dice -= paid_dice;
             if(paid_dice.total() == 0)
             {
                 return go_to<switch_onpay_slot, switch_action_slot>(context);
             }
+
+            const auto player = table.state().active_player;
+            auto& player_dice = table[player].state().dice;
+            GIVM_ASSERT(player_dice.contains(paid_dice));
+            player_dice -= paid_dice;
 
             prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack());
             return go_to<switch_onpay_slot, switch_payment_broadcast_slot>(context);

@@ -18,6 +18,16 @@ struct elemental_dice_requirement;
 | `same` | `std::uint8_t` | 还需支付的同一种类骰子数量，初始为 0 |
 | `any` | `std::uint8_t` | 还需支付的任意种类骰子数量，初始为 0 |
 
+## 注意
+
+支付的骰子须能分配给互不重叠的三部分：
+
+- `fixed` 中的普通元素需求可以用同类骰子或万能骰满足；`fixed[omni]` 必须使用万能骰。
+- `same` 是额外的一组同色骰子，可以混入万能骰，也可以全部使用万能骰；所选颜色不必与 `fixed` 相同。
+- `any` 可以使用剩余的任意种类骰子，包括万能骰。
+
+总数必须恰好为 `fixed.total() + same + any`，不能少付或多付。只要存在满足三部分的分配就符合费用要求；是否持有这些骰子另行检查。行动现场的 [`check_payment`](../../executor/execution_view/action_selection/check_payment.md) 会依次检查这两项。
+
 ## 示例
 
 ```cpp

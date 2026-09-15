@@ -13,7 +13,7 @@ enum class execution_state : std::uint8_t
     initial_active_character_selection,
     remaining_active_character_selection,
     dice_selection,
-    action,
+    action_selection,
     health_reduced,
     active_character_changed,
     initial_active_characters_selected,
@@ -36,7 +36,7 @@ enum class execution_state : std::uint8_t
 | `initial_active_character_selection` | 开局尚未接受任何一方出战角色选择的现场 |
 | `remaining_active_character_selection` | 开局已经接受一方选择、等待另一方选择出战角色的现场 |
 | `dice_selection` | 等待骰子重投选择的现场 |
-| `action` | 等待行动输入或已完成费用预览的现场 |
+| `action_selection` | 等待选择行动的现场 |
 | `health_reduced` | 非零伤害扣除生命后的现场 |
 | `active_character_changed` | 一名玩家即将设置出战角色的现场 |
 | `initial_active_characters_selected` | 开局双方出战角色已经同时设置完成的现场 |

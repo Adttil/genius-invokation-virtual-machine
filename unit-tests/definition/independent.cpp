@@ -57,13 +57,14 @@ namespace
 
 TEST_CASE("payment responses can be constructed without executor headers", "[definition][program]")
 {
-    const givm::onpay_item<givm::cost_of_switch> item{};
+    using entry_type = givm::handler_program_entry_t<givm::cost_of_switch>;
+    const entry_type entry{};
 
     STATIC_REQUIRE(std::same_as<
-        decltype(item.entry),
-        givm::program_entry<givm::onpay_context<givm::cost_of_switch>>
+        entry_type,
+        givm::program_entry<givm::handler_program_context_t<givm::cost_of_switch>>
     >);
-    CHECK(item.entry.is_null());
+    CHECK(entry.is_null());
 }
 
 TEST_CASE("definition sources can be registered and enumerated without executor headers", "[definition][source_library]")

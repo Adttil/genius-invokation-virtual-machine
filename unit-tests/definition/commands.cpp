@@ -12,7 +12,7 @@ TEST_CASE("typed command sequences enforce their public context", "[definition][
     using damage_command = givm::any_command_for<givm::damage_effect>;
     using round_command = givm::any_command_for<givm::round_ended>;
     using context_free_command = givm::any_command_for<void>;
-    using onpay_command = givm::any_command_for<givm::onpay_context<givm::cost_of_switch>>;
+    using onpay_command = givm::any_command_for<givm::handler_program_context_t<givm::cost_of_switch>>;
 
     STATIC_REQUIRE(givm::command_compatible_with<givm::draw_cards, givm::damage_effect>);
     STATIC_REQUIRE(givm::command_compatible_with<givm::draw_cards, void>);

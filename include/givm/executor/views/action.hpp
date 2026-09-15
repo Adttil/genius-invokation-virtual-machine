@@ -6,12 +6,15 @@
 #include <utility>
 
 #include "../executor.hpp"
+#include "../payment.hpp"
 #include "../instructions/begin_action.hpp"
+
+#include "../../macro_define.hpp"
 
 namespace givm
 {
     template<>
-    class execution_view<execution_state::action>
+    class execution_view<execution_state::action_selection>
     {
     public:
         constexpr std::span<const cost_of_switch> costs() const noexcept
@@ -25,13 +28,32 @@ namespace givm
             >());
         }
 
-        constexpr void request_cost(stack_count_t index) const noexcept
+        template<class TRandom>
+        const cost_of_switch& calculate_cost(
+            const definition_library& library, const table& card_table,
+            stack_count_t index, TRandom& random_source
+        ) const
         {
-            get<0>(stack_->top<detail::action_request>()) = {
-                .request_kind = detail::action_request_kind::calculate_cost,
-                .action_kind = detail::action_kind::switch_active,
-                .action_index = index
-            };
+            random_fn random{ random_source };
+            return detail::begin_action_command::calculate_switch_cost(library, index, card_table, *stack_, random);
+        }
+
+        constexpr payment_check_result check_payment(
+            const table& card_table, stack_count_t index, const dice_counts& paid_dice
+        ) const noexcept
+        {
+            const auto available_costs = costs();
+            GIVM_ASSERT(index < available_costs.size());
+            if(not detail::payment_matches(available_costs[index].requirement.dice_requirement, paid_dice))
+            {
+                return payment_check_result::requirement_mismatch;
+            }
+            const auto player = card_table.state().active_player;
+            if(not card_table[player].state().dice.contains(paid_dice))
+            {
+                return payment_check_result::insufficient_dice;
+            }
+            return payment_check_result::valid;
         }
 
         constexpr void execute_action(stack_count_t index, const action_argument& argument) const noexcept
@@ -74,5 +96,7 @@ namespace givm
         }
     };
 }
+
+#include "../../macro_undef.hpp"
 
 #endif

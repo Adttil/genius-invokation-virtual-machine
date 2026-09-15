@@ -6,10 +6,12 @@
 
 ```cpp
 using type = TEvent; // 通常的事件
-using type = onpay_context<cost_of_switch>; // cost_of_switch 特化
+using type = /* 未指定的响应语境类型 */; // cost_of_switch 特化
 ```
 
 该事件的响应效果所使用的 context。
+
+[`cost_of_switch`](../events/cost_of_switch.md) 使用确认行动后执行效果的语境，其具体类型不作为使用约定。定义源可以通过 [`handler_program_context_t`](../handler_program_context_t.md) 取得相应类型。
 
 ## 示例
 

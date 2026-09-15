@@ -20,9 +20,11 @@ struct begin_action;
 
 先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持主动切换出战角色和宣布结束；当前行动方必须已有出战角色。主动切换可经过费用计算、支付、出战角色变更及行动权交接。双方均宣布结束后，本命令才结束行动阶段。
 
-等待行动输入时，执行器返回 `execution_state::action`，通过相应的[现场视图](../../executor/execution_view/action.md)预览费用、执行行动或宣布结束。主动切换时，候选下标按当前存活非出战角色的遍历顺序选择目标；[`action_argument`](../../executor/action_argument.md) 包含要支付的骰子，调用方负责保证支付满足计算出的费用。宣布结束无需支付骰子。
+等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、执行行动或宣布结束。主动切换时，候选下标按当前存活非出战角色的遍历顺序选择目标；[`action_argument`](../../executor/action_argument.md) 包含要支付的骰子，调用方负责保证支付满足计算出的费用。宣布结束无需支付骰子。
 
-只请求计算切换费用时，下一次推进完成计算后再次返回行动现场；通过新取得的视图读取费用，再提交要执行的行动。
+通过 [`calculate_cost`](../../executor/execution_view/action_selection/calculate_cost.md) 可以同步预览指定候选的费用，无需推进执行器。调用时传入随机源，费用响应按定义编写约定不得使用随机数；候选目标为只读。完整报价后可调用 [`check_payment`](../../executor/execution_view/action_selection/check_payment.md)，检查所选骰子是否匹配费用且持有数量足够。
+
+提交行动可采用已经计算的费用，也可在下一次推进中重新计算并执行；两条路径都不会自动检查支付是否合法。支付检查不涉及其他行动参数，当前切换目标由候选下标确定，没有额外的目标参数检查。
 
 在 [`compile_mode::observed`](../../executor/compile_mode.md) 模式下推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)给出目标，牌桌仍可读取原出战角色；随后推进先完成设置，再处理变更响应。到达此现场前，已确认的费用响应、骰子支付及 [`dice_removed`](../events/dice_removed.md) 响应均已完成。
 
@@ -74,10 +76,10 @@ int main()
     execution.enter_entry(library);
     auto state = execution.step(library, table, random);
     int declarations = 0;
-    while(state == givm::execution_state::action)
+    while(state == givm::execution_state::action_selection)
     {
         // 当前玩家宣布本回合结束。
-        execution.view_in<givm::execution_state::action>().declare_round_end();
+        execution.view_in<givm::execution_state::action_selection>().declare_round_end();
         ++declarations;
         state = execution.step(library, table, random);
     }

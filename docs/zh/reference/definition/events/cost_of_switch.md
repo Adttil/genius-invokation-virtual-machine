@@ -8,15 +8,19 @@
 struct cost_of_switch;
 ```
 
-主动切换出战角色的费用计算事件。响应者可以调整切换目标、所需骰子和行动速度，并记录本次减费内容。
+主动切换出战角色的费用计算事件。响应者可以调整所需骰子和行动速度，并记录本次减费内容。
 
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `target` | [`character_id`](../../table/character_id.md) | 这次切换的目标角色 |
+| `target` | `const character_id` | 这次切换的目标角色；只读 |
 | `requirement` | [`action_cost_requirement`](action_cost_requirement.md) | 切换的骰子费用和行动速度 |
 | `effect_argument` | `cost_effect_argument<cost_of_switch>` | 当前费用响应记录的减费内容 |
+
+## 注意
+
+目标在建立候选时确定，每次重新计算都对应同一角色。费用响应按约定不得使用随机数，避免反复预览影响对局随机序列；调用方的随机源仍会传给响应，库不额外检查这一约定。需要在确认行动后执行的效果由响应返回的 [`handler_program_entry_t`](../handler_program_entry_t.md) 表达，预览费用时不会执行这些效果。
 
 ## 示例
 
