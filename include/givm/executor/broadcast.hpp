@@ -7,7 +7,7 @@
 #include <variant>
 #include <vector>
 
-#include "events.hpp"
+#include "../definition/events.hpp"
 #include "executor.hpp"
 
 namespace givm::detail
@@ -113,8 +113,7 @@ namespace givm::detail
             dynamic_array<handler_id<TEvent>>(targets),
             stack_count_t{},
             event,
-            handler_id<TEvent>{},
-            stage_t{}
+            handler_id<TEvent>{}
         );
     }
 
@@ -144,15 +143,13 @@ namespace givm::detail
         random_fn& random
     )
     {
-        auto&& [targets, cursor, event, current_handler, stage] =
+        auto&& [targets, cursor, event, current_handler] =
             context.stack().top<
                 handler_id<TEvent>[],
                 stack_count_t,
                 TEvent,
-                handler_id<TEvent>,
-                stage_t
+                handler_id<TEvent>
             >();
-        (void)stage;
         const auto target_count = static_cast<stack_count_t>(targets.size());
         while(cursor < target_count)
         {
@@ -183,8 +180,7 @@ namespace givm::detail
             handler_id<TEvent>[],
             stack_count_t,
             TEvent,
-            handler_id<TEvent>,
-            stage_t
+            handler_id<TEvent>
         >();
     }
 

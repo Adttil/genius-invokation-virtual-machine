@@ -4,31 +4,29 @@
 #include "../executor.hpp"
 
 #include "../../table.hpp"
+#include "../instruction.hpp"
+#include "../../definition/commands.hpp"
 
-namespace givm
+namespace givm::detail
 {
-    struct set_element_aura
+    namespace set_element_aura_command
     {
-        using context_type = void;
-
-        character_id target;
-        element_aura aura;
-    };
-
-    template<>
-    struct detail::instruction_implementation<set_element_aura>
-    {
-        template<bool Observed>
-        static execution_state execute(
-            const givm::set_element_aura& instruction, const definition_library&,
+        inline execution_state execute(
+            const definition_library& library,
             unrestricted_table& table, execution_context& context, random_fn&
         )
         {
-            table[instruction.target].state().aura = instruction.aura;
-            return context.enter_next();
+            const auto& command = context.instruction_data<1, givm::set_element_aura>(library);
+            table[command.target].state().aura = command.aura;
+            return context.advance(instruction_extent<1, givm::set_element_aura>);
         }
-    };
+    }
 
+    inline void compile(program_writer& writer, const givm::set_element_aura& command, compile_mode)
+    {
+        writer.write(execute_fn{ &set_element_aura_command::execute });
+        writer.write(command);
+    }
 }
 
 #endif

@@ -1,28 +1,23 @@
 #ifndef GIVM_EXECUTOR_INSTRUCTION_HPP
 #define GIVM_EXECUTOR_INSTRUCTION_HPP
 
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <memory>
+#include <new>
 #include <type_traits>
+#include <vector>
 
 #include "../utils/debug.hpp"
-
 #include "../macro_define.hpp"
 
 namespace givm
 {
     enum class execution_state : std::uint8_t;
-
+    enum class compile_mode : std::uint8_t { normal, observed };
     class definition_library;
     class random_fn;
-
-    template<class TCostEvent>
-    struct onpay_context{};
-
-    template<class TContext>
-    class any_instruction_for;
 }
 
 namespace givm::detail
@@ -30,181 +25,107 @@ namespace givm::detail
     class unrestricted_table;
     class execution_context;
 
-    template<class TInstruction>
-    struct instruction_implementation
-    {
-        template<bool Observed>
-        static execution_state execute(
-            const TInstruction& instruction, const definition_library& library,
-            unrestricted_table& table, execution_context& context, random_fn& random
-        )
-        {
-            return instruction.execute(library, table, context, random);
-        }
-    };
-
-    inline constexpr std::size_t instruction_storage_size = 64;
-
-    using instruction_execute_fn = execution_state (*)(
-        const void*, const definition_library&, unrestricted_table&, execution_context&, random_fn&
+    using execute_fn = execution_state (*)(
+        const definition_library&, unrestricted_table&, execution_context&, random_fn&
     );
 
-    struct instruction_rtti
+    inline constexpr std::size_t program_alignment = alignof(execute_fn);
+
+    constexpr std::size_t align_program_size(std::size_t size) noexcept
     {
-        instruction_execute_fn execute;
-        instruction_execute_fn execute_observed;
-    };
+        return (size + program_alignment - 1) / program_alignment * program_alignment;
+    }
 
-    template<class TInstruction>
-    inline constexpr instruction_rtti instruction_rtti_of{
-        +[](const void* storage, const definition_library& library,
-            unrestricted_table& table, execution_context& context, random_fn& random)
-        {
-            const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
-            return instruction_implementation<TInstruction>::template execute<false>(instruction, library, table, context, random);
-        },
-        +[](const void* storage, const definition_library& library,
-            unrestricted_table& table, execution_context& context, random_fn& random)
-        {
-            const auto& instruction = *reinterpret_cast<const TInstruction*>(storage);
-            return instruction_implementation<TInstruction>::template execute<true>(instruction, library, table, context, random);
-        }
-    };
+    template<class T>
+    inline constexpr std::size_t padded_size = align_program_size(sizeof(T));
 
-    class any_instruction_view
+    template<std::size_t N, class T>
+    inline constexpr std::size_t instruction_extent = N * sizeof(execute_fn) + padded_size<T>;
+
+    // Keep the byte buffer aligned for every supported instruction payload.
+    // Other element types support allocator rebinding used by debug containers.
+    template<class T>
+    struct program_allocator
     {
-    public:
-        constexpr explicit any_instruction_view(const instruction_rtti* rtti, const unsigned char* storage) noexcept
-        : rtti_{ rtti }, storage_{ storage }
-        {}
+        using value_type = T;
+        using is_always_equal = std::true_type;
+        template<class U> struct rebind { using other = program_allocator<U>; };
 
-        template<class TInstruction>
-        constexpr bool is() const noexcept
-        {
-            return rtti_ == &instruction_rtti_of<TInstruction>;
-        }
+        constexpr program_allocator() noexcept = default;
+        template<class U> constexpr program_allocator(const program_allocator<U>&) noexcept {}
 
-        template<class TInstruction>
-        constexpr const TInstruction& as() const noexcept
+        T* allocate(std::size_t count)
         {
-            GIVM_ASSERT(is<TInstruction>());
-            return *reinterpret_cast<const TInstruction*>(storage_);
-        }
-
-        template<bool Observed>
-        constexpr execution_state execute(
-            const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
-        ) const
-        {
-            if constexpr(Observed)
-                return rtti_->execute_observed(storage_, library, table, context, random);
+            if constexpr(std::is_same_v<T, unsigned char>)
+            {
+                // operator new implicitly creates the array; vector constructs
+                // its elements using the ordinary allocator_traits defaults.
+                return static_cast<T*>(::operator new(count, std::align_val_t{ program_alignment }));
+            }
             else
-                return rtti_->execute(storage_, library, table, context, random);
+            {
+                return std::allocator<T>{}.allocate(count);
+            }
         }
 
-        constexpr const void* type_index() const noexcept
+        void deallocate(T* storage, std::size_t count) noexcept
         {
-            return rtti_;
-        }
-
-    private:
-        const instruction_rtti* rtti_;
-        const unsigned char* storage_;
-    };
-
-    class any_instruction
-    {
-    public:
-        constexpr any_instruction() noexcept = default;
-
-        template<class TContext>
-        constexpr explicit any_instruction(const any_instruction_for<TContext>& instruction) noexcept
-        : any_instruction{ static_cast<const any_instruction&>(instruction) }
-        {}
-
-        template<class TInstruction>
-        constexpr explicit any_instruction(const TInstruction& instruction) noexcept
-        {
-            std::memcpy(storage_, &instruction, sizeof(TInstruction));
-            rtti_ = &instruction_rtti_of<TInstruction>;
-        }
-
-        constexpr operator any_instruction_view() const noexcept
-        {
-            return any_instruction_view{ rtti_, storage_ };
-        }
-
-        template<bool Observed>
-        constexpr execution_state execute(
-            const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
-        ) const
-        {
-            if constexpr(Observed)
-                return rtti_->execute_observed(storage_, library, table, context, random);
+            if constexpr(std::is_same_v<T, unsigned char>)
+            {
+                ::operator delete(storage, std::align_val_t{ program_alignment });
+            }
             else
-                return rtti_->execute(storage_, library, table, context, random);
+            {
+                std::allocator<T>{}.deallocate(storage, count);
+            }
         }
 
-    private:
-        alignas(std::max_align_t) unsigned char storage_[instruction_storage_size];
-        const instruction_rtti* rtti_ = nullptr;
+        template<class U>
+        constexpr bool operator==(const program_allocator<U>&) const noexcept { return true; }
     };
 
-    static_assert(std::is_trivially_copyable_v<any_instruction>);
+    using program_bytes = std::vector<unsigned char, program_allocator<unsigned char>>;
 
-    template<class TInstruction>
-    inline constexpr auto instruction_type_index = &instruction_rtti_of<TInstruction>;
-}
+    inline void finalize_program(program_bytes& bytes) noexcept
+    {
+        if(not bytes.empty())
+        {
+            // Vector construction/relocation operates on byte objects. At the
+            // immutable boundary, memmove implicitly creates the instruction
+            // objects while preserving their complete object representations.
+            // A self move requires no actual transfer of bytes.
+            std::memmove(bytes.data(), bytes.data(), bytes.size());
+        }
+    }
 
-namespace givm
-{
-    template<class TInstruction, class TContext>
-    concept instruction_compatible_with =
-        std::same_as<
-            std::remove_cvref_t<typename std::remove_cvref_t<TInstruction>::context_type>,
-            void
-        >
-        || std::same_as<
-            std::remove_cvref_t<typename std::remove_cvref_t<TInstruction>::context_type>,
-            std::remove_cvref_t<TContext>
-        >;
-
-    template<class TContext>
-    class any_instruction_for
+    class program_writer
     {
     public:
-        using context_type = TContext;
-
-        template<instruction_compatible_with<TContext> TInstruction>
-        constexpr explicit any_instruction_for(const TInstruction& instruction) noexcept
-        : instruction_{ instruction }
+        explicit program_writer(program_bytes& bytes) noexcept : bytes_{ bytes }
         {
-            static_assert(sizeof(TInstruction) <= detail::instruction_storage_size,
-                          "instruction is too large for erased storage");
-            static_assert(alignof(TInstruction) <= alignof(std::max_align_t),
-                          "instruction alignment is too large for erased storage");
+            GIVM_ASSERT(bytes_.size() % program_alignment == 0);
+        }
+
+        std::size_t position() const noexcept { return bytes_.size(); }
+
+        template<class T>
+        std::size_t write(const T& value)
+        {
+            static_assert(std::is_trivially_copyable_v<T>);
+            static_assert(alignof(T) <= program_alignment);
 #if defined(__cpp_lib_is_implicit_lifetime)
-            static_assert(std::is_implicit_lifetime_v<TInstruction>,
-                          "instruction must be an implicit-lifetime type");
+            static_assert(std::is_implicit_lifetime_v<T>);
 #endif
-            static_assert(std::is_trivially_copyable_v<TInstruction>,
-                          "instruction must be trivially copyable");
-            static_assert(std::is_trivially_destructible_v<TInstruction>,
-                          "instruction must be trivially destructible");
+            const auto start = position();
+            bytes_.resize(start + padded_size<T>);
+            std::memcpy(bytes_.data() + start, &value, sizeof(T));
+            return start;
         }
 
     private:
-        friend class detail::any_instruction;
-
-        constexpr explicit operator const detail::any_instruction&() const noexcept
-        {
-            return instruction_;
-        }
-
-        detail::any_instruction instruction_;
+        program_bytes& bytes_;
     };
 }
 
 #include "../macro_undef.hpp"
-
 #endif

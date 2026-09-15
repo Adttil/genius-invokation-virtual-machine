@@ -21,7 +21,7 @@ class execution_view<execution_state::remaining_active_character_selection>;
 
 ## 注意
 
-此时双方出战角色均尚未写入牌桌。第二份选择被接受后，才同时设置双方结果；以 [`step`](../executor/step.md) 推进时，随后报告 `execution_state::initial_active_characters_selected`。
+此时双方出战角色均尚未写入牌桌。第二份选择被接受后，才同时设置双方结果；以 [`compile_mode::observed`](../compile_mode.md) 编译时，随后报告 `execution_state::initial_active_characters_selected`。
 
 ## 参阅
 

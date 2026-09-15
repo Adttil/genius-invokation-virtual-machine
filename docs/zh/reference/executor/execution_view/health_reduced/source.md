@@ -7,7 +7,7 @@
 ```cpp
 const damage_source_id& source() const noexcept;
 ```
-[`damage_source_id`](../../events/damage_source_id.md)
+[`damage_source_id`](../../../definition/events/damage_source_id.md)
 
 取得本次伤害来源。
 

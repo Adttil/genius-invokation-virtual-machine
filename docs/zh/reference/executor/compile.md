@@ -9,7 +9,8 @@ template<class TInitializationSequence, class TRoundSequence>
 auto compile(
     const definition_source_library& sources,
     TInitializationSequence&& initialization_program,
-    TRoundSequence&& round_program
+    TRoundSequence&& round_program,
+    compile_mode mode
 ); // (1)
 
 template<class TInitializationSequence, class TRoundSequence>
@@ -17,7 +18,8 @@ auto compile(
     const definition_source_library& sources,
     const definition_selection& selection,
     TInitializationSequence&& initialization_program,
-    TRoundSequence&& round_program
+    TRoundSequence&& round_program,
+    compile_mode mode
 ); // (2)
 ```
 
@@ -29,8 +31,8 @@ auto compile(
 
 |  |  |
 | --- | --- |
-| `TInitializationSequence` | 初始化指令序列，可为 tuple-like 对象或可遍历范围 |
-| `TRoundSequence` | 每回合的指令序列，可为 tuple-like 对象或可遍历范围 |
+| `TInitializationSequence` | 初始化命令序列，可为 tuple-like 对象或可遍历范围 |
+| `TRoundSequence` | 每回合的命令序列，可为 tuple-like 对象或可遍历范围 |
 
 ## 参数
 
@@ -38,8 +40,9 @@ auto compile(
 | --- | --- |
 | `sources` | 已登记本场可用定义的源库 |
 | `selection` | 各类别首先选择的定义名称 |
-| `initialization_program` | 对局开始时依次执行的指令 |
-| `round_program` | 每回合依次执行的指令 |
+| `initialization_program` | 对局开始时依次执行的命令 |
+| `round_program` | 每回合依次执行的命令 |
+| `mode` | [`compile_mode`](compile_mode.md)，决定是否提供额外观察现场 |
 
 ## 返回值
 
@@ -60,9 +63,11 @@ auto compile(
 
 ## 注意
 
-两段流程只能使用[核心给定的指令](instructions.md)，也可用 [`any_instruction_for`](any_instruction_for.md) 保存。指令须与 `void` context 兼容。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
+两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command_for`](../definition/any_command_for.md) 保存。命令须与 `void` context 兼容。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
 
-编译返回后，初始化和回合流程的输入序列及其中的指令对象可以销毁，不影响定义库的使用。定义源编译所得配置数据随定义库保持有效；源名称、标签以及配置数据借用的对象仍须由调用方保证存活。
+`mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 `executor::step` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
+
+编译返回后，初始化和回合流程的输入序列及其中的命令对象可以销毁，不影响定义库的使用。定义源编译所得配置数据随定义库保持有效；源名称、标签以及配置数据借用的对象仍须由调用方保证存活。
 
 ## 示例
 
@@ -78,13 +83,13 @@ int main()
     givm::definition_source_library sources{};
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 2 } }
+        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::normal
     );
     givm::table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
-    execution.run(library, table, random);
+    execution.step(library, table, random);
     std::println("终局时的回合数: {}", table.state().round_number);
     std::println("以双败结束: {}", execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }

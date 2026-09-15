@@ -46,7 +46,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }
+        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::normal
     );
     std::println("标签名称: {}", library.tag_name(ids.get_tag_id("治疗")));
 }

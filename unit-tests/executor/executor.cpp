@@ -18,7 +18,7 @@ TEST_CASE("executor repeats the round program and reports round boundaries", "[e
     givm::definition_source_library sources;
     const auto [library, ids] = compile(sources,
         std::tuple{ givm::start_round{ .max_rounds = 2 } },
-        std::tuple{ givm::start_round{ .max_rounds = 2 } }
+        std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::observed
     );
     givm::table table;
     givm::executor target;
@@ -45,23 +45,23 @@ TEST_CASE("terminal results survive copies and entering another game replaces th
             givm::start_round{},
             givm::end_game{ .result = givm::game_result::both_loss }
         },
-        std::tuple{}
+        std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
     const auto second = compile(sources,
-        std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}
+        std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
     givm::table table;
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
 
-    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random))
+    REQUIRE(target.step(library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == result);
     CHECK(table.state().round_number == 0);
     auto copy = target;
     target.enter_entry(second.library);
-    REQUIRE((observed ? target.step(second.library, table, random) : target.run(second.library, table, random))
+    REQUIRE(target.step(second.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
     CHECK(copy.view_in<givm::execution_state::finished>().result() == result);
@@ -72,21 +72,21 @@ TEST_CASE("executor uses the explicitly supplied library with an independent tab
     const bool observed = GENERATE(false, true);
     givm::definition_source_library sources;
     const auto first = compile(sources,
-        std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } }, std::tuple{}
+        std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
     const auto second = compile(sources,
-        std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}
+        std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
     givm::table table;
     givm::executor target;
     zero_random random;
 
     target.enter_entry(first.library);
-    REQUIRE((observed ? target.step(first.library, table, random) : target.run(first.library, table, random))
+    REQUIRE(target.step(first.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
     target.enter_entry(second.library);
-    REQUIRE((observed ? target.step(second.library, table, random) : target.run(second.library, table, random))
+    REQUIRE(target.step(second.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
 }

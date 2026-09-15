@@ -39,7 +39,7 @@ friend constexpr bool operator==(player_id, player_id) = default;
 int main()
 {
     givm::definition_source_library sources{};
-    const auto [library, id_map] = compile(sources, std::tuple{}, std::tuple{});
+    const auto [library, id_map] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
     const givm::player_id id{ 1 };
     std::println("目标玩家: {}", table[id].id().index);

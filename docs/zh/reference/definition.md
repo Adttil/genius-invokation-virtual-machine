@@ -34,6 +34,7 @@
 
 |  |  |
 | --- | --- |
+| [`any_command_for`](definition/any_command_for.md) | 兼容给定 context 的命令 variant |
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`support_subscribed_events`](definition/support_subscribed_events.md) | 场上实体共用的事件列表 |
@@ -47,3 +48,17 @@
 |  |  |
 | --- | --- |
 | [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
+
+## 概念
+
+|  |  |
+| --- | --- |
+| [`command_compatible_with`](definition/command_compatible_with.md) | 命令与 context 的兼容性 |
+
+## [命令](definition/commands.md)
+
+组合游戏流程和实体响应效果的核心操作。
+
+## [事件](definition/events.md)
+
+对局中的响应时机与事件数据。

@@ -49,7 +49,7 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::draw_cards{ .count = 1 }, givm::draw_cards{ .count = 1, .player = givm::relative_player::other }, givm::replace_cards{ .player = givm::player_id{ 0 } } },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } });
+        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
     givm::table table{};
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");
@@ -60,11 +60,11 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(library, table, random);
+    execution.step(library, table, random);
     std::bitset<givm::selection_capacity> selected{};
     selected.set(0);
     execution.view_in<givm::execution_state::card_selection>().select(selected);
-    execution.run(library, table, random);
+    execution.step(library, table, random);
     std::println("清理前的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));
     table.clean_up();
     std::println("清理后的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));

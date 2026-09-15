@@ -15,9 +15,9 @@ execution_state step(
 [`execution_state`](../execution_state.md)
 [`table`](../../table/table.md)
 
-推进对局，直到下一处可观察现场、需要调用方输入或对局结束。
+推进对局，直到到达定义库所选编译模式需要报告的现场。普通模式返回输入现场或终局；观察模式还返回额外的领域观察现场。
 
-可观察现场包括扣除生命后的伤害、设置新出战角色前的切人，以及回合和行动机会的推进。一次调用可以跨过多项内部操作；它不生成持久日志。
+使用 [`compile_mode::observed`](../compile_mode.md) 编译时，可观察现场包括扣除生命后的伤害、设置新出战角色前的切人，以及回合和行动机会的推进。一次调用可以跨过多项内部操作；它不生成持久日志。
 
 ## 模板参数
 
@@ -87,7 +87,7 @@ int main()
                 .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 1 },
                 .target = { .player_id = givm::player_id{ 1 }, .index = 0 },
                 .value = 999, .type = givm::damage_type::physical, .flags = {} } },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } });
+        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::observed);
     givm::table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition, definition } });
@@ -129,5 +129,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`run`](run.md) | 推进至输入现场或终局 |
+| [`compile_mode`](../compile_mode.md) | 选择需要报告的现场 |
 | [`execution_view`](../execution_view.md) | 执行现场视图 |

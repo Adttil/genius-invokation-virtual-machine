@@ -7,48 +7,38 @@
 #include <variant>
 
 #include "../broadcast.hpp"
-#include "../events.hpp"
+#include "../../definition/events.hpp"
 #include "../executor.hpp"
+#include "../instruction.hpp"
+#include "../../definition/commands.hpp"
 
 #include "../../macro_define.hpp"
 
-namespace givm
+namespace givm::detail
 {
-    struct absorb_damage_by_count
+    namespace absorb_damage_by_count_command
     {
-        using context_type = damage_effect;
-
-        std::uint32_t maximum_count = std::numeric_limits<std::uint32_t>::max();
-    };
-
-    template<>
-    struct detail::instruction_implementation<absorb_damage_by_count>
-    {
-        template<bool Observed>
-        static execution_state execute(
-            const givm::absorb_damage_by_count& instruction, const definition_library&,
+        inline execution_state execute(
+            const definition_library& library,
             unrestricted_table& table, execution_context& context, random_fn&
         )
         {
+            const auto& command = context.instruction_data<1, givm::absorb_damage_by_count>(library);
             auto&& [broadcast, activation] = context.stack().top<
                 frame<
-                    detail::handler_id<damage_effect>[],
+                    handler_id<damage_effect>[],
                     stack_count_t,
                     damage_effect,
-                    detail::handler_id<damage_effect>,
-                    stage_t
+                    handler_id<damage_effect>
                 >,
-                frame<execution_context::return_info, stage_t>
+                frame<execution_context::return_info>
             >();
-            auto&& [handlers, cursor, event, current_handler, broadcast_stage] = broadcast;
-            auto&& [return_info, activation_stage] = activation;
+            auto&& [handlers, cursor, event, current_handler] = broadcast;
             (void)handlers;
             (void)cursor;
-            (void)broadcast_stage;
-            (void)return_info;
-            GIVM_ASSERT(activation_stage == stage_t{});
+            (void)activation;
 
-            std::visit([&, instruction = &instruction](auto id)
+            std::visit([&](auto id)
             {
                 auto entity = table[id];
                 if(not entity)
@@ -60,7 +50,7 @@ namespace givm
                 if constexpr(requires { entity.state().count; })
                 {
                     auto& count = entity.state().count;
-                    const std::uint32_t absorbed = std::min({ event.value, count, instruction->maximum_count });
+                    const std::uint32_t absorbed = std::min({ event.value, count, command.maximum_count });
                     event.value -= absorbed;
                     count -= absorbed;
                 }
@@ -69,10 +59,15 @@ namespace givm
                     GIVM_ASSERT(false);
                 }
             }, current_handler);
-            return context.enter_next();
+            return context.advance(instruction_extent<1, givm::absorb_damage_by_count>);
         }
-    };
+    }
 
+    inline void compile(program_writer& writer, const givm::absorb_damage_by_count& command, compile_mode)
+    {
+        writer.write(execute_fn{ &absorb_damage_by_count_command::execute });
+        writer.write(command);
+    }
 }
 
 #include "../../macro_undef.hpp"

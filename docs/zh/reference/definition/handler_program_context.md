@@ -34,7 +34,7 @@ struct handler_program_context<cost_of_switch>
 
 ## 注意
 
-通常映射为事件本身；[`cost_of_switch`](../executor/events/cost_of_switch.md) 使用声明所示的映射。编写定义源时优先使用 [`handler_program_context_t`](handler_program_context_t.md)，不需要另外为这项类型映射划分事件类别。
+通常映射为事件本身；[`cost_of_switch`](events/cost_of_switch.md) 使用声明所示的映射。编写定义源时优先使用 [`handler_program_context_t`](handler_program_context_t.md)，不需要另外为这项类型映射划分事件类别。
 
 ## 示例
 
@@ -79,7 +79,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{} }
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
 }
 ```

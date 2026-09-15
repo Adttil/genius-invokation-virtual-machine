@@ -17,8 +17,7 @@ stack.top<
     detail::handler_id<E>[],
     stack_count_t,
     E,
-    detail::handler_id<E>,
-    stage_t
+    detail::handler_id<E>
 >();
 ```
 
@@ -27,8 +26,9 @@ stack.top<
 - `detail::handler_id<E>[]`：frame 准备时的响应者快照；
 - `stack_count_t`：下一个待调用响应者的游标；
 - `E`：可由 handler 修改的事件对象；
-- 第二个 `detail::handler_id<E>`：当前正在调用的响应者；
-- `stage_t`：发起本次广播的领域结算阶段，保存在栈上。
+- 第二个 `detail::handler_id<E>`：当前正在调用的响应者。
+
+恢复时，执行位置指向广播推进入口，广播 frame 不再保存 stage。
 
 辅助工具目前采样时先遍历玩家 0，再遍历玩家 1，不根据 `active_player` 调换顺序。对每名玩家，依次遍历：
 
@@ -63,7 +63,7 @@ handler 不能通过收到的 `const table&` 直接修改持久状态。需要�
 
 源码为 [`broadcast.hpp`](../../../../include/givm/executor/broadcast.hpp)。`handler_id<E>` 的 variant 不是手写通用实体引用：它依次展开 `definition_types`、`views_of_definition`，仅纳入 `subscribed_events<View>` 包含事件 `E` 的 view 所对应的实体 ID。实体身份为何区分区域，见[实体身份与区域](../entity_identity.md)。
 
-`prepare_broadcast` 在调用时完成整个目标列表采样；`continue_broadcast` 不重新采样。后者读取 `targets/cursor/event/current_handler/stage`，在调用前执行等价于 `current_handler = targets[cursor++]` 的操作。快照阶段先根据定义 ID 筛选定义库中的响应能力，调用阶段的 `try_handle` 只检查实体是否仍有效，不重新做一次全体订阅扫描。
+`prepare_broadcast` 在调用时完成整个目标列表采样；`continue_broadcast` 不重新采样。后者读取 `targets/cursor/event/current_handler`，在调用前执行等价于 `current_handler = targets[cursor++]` 的操作。快照阶段先根据定义 ID 筛选定义库中的响应能力，调用阶段的 `try_handle` 只检查实体是否仍有效，不重新做一次全体订阅扫描。
 
 `current_handler` 保存当前响应者自身（self）的身份，不是事件的 `target`。事件指向的受伤角色可以与响应的护盾、支援或卡牌不同；`absorb_damage_by_count` 正是从这一槽取得应扣计数的实体。进入响应子程序后它留在下方广播 frame 中，activation 上的指令不需要把 self 复制进自身固定操作数。初始压帧时该槽只是默认构造，推进器写入当前项之后才具有这个“当前响应者”的意义。
 

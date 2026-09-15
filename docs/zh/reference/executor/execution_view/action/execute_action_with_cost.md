@@ -8,7 +8,7 @@
 constexpr void execute_action_with_cost(stack_count_t index, const action_argument& argument) const noexcept;
 ```
 [`stack_count_t`](../../../utils/stack_count_t.md)
-[`action_argument`](../../instructions/action_argument.md)
+[`action_argument`](../../action_argument.md)
 
 提交指定候选的行动，采用该候选已经计算的费用。
 

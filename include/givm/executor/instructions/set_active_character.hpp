@@ -2,85 +2,84 @@
 #define GIVM_EXECUTOR_INSTRUCTIONS_SET_ACTIVE_CHARACTER_HPP
 
 #include "../executor.hpp"
-
 #include "../broadcast.hpp"
-#include "../events.hpp"
-
+#include "../../definition/events.hpp"
+#include "../instruction.hpp"
+#include "../../definition/commands.hpp"
 #include "../../utils/debug.hpp"
 
 #include "../../macro_define.hpp"
 
-namespace givm
+namespace givm::detail
 {
-    struct set_active_character
+    namespace set_active_character_command
     {
-        using context_type = void;
-
-        character_id target;
-    };
-
-    namespace detail
-    {
-        template<>
-        struct instruction_implementation<set_active_character>
+        inline execution_state broadcast(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
         {
-            enum class stage_type : stage_t
+            if(not continue_broadcast<active_character_changed>(library, table, context, random))
             {
-                prepare,
-                broadcast,
-                apply
-            };
-
-            template<bool Observed>
-            static execution_state execute(
-                const givm::set_active_character& instruction, const definition_library& library,
-                unrestricted_table& table, execution_context& context, random_fn& random
-            )
-            {
-                if constexpr(Observed)
-                {
-                    if(static_cast<stage_type>(context.current_stage()) == stage_type::apply)
-                    {
-                        auto&& [event, handler, stage] = context.stack().top<
-                            active_character_changed, detail::handler_id<active_character_changed>, stage_t
-                        >();
-                        table[event.current.player_id].state().active_character = event.current;
-                        stage = static_cast<stage_t>(stage_type::broadcast);
-                    }
-                }
-                if(static_cast<stage_type>(context.current_stage()) == stage_type::prepare)
-                {
-                    GIVM_ASSERT(static_cast<bool>(table[instruction.target]));
-
-                    auto& state = table[instruction.target.player_id].state();
-                    const active_character_changed event{
-                        .current = instruction.target
-                    };
-                    if constexpr(Observed)
-                    {
-                        if(state.active_character != instruction.target)
-                        {
-                            detail::prepare_broadcast(library, event, table, context.stack());
-                            context.current_stage() = static_cast<stage_t>(stage_type::apply);
-                            return execution_state::active_character_changed;
-                        }
-                    }
-                    state.active_character = instruction.target;
-
-                    detail::prepare_broadcast(library, event, table, context.stack());
-                    context.current_stage() = static_cast<stage_t>(stage_type::broadcast);
-                }
-
-                if(not detail::continue_broadcast<active_character_changed>(library, table, context, random))
-                {
-                    return continue_execution;
-                }
-
-                detail::pop_broadcast<active_character_changed>(context);
-                return context.enter_next();
+                return continue_execution;
             }
+            pop_broadcast<active_character_changed>(context);
+            return context.enter_next();
+        }
 
-        };
+        inline execution_state apply(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            const auto& [event, handler] = context.stack().top<
+                active_character_changed, handler_id<active_character_changed>
+            >();
+            table[event.current.player_id].state().active_character = event.current;
+            context.enter_next();
+            return broadcast(library, table, context, random);
+        }
+
+        template<bool Observed>
+        execution_state prepare(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            const auto& command = context.instruction_data<1, givm::set_active_character>(library);
+            GIVM_ASSERT(static_cast<bool>(table[command.target]));
+
+            auto& state = table[command.target.player_id].state();
+            const active_character_changed event{ .current = command.target };
+            if constexpr(Observed)
+            {
+                if(state.active_character != command.target)
+                {
+                    prepare_broadcast(library, event, table, context.stack());
+                    context.advance(instruction_extent<1, givm::set_active_character>);
+                    return context.yield(execution_state::active_character_changed);
+                }
+            }
+            state.active_character = command.target;
+            prepare_broadcast(library, event, table, context.stack());
+            // The observation continuation applies the change after the pause.
+            // Skip it when no pause was required.
+            context.advance(instruction_extent<1, givm::set_active_character>
+                + (Observed ? sizeof(execute_fn) : 0));
+            return broadcast(library, table, context, random);
+        }
+    }
+
+    inline void compile(program_writer& writer, const givm::set_active_character& command, compile_mode mode)
+    {
+        using namespace set_active_character_command;
+        writer.write(mode == compile_mode::observed ? execute_fn{ &prepare<true> } : execute_fn{ &prepare<false> });
+        writer.write(command);
+        if(mode == compile_mode::observed)
+        {
+            writer.write(execute_fn{ &apply });
+        }
+        writer.write(execute_fn{ &broadcast });
     }
 }
 

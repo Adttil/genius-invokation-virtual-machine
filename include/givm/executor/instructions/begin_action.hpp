@@ -3,12 +3,14 @@
 
 #include "../executor.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 #include <variant>
 
 #include "../broadcast.hpp"
-#include "../events.hpp"
+#include "../../definition/events.hpp"
+#include "../../definition/commands.hpp"
 
 #include "../../macro_define.hpp"
 
@@ -36,7 +38,6 @@ namespace givm
             action_kind action_kind = action_kind::switch_active;
             stack_count_t action_index = 0;
         };
-
     }
 
     enum class action_target_kind : std::uint8_t
@@ -60,104 +61,42 @@ namespace givm
         dice_counts paid_dice;
         action_target target;
     };
+}
 
-    struct begin_action
+namespace givm::detail
+{
+    namespace begin_action_command
     {
-        using context_type = void;
+        using switch_handler_id = handler_id<cost_of_switch>;
 
-    };
-
-    template<>
-    struct detail::instruction_implementation<begin_action>
-    {
-        enum class stage_type : stage_t
-        {
-            prepare_action_phase,
-            action_phase_broadcast,
-            before_action,
-            before_action_with_switch,
-            before_action_broadcast,
-            prepare_input,
-            wait_input,
-            switch_onpay,
-            after_fixed_switch_onpay,
-            switch_payment_broadcast,
-            switch_action,
-            switch_action_broadcast,
-            first_round_end_broadcast,
-            second_round_end_broadcast,
-            switch_action_apply
-        };
+        // Local labels describe this command's pointer sequence only. They never
+        // become runtime state or require a second dispatch after fetching the instruction.
+        inline constexpr std::size_t prepare_action_phase_slot = 0;
+        inline constexpr std::size_t action_phase_broadcast_slot = 1;
+        inline constexpr std::size_t before_action_slot = 2;
+        inline constexpr std::size_t before_action_with_switch_slot = 3;
+        inline constexpr std::size_t before_action_broadcast_slot = 4;
+        inline constexpr std::size_t wait_input_slot = 5;
+        inline constexpr std::size_t switch_onpay_slot = 6;
+        inline constexpr std::size_t after_fixed_switch_onpay_slot = 7;
+        inline constexpr std::size_t switch_payment_broadcast_slot = 8;
+        inline constexpr std::size_t switch_action_slot = 9;
+        inline constexpr std::size_t switch_action_apply_slot = 10;
 
         template<bool Observed>
-        static execution_state execute(
-            const givm::begin_action& instruction,
-            const definition_library& library,
-            unrestricted_table& table,
-            execution_context& context,
-            random_fn& random
-        )
-        {
-            const auto stage = static_cast<stage_type>(context.current_stage());
-            if constexpr(Observed)
-            {
-                if(stage == stage_type::switch_action_apply)
-                {
-                    auto&& [event, handler, stored_stage] = context.stack().top<
-                        active_character_changed,
-                        detail::handler_id<active_character_changed>,
-                        stage_t
-                    >();
-                    table[event.current.player_id].state().active_character = event.current;
-                    stored_stage = static_cast<stage_t>(stage_type::switch_action_broadcast);
-                    return broadcast_switch_action<Observed>(library, table, context, random);
-                }
-            }
-            switch(stage)
-            {
-            case stage_type::prepare_action_phase:
-                return prepare_action_phase<Observed>(library, table, context);
-            case stage_type::action_phase_broadcast:
-                return broadcast_action_phase<Observed>(library, table, context, random);
-            case stage_type::before_action:
-            case stage_type::before_action_with_switch:
-                return execute_before_action<Observed>(library, table, context);
-            case stage_type::before_action_broadcast:
-                return broadcast_before_action<Observed>(library, table, context, random);
-            case stage_type::prepare_input:
-                return prepare_input_frame<Observed>(library, table, context);
-            case stage_type::wait_input:
-                return wait_input<Observed>(library, table, context, random);
-            case stage_type::switch_onpay:
-                return continue_switch_onpay<Observed>(library, table, context);
-            case stage_type::after_fixed_switch_onpay:
-                context.stack().pop<
-                    detail::handler_id<cost_of_switch>,
-                    cost_effect_argument<cost_of_switch>,
-                    stage_t
-                >();
-                return continue_switch_onpay<Observed>(library, table, context);
-            case stage_type::switch_payment_broadcast:
-                return broadcast_switch_payment<Observed>(library, table, context, random);
-            case stage_type::switch_action:
-                return execute_switch_action<Observed>(library, table, context);
-            case stage_type::switch_action_broadcast:
-                return broadcast_switch_action<Observed>(library, table, context, random);
-            case stage_type::first_round_end_broadcast:
-            case stage_type::second_round_end_broadcast:
-                return broadcast_round_end_declaration<Observed>(library, table, context, random, stage);
-            default:
-                break;
-            }
+        inline constexpr std::size_t switch_action_broadcast_slot = 10 + Observed;
+        template<bool Observed>
+        inline constexpr std::size_t first_round_end_broadcast_slot = 11 + Observed;
+        template<bool Observed>
+        inline constexpr std::size_t second_round_end_broadcast_slot = 12 + Observed;
 
-            GIVM_ASSERT(false);
-            return continue_execution;
+        template<std::size_t From, std::size_t To>
+        execution_state go_to(execution_context& context) noexcept
+        {
+            return context.jump(context.position() - From * sizeof(execute_fn) + To * sizeof(execute_fn));
         }
 
-    private:
-        using switch_handler_id = detail::handler_id<cost_of_switch>;
-
-        static auto action_frame(execution_context& context) noexcept
+        inline auto action_frame(execution_context& context) noexcept
         {
             return context.stack().top<
                 switch_handler_id[],
@@ -165,12 +104,11 @@ namespace givm
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
                 action_argument,
-                action_request,
-                stage_t
+                action_request
             >();
         }
 
-        static void pop_action_frame(execution_context& context) noexcept
+        inline void pop_action_frame(execution_context& context) noexcept
         {
             context.stack().pop<
                 switch_handler_id[],
@@ -178,12 +116,11 @@ namespace givm
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
                 action_argument,
-                action_request,
-                stage_t
+                action_request
             >();
         }
 
-        static cost_of_switch default_switch_cost(character_id target) noexcept
+        inline cost_of_switch default_switch_cost(character_id target) noexcept
         {
             action_cost_requirement requirement;
             requirement.dice_requirement.any = 1;
@@ -194,39 +131,7 @@ namespace givm
             };
         }
 
-        template<bool Observed>
-        static execution_state prepare_action_phase(
-            const definition_library& library, unrestricted_table& table, execution_context& context
-        )
-        {
-            detail::prepare_broadcast(library, action_phase_started{}, table, context.stack());
-            context.current_stage() = static_cast<stage_t>(stage_type::action_phase_broadcast);
-            return continue_execution;
-        }
-
-        template<bool Observed>
-        static execution_state broadcast_action_phase(
-            const definition_library& library,
-            unrestricted_table& table,
-            execution_context& context,
-            random_fn& random
-        )
-        {
-            if(not detail::continue_broadcast<action_phase_started>(library, table, context, random))
-            {
-                return continue_execution;
-            }
-
-            detail::pop_broadcast<action_phase_started>(context);
-            context.current_stage() = static_cast<stage_t>(stage_type::before_action);
-            if constexpr(Observed)
-            {
-                return execution_state::action_started;
-            }
-            return continue_execution;
-        }
-
-        static void calculate_switch_cost(
+        inline void calculate_switch_cost(
             const definition_library& library,
             stack_count_t action_index,
             unrestricted_table& table,
@@ -234,20 +139,7 @@ namespace givm
             random_fn& random
         )
         {
-            auto&& [
-                handlers,
-                costs,
-                onpay_items,
-                onpay_cursor,
-                argument,
-                request,
-                stage
-            ] = action_frame(context);
-            (void)onpay_cursor;
-            (void)argument;
-            (void)request;
-            (void)stage;
-
+            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
             GIVM_ASSERT(action_index < costs.size());
             auto& cost = costs[action_index];
             cost = default_switch_cost(cost.target);
@@ -259,75 +151,73 @@ namespace givm
                 auto& onpay = onpay_items[row_begin + column];
                 onpay = {};
                 cost.effect_argument = {};
-
-                const auto entry = std::visit([&](auto handler_id)
+                const auto entry = std::visit([&](auto handler)
                 {
-                    return detail::try_handle(
-                        library,
-                        std::as_const(table)[handler_id],
-                        cost,
-                        table,
-                        random
-                    );
+                    return try_handle(library, std::as_const(table)[handler], cost, table, random);
                 }, handlers[column]);
-                onpay = {
-                    .entry = entry,
-                    .argument = cost.effect_argument
-                };
+                onpay = { .entry = entry, .argument = cost.effect_argument };
             }
         }
 
-        template<bool Observed>
-        static execution_state execute_before_action(
-            const definition_library& library, unrestricted_table& table, execution_context& context
+        inline execution_state prepare_action_phase(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn&
         )
         {
-            const auto stage = static_cast<stage_type>(context.current_stage());
-            auto& state = table.state();
-            if(
-                stage == stage_type::before_action_with_switch
-                && not state.first_ended
-            )
-            {
-                state.active_player = other_player(state.active_player);
-            }
-
-            detail::prepare_broadcast(library, before_action{}, table, context.stack());
-            context.current_stage() = static_cast<stage_t>(stage_type::before_action_broadcast);
-            if constexpr(Observed)
-            {
-                if(stage == stage_type::before_action_with_switch)
-                {
-                    return execution_state::action_started;
-                }
-            }
-            return continue_execution;
+            prepare_broadcast(library, action_phase_started{}, table, context.stack());
+            return context.enter_next();
         }
 
         template<bool Observed>
-        static execution_state broadcast_before_action(
-            const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
+        execution_state broadcast_action_phase(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
         )
         {
-            if(not detail::continue_broadcast<before_action>(library, table, context, random))
+            if(not continue_broadcast<action_phase_started>(library, table, context, random))
             {
                 return continue_execution;
             }
-
-            detail::pop_broadcast<before_action>(context);
-            context.current_stage() = static_cast<stage_t>(stage_type::prepare_input);
+            pop_broadcast<action_phase_started>(context);
+            context.enter_next();
+            if constexpr(Observed)
+            {
+                return context.yield(execution_state::action_started);
+            }
             return continue_execution;
         }
 
-        template<bool Observed>
-        static execution_state prepare_input_frame(
+        template<bool Switch, bool Observed>
+        execution_state prepare_before_action(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn&
+        )
+        {
+            if constexpr(Switch)
+            {
+                auto& state = table.state();
+                if(not state.first_ended)
+                {
+                    state.active_player = other_player(state.active_player);
+                }
+            }
+            prepare_broadcast(library, before_action{}, table, context.stack());
+            constexpr auto from = Switch ? before_action_with_switch_slot : before_action_slot;
+            go_to<from, before_action_broadcast_slot>(context);
+            if constexpr(Switch && Observed)
+            {
+                return context.yield(execution_state::action_started);
+            }
+            return continue_execution;
+        }
+
+        inline execution_state prepare_input_frame(
             const definition_library& library, unrestricted_table& table, execution_context& context
         )
         {
             const auto player = table[table.state().active_player];
             const auto active_character = player.state().active_character;
             GIVM_ASSERT(active_character.has_value());
-
             const auto is_switch_target = [active = *active_character](const auto& character)
             {
                 return character.id() != active && character.state().health != 0;
@@ -342,70 +232,54 @@ namespace givm
                 }
             }
 
-            const auto cost_handlers = detail::collect_all_broadcast_targets<cost_of_switch>(library, table);
+            const auto cost_handlers = collect_all_broadcast_targets<cost_of_switch>(library, table);
             const auto handler_count = static_cast<stack_count_t>(cost_handlers.size());
             const auto matrix_size = switch_count * handler_count;
-            auto&& [
-                handlers,
-                costs,
-                onpay_items,
-                onpay_cursor,
-                argument,
-                request,
-                stage
-            ] = context.stack().push(
+            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = context.stack().push(
                 dynamic_array<switch_handler_id>(cost_handlers),
                 dynamic_array<cost_of_switch>(switch_count),
                 dynamic_array<onpay_item<cost_of_switch>>(matrix_size),
                 stack_count_t{},
                 action_argument{},
-                action_request{},
-                static_cast<stage_t>(stage_type::wait_input)
+                action_request{}
             );
-            (void)handlers;
-            (void)onpay_cursor;
-            (void)argument;
-            (void)request;
-            (void)stage;
 
             for(auto& item : onpay_items)
             {
                 item = {};
             }
-
             stack_count_t index = 0;
             for(auto character : player.characters())
             {
-                if(not is_switch_target(character))
+                if(is_switch_target(character))
                 {
-                    continue;
+                    costs[index++] = default_switch_cost(character.id());
                 }
-                costs[index++] = default_switch_cost(character.id());
             }
-
             return context.yield(execution_state::action);
         }
 
-        template<bool Observed>
-        static execution_state wait_input(
-            const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random
+        inline execution_state broadcast_before_action(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
         )
         {
-            auto&& [
-                handlers,
-                costs,
-                onpay_items,
-                onpay_cursor,
-                argument,
-                request,
-                stage
-            ] = action_frame(context);
-            (void)handlers;
-            (void)onpay_items;
-            (void)onpay_cursor;
-            (void)argument;
-            (void)stage;
+            if(not continue_broadcast<before_action>(library, table, context, random))
+            {
+                return continue_execution;
+            }
+            pop_broadcast<before_action>(context);
+            context.enter_next();
+            return prepare_input_frame(library, table, context);
+        }
 
+        template<bool Observed>
+        execution_state wait_input(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
             if(request.request_kind == action_request_kind::none)
             {
                 return context.yield(execution_state::action);
@@ -414,30 +288,30 @@ namespace givm
             if(request.action_kind == action_kind::declare_round_end)
             {
                 pop_action_frame(context);
-
                 auto& state = table.state();
                 const bool is_first = not state.first_ended;
                 if(is_first)
                 {
                     state.first_ended = true;
                 }
-
-                detail::prepare_broadcast(library, round_end_declared{}, table, context.stack());
-                context.current_stage() = static_cast<stage_t>(
-                    is_first
-                        ? stage_type::first_round_end_broadcast
-                        : stage_type::second_round_end_broadcast
-                );
+                prepare_broadcast(library, round_end_declared{}, table, context.stack());
+                if(is_first)
+                {
+                    go_to<wait_input_slot, first_round_end_broadcast_slot<Observed>>(context);
+                }
+                else
+                {
+                    go_to<wait_input_slot, second_round_end_broadcast_slot<Observed>>(context);
+                }
                 if constexpr(Observed)
                 {
-                    return execution_state::round_end_declared;
+                    return context.yield(execution_state::round_end_declared);
                 }
                 return continue_execution;
             }
 
             GIVM_ASSERT(request.action_kind == action_kind::switch_active);
             GIVM_ASSERT(request.action_index < costs.size());
-
             const auto action_index = request.action_index;
             if(request.request_kind == action_request_kind::calculate_cost)
             {
@@ -445,7 +319,6 @@ namespace givm
                 request = {};
                 return context.yield(execution_state::action);
             }
-
             if(request.request_kind == action_request_kind::do_action)
             {
                 calculate_switch_cost(library, action_index, table, context, random);
@@ -456,28 +329,15 @@ namespace givm
             }
 
             onpay_cursor = 0;
-            stage = static_cast<stage_t>(stage_type::switch_onpay);
-            return continue_switch_onpay<Observed>(library, table, context);
+            return context.enter_next();
         }
 
-        template<bool Observed>
-        static execution_state continue_switch_onpay(
-            const definition_library& library, unrestricted_table& table, execution_context& context
+        inline execution_state continue_switch_onpay(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn&
         )
         {
-            auto&& [
-                handlers,
-                costs,
-                onpay_items,
-                onpay_cursor,
-                argument,
-                request,
-                stage
-            ] = action_frame(context);
-            (void)costs;
-            (void)argument;
-            (void)stage;
-
+            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
             GIVM_ASSERT(request.action_index < costs.size());
             const auto handler_count = static_cast<stack_count_t>(handlers.size());
             const auto row_begin = request.action_index * handler_count;
@@ -485,195 +345,179 @@ namespace givm
             {
                 const auto column = onpay_cursor++;
                 const auto onpay = onpay_items[row_begin + column];
-
                 if(onpay.entry)
                 {
                     const auto handler = handlers[column];
-                    context.stack().push(
-                        handler,
-                        onpay.argument,
-                        static_cast<stage_t>(stage_type::after_fixed_switch_onpay)
-                    );
+                    context.stack().push(handler, onpay.argument);
+                    context.enter_next();
                     return context.enter(onpay.entry);
                 }
             }
-
-            return pay_switch_cost<Observed>(library, table, context);
-        }
-
-        template<bool Observed>
-        static execution_state pay_switch_cost(
-            const definition_library& library, unrestricted_table& table, execution_context& context
-        )
-        {
-            auto&& [
-                handlers,
-                costs,
-                onpay_items,
-                onpay_cursor,
-                argument,
-                request,
-                stage
-            ] = action_frame(context);
-            (void)handlers;
-            (void)costs;
-            (void)onpay_items;
-            (void)onpay_cursor;
-            (void)request;
 
             const auto paid_dice = argument.paid_dice;
             const auto player = table.state().active_player;
             auto& player_dice = table[player].state().dice;
             GIVM_ASSERT(player_dice.contains(paid_dice));
             player_dice -= paid_dice;
-            stage = static_cast<stage_t>(stage_type::switch_action);
-
             if(paid_dice.total() == 0)
             {
-                return execute_switch_action<Observed>(library, table, context);
+                return go_to<switch_onpay_slot, switch_action_slot>(context);
             }
 
-            detail::prepare_broadcast(
-                library,
-                dice_removed{
-                    .player = player,
-                    .dice = paid_dice
-                },
-                table,
-                context.stack()
-            );
-            context.current_stage() = static_cast<stage_t>(stage_type::switch_payment_broadcast);
-            return continue_execution;
+            prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack());
+            return go_to<switch_onpay_slot, switch_payment_broadcast_slot>(context);
         }
 
-        template<bool Observed>
-        static execution_state broadcast_switch_payment(
-            const definition_library& library,
-            unrestricted_table& table,
-            execution_context& context,
-            random_fn& random
+        inline execution_state after_fixed_switch_onpay(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
         )
         {
-            if(not detail::continue_broadcast<dice_removed>(library, table, context, random))
+            context.stack().pop<switch_handler_id, cost_effect_argument<cost_of_switch>>();
+            go_to<after_fixed_switch_onpay_slot, switch_onpay_slot>(context);
+            return continue_switch_onpay(library, table, context, random);
+        }
+
+        inline execution_state broadcast_switch_payment(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            if(not continue_broadcast<dice_removed>(library, table, context, random))
             {
                 return continue_execution;
             }
-
-            detail::pop_broadcast<dice_removed>(context);
-            return execute_switch_action<Observed>(library, table, context);
+            pop_broadcast<dice_removed>(context);
+            return context.enter_next();
         }
 
         template<bool Observed>
-        static execution_state execute_switch_action(
-            const definition_library& library, unrestricted_table& table, execution_context& context
+        execution_state execute_switch_action(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn&
         )
         {
-            auto&& [
-                handlers,
-                costs,
-                onpay_items,
-                onpay_cursor,
-                argument,
-                request,
-                stage
-            ] = action_frame(context);
-            (void)handlers;
-            (void)onpay_items;
-            (void)onpay_cursor;
-            (void)argument;
-            (void)stage;
-
+            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
             GIVM_ASSERT(request.action_index < costs.size());
             const auto target = costs[request.action_index].target;
             GIVM_ASSERT(static_cast<bool>(table[target]));
+            if constexpr(not Observed)
+            {
+                table[target.player_id].state().active_character = target;
+            }
+            prepare_broadcast(library, active_character_changed{ .current = target }, table, context.stack());
+            context.enter_next();
             if constexpr(Observed)
             {
-                detail::prepare_broadcast(library, active_character_changed{ .current = target }, table, context.stack());
-                context.current_stage() = static_cast<stage_t>(stage_type::switch_action_apply);
-                return execution_state::active_character_changed;
+                return context.yield(execution_state::active_character_changed);
             }
-            table[target.player_id].state().active_character = target;
-
-            detail::prepare_broadcast(library, active_character_changed{ .current = target }, table, context.stack());
-            context.current_stage() = static_cast<stage_t>(stage_type::switch_action_broadcast);
             return continue_execution;
         }
 
         template<bool Observed>
-        static execution_state broadcast_switch_action(
-            const definition_library& library,
-            unrestricted_table& table,
-            execution_context& context,
-            random_fn& random
+        execution_state broadcast_switch_action(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
         )
         {
-            if(not detail::continue_broadcast<active_character_changed>(library, table, context, random))
+            if(not continue_broadcast<active_character_changed>(library, table, context, random))
             {
                 return continue_execution;
             }
+            pop_broadcast<active_character_changed>(context);
 
-            detail::pop_broadcast<active_character_changed>(context);
-            return finish_switch_action<Observed>(context);
-        }
-
-        template<bool Observed>
-        static execution_state finish_switch_action(execution_context& context)
-        {
-            auto&& [
-                handlers,
-                costs,
-                onpay_items,
-                onpay_cursor,
-                argument,
-                request,
-                stage
-            ] = action_frame(context);
-            (void)handlers;
-            (void)onpay_items;
-            (void)onpay_cursor;
-            (void)argument;
-            (void)stage;
-
+            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
             GIVM_ASSERT(request.action_index < costs.size());
             const auto speed = costs[request.action_index].requirement.speed;
             pop_action_frame(context);
+            if(speed == action_speed::combat)
+            {
+                return go_to<switch_action_broadcast_slot<Observed>, before_action_with_switch_slot>(context);
+            }
+            return go_to<switch_action_broadcast_slot<Observed>, before_action_slot>(context);
+        }
 
-            const auto next_stage = speed == action_speed::combat
-                ? stage_type::before_action_with_switch
-                : stage_type::before_action;
-            context.current_stage() = static_cast<stage_t>(next_stage);
-            return continue_execution;
+        inline execution_state apply_switch_action(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            auto&& [event, handler] = context.stack().top<
+                active_character_changed,
+                handler_id<active_character_changed>
+            >();
+            table[event.current.player_id].state().active_character = event.current;
+            context.enter_next();
+            return broadcast_switch_action<true>(library, table, context, random);
         }
 
         template<bool Observed>
-        static execution_state broadcast_round_end_declaration(
-            const definition_library& library,
-            unrestricted_table& table,
-            execution_context& context,
-            random_fn& random,
-            stage_type stage
+        execution_state broadcast_first_round_end(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
         )
         {
-            if(not detail::continue_broadcast<round_end_declared>(library, table, context, random))
+            if(not continue_broadcast<round_end_declared>(library, table, context, random))
             {
                 return continue_execution;
             }
-
-            detail::pop_broadcast<round_end_declared>(context);
-            if(stage == stage_type::second_round_end_broadcast)
-            {
-                return context.enter_next();
-            }
-
+            pop_broadcast<round_end_declared>(context);
             table.state().active_player = other_player(table.state().active_player);
-            context.current_stage() = static_cast<stage_t>(stage_type::before_action);
+            go_to<first_round_end_broadcast_slot<Observed>, before_action_slot>(context);
             if constexpr(Observed)
             {
-                return execution_state::action_started;
+                return context.yield(execution_state::action_started);
             }
             return continue_execution;
         }
-    };
+
+        inline execution_state broadcast_second_round_end(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            if(not continue_broadcast<round_end_declared>(library, table, context, random))
+            {
+                return continue_execution;
+            }
+            pop_broadcast<round_end_declared>(context);
+            return context.enter_next();
+        }
+
+        template<bool Observed>
+        void emit(program_writer& writer)
+        {
+            writer.write<execute_fn>(&prepare_action_phase);
+            writer.write<execute_fn>(&broadcast_action_phase<Observed>);
+            writer.write<execute_fn>(&prepare_before_action<false, Observed>);
+            writer.write<execute_fn>(&prepare_before_action<true, Observed>);
+            writer.write<execute_fn>(&broadcast_before_action);
+            writer.write<execute_fn>(&wait_input<Observed>);
+            writer.write<execute_fn>(&continue_switch_onpay);
+            writer.write<execute_fn>(&after_fixed_switch_onpay);
+            writer.write<execute_fn>(&broadcast_switch_payment);
+            writer.write<execute_fn>(&execute_switch_action<Observed>);
+            if constexpr(Observed)
+            {
+                writer.write<execute_fn>(&apply_switch_action);
+            }
+            writer.write<execute_fn>(&broadcast_switch_action<Observed>);
+            writer.write<execute_fn>(&broadcast_first_round_end<Observed>);
+            writer.write<execute_fn>(&broadcast_second_round_end);
+        }
+    }
+
+    inline void compile(program_writer& writer, const begin_action&, compile_mode mode)
+    {
+        if(mode == compile_mode::observed)
+        {
+            begin_action_command::emit<true>(writer);
+        }
+        else
+        {
+            begin_action_command::emit<false>(writer);
+        }
+    }
 }
 
 #include "../../macro_undef.hpp"

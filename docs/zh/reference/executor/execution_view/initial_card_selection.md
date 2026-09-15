@@ -25,4 +25,4 @@ class execution_view<execution_state::initial_card_selection>;
 
 | | |
 | --- | --- |
-| [`replace_cards_both`](../instructions/replace_cards_both.md) | 双方开局换牌指令 |
+| [`replace_cards_both`](../../definition/commands/replace_cards_both.md) | 双方开局换牌命令 |

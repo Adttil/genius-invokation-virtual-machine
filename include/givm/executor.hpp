@@ -6,7 +6,6 @@
 #include "executor/library.hpp"
 #include "executor/executor.hpp"
 #include "executor/selector.hpp"
-#include "executor/events.hpp"
 #include "executor/broadcast.hpp"
 #include "executor/instructions.hpp"
 #include "executor/views/selection.hpp"

@@ -2,15 +2,15 @@
 #define GIVM_EXECUTOR_LIBRARY_HPP
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <ranges>
-#include <span>
 #include <stdexcept>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "instruction.hpp"
@@ -21,53 +21,40 @@
 
 namespace givm::detail
 {
-    inline constexpr execution_position program_prefix_size = entry_position;
-
-    struct null_instruction
+    template<class TExecutionContext>
+    execution_state execute_return(
+        const definition_library&, unrestricted_table&, TExecutionContext& context, random_fn&)
     {
-        execution_state execute(const definition_library&, unrestricted_table&, execution_context&, random_fn&) const
-        {
-            GIVM_ASSERT(false);
-            return execution_state{};
-        }
-    };
-
-    struct return_instruction
+        return context.return_from_subroutine();
+    }
+    template<class TExecutionContext>
+    execution_state execute_jump(
+        const definition_library& library, unrestricted_table&, TExecutionContext& context, random_fn&)
     {
-        execution_state execute(const definition_library&, unrestricted_table&, execution_context&, random_fn&) const
-        {
-            GIVM_ASSERT(false);
-            return execution_state{};
-        }
-    };
-
-    struct jump_instruction
-    {
-        execution_position target;
-
-        execution_state execute(const definition_library&, unrestricted_table&, execution_context&, random_fn&) const
-        {
-            GIVM_ASSERT(false);
-            return execution_state{};
-        }
-    };
+        return context.jump(context.template instruction_data<1, execution_position>(library));
+    }
 
     template<class TContext, class TSequence>
-    void append_instructions(std::vector<any_instruction>& program, TSequence&& instructions)
+    void append_commands(program_writer& writer, TSequence&& commands, compile_mode mode)
     {
-        const auto append = [&]<class TInstruction>(TInstruction&& instruction)
+        const auto append = [&]<class TCommand>(TCommand&& command)
         {
-            const any_instruction_for<TContext> contextual_instruction{
-                std::forward<TInstruction>(instruction)
-            };
-            program.push_back(any_instruction{ contextual_instruction });
+            static_assert(command_compatible_with<TCommand, TContext>, "incompatible command context");
+            if constexpr(requires { std::variant_size<std::remove_cvref_t<TCommand>>::value; })
+            {
+                std::visit([&](const auto& item) { compile(writer, item, mode); }, command);
+            }
+            else
+            {
+                compile(writer, command, mode);
+            }
         };
 
         if constexpr(std::ranges::range<TSequence>)
         {
-            for(auto&& instruction : instructions)
+            for(auto&& command : commands)
             {
-                append(std::forward<decltype(instruction)>(instruction));
+                append(std::forward<decltype(command)>(command));
             }
         }
         else
@@ -75,7 +62,7 @@ namespace givm::detail
             [&]<std::size_t... I>(std::index_sequence<I...>)
             {
                 using std::get;
-                (append(get<I>(std::forward<TSequence>(instructions))), ...);
+                (append(get<I>(std::forward<TSequence>(commands))), ...);
             }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TSequence>>>{});
         }
     }
@@ -118,25 +105,24 @@ namespace givm
             return id_map_.query_by_tag<TCategory>(filter);
         }
 
-        template<class TContext, class TInstructions>
-        program_entry<TContext> add_program(TInstructions&& instructions)
+        template<class TContext, class TCommands>
+        program_entry<TContext> add_program(TCommands&& commands)
         {
             const program_entry<TContext> result{ program_.size() };
-            detail::append_instructions<TContext>(
-                program_,
-                std::forward<TInstructions>(instructions)
-            );
-            program_.push_back(detail::any_instruction{ detail::return_instruction{} });
+            detail::program_writer writer{ program_ };
+            detail::append_commands<TContext>(writer, std::forward<TCommands>(commands), mode_);
+            writer.write(detail::execute_fn{ detail::execute_return });
             return result;
         }
 
     private:
         definition_compile_context(
             const issued_id_map& id_map,
-            std::vector<detail::any_instruction>& program,
-            const detail::definition_source_declarations& declarations
+            detail::program_bytes& program,
+            const detail::definition_source_declarations& declarations,
+            compile_mode mode
         )
-        : id_map_{ id_map }, program_{ program }, declarations_{ declarations }
+        : id_map_{ id_map }, program_{ program }, declarations_{ declarations }, mode_{ mode }
         {}
 
         static bool contains(const std::vector<std::string_view>& values, std::string_view value)
@@ -145,8 +131,10 @@ namespace givm
         }
 
         const issued_id_map& id_map_;
-        std::vector<detail::any_instruction>& program_;
+        detail::program_bytes& program_;
         const detail::definition_source_declarations& declarations_;
+
+        compile_mode mode_;
 
         friend class definition_library;
     };
@@ -154,8 +142,30 @@ namespace givm
     class definition_library
     {
         friend class executor;
+        friend class detail::execution_context;
 
     public:
+        definition_library(const definition_library& other)
+        : program_{ other.program_ }, tag_names_{ other.tag_names_ }, buckets_{ other.buckets_ }
+        {
+            detail::finalize_program(program_);
+        }
+
+        definition_library(definition_library&&) noexcept = default;
+
+        definition_library& operator=(const definition_library& other)
+        {
+            if(this != &other)
+            {
+                auto replacement = other;
+                *this = std::move(replacement);
+            }
+            return *this;
+        }
+
+        definition_library& operator=(definition_library&&) noexcept = default;
+        ~definition_library() = default;
+
         static constexpr size_t definition_count = definition_types::size();
 
         template<class TDefinitionType>
@@ -235,12 +245,6 @@ namespace givm
         static constexpr detail::execution_position entry() noexcept
         {
             return detail::entry_position;
-        }
-
-        constexpr decltype(auto) instruction(detail::execution_position position) const noexcept
-        {
-            GIVM_ASSERT(position < program_.size());
-            return static_cast<detail::any_instruction_view>(program_[position]);
         }
 
     public:
@@ -356,10 +360,9 @@ namespace givm
         using bucket_tuple = definition_type_list::apply<bucket_tuple_for>;
 
         explicit definition_library(std::span<const std::string_view> tag_names)
-        : tag_names_(tag_names.begin(), tag_names.end())
+        : program_(sizeof(detail::execute_fn), 0), tag_names_(tag_names.begin(), tag_names.end())
         {
-            program_.push_back(detail::any_instruction{ detail::null_instruction{} });
-            GIVM_ASSERT(program_.size() == detail::program_prefix_size);
+
         }
 
         template<class TDefinitionType>
@@ -386,12 +389,13 @@ namespace givm
         template<class TDefinitionType>
         void append(
             const definition_source_view<TDefinitionType>& source,
-            const issued_id_map& id_map
+            const issued_id_map& id_map,
+            compile_mode mode
         )
         {
             const auto declarations = source.declarations();
             auto& bucket = bucket_for<TDefinitionType>();
-            definition_compile_context context{ id_map, program_, declarations };
+            definition_compile_context context{ id_map, program_, declarations, mode };
             definition_data data = source.compile(context);
 
             bucket.names.push_back(source.name());
@@ -458,7 +462,8 @@ namespace givm
         static void append_sources(
             const definition_source_library& sources,
             const issued_id_map& id_map,
-            definition_library& library
+            definition_library& library,
+            compile_mode mode
         )
         {
             std::vector<definition_source_view<TCategory>> selected;
@@ -476,7 +481,7 @@ namespace givm
             });
             for(const auto& source : selected)
             {
-                library.append(source, id_map);
+                library.append(source, id_map, mode);
             }
         }
 
@@ -486,7 +491,8 @@ namespace givm
             const definition_source_library& sources,
             issued_id_map id_map,
             TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program
+            TRoundSequence&& round_program,
+            compile_mode mode
         )
         {
             struct compile_result
@@ -496,23 +502,24 @@ namespace givm
             };
 
             definition_library library{ id_map.tag_names() };
-            detail::append_instructions<void>(
-                library.program_, std::forward<TInitializationSequence>(initialization_program)
-            );
+            detail::program_writer writer{ library.program_ };
+            detail::append_commands<void>(writer, std::forward<TInitializationSequence>(initialization_program), mode);
             const detail::execution_position round_entry = library.program_.size();
-            detail::append_instructions<void>(library.program_, std::forward<TRoundSequence>(round_program));
-            library.program_.push_back(detail::any_instruction{ detail::jump_instruction{ .target = round_entry } });
+            detail::append_commands<void>(writer, std::forward<TRoundSequence>(round_program), mode);
+            writer.write(detail::execute_fn{ detail::execute_jump });
+            writer.write(round_entry);
 
             [&]<std::size_t... I>(std::index_sequence<I...>)
             {
-                (append_sources<definition_types::type_at<I>>(sources, id_map, library), ...);
+                (append_sources<definition_types::type_at<I>>(sources, id_map, library, mode), ...);
             }(std::make_index_sequence<definition_types::size()>{});
 
+            detail::finalize_program(library.program_);
             return compile_result{ .library = std::move(library), .id_map = std::move(id_map) };
         }
 
     private:
-        std::vector<detail::any_instruction> program_;
+        detail::program_bytes program_;
         std::vector<std::string_view> tag_names_;
         bucket_tuple buckets_;
     };
@@ -521,13 +528,14 @@ namespace givm
     auto compile(
         const definition_source_library& sources,
         TInitializationSequence&& initialization_program,
-        TRoundSequence&& round_program
+        TRoundSequence&& round_program,
+        compile_mode mode
     )
     {
         return definition_library::compile(
             sources, sources.make_issued_id_map(),
             std::forward<TInitializationSequence>(initialization_program),
-            std::forward<TRoundSequence>(round_program)
+            std::forward<TRoundSequence>(round_program), mode
         );
     }
 
@@ -536,17 +544,17 @@ namespace givm
         const definition_source_library& sources,
         const definition_selection& selection,
         TInitializationSequence&& initialization_program,
-        TRoundSequence&& round_program
+        TRoundSequence&& round_program,
+        compile_mode mode
     )
     {
         return definition_library::compile(
             sources, sources.make_issued_id_map(selection),
             std::forward<TInitializationSequence>(initialization_program),
-            std::forward<TRoundSequence>(round_program)
+            std::forward<TRoundSequence>(round_program), mode
         );
     }
 }
 
 #include "../macro_undef.hpp"
-
 #endif

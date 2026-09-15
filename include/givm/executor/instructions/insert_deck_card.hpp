@@ -2,57 +2,43 @@
 #define GIVM_EXECUTOR_INSTRUCTIONS_INSERT_DECK_CARD_HPP
 
 #include "../executor.hpp"
-
+#include "../../definition/commands.hpp"
 #include <cstddef>
 #include <cstdint>
 
-#include "../../table.hpp"
-#include "../../utils/debug.hpp"
-
 #include "../../macro_define.hpp"
 
-namespace givm
+namespace givm::detail
 {
-    struct insert_deck_card
+    inline execution_state insert_deck_card_execute(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
     {
-        using context_type = void;
-
-        player_id player;
-        definition_id<card_definition> definition;
-        std::int32_t position = -1;
-    };
-
-    namespace detail
-    {
-        template<>
-        struct instruction_implementation<insert_deck_card>
+        const auto& instruction = context.instruction_data<1, givm::insert_deck_card>(library);
+        auto player_entity = table[instruction.player];
+        const auto size = player_entity.deck_card_count();
+        size_t index;
+        if(instruction.position >= 0)
         {
-            template<bool Observed>
-            static execution_state execute(
-                const givm::insert_deck_card& instruction, const definition_library&,
-                unrestricted_table& table, execution_context& context, random_fn&
-            )
-            {
-                auto player_entity = table[instruction.player];
-                const auto size = player_entity.deck_card_count();
-                size_t index;
-                if(instruction.position >= 0)
-                {
-                    index = static_cast<size_t>(instruction.position);
-                    GIVM_ASSERT(index <= size);
-                }
-                else
-                {
-                    const auto offset_from_top = static_cast<size_t>(-instruction.position - 1);
-                    GIVM_ASSERT(offset_from_top <= size);
-                    index = size - offset_from_top;
-                }
-                player_entity.insert_deck_card(index, instruction.definition, card_state{});
+            index = static_cast<size_t>(instruction.position);
+            GIVM_ASSERT(index <= size);
+        }
+        else
+        {
+            const auto offset_from_top = static_cast<size_t>(-instruction.position - 1);
+            GIVM_ASSERT(offset_from_top <= size);
+            index = size - offset_from_top;
+        }
+        player_entity.insert_deck_card(index, instruction.definition, card_state{});
 
-                return context.enter_next();
-            }
+        return context.advance(instruction_extent<1, givm::insert_deck_card>);
+    }
 
-        };
+    inline void compile(program_writer& writer, const givm::insert_deck_card& command, compile_mode)
+    {
+        writer.write(execute_fn{ &insert_deck_card_execute });
+        writer.write(command);
     }
 }
 

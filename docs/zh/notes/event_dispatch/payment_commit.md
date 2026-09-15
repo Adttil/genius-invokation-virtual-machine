@@ -2,7 +2,7 @@
 
 # 费用预览、提交缓存与取消
 
-这里记录行动费用为何需要延迟提交，以及修改报价、响应缓存和取消行为时需要维护的条件。主动切换的公开字段与用法见 [cost_of_switch](../../reference/executor/events/cost_of_switch.md) 和 [begin_action](../../reference/executor/instructions/begin_action.md)。`onpay_context` 是费用事件到提交现场的现有映射，不是另一类事件。
+这里记录行动费用为何需要延迟提交，以及修改报价、响应缓存和取消行为时需要维护的条件。主动切换的公开字段与用法见 [cost_of_switch](../../reference/definition/events/cost_of_switch.md) 和 [begin_action](../../reference/definition/commands/begin_action.md)。`onpay_context` 是费用事件到提交现场的现有映射，不是另一类事件。
 
 ## 为什么预览与提交隔离
 
@@ -37,7 +37,7 @@
 
 继续等待、改选其他候选或重新报价，不会执行未提交的效果。继续等待不会自动清空已经计算的候选；重新报价会覆盖对应候选的旧结果。正常结束该行动窗口时丢弃全部候选和缓存，宣布回合结束也不会提交此前的报价效果。
 
-进入提交后，暂停推进并不撤销已经发生的副作用；当前也没有独立的提交回滚机制。缓存只说明此前某次报价的结果，不证明支付已经经过完整合法性检查。支付合法性仍由调用方按[行动接口](../../reference/executor/instructions/begin_action.md)保证。
+进入提交后，暂停推进并不撤销已经发生的副作用；当前也没有独立的提交回滚机制。缓存只说明此前某次报价的结果，不证明支付已经经过完整合法性检查。支付合法性仍由调用方按[行动接口](../../reference/definition/commands/begin_action.md)保证。
 
 行动现场被弹出或执行器重新开始后，旧缓存和从中取得的引用都不能沿用；栈扩容也可能更早使借用失效。进入终局后旧现场被逻辑废弃，即使字节仍在栈中，也不能继续解释或借用这份缓存。
 

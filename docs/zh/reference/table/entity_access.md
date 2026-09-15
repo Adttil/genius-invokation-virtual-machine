@@ -25,4 +25,4 @@
 
 ## 修改牌桌
 
-通过 [`load_deck()`](table/load_deck.md) 装载牌组，通过执行器执行[指令](../executor/instructions.md)推进对局。状态读取接口不提供可修改引用。对局参数在构造牌桌时传入；[`clean_up()`](table/clean_up.md) 由调用方主动发起。
+通过 [`load_deck()`](table/load_deck.md) 装载牌组，通过执行器执行[命令](../definition/commands.md)推进对局。状态读取接口不提供可修改引用。对局参数在构造牌桌时传入；[`clean_up()`](table/clean_up.md) 由调用方主动发起。

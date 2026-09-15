@@ -25,4 +25,4 @@ class execution_view<execution_state::initial_active_character_selection>;
 
 | | |
 | --- | --- |
-| [`select_active_character_both`](../instructions/select_active_character_both.md) | 双方开局出战角色的选择指令 |
+| [`select_active_character_both`](../../definition/commands/select_active_character_both.md) | 双方开局出战角色的选择命令 |

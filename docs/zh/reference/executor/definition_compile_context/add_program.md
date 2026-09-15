@@ -5,8 +5,8 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-template<class TContext, class TInstructions>
-program_entry<TContext> add_program(TInstructions&& instructions);
+template<class TContext, class TCommands>
+program_entry<TContext> add_program(TCommands&& commands);
 ```
 
 登记响应事件时需要依次执行的一段效果，并取得可在以后响应时返回的入口。
@@ -16,13 +16,13 @@ program_entry<TContext> add_program(TInstructions&& instructions);
 |  |  |
 | --- | --- |
 | `TContext` | 这段效果适用的 context；事件处理通常使用 `handler_program_context_t<TEvent>` |
-| `TInstructions` | 指令序列，可为 tuple-like 对象或可遍历范围 |
+| `TCommands` | 命令序列，可为 tuple-like 对象或可遍历范围 |
 
 ## 参数
 
 |  |  |
 | --- | --- |
-| `instructions` | 按顺序执行的[核心指令](../instructions.md)，也可用 [`any_instruction_for`](../any_instruction_for.md) 保存；每项须与 `TContext` 兼容 |
+| `commands` | 按顺序执行的[核心命令](../../definition/commands.md)，也可用 [`any_command_for`](../../definition/any_command_for.md) 保存；每项须与 `TContext` 兼容 |
 
 ## 返回值
 
@@ -30,7 +30,7 @@ program_entry<TContext> add_program(TInstructions&& instructions);
 
 ## 注意
 
-返回入口只用于本次编译产生的定义库。效果正常完成后回到发起它的结算；若执行期间结束对局，则不再返回原结算。本函数只登记效果，不立即执行。
+返回入口只用于本次编译产生的定义库。效果正常完成后回到发起它的结算；若执行期间结束对局，则不再返回原结算。本函数只登记效果，不立即执行；所登记效果沿用最终 `compile` 调用选择的编译模式。
 
 ## 示例
 
@@ -75,7 +75,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{} }
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
 }
 ```

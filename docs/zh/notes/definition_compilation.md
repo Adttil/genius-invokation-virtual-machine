@@ -4,7 +4,7 @@
 
 对照基线为 `b3d6c50`。旧记录的 Context/栈 ABI 称法、源对象生命周期概括、逻辑编译步骤与实际写入顺序在相应位置标明差异。持久化一节记录上层格式的设计方向，不声称核心已经提供现成序列化器。
 
-当前模块边界：definition 保留定义源协议、源库、source view 和 ID 准备；executor 提供最终编译的非成员 `givm::compile`，并拥有完整的编译上下文、程序入口及编译后的定义库。source 协议只需前置声明上下文和入口；定义拓展者包含 `givm.hpp` 后取得完整类型。本文的 `source.compile(context)` 始终指单项源的编译操作，整库编译则通过 `compile(source_library, ...)` 调用。
+当前模块边界：definition 保留定义源协议、源库、source view、ID 准备、command 与命令 variant；executor 提供最终编译的非成员 `givm::compile`，并拥有完整的编译上下文、程序入口及编译后的定义库。source 协议只需前置声明上下文和入口；定义拓展者包含 `givm.hpp` 后取得完整类型。本文的 `source.compile(context)` 始终指单项源的编译操作，整库编译则通过 `compile(source_library, ...)` 调用。
 
 definition source 是一个描述单项游戏规则的 C++ 对象。它可以代表一张卡牌、一个角色、一种状态、一个召唤物或其他一种 definition。核心先读取它的身份与依赖，再调用它编译出不可变的 definition；对局执行规则时只读取编译结果，不再调用原 source 对象。原记录由此概括“source 仍需保持存活，因为源库和编译库可以保存由它提供的非拥有字符串视图”；源对象、字符存储和编译结果的具体拥有边界在下文“注册与生命周期”中分别核对。
 
@@ -236,13 +236,13 @@ std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter
 原记录：
 
 ```cpp
-template<class TContext, class TInstructions>
-program_entry<TContext> add_program(TInstructions&& instructions);
+template<class TContext, class TCommands>
+program_entry<TContext> add_program(TCommands&& commands);
 ```
 
-`TContext` 指定这段程序进入时采用的栈 ABI。`instructions` 是一段公开指令序列：静态 C++ source 可以传入异构 tuple-like 对象或同构 input range；动态 adapter 可以传入 `any_instruction_for<TContext>` 的 input range。每条指令都必须与 `TContext` 兼容。
+`TContext` 指定这段程序进入时采用的栈 ABI。`commands` 是一段公开命令序列：静态 C++ source 可以传入异构 tuple-like 对象或同构 input range；动态 adapter 可以传入 `any_command_for<TContext>` 的 input range。每条指令都必须与 `TContext` 兼容。
 
-该函数在返回前顺序消费完整序列，不保存序列或元素的引用。返回值是新程序的 `program_entry<TContext>`，可以直接保存在编译后的 definition 中。程序执行完最后一条公开指令后会返回触发它的结算过程，source 不需要加入返回指令。
+该函数在返回前顺序消费完整序列，不保存序列或元素的引用。返回值是新程序的 `program_entry<TContext>`，可以直接保存在编译后的 definition 中。程序执行完最后一条公开命令后会返回触发它的结算过程，source 不需要加入返回指令。
 
 编译上下文不公开最终程序容器、入口的数值表示或核心用于连接程序的内部指令。固定程序与 Context 的通用语义见 [固定程序模型](fixed_program.md)。
 
@@ -350,7 +350,7 @@ static program_entry<damage_effect> handle(
 }
 ```
 
-`character_initialization` 沿用相同调用形状，但原记录约定 handler 只修改局部事件并返回空入口；`enter_character` 不进入它返回的程序。当前 `initialize_characters` 也遵循直接填写状态、不进入响应程序的处理方式，见 [character_initialization](../reference/executor/events/character_initialization.md)。原文将“具体事件字段、响应时序和栈 ABI”一并指向事件目录；现在前两者由事件及指令 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)，不作为事件使用者的完整栈协议。
+`character_initialization` 沿用相同调用形状，但原记录约定 handler 只修改局部事件并返回空入口；`enter_character` 不进入它返回的程序。当前 `initialize_characters` 也遵循直接填写状态、不进入响应程序的处理方式，见 [character_initialization](../reference/definition/events/character_initialization.md)。原文将“具体事件字段、响应时序和栈 ABI”一并指向事件目录；现在前两者由事件及指令 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)，不作为事件使用者的完整栈协议。
 
 handler 使用静态函数，是因为运行时持有编译后的 definition，而不保留原 source。动态 adapter 需要的 Lua 状态引用、回调索引或其他稳定句柄应由 `compile(...)` 放进 definition，再由静态 handler 读取。
 
@@ -373,7 +373,7 @@ bool can_handle() const;
 
 Lua 等动态来源通过 C++ adapter 实现与静态 source 相同的接口，不使用另一套定义协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
 
-脚本中的 Context 标识需要由 adapter 分派到具体 C++ Context，再将相应 `any_instruction_for<TContext>` range 传给 `add_program<TContext>`。这仍然使用同一套公开指令和强类型程序入口。
+脚本中的 Context 标识需要由 adapter 分派到具体 C++ Context，再将相应 `any_command_for<TContext>` range 传给 `add_program<TContext>`。这仍然使用同一套公开命令和强类型程序入口。
 
 ## 注册与生命周期
 
@@ -392,13 +392,13 @@ bool definition_source_library::add(const TSource& source);
 
 同时添加多个 source 的重载是原子的：它允许同一批 source 互相依赖，任一名称或依赖检查失败时整批都不加入。源库之间也可以在没有同类别名称冲突时合并。
 
-整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition，并自动包含它们的依赖闭包。源库提供 source view 遍历和成员 `make_issued_id_map`；后者利用登记时保留的声明信息完成选择、依赖闭包和 ID 分配。executor 中的非成员 `compile` 调用这个成员取得映射，再通过 source view 完成最终编译。初始化程序和回合程序必须在同一次编译中提供。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
+整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition，并自动包含它们的依赖闭包。源库提供 source view 遍历和成员 `make_issued_id_map`；后者利用登记时保留的声明信息完成选择、依赖闭包和 ID 分配。executor 中的非成员 `compile` 调用这个成员取得映射，再通过 source view 完成最终编译。初始化程序、回合程序与 `compile_mode` 必须在同一次编译中提供；所有响应程序继承该编译模式。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
 
 ```cpp
-auto [library, id_map] = compile(source_library, initialization_program, round_program);
+auto [library, id_map] = compile(source_library, initialization_program, round_program, givm::compile_mode::normal);
 ```
 
-`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都是无 Context 依赖的公开指令序列。`compile(...)` 不提供省略这两段程序的重载。
+`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都是无 Context 依赖的公开命令序列。`compile(...)` 不提供省略这两段程序的重载。
 
 ```cpp
 using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
@@ -420,13 +420,13 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 definition library 通过 issued id 提供 definition view、名称、标签和事件分派查询；游戏入口和取指仅供内部执行器使用。编译后的具体 definition 对象由核心传给对应 handler；名称到 issued id 的查找由 `issued_id_map` 提供。其内部容器和程序布局不是公开接口。
 
-需要持久化定义库构建信息时，稳定描述包括按类别记录的 definition source 完整名称，以及初始化程序和回合程序中的公开指令。恢复时，上层注册表按“类别 + 完整名称”找到 source 并重新编译。同类别同名却实现不同属于拓展冲突，核心不尝试序列化或比较任意 C++、Lua 定义实现。
+需要持久化定义库构建信息时，稳定描述包括按类别记录的 definition source 完整名称，以及初始化程序和回合程序中的公开命令，以及本次使用的编译模式。恢复时，上层注册表按“类别 + 完整名称”找到 source 并重新编译。同类别同名却实现不同属于拓展冲突，核心不尝试序列化或比较任意 C++、Lua 定义实现。
 
-初始化程序和回合程序使用固定的公开指令集，上层格式可以为指令种类分配稳定编号并序列化其公开字段。游戏存档中的可变状态仍是与重建后定义库匹配的 table 和 executor。
+初始化程序和回合程序使用固定的公开命令集，上层格式可以为指令种类分配稳定编号并序列化其公开字段。游戏存档中的可变状态仍是与重建后定义库匹配的 table 和 executor。
 
 ## 背后的编译过程
 
-**逻辑阶段与实际写入顺序。**下面七步保留原来的依赖关系解释，不声称每一步对应一次独立容器遍历。当前实现先发放 ID、建立带内部前缀的局部 `definition_library`，写入初始化、回合和回跳连接，再逐项建立受限 context、编译 definition、追加其响应程序并安装 handler，最后一并返回 `library` 和 `id_map`。响应程序由 `add_program` 当场追加并补内部返回连接。尚未完成的库不对外发布；循环依赖能够成立，也依赖于解析时读取预先分配的 ID，而非要求对方 definition 已构造。
+**逻辑阶段与实际写入顺序。**下面七步保留原来的依赖关系解释，不声称每一步对应一次独立容器遍历。当前实现先发放 ID、建立局部 `definition_library`，写入初始化、回合和回跳连接，再逐项建立受限 context、编译 definition、追加其响应程序并安装 handler，最后一并返回 `library` 和 `id_map`。响应程序由 `add_program` 当场追加并补内部返回连接。尚未完成的库不对外发布；循环依赖能够成立，也依赖于解析时读取预先分配的 ID，而非要求对方 definition 已构造。
 
 一份规则库的构建包含以下工作：
 
@@ -438,6 +438,6 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 6. 将 definition 响应程序与调用方提供的初始化程序、回合程序共同组成游戏规则程序。
 7. 所有 definition 完整构造后，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`。
 
-编译期间的中间对象不是 `definition_library` 的可观察状态。程序段存放顺序、入口数值、内部连接指令和擦除存储也都不是定义源接口。definition source 与游戏流程只能提交核心公开指令描述；上层运行期间通过 execution_view 观察领域现场，而不是查看当前指令。
+编译期间的中间对象不是 `definition_library` 的可观察状态。程序段存放顺序、入口数值、内部连接指令和擦除存储也都不是定义源接口。definition source 与游戏流程只能提交核心公开命令描述；上层运行期间通过 execution_view 观察领域现场，而不是查看当前指令。
 
 [开发备忘](../notes.md)

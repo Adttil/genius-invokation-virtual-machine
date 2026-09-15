@@ -51,7 +51,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{});
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { definition } });

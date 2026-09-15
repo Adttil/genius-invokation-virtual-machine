@@ -193,7 +193,7 @@ namespace
         {
             observation->onpay_compiled = true;
             using context_type = givm::onpay_context<givm::cost_of_switch>;
-            using instruction_type = givm::any_instruction_for<context_type>;
+            using instruction_type = givm::any_command_for<context_type>;
             const auto entry = context.add_program<context_type>(std::vector{
                 instruction_type{ givm::draw_cards{ .count = 0 } },
                 instruction_type{ givm::draw_cards{ .count = 0 } }
@@ -285,7 +285,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(card, alpha, beta));
     const auto program = std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, program, program);
+    const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 
     givm::table table{};
@@ -293,7 +293,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     zero_random random_source;
     givm::executor executor;
     executor.enter_entry(library);
-    REQUIRE(executor.run(library, table, random_source) == givm::execution_state::finished);
+    REQUIRE(executor.step(library, table, random_source) == givm::execution_state::finished);
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == 1);
     givm::random_fn random{ random_source };
     givm::test_event event;
@@ -318,7 +318,7 @@ TEST_CASE("definition compile context rejects undeclared dependency queries", "[
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(source));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    REQUIRE_THROWS_AS(compile(source_library, program, program), std::invalid_argument);
+    REQUIRE_THROWS_AS(compile(source_library, program, program, givm::compile_mode::normal), std::invalid_argument);
 }
 
 TEST_CASE("compiled definitions expose only enabled source handlers", "[source_view]")
@@ -329,7 +329,7 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(enabled, disabled));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, program, program);
+    const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
 
     CHECK(library[id_map.get_id<givm::support_view>(enabled.name())].can_handle<givm::test_event, givm::support_view>());
     CHECK_FALSE(
@@ -349,7 +349,7 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(card, support));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, program, program);
+    const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
 
     CHECK(observation.event_compiled);
     CHECK(observation.onpay_compiled);

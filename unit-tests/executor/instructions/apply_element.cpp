@@ -122,6 +122,7 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id affected{ givm::player_id{ 1 }, 0 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
             givm::initialize_characters{ givm::player_id{ 1 } },
             givm::set_element_aura{ .target = affected, .aura = initial_aura },
@@ -135,7 +136,7 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
-    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random))
+    REQUIRE(target.step(library, table, random)
         == givm::execution_state::finished);
     CHECK(table[affected].state().aura == expected_aura);
     if(initial_aura == givm::element_aura::none)

@@ -60,7 +60,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{});
+        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
     const auto definition = ids.get_id<givm::character_view>("示例");
     givm::table table{};
     table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
@@ -68,7 +68,7 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
-    execution.run(library, table, random);
+    execution.step(library, table, random);
     const givm::character_view view = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     for(const auto character : view.player().characters())
     {

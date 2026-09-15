@@ -96,7 +96,7 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
     givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta, first, second));
     const auto program = std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(sources, program, program);
+    const auto [library, id_map] = compile(sources, program, program, givm::compile_mode::normal);
     const auto deck = link_deck(
         id_map,
         std::array<std::string_view, 3>{ "Beta", "Alpha", "Beta" },
@@ -145,7 +145,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     REQUIRE(sources.add(alpha, beta, gamma, delta));
     const auto [library, id_map] = compile(sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
-        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, givm::compile_mode::normal
     );
     const givm::linked_deck deck{
         .cards = {
@@ -170,7 +170,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     sequence_random random{
         .values = { std::numeric_limits<std::uint32_t>::max(), 0, std::uint32_t{ 0x80000000u } }
     };
-    REQUIRE(target.run(library, table, random) == givm::execution_state::finished);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(random.position == 3);
 
     CHECK(deck_definition_values(table[givm::player_id{ 0 }]) == std::vector<std::size_t>{
@@ -207,7 +207,7 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
     REQUIRE(sources.add(alpha, beta));
     const auto [library, id_map] = compile(sources,
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } } },
-        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, givm::compile_mode::normal
     );
     const givm::linked_deck deck{
         .characters = {
@@ -222,7 +222,7 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
     target.enter_entry(library);
     sequence_random random{ .values = { 2, 3 } };
 
-    REQUIRE(target.run(library, table, random) == givm::execution_state::finished);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     REQUIRE(initialization_order.size() == 2);
     CHECK(bool(initialization_order[0] == "Beta"));
     CHECK(bool(initialization_order[1] == "Alpha"));

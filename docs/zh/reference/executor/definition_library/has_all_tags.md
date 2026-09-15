@@ -54,7 +54,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }
+        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::normal
     );
     const auto card = ids.get_id<givm::card_definition>("恢复药剂");
     const std::array tags{ ids.get_tag_id("治疗") };

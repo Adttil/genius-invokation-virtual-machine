@@ -18,8 +18,7 @@ class executor;
 | --- | --- |
 | [`(构造函数)`](executor/constructor.md) | 构造一个`executor` |
 | [`enter_entry`](executor/enter_entry.md) | 准备按照定义库的流程开始对局 |
-| [`run`](executor/run.md) | 推进至需要输入或对局结束 |
-| [`step`](executor/step.md) | 推进至下一处可观察现场、输入现场或终局 |
+| [`step`](executor/step.md) | 推进至编译模式要求报告的下一处现场 |
 | [`view_in`](executor/view_in.md) | 取得指定种类的当前执行现场视图 |
 
 ## 示例
@@ -38,7 +37,7 @@ int main()
     const auto [library, id_map] = compile(
         sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
-        std::tuple{ givm::start_round{ .max_rounds = 2 } }
+        std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::normal
     );
     givm::table table{};
     auto random = []() -> std::uint32_t { return 0; };
@@ -46,7 +45,7 @@ int main()
     givm::executor execution{};
 
     execution.enter_entry(library);
-    const auto state = execution.run(library, table, random);
+    const auto state = execution.step(library, table, random);
 
     std::println("终局时的回合数: {}", table.state().round_number);
     std::println("是否双败: {}", state == givm::execution_state::finished

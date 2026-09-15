@@ -47,15 +47,15 @@ enum class execution_state : std::uint8_t
 
 ## 注意
 
-[`run`](executor/run.md) 返回输入现场或 `finished`；[`step`](executor/step.md) 还会返回观察现场。每种现场均可取得相应 [`execution_view`](execution_view.md)。`initial_active_characters_selected` 和四种流程通知的视图不提供额外读取或输入操作，相关信息直接从牌桌读取。
+以 [`compile_mode::normal`](compile_mode.md) 编译时，[`step`](executor/step.md) 返回输入现场或 `finished`；以 `compile_mode::observed` 编译时还会返回观察现场。每种现场均可取得相应 [`execution_view`](execution_view.md)。`initial_active_characters_selected` 和四种流程通知的视图不提供额外读取或输入操作，相关信息直接从牌桌读取。
 
-`card_selection` 的玩家已由当前流程确定，不一定是牌桌上的行动方；`initial_card_selection` 和 `initial_active_character_selection` 允许任选先提交的一方。首次出战选择被接受后，`remaining_active_character_selection` 固定等待另一方；双方选择全部被接受后才同时设置出战角色。以 `step` 推进时，先报告 `initial_active_characters_selected`，随后推进才处理相应变更响应。
+`card_selection` 的玩家已由当前流程确定，不一定是牌桌上的行动方；`initial_card_selection` 和 `initial_active_character_selection` 允许任选先提交的一方。首次出战选择被接受后，`remaining_active_character_selection` 固定等待另一方；双方选择全部被接受后才同时设置出战角色。以观察模式编译时，先报告 `initial_active_characters_selected`，随后推进才处理相应变更响应。
 
 `active_character_changed` 时，目标角色已经确定，牌桌上仍保留原出战角色。通过相应[视图](execution_view/active_character_changed.md)取得目标后，可按其所属玩家直接读取原出战角色；下一次推进才写入目标并处理变更响应。主动切人的支付及资源变化响应在此现场之前完成。
 
-`round_started` 时，`round_number` 已增加；若超过上限，下一次推进才返回 `finished`。`action_started` 时，`active_player` 是当前获得行动机会的玩家：首次行动在行动阶段开始的响应结束后报告；战斗行动结束后再次报告，即使另一方已经宣布结束、仍由同一玩家行动；快速行动后不重复报告。以上通知均早于该次 [`before_action`](events/before_action.md) 响应。
+`round_started` 时，`round_number` 已增加；若超过上限，下一次推进才返回 `finished`。`action_started` 时，`active_player` 是当前获得行动机会的玩家：首次行动在行动阶段开始的响应结束后报告；战斗行动结束后再次报告，即使另一方已经宣布结束、仍由同一玩家行动；快速行动后不重复报告。以上通知均早于该次 [`before_action`](../definition/events/before_action.md) 响应。
 
-`round_end_declared` 时，`active_player` 仍是宣布结束的一方，结束声明标记已经写入，随后推进才处理 [`round_end_declared`](events/round_end_declared.md) 响应。第一方的结束响应完成、行动机会交给另一方后，再报告 `action_started`。`round_ending` 时，`active_player` 仍是最后宣布结束的一方，结束声明标记尚未清除；随后推进才准备下一回合的先手并处理 [`round_ended`](events/round_ended.md) 响应。
+`round_end_declared` 时，`active_player` 仍是宣布结束的一方，结束声明标记已经写入，随后推进才处理 [`round_end_declared`](../definition/events/round_end_declared.md) 响应。第一方的结束响应完成、行动机会交给另一方后，再报告 `action_started`。`round_ending` 时，`active_player` 仍是最后宣布结束的一方，结束声明标记尚未清除；随后推进才准备下一回合的先手并处理 [`round_ended`](../definition/events/round_ended.md) 响应。
 
 `finished` 是唯一的终局标记，具体胜负由相应视图的 `result()` 给出。
 
@@ -73,7 +73,7 @@ int main()
     givm::definition_source_library sources{};
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } });
+        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::observed);
     givm::table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };

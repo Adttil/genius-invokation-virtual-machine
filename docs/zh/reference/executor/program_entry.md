@@ -28,7 +28,7 @@ class program_entry;
 
 ## 注意
 
-非空入口由 [`definition_compile_context::add_program`](definition_compile_context/add_program.md) 产生，不能跨定义库使用。context 不同的入口不能相互转换。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](instructions/end_game.md) 编入其程序。
+非空入口由 [`definition_compile_context::add_program`](definition_compile_context/add_program.md) 产生，不能跨定义库使用。context 不同的入口不能相互转换。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](../definition/commands/end_game.md) 编入其程序。
 
 ## 非成员函数
 
@@ -79,7 +79,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{} }
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
 }
 ```

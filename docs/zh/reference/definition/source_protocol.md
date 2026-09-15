@@ -6,7 +6,7 @@
 
 源先加入 [`definition_source_library`](definition_source_library.md)，再与本场对局需要的其他源一起编译。源对象不由库拥有，应在源库使用期间保持有效；名称、标签及依赖字符串的字符存储也必须保持有效，编译后名称和标签仍由定义库使用。
 
-最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 和 [`program_entry`](../executor/program_entry.md) 在执行模块中完整定义；编写定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开指令和事件。
+最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 和 [`program_entry`](../executor/program_entry.md) 在执行模块中完整定义；编写定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开命令和事件。
 
 ## 必需成员
 
@@ -57,9 +57,9 @@ static givm::handler_program_entry_t<TEvent> handle(
 
 `TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。没有匹配的函数就表示不响应。
 
-响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的指令](../executor/instructions.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
+响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
 
-入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](../executor/events/character_initialization.md)要求在响应函数内直接填写初始状态。
+入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](events/character_initialization.md)要求在响应函数内直接填写初始状态。
 
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
 
@@ -100,7 +100,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{} }
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");
 

@@ -2,54 +2,46 @@
 #define GIVM_EXECUTOR_INSTRUCTIONS_START_BATTLE_HPP
 
 #include "../executor.hpp"
-
 #include "../broadcast.hpp"
-#include "../events.hpp"
+#include "../../definition/events.hpp"
+#include "../../definition/commands.hpp"
 
-namespace givm
+namespace givm::detail
 {
-    struct start_battle
+    namespace start_battle_command
     {
-        using context_type = void;
-    };
-
-    namespace detail
-    {
-        template<>
-        struct instruction_implementation<start_battle>
+        inline execution_state broadcast(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
         {
-            enum class stage_type : stage_t
+            if(not continue_broadcast<battle_started>(library, table, context, random))
             {
-                prepare,
-                broadcast
-            };
-
-            template<bool Observed>
-            static execution_state execute(
-                const givm::start_battle& instruction, const definition_library& library,
-                unrestricted_table& table, execution_context& context, random_fn& random
-            )
-            {
-                if(static_cast<stage_type>(context.current_stage()) == stage_type::prepare)
-                {
-                    if(table.state().round_number != 1)
-                    {
-                        return context.enter_next();
-                    }
-                    detail::prepare_broadcast(library, battle_started{}, table, context.stack());
-                    context.current_stage() = static_cast<stage_t>(stage_type::broadcast);
-                }
-
-                if(not detail::continue_broadcast<battle_started>(library, table, context, random))
-                {
-                    return continue_execution;
-                }
-
-                detail::pop_broadcast<battle_started>(context);
-                return context.enter_next();
+                return continue_execution;
             }
+            pop_broadcast<battle_started>(context);
+            return context.enter_next();
+        }
 
-        };
+        inline execution_state prepare(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            if(table.state().round_number != 1)
+            {
+                return context.advance(2 * sizeof(execute_fn));
+            }
+            prepare_broadcast(library, battle_started{}, table, context.stack());
+            context.enter_next();
+            return broadcast(library, table, context, random);
+        }
+    }
+
+    inline void compile(program_writer& writer, const start_battle&, compile_mode)
+    {
+        writer.write<execute_fn>(&start_battle_command::prepare);
+        writer.write<execute_fn>(&start_battle_command::broadcast);
     }
 }
 

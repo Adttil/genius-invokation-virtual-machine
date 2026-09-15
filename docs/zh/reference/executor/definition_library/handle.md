@@ -37,11 +37,11 @@ handler_program_entry_t<TEvent> handle(
 
 ## 返回值
 
-该事件下需要执行的 [`handler_program_entry_t`](../../definition/handler_program_entry_t.md)。空入口表示没有后续效果需要进入；本函数本身不执行返回入口对应的指令。
+该事件下需要执行的 [`handler_program_entry_t`](../../definition/handler_program_entry_t.md)。空入口表示没有后续效果需要进入；本函数本身不执行返回入口对应的命令。
 
 ## 注意
 
-对应的 [`can_handle<TEvent, TView>`](can_handle.md) 必须为 `true`。普通的事件分发由指令负责；直接调用本函数的调用者需要自行安排返回效果的执行。
+对应的 [`can_handle<TEvent, TView>`](can_handle.md) 必须为 `true`。普通的事件分发由命令负责；直接调用本函数的调用者需要自行安排返回效果的执行。
 
 ## 示例
 
@@ -80,7 +80,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{} }
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");
 

@@ -34,7 +34,7 @@ handler_program_entry_t<TEvent> handle(
 
 ## 返回值
 
-需要继续执行的效果入口；空入口表示没有后续指令。本函数不执行返回的效果入口。
+需要继续执行的效果入口；空入口表示没有后续命令。本函数不执行返回的效果入口。
 
 ## 注意
 
@@ -77,7 +77,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{} }
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");
 

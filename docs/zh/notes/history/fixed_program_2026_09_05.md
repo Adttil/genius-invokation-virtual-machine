@@ -46,7 +46,7 @@ set_active_character{ .target = cost.target }
 
 ## 唯一程序与根流程
 
-一次编译只产生一个由 `definition_library` 拥有的 `fixed_program`。所有 definition 的普通响应程序、onpay 程序和游戏流程程序都在构造中的同一个 `definition_library` 内直接追加到固定程序存储，最终共享同一个 PC 地址空间。概念布局可以是：
+一次编译只产生一个由 `definition_library` 拥有的 `fixed_program`。所有 definition 的普通响应程序、onpay 程序和游戏流程程序都在构造中的同一个 `definition_library` 内直接追加到固定程序存储，最终共享同一个执行位置地址空间。概念布局可以是：
 
 ```text
 fixed_program
@@ -65,33 +65,33 @@ fixed_program
 
 前四个位置是固定程序格式的一部分。位置 0 存放一个内部不可执行占位，使全零的 `program_entry<Context>` 自然表示 null；位置 1 到 3 存放三条无状态的内部 `end_game` 指令，位置本身分别表示三种终局结果。根程序紧接固定前缀，因此 `root_entry` 永远是位置 4；`definition_library` 不需要保存额外的运行期根入口字段，`root_entry()` 可以直接构造这个格式常量。根程序长度可以变化，各 definition 子程序从根程序之后继续顺序追加，其入口仍取追加前的 `size()`。
 
-`program_entry<Context>` 的运行期载荷只是一个 `execution_position` 值，不包含程序指针、程序编号或其他 owner 信息。值 0 表示 null，值 1 到 3 表示不依赖 Context ABI 的静态终局入口，其余值是唯一程序中的普通 offset。Context 只约束普通入口；任意 Context 的响应都可以返回相应的终局入口。进入入口后 executor 的 `pc`、activation 中的 `return_pc` 和内部跳转目标都使用同一套值。`execution_position` 保持现有的 `detail::instruction_index`（即 `size_t`）别名，不引入另一层 PC 包装类型；裸数值和终局位置映射只存在于内部实现，定义扩展者通过 `program_entry<Context>` 的具名接口使用它们。
+`program_entry<Context>` 的运行期载荷只是一个 `execution_position` 值，不包含程序指针、程序编号或其他 owner 信息。值 0 表示 null，值 1 到 3 表示不依赖 Context ABI 的静态终局入口，其余值是唯一程序中的普通 offset。Context 只约束普通入口；任意 Context 的响应都可以返回相应的终局入口。进入入口后 executor 的 `position`、activation 中的 `return_position` 和内部跳转目标都使用同一套值。`execution_position` 保持现有的 `detail::instruction_index`（即 `size_t`）别名，不引入另一层执行位置包装类型；裸数值和终局位置映射只存在于内部实现，定义扩展者通过 `program_entry<Context>` 的具名接口使用它们。
 
-初始固定槽实现直接把前四个位置放进程序存储，后续程序入口仍取追加前的 `size()`，executor 以 `program[pc]` 直接取指，不需要为普通 offset 做 `+1/-1` 编解码。把 null 放在 0 还使默认构造、全零初始化和频繁的空入口判断保持最直接；相比把特殊值放到整数上界，这个固定前缀避免了每次取指前的终局范围判断。旧动态队列现已删除，根流程和所有响应都使用这一地址空间。
+初始固定槽实现直接把前四个位置放进程序存储，后续程序入口仍取追加前的 `size()`，executor 以 `program[position]` 直接取指，不需要为普通 offset 做 `+1/-1` 编解码。把 null 放在 0 还使默认构造、全零初始化和频繁的空入口判断保持最直接；相比把特殊值放到整数上界，这个固定前缀避免了每次取指前的终局范围判断。旧动态队列现已删除，根流程和所有响应都使用这一地址空间。
 
 根流程不是普通的可返回子程序。编译器把它组装为两段程序序列：只执行一次的初始化段和无限重复的回合段。程序序列既可以是异构具体指令组成的 tuple-like，也可以是具体指令或 `any_instruction_for<root_context>` 组成的 range；每个元素都按 `root_context` 检查。初始化段自然落入回合段，回合段末尾由编译器补入跳回 `round_entry` 的内部控制操作；两段之间不追加返回标志，根流程末尾也不会正常返回。
 
-初期最直接的内部表示是独立的无条件回跳指令。以后可以把回跳目标融合到回合末尾指令的内部表示中，例如外部定义只描述不含 PC 的“结束回合”，组装时生成携带 `round_entry` 的内部形式。两种表示的控制流相同，也不要求向定义扩展者暴露裸跳转位置；无论采用哪种表示，回跳都必须由当前槽位中的指令执行，不允许 executor 在每步执行时把 PC 与另行记录的回合末尾位置比较。
+初期最直接的内部表示是独立的无条件回跳指令。以后可以把回跳目标融合到回合末尾指令的内部表示中，例如外部定义只描述不含执行位置的“结束回合”，组装时生成携带 `round_entry` 的内部形式。两种表示的控制流相同，也不要求向定义扩展者暴露裸跳转位置；无论采用哪种表示，回跳都必须由当前槽位中的指令执行，不允许 executor 在每步执行时把执行位置与另行记录的回合末尾位置比较。
 
-回合循环本身不需要条件。角色全灭、达到最大回合数或其他终局条件由相应领域指令检查，并通过既有跳转能力把 `pc` 设置为对应的具名终局位置。该跳转不清空 activation 或 stack；终局后这些 frame 不再被解释，外层观察完现场后通过专门的 clear/reset 流程统一清理。三条 `end_game` 和普通指令一样被取出并擦除分派，但永远返回阻塞且不推进 `pc`，因此 executor 的热路径不需要预先判断当前 PC 是否终局。
+回合循环本身不需要条件。角色全灭、达到最大回合数或其他终局条件由相应领域指令检查，并通过既有跳转能力把 `position` 设置为对应的具名终局位置。该跳转不清空 activation 或 stack；终局后这些 frame 不再被解释，外层观察完现场后通过专门的 clear/reset 流程统一清理。三条 `end_game` 和普通指令一样被取出并擦除分派，但永远返回阻塞且不推进 `position`，因此 executor 的热路径不需要预先判断当前执行位置是否终局。
 
-`game_result` 增加值为 0 的 `no_result`，三个实际结果的值与三个终局位置一一对应。`executor::status()` 只根据当前 `pc` 返回相应结果；null、尚未开始和普通执行位置都返回 `no_result`。终局结果不另存进 table、stack 或 executor 字段，`end_game` 指令本身也不携带结果。
+`game_result` 增加值为 0 的 `no_result`，三个实际结果的值与三个终局位置一一对应。`executor::status()` 只根据当前 `position` 返回相应结果；null、尚未开始和普通执行位置都返回 `no_result`。终局结果不另存进 table、stack 或 executor 字段，`end_game` 指令本身也不携带结果。
 
 根程序使用 `root_context` 作为入口 ABI 身份，但这不要求其中每条具体指令都声明 `context_type = root_context`。不读取外层根 frame 的流程指令仍然是 context-free，可以直接出现在原始指令 tuple/range 中，也可以预先由 `any_instruction_for<root_context>` 包装；只有确实读取根 ABI 的指令才声明该 Context。编译器补入的回跳和返回标志属于内部控制结构，不经过定义源可见的 wrapper。
 
 ## 子程序与返回帧
 
-固定程序由 executor 按唯一程序中的 pc 执行。进入一段可返回的固定入口时，调用者压入 activation frame：
+固定程序由 executor 按唯一程序中的执行位置执行。进入一段可返回的固定入口时，调用者压入 activation frame：
 
 ```cpp
 frame<return_info, stage_t>
 ```
 
-`return_info` 只保存唯一程序中的 `return_pc` offset。固定程序不在运行期生成待清除的代码段，因此返回时不需要恢复指令队列 end，也没有执行来源字段。
+`return_info` 只保存唯一程序中的 `return_position` offset。固定程序不在运行期生成待清除的代码段，因此返回时不需要恢复指令队列 end，也没有执行来源字段。
 
 `stage_t` 是该子程序入口的初始阶段，进入时为 0。入口内每条干净指令完成时都会把栈形状恢复到进入该指令前，因此同一段固定程序中的下一条指令仍能看到同一套上下文。
 
-子程序末尾使用无状态的返回标志指令。返回标志读取栈顶 `return_info, stage_t`，断言 `stage_t == 0`，弹出 activation frame，并跳回 `return_pc`。
+子程序末尾使用无状态的返回标志指令。返回标志读取栈顶 `return_info, stage_t`，断言 `stage_t == 0`，弹出 activation frame，并跳回 `return_position`。
 
 根程序使用一个延迟建立的 `stage_t` 根 frame，并通过回跳持续运行；它只会跳入静态终局位置，不走普通返回标志。终局位置的 `end_game` 永不返回，因此遗留 activation 和其他 stack frame 不会被再次读取。运行期不应依赖普通指令槽内部存储形态；未来即使迁移到不定长指令槽，null 和三个静态终局位置仍属于固定程序地址格式的保留前缀。
 
@@ -153,7 +153,7 @@ source-facing handler 不接收 `schedule_fn`，而是返回一个强类型入�
 
 因此分界可以概括为：有限且较小的控制分支由响应函数选择固定入口；任意运行期算术优先通过事件修改完成；具有无界次数但语义完整的规则动作由单条领域指令完成。只有无法归入这三类的新机制，才说明当前上下文 ABI 或指令粒度需要扩展。
 
-终局入口也是响应函数可以选择的静态分支。若响应无需先修改 table，可以直接返回当前 Context 下的具名终局 `program_entry`；若某段固定程序必须先执行若干副作用再结束，则最后可以使用一条 context-free 的终局跳转指令。该指令只把 PC 改为固定前缀中的终局位置，不承担终局状态存储；当前规则没有这种程序段时不必提前公开它。
+终局入口也是响应函数可以选择的静态分支。若响应无需先修改 table，可以直接返回当前 Context 下的具名终局 `program_entry`；若某段固定程序必须先执行若干副作用再结束，则最后可以使用一条 context-free 的终局跳转指令。该指令只把执行位置改为固定前缀中的终局位置，不承担终局状态存储；当前规则没有这种程序段时不必提前公开它。
 
 ## 普通广播上下文
 
@@ -371,11 +371,11 @@ auto&& [handlers, cursor, event, handler, stage] =
 
 出牌和技能后续也应收进 `begin_action` 的 action 执行流程。`begin_action` 压好“被打出”或“被使用”事件栈，调用牌或技能自己的固定入口，然后再广播“已打出”或“已使用”事件。
 
-回合主流程已经编译进 `definition_library` 拥有的同一个固定程序。初始化段只执行一次，随后进入无限重复的回合段；编译器在回合段末尾补入一条无条件 `jump_instruction`。当前七圣召唤式回合段由 `start_round`、`start_dice_roll_phase`、`start_battle`、`begin_action`、`end_round` 和两条 `draw_cards` 组成，回合上限、骰子数、重投次数与抽牌数直接由这些固定指令字段配置。终局条件由相应领域指令把 PC 切到固定前缀中的结果位置。
+回合主流程已经编译进 `definition_library` 拥有的同一个固定程序。初始化段只执行一次，随后进入无限重复的回合段；编译器在回合段末尾补入一条无条件 `jump_instruction`。当前七圣召唤式回合段由 `start_round`、`start_dice_roll_phase`、`start_battle`、`begin_action`、`end_round` 和两条 `draw_cards` 组成，回合上限、骰子数、重投次数与抽牌数直接由这些固定指令字段配置。终局条件由相应领域指令把执行位置切到固定前缀中的结果位置。
 
 ## Definition 与 Executor 边界
 
-固定程序重构同时重切 definition 和 executor 两个模块的职责：definition 负责定义源、依赖解析、程序声明、程序擦除表示和不可变程序；executor 负责 `execution_context`、stack、pc、具体指令类型和执行循环。需要前移的执行前置概念直接放入 definition 模块，而不是引入新的跨模块层。
+固定程序重构同时重切 definition 和 executor 两个模块的职责：definition 负责定义源、依赖解析、程序声明、程序擦除表示和不可变程序；executor 负责 `execution_context`、stack、执行位置、具体指令类型和执行循环。需要前移的执行前置概念直接放入 definition 模块，而不是引入新的跨模块层。
 
 ### Definition 侧
 
@@ -393,7 +393,7 @@ definition 模块需要拥有以下类型的完整定义：
 
 ### Executor 侧
 
-executor 模块负责定义 `execution_context`、stack、pc、执行循环和具体指令实现。固定程序后，executor 不再拥有“运行时随手拼出一段子程序”的核心职责，而是执行 `definition_library` 中唯一的不可变程序，通过 offset pc 进入其中的根入口或响应入口，并用擦除指令 RTTI 中的执行函数指针运行当前指令。最终模型不需要在多个固定程序之间切换。
+executor 模块负责定义 `execution_context`、stack、执行位置、执行循环和具体指令实现。固定程序后，executor 不再拥有“运行时随手拼出一段子程序”的核心职责，而是执行 `definition_library` 中唯一的不可变程序，通过执行位置偏移量进入其中的根入口或响应入口，并用擦除指令 RTTI 中的执行函数指针运行当前指令。最终模型不需要在多个固定程序之间切换。
 
 具体指令仍然是强类型 C++ 类型。native source 可以返回异构具体指令 tuple-like 或同构具体指令 range；脚本 adapter 通常返回 `any_instruction_for<Context>` 的同构 range。`definition_library` 逐个访问元素，并以构造 `any_instruction_for<Context>` 的方式统一完成 Context 检查和擦除，再立即追加内部表示。executor 只解释编译后的指令序列，不解释定义源接口，也不维护另一套操作码注册表。
 
@@ -629,7 +629,7 @@ Context 安全只建立在一个方向的边界上：程序段中的每个具体
 
 这里也不区分 op 和 instruction。程序序列中的元素就是 VM 的最小领域操作；共享逻辑放在可内联的 C++ helper 中。把一个语义操作人为降低成多条可复用小指令只会增加擦除槽位、dispatch 次数和 stack 协议，不作为本次架构的一层。
 
-编译器在每段可返回子程序末尾自动追加内部返回标志，定义源不需要看到该指令。根流程单独组装：初始化段和回合段之间没有返回标志，回合段末尾追加跳到 `round_entry` 的内部控制操作。位置 0 的占位、位置 1 到 3 的 `end_game`、返回标志和根回跳都由内部组装路径生成，不接受定义源提供的裸 PC。未来可以把回跳融合进回合末尾指令，也可以把内部 `any_instruction` 的固定槽替换为变长紧密存储；`any_instruction_for<Context>` 的构造语义、`program_entry<Context>`、source sequence 和唯一 PC 地址空间都不依赖这些内部布局优化。
+编译器在每段可返回子程序末尾自动追加内部返回标志，定义源不需要看到该指令。根流程单独组装：初始化段和回合段之间没有返回标志，回合段末尾追加跳到 `round_entry` 的内部控制操作。位置 0 的占位、位置 1 到 3 的 `end_game`、返回标志和根回跳都由内部组装路径生成，不接受定义源提供的裸执行位置。未来可以把回跳融合进回合末尾指令，也可以把内部 `any_instruction` 的固定槽替换为变长紧密存储；`any_instruction_for<Context>` 的构造语义、`program_entry<Context>`、source sequence 和唯一执行位置地址空间都不依赖这些内部布局优化。
 
 ## 迁移落地状态
 
@@ -643,12 +643,12 @@ Context 安全只建立在一个方向的边界上：程序段中的每个具体
 - 普通广播和费用/onpay 均使用 handler 返回的强类型固定入口。
 - 伤害吸收、完整伤害/元素链、主动切人以及最小游戏根流程已经迁移。
 - `schedule_fn`、六参数 handler、运行期候选分支、动态指令队列、队列恢复位置和执行来源标签均已删除。
-- executor 只保存 PC 与 stack；外部观察通过 `table.instruction(executor.position())`，正常执行通过 `executor.execute_next(table, random)`。
+- executor 只保存执行位置与 stack；外部观察通过 `table.instruction(executor.position())`，正常执行通过 `executor.execute_next(table, random)`。
 
 后续若继续优化，应作为独立工作评估回跳融合、变长指令存储、程序去重和调试元数据，不再恢复运行期程序生成能力。
 
 Catch2 放在行为迁移之前，因为测试框架本身是低风险、独立的构建改动，并能给后续每个小提交提供回归边界；不在这一步顺便建立庞大的规则测试体系。单测与头文件的一一映射表示测试所有权，不强制测试只能 include 同名头：当前向模板需要后续具体类型才能实例化时，可以直接引入有限的相关头文件，但不应无理由改用聚合全头文件。
 
-仍可推迟到实现时决定的只是局部命名与优化，例如回跳是否与回合末尾指令融合、固定程序容器的分块策略和调试信息格式。已确定的架构边界是：一次 definition 编译只发布一个包含全部 definition 程序与根流程的固定程序；位置 0 是 null 占位，位置 1 到 3 是结果由位置编码且永不返回的终局指令，根入口静态固定在位置 4 且不另存字段，definition 程序排在根程序之后；`execution_position` 继续是现有整数别名；`program_entry<Context>` 可以表示 null、普通 Context 入口或 Context 无关的终局入口；定义源程序段可以是异构原始指令 tuple-like，也可以是具体指令或 `any_instruction_for<Context>` 的单遍 range；每个元素在追加边界构造同 Context wrapper 并完成静态检查；内部表示不再保存 Context；data 只在完整后发布；运行期参数进入明确栈 ABI；handler 返回入口；table 修改只由固定程序中的指令完成；根回合段无限回跳并在终局时保留 stack、只把 PC 跳到相应 `end_game`。
+仍可推迟到实现时决定的只是局部命名与优化，例如回跳是否与回合末尾指令融合、固定程序容器的分块策略和调试信息格式。已确定的架构边界是：一次 definition 编译只发布一个包含全部 definition 程序与根流程的固定程序；位置 0 是 null 占位，位置 1 到 3 是结果由位置编码且永不返回的终局指令，根入口静态固定在位置 4 且不另存字段，definition 程序排在根程序之后；`execution_position` 继续是现有整数别名；`program_entry<Context>` 可以表示 null、普通 Context 入口或 Context 无关的终局入口；定义源程序段可以是异构原始指令 tuple-like，也可以是具体指令或 `any_instruction_for<Context>` 的单遍 range；每个元素在追加边界构造同 Context wrapper 并完成静态检查；内部表示不再保存 Context；data 只在完整后发布；运行期参数进入明确栈 ABI；handler 返回入口；table 修改只由固定程序中的指令完成；根回合段无限回跳并在终局时保留 stack、只把执行位置跳到相应 `end_game`。
 
 [返回架构总览](../architecture.md)

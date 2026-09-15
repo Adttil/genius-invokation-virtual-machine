@@ -21,14 +21,13 @@ namespace givm
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
                 action_argument,
-                detail::action_request,
-                detail::stage_t
+                detail::action_request
             >());
         }
 
         constexpr void request_cost(stack_count_t index) const noexcept
         {
-            get<0>(stack_->top<detail::action_request, detail::stage_t>()) = {
+            get<0>(stack_->top<detail::action_request>()) = {
                 .request_kind = detail::action_request_kind::calculate_cost,
                 .action_kind = detail::action_kind::switch_active,
                 .action_index = index
@@ -47,7 +46,7 @@ namespace givm
 
         constexpr void declare_round_end() const noexcept
         {
-            get<0>(stack_->top<detail::action_request, detail::stage_t>()) = {
+            get<0>(stack_->top<detail::action_request>()) = {
                 .request_kind = detail::action_request_kind::do_action,
                 .action_kind = detail::action_kind::declare_round_end
             };
@@ -64,9 +63,8 @@ namespace givm
             detail::action_request_kind kind
         ) const noexcept
         {
-            auto&& [stored_argument, request, stage] =
-                stack_->top<action_argument, detail::action_request, detail::stage_t>();
-            (void)stage;
+            auto&& [stored_argument, request] =
+                stack_->top<action_argument, detail::action_request>();
             stored_argument = argument;
             request = {
                 .request_kind = kind,

@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "../executor.hpp"
-#include "../events.hpp"
+#include "../../definition/events.hpp"
 
 namespace givm
 {
@@ -18,7 +18,7 @@ namespace givm
 
         const after_damage& event() const noexcept
         {
-            auto&& [event, stage] = std::as_const(*stack_).top<after_damage, detail::stage_t>();
+            auto&& [event] = std::as_const(*stack_).top<after_damage>();
             return event;
         }
 

@@ -6,7 +6,9 @@
 #include <cstdint>
 
 #include "../broadcast.hpp"
-#include "../events.hpp"
+#include "../../definition/events.hpp"
+#include "../instruction.hpp"
+#include "../../definition/commands.hpp"
 
 namespace givm
 {
@@ -55,18 +57,16 @@ namespace givm
             execution_context& context
         )
         {
-            auto&& [targets, cursor, event, current_handler, stored_stage] =
+            auto&& [targets, cursor, event, current_handler] =
                 context.stack().top<
                     handler_id<elemental_reaction_will_occur>[],
                     stack_count_t,
                     elemental_reaction_will_occur,
-                    handler_id<elemental_reaction_will_occur>,
-                    stage_t
+                    handler_id<elemental_reaction_will_occur>
                 >();
             (void)targets;
             (void)cursor;
             (void)current_handler;
-            (void)stored_stage;
 
             if(not event.already_handled)
             {
@@ -90,80 +90,58 @@ namespace givm
             return result;
         }
 
-    }
-
-    struct apply_element
-    {
-        using context_type = void;
-
-        element_application_source_id source;
-        character_id target;
-        element element;
-        element_application_cause cause = element_application_cause::effect;
-    };
-
-    template<>
-    struct detail::instruction_implementation<apply_element>
-    {
-        enum class stage_type : stage_t
-        {
-            apply,
-            reaction_broadcast,
-            after_reaction_broadcast
-        };
-
-        template<bool Observed>
-        static execution_state execute(
-            const givm::apply_element& instruction, const definition_library& library,
-            unrestricted_table& table, execution_context& context, random_fn& random
+        // These two continuations only use the broadcast frame, so damage and
+        // direct element application can share the same reaction instruction.
+        inline execution_state continue_elemental_reaction(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
         )
         {
-            const auto stage = static_cast<stage_type>(context.current_stage());
-            if(stage == stage_type::apply)
-            {
-                if(not begin_element_application(
-                    library,
-                    instruction.source,
-                    instruction.target,
-                    instruction.element,
-                    instruction.cause,
-                    table,
-                    context
-                ))
-                {
-                    return context.enter_next();
-                }
-                context.current_stage() = static_cast<stage_t>(stage_type::reaction_broadcast);
-                return continue_execution;
-            }
-
-            if(stage == stage_type::reaction_broadcast)
-            {
-                if(not detail::continue_broadcast<elemental_reaction_will_occur>(library, table, context, random))
-                {
-                    return continue_execution;
-                }
-
-                detail::prepare_broadcast(
-                    library,
-                    detail::finish_elemental_reaction(table, context),
-                    table,
-                    context.stack()
-                );
-                context.current_stage() = static_cast<stage_t>(stage_type::after_reaction_broadcast);
-                return continue_execution;
-            }
-
-            if(not detail::continue_broadcast<after_elemental_reaction>(library, table, context, random))
+            if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random))
             {
                 return continue_execution;
             }
-
-            detail::pop_broadcast<after_elemental_reaction>(context);
+            prepare_broadcast(library, finish_elemental_reaction(table, context), table, context.stack());
             return context.enter_next();
         }
-    };
 
+        inline execution_state finish_element_application(
+            const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random
+        )
+        {
+            if(not continue_broadcast<after_elemental_reaction>(library, table, context, random))
+            {
+                return continue_execution;
+            }
+            pop_broadcast<after_elemental_reaction>(context);
+            return context.enter_next();
+        }
+
+        namespace apply_element_command
+        {
+            inline execution_state execute(
+                const definition_library& library, unrestricted_table& table,
+                execution_context& context, random_fn&
+            )
+            {
+                const auto& command = context.instruction_data<1, givm::apply_element>(library);
+                const bool reacting = begin_element_application(
+                    library, command.source, command.target, command.element, command.cause, table, context
+                );
+                return context.advance(instruction_extent<1, givm::apply_element>
+                    + (reacting ? 0 : 2 * sizeof(execute_fn)));
+            }
+        }
+
+        inline void compile(program_writer& writer, const givm::apply_element& command, compile_mode)
+        {
+            writer.write(execute_fn{ &apply_element_command::execute });
+            writer.write(command);
+            writer.write(execute_fn{ &continue_elemental_reaction });
+            writer.write(execute_fn{ &finish_element_application });
+        }
+    }
 }
 
 #endif

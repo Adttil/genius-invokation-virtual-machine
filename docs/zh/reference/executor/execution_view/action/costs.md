@@ -7,7 +7,7 @@
 ```cpp
 constexpr std::span<const cost_of_switch> costs() const noexcept;
 ```
-[`cost_of_switch`](../../events/cost_of_switch.md)
+[`cost_of_switch`](../../../definition/events/cost_of_switch.md)
 
 取得当前切换候选的费用。
 

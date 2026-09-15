@@ -2,31 +2,26 @@
 #define GIVM_EXECUTOR_INSTRUCTIONS_END_GAME_HPP
 
 #include "../executor.hpp"
+#include "../../definition/commands.hpp"
 
-namespace givm
+namespace givm::detail
 {
-    struct end_game
+    namespace end_game_command
     {
-        using context_type = void;
-
-        game_result result;
-    };
-
-    template<>
-    struct detail::instruction_implementation<end_game>
-    {
-        template<bool Observed>
-        static execution_state execute(
-            const givm::end_game& instruction,
-            const definition_library&,
-            unrestricted_table&,
-            execution_context& context,
-            random_fn&
+        inline execution_state execute(
+            const definition_library& library, unrestricted_table&,
+            execution_context& context, random_fn&
         )
         {
-            return context.end_game(instruction.result);
+            return context.end_game(context.instruction_data<1, end_game>(library).result);
         }
-    };
+    }
+
+    inline void compile(program_writer& writer, const end_game& command, compile_mode)
+    {
+        writer.write<execute_fn>(&end_game_command::execute);
+        writer.write(command);
+    }
 }
 
 #endif

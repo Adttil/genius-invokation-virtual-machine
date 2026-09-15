@@ -184,6 +184,7 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        givm::compile_mode::normal,
         std::tuple{
             givm::initialize_characters{ givm::player_id{ 0 } }, givm::initialize_characters{ givm::player_id{ 1 } },
             givm::deal_damage{ .source = source, .target = damaged, .value = value, .type = type },
@@ -197,7 +198,7 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
-    REQUIRE(target.run(library, table, random) == givm::execution_state::finished);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
     CHECK(table[damaged].state().health == (expected_damage >= initial.health ? 0 : initial.health - expected_damage));
     CHECK(log.after_damage_value == expected_damage);
@@ -225,22 +226,28 @@ TEST_CASE("damage observation precedes elemental settlement and copies resume in
     };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
-    const auto [library, ids] = givm::test::compile_definitions_with_program(
-        std::tuple{
-            givm::initialize_characters{ givm::player_id{ 0 } }, givm::initialize_characters{ givm::player_id{ 1 } },
-            givm::deal_damage{ .source = source, .target = damaged, .value = 3, .type = givm::damage_type::pyro,
-                .flags = givm::damage_flag_bits::skill_damage },
-            givm::end_game{ .result = givm::game_result::both_loss }
-        }, std::tuple{}, observer, victim
-    );
+    const auto compile_program = [&](givm::compile_mode mode)
+    {
+        return givm::test::compile_definitions_with_program(
+            mode,
+            std::tuple{
+                givm::initialize_characters{ givm::player_id{ 0 } }, givm::initialize_characters{ givm::player_id{ 1 } },
+                givm::deal_damage{ .source = source, .target = damaged, .value = 3, .type = givm::damage_type::pyro,
+                    .flags = givm::damage_flag_bits::skill_damage },
+                givm::end_game{ .result = givm::game_result::both_loss }
+            }, std::tuple{}, observer, victim
+        );
+    };
+    const auto [library, ids] = compile_program(givm::compile_mode::observed);
+    const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table;
     table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
     table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
     auto normal_table = table;
     givm::executor normal;
-    normal.enter_entry(library);
+    normal.enter_entry(normal_compilation.library);
     zero_random random;
-    REQUIRE(normal.run(library, normal_table, random) == givm::execution_state::finished);
+    REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     const auto normal_order = log.order;
     log.order.clear();
 
@@ -282,6 +289,7 @@ TEST_CASE("lethal damage reports overkill and ends the game before later instruc
     const givm::character_id source{ other_player(damaged_player), 0 };
     const givm::character_id damaged{ damaged_player, 0 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
             givm::initialize_characters{ givm::player_id{ 0 } }, givm::initialize_characters{ givm::player_id{ 1 } },
             givm::deal_damage{ .source = source, .target = damaged, .value = 999, .type = givm::damage_type::physical },
@@ -294,7 +302,7 @@ TEST_CASE("lethal damage reports overkill and ends the game before later instruc
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
-    auto state = observed ? target.step(library, table, random) : target.run(library, table, random);
+    auto state = target.step(library, table, random);
     if(observed)
     {
         REQUIRE(state == givm::execution_state::health_reduced);
@@ -322,6 +330,7 @@ TEST_CASE("zero damage skips health observation and preserves element applicatio
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        givm::compile_mode::observed,
         std::tuple{
             givm::initialize_characters{ givm::player_id{ 0 } }, givm::initialize_characters{ givm::player_id{ 1 } },
             givm::deal_damage{ .source = source, .target = damaged, .value = value, .type = type },

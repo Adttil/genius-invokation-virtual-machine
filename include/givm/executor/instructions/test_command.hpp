@@ -1,52 +1,29 @@
 #ifndef GIVM_EXECUTOR_INSTRUCTIONS_TEST_COMMAND_HPP
 #define GIVM_EXECUTOR_INSTRUCTIONS_TEST_COMMAND_HPP
-
-#include "../executor.hpp"
-
 #include "../broadcast.hpp"
-#include "../events.hpp"
-
-namespace givm
+#include "../../definition/commands.hpp"
+namespace givm::detail
 {
-    struct test_command
+    inline execution_state execute_test_broadcast(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
     {
-        using context_type = void;
-    };
-
-    namespace detail
+        if(not continue_broadcast<test_event>(library, table, context, random))
+            return continue_execution;
+        pop_broadcast<test_event>(context);
+        return context.enter_next();
+    }
+    inline execution_state execute_test_command(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn&)
     {
-        template<>
-        struct instruction_implementation<test_command>
-        {
-            enum class stage_type : stage_t
-            {
-                prepare,
-                broadcast
-            };
-
-            template<bool Observed>
-            static execution_state execute(
-                const givm::test_command& instruction, const definition_library& library,
-                unrestricted_table& table, execution_context& context, random_fn& random
-            )
-            {
-                if(static_cast<stage_type>(context.current_stage()) == stage_type::prepare)
-                {
-                    detail::prepare_broadcast(library, test_event{}, table, context.stack());
-                    context.current_stage() = static_cast<stage_t>(stage_type::broadcast);
-                }
-
-                if(not detail::continue_broadcast<test_event>(library, table, context, random))
-                {
-                    return continue_execution;
-                }
-
-                detail::pop_broadcast<test_event>(context);
-                return context.enter_next();
-            }
-
-        };
+        prepare_broadcast(library, test_event{}, table, context.stack());
+        return context.enter_next();
+    }
+    inline void compile(program_writer& writer, const test_command&, compile_mode)
+    {
+        writer.write(execute_fn{ execute_test_command });
+        writer.write(execute_fn{ execute_test_broadcast });
     }
 }
-
 #endif

@@ -33,7 +33,7 @@ card status 数据存放在 table 级 `status_slots` 池中，牌只保存链首
 
 ## 区域与 View
 
-对应公开类型为 [hand_card_view](../reference/table/hand_card_view.md)、[deck_card_view](../reference/table/deck_card_view.md)、[hand_card_id](../reference/table/hand_card_id.md)、[deck_card_id](../reference/table/deck_card_id.md) 及 [card_id](../reference/executor/events/card_id.md)。
+对应公开类型为 [hand_card_view](../reference/table/hand_card_view.md)、[deck_card_view](../reference/table/deck_card_view.md)、[hand_card_id](../reference/table/hand_card_id.md)、[deck_card_id](../reference/table/deck_card_id.md) 及 [card_id](../reference/definition/events/card_id.md)。
 
 虽然 `card_data` 同构，但两个区域必须使用不同的 view：
 
@@ -74,7 +74,7 @@ ID 用于保存实体身份，view 用于访问实体。需要在新增、删除
 
 ## 弃牌语义
 
-内部牌桌通过卡牌句柄的 `erase()` 和玩家句柄的 `discard_top_deck_card()` 完成数据删除。领域结算中的事件另由[指令](../reference/executor/instructions.md)组织，公开 view 不提供这些修改操作。
+内部牌桌通过卡牌句柄的 `erase()` 和玩家句柄的 `discard_top_deck_card()` 完成数据删除。领域结算中的事件另由[指令](../reference/definition/commands.md)组织，公开 view 不提供这些修改操作。
 
 弃牌不是区域转移。上述内部操作同时删除牌上 status，不会自动广播弃牌事件。弃牌后不存在可通过“弃牌区 ID”继续访问的牌实体。
 

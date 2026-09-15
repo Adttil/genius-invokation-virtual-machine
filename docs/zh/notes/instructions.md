@@ -1,6 +1,6 @@
-# 指令设计备忘
+# 命令设计备忘
 
-本页保留指令设计中的理由、反例和待处理问题。接口见[指令 reference](../reference/executor/instructions.md)，具体实现直接阅读[指令源码](../../../include/givm/executor/instructions)。
+本页保留指令设计中的理由、反例和待处理问题。接口见[命令 reference](../reference/definition/commands.md)，具体实现直接阅读[指令源码](../../../include/givm/executor/instructions)。
 
 核心给定指令集合的限制、一次执行与完整结算的区别，以及 `deal_damage` 后不能直接接 `absorb_damage_by_count` 取得伤害事件 context 的反例，集中在[固定程序设计](fixed_program.md)。这些约定不取决于模板是否已经提供相应静态检查。
 
@@ -27,11 +27,7 @@
 
 ## 遗留选择协议
 
-旧的 `push_selector` 与 `roll_dice` 把选择对象留给相邻指令消费，属于引入完整领域指令以前的合作方式。当前的换牌、重投等指令各自负责输入与结算，正常结束后恢复进入前的栈形状，不再依靠这个前置生产、后置消费的协议。两个旧头仍在源码中，但不由公共指令头导出。
-
-这组旧头还存在兼容问题：[`push_selector`](../../../include/givm/executor/instructions/push_selector.hpp) 压入选择后调用 `enter_next()`，而当前后者会重置栈顶进度值；旧选择对象没有为这项操作准备相应后缀。不能仅凭文件仍在就认为旧组合可以用于当前执行器；整理遗留代码时应先解决或移除该路径。
-
-[`process_dice_roll_phase`](../../../include/givm/executor/instructions/process_dice_roll_phase.hpp) 仅保留旧名称到 `start_dice_roll_phase` 的别名，没有独立的另一套投骰流程。原记录未提供名称变更之外的额外设计理由。
+旧 `push_selector`、`roll_dice` 通过相邻指令生产和消费栈对象，不符合 command 整体干净退出的约定，已连同旧 `process_dice_roll_phase` 别名移除。换牌和重投 command 各自完成输入与结算。一个 command 内部可以有多条协作的执行指令，但不能把这项协议扩展到公开序列中相邻的 command。
 
 ## 待处理问题
 

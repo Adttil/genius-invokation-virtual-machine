@@ -32,14 +32,21 @@ namespace
         action_log* log;
         givm::action_speed speed = givm::action_speed::combat;
         bool terminal_payment = false;
+        bool draw_payment = false;
 
         std::string_view name() const noexcept { return "ActionObserver"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, speed, terminal_payment
-                ? context.add_program<givm::onpay_context<givm::cost_of_switch>>(std::tuple{
+            givm::program_entry<givm::onpay_context<givm::cost_of_switch>> payment;
+            if(terminal_payment)
+                payment = context.add_program<givm::onpay_context<givm::cost_of_switch>>(std::tuple{
                     givm::end_game{ .result = givm::game_result::player_1_win }
-                }) : givm::program_entry<givm::onpay_context<givm::cost_of_switch>>::null() };
+                });
+            else if(draw_payment)
+                payment = context.add_program<givm::onpay_context<givm::cost_of_switch>>(std::tuple{
+                    givm::draw_cards{ .count = 1 }
+                });
+            return { log, speed, payment };
         }
         static givm::handler_program_entry_t<givm::character_initialization> handle(
             const definition_type&, const givm::character_view&, givm::character_initialization& event,
@@ -113,6 +120,7 @@ TEST_CASE("action and round observations precede their handlers and ended player
     const action_source observer{ &log, speed };
     const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        givm::compile_mode::observed,
         std::tuple_cat(action_setup(), std::tuple{
             givm::begin_action{}, givm::end_round{}, givm::end_game{ .result = givm::game_result::both_loss }
         }), std::tuple{}, observer, character
@@ -192,6 +200,7 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     const action_source observer{ &log, givm::action_speed::combat, true };
     const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, observer, character
     );
     givm::table table;
@@ -202,12 +211,12 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     target.enter_entry(library);
     zero_random random;
     if(observed) reach_action_start(target, library, table, random);
-    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random)) == givm::execution_state::action);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::action);
     CHECK(log.previews == 0);
     for(std::uint32_t count = 1; count <= 2; ++count)
     {
         target.view_in<givm::execution_state::action>().request_cost(0);
-        REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random)) == givm::execution_state::action);
+        REQUIRE(target.step(library, table, random) == givm::execution_state::action);
         CHECK(log.previews == count);
         const auto costs = target.view_in<givm::execution_state::action>().costs();
         REQUIRE(costs.size() == 1);
@@ -219,7 +228,7 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     givm::dice_counts paid;
     paid[givm::elemental_dice::omni] = 1;
     target.view_in<givm::execution_state::action>().execute_action_with_cost(0, { .paid_dice = paid });
-    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random)) == givm::execution_state::finished);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
     CHECK(log.previews == 2);
     CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 0 });
@@ -232,6 +241,7 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     const givm::test::initialized_character_source living;
     const givm::test::initialized_character_source defeated{ "Defeated", { .max_health = 10, .health = 0 } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        givm::compile_mode::normal,
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, living, defeated
     );
     const auto alive = ids.get_id<givm::character_view>(living.name());
@@ -242,7 +252,7 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
-    REQUIRE(target.run(library, table, random) == givm::execution_state::action);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::action);
     const auto choices = target.view_in<givm::execution_state::action>().costs();
     REQUIRE(choices.size() == (living_standby ? 1 : 0));
     if(living_standby) CHECK(choices[0].target == givm::character_id{ givm::player_id{ 0 }, 2 });
@@ -254,6 +264,7 @@ TEST_CASE("a round starts before its limit check and dice reset", "[start_round]
     const bool observed = GENERATE(false, true);
     const bool exceeds_limit = GENERATE(false, true);
     const auto [library, ids] = givm::test::compile_definitions_with_program(
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
             givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } },
             givm::start_round{ .max_rounds = exceeds_limit ? 0u : 1u },
@@ -270,8 +281,62 @@ TEST_CASE("a round starts before its limit check and dice reset", "[start_round]
         CHECK(table.state().round_number == 1);
         for(const auto player : table.players()) CHECK(player.state().dice.total() == 3);
     }
-    REQUIRE((observed ? target.step(library, table, random) : target.run(library, table, random)) == givm::execution_state::finished);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(table.state().round_number == 1);
     CHECK(target.view_in<givm::execution_state::finished>().result() == (exceeds_limit ? givm::game_result::both_loss : givm::game_result::player_0_win));
     for(const auto player : table.players()) CHECK(player.state().dice.total() == (exceeds_limit ? 3 : 0));
+}
+
+TEST_CASE("confirmed nonterminal payment responses return before dice payment and switching", "[begin_action][onpay][compile-mode]")
+{
+    const bool observed = GENERATE(false, true);
+    action_log log;
+    const action_source observer{ &log, givm::action_speed::combat, false, true };
+    const givm::test::initialized_character_source character;
+    const givm::test::named_definition_source<givm::card_definition> card{ "PaymentCard" };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal,
+        std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, observer, character, card
+    );
+    const auto plain = ids.get_id<givm::character_view>(character.name());
+    givm::table table;
+    table.load_deck(givm::player_id{ 0 }, {
+        .cards = { ids.get_id<givm::card_definition>(card.name()) },
+        .characters = { ids.get_id<givm::character_view>(observer.name()), plain }
+    });
+    table.load_deck(givm::player_id{ 1 }, { .characters = { plain } });
+    givm::executor target;
+    target.enter_entry(library);
+    zero_random random;
+    if(observed) reach_action_start(target, library, table, random);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::action);
+    log.switches.clear();
+
+    target.view_in<givm::execution_state::action>().request_cost(0);
+    REQUIRE(target.step(library, table, random) == givm::execution_state::action);
+    CHECK(log.previews == 1);
+    CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
+    CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
+
+    givm::dice_counts paid;
+    paid[givm::elemental_dice::omni] = 1;
+    target.view_in<givm::execution_state::action>().execute_action_with_cost(0, { .paid_dice = paid });
+    auto state = target.step(library, table, random);
+    if(observed)
+    {
+        REQUIRE(state == givm::execution_state::active_character_changed);
+        CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 0 });
+        CHECK(table[givm::player_id{ 0 }].hand_card_count() == 1);
+        CHECK(table[givm::player_id{ 0 }].state().dice.total() == 3);
+        REQUIRE(target.step(library, table, random) == givm::execution_state::action_started);
+        state = target.step(library, table, random);
+    }
+    REQUIRE(state == givm::execution_state::action);
+    CHECK(log.previews == 1);
+    CHECK(table[givm::player_id{ 0 }].hand_card_count() == 1);
+    CHECK(table[givm::player_id{ 0 }].deck_card_count() == 0);
+    CHECK(table[givm::player_id{ 0 }].state().dice.total() == 3);
+    CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 1 });
+    CHECK(table.state().active_player == givm::player_id{ 1 });
+    CHECK(log.switches == std::vector{ givm::character_id{ givm::player_id{ 0 }, 1 } });
 }

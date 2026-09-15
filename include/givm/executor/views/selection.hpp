@@ -19,7 +19,7 @@ namespace givm
     public:
         constexpr void select(player_id player, std::bitset<selection_capacity> selected) const noexcept
         {
-            get<0>(stack_->top<detail::selector, detail::stage_t>()) = {
+            get<0>(stack_->top<detail::selector>()) = {
                 .player = player,
                 .selected = selected
             };
@@ -37,17 +37,17 @@ namespace givm
     public:
         constexpr player_id player() const noexcept
         {
-            return get<0>(std::as_const(*stack_).top<detail::selector, detail::stage_t>()).player;
+            return get<0>(std::as_const(*stack_).top<detail::selector>()).player;
         }
 
         constexpr std::bitset<selection_capacity> selected() const noexcept
         {
-            return get<0>(std::as_const(*stack_).top<detail::selector, detail::stage_t>()).selected;
+            return get<0>(std::as_const(*stack_).top<detail::selector>()).selected;
         }
 
         constexpr void select(std::bitset<selection_capacity> selected) const noexcept
         {
-            get<0>(stack_->top<detail::selector, detail::stage_t>()).selected = selected;
+            get<0>(stack_->top<detail::selector>()).selected = selected;
         }
 
     private:
@@ -62,7 +62,7 @@ namespace givm
     public:
         constexpr void select(character_id character) const noexcept
         {
-            get<0>(stack_->top<character_id, detail::stage_t>()) = character;
+            get<0>(stack_->top<character_id>()) = character;
         }
 
     private:
@@ -77,17 +77,17 @@ namespace givm
     public:
         constexpr player_id player() const noexcept
         {
-            return get<0>(std::as_const(*stack_).top<character_id, detail::stage_t>()).player_id;
+            return get<0>(std::as_const(*stack_).top<character_id>()).player_id;
         }
 
         constexpr character_id selected() const noexcept
         {
-            return get<0>(std::as_const(*stack_).top<character_id, character_id, detail::stage_t>());
+            return get<0>(std::as_const(*stack_).top<character_id, character_id>());
         }
 
         constexpr void select(std::size_t index) const noexcept
         {
-            get<0>(stack_->top<character_id, detail::stage_t>()).index = index;
+            get<0>(stack_->top<character_id>()).index = index;
         }
 
     private:
@@ -102,12 +102,12 @@ namespace givm
     public:
         constexpr player_id player() const noexcept
         {
-            return get<0>(std::as_const(*stack_).top<detail::selector, detail::stage_t>()).player;
+            return get<0>(std::as_const(*stack_).top<detail::selector>()).player;
         }
 
         constexpr std::bitset<selection_capacity> selected() const noexcept
         {
-            return get<0>(std::as_const(*stack_).top<detail::selector, detail::stage_t>()).selected;
+            return get<0>(std::as_const(*stack_).top<detail::selector>()).selected;
         }
 
         constexpr std::uint32_t remaining() const noexcept
@@ -118,7 +118,7 @@ namespace givm
         constexpr std::uint32_t remaining(player_id player) const noexcept
         {
             const auto& phase = get<0>(
-                std::as_const(*stack_).top<detail::dice_reroll_phase, detail::selector, detail::stage_t>()
+                std::as_const(*stack_).top<detail::dice_reroll_phase, detail::selector>()
             );
             return player == player_id{ 0 } ? phase.first.remaining : phase.second.remaining;
         }
@@ -126,18 +126,18 @@ namespace givm
         constexpr std::uint32_t dice_count() const noexcept
         {
             return get<0>(
-                std::as_const(*stack_).top<detail::dice_reroll_phase, detail::selector, detail::stage_t>()
+                std::as_const(*stack_).top<detail::dice_reroll_phase, detail::selector>()
             ).dice_count;
         }
 
         constexpr void select(std::bitset<selection_capacity> selected) const noexcept
         {
-            get<0>(stack_->top<detail::selector, detail::stage_t>()).selected = selected;
+            get<0>(stack_->top<detail::selector>()).selected = selected;
         }
 
         constexpr void select(player_id player, std::bitset<selection_capacity> selected) const noexcept
         {
-            get<0>(stack_->top<detail::selector, detail::stage_t>()) = {
+            get<0>(stack_->top<detail::selector>()) = {
                 .player = player,
                 .selected = selected
             };

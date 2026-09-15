@@ -2,7 +2,7 @@
 
 # 初始化、击倒与实体身份
 
-这里保留初始化同步完成的取舍、击倒后的输入时机，以及离场身份和计数器的规则边界。成员声明见[事件 reference](../../reference/executor/events.md)。
+这里保留初始化同步完成的取舍、击倒后的输入时机，以及离场身份和计数器的规则边界。成员声明见[事件 reference](../../reference/definition/events.md)。
 
 ## 初始化刻意同步完成
 

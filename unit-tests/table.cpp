@@ -39,6 +39,7 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
     const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
     const auto [library, id_map] = givm::test::compile_definitions_with_program(
+        givm::compile_mode::normal,
         std::tuple{ givm::draw_cards{ .count = 2 }, givm::start_round{} },
         std::tuple{ givm::end_game{ givm::game_result::both_loss } },
         alpha, beta, gamma
@@ -54,7 +55,7 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor executor;
     executor.enter_entry(library);
-    REQUIRE(executor.run(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(player.hand_card_count() == 2);
     CHECK(player.deck_card_count() == 1);
     CHECK(hand_definitions(player) == std::vector{ gamma_id, beta_id });

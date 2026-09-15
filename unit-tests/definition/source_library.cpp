@@ -151,7 +151,7 @@ TEST_CASE("selected definitions include transitive named dependencies", "[source
 
     const auto prepared_ids = sources.make_issued_id_map(selection);
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(sources, selection, program, program);
+    const auto [library, id_map] = compile(sources, selection, program, program, givm::compile_mode::normal);
     CHECK(id_map.has<givm::card_definition>("Root"));
     CHECK(id_map.has<givm::support_view>("Support"));
     CHECK_FALSE(id_map.has<givm::card_definition>("Unused"));
@@ -218,7 +218,7 @@ TEST_CASE("issued ids address the definitions produced by compilation", "[source
 
         const auto prepared_ids = sources.make_issued_id_map();
         const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-        const auto [library, id_map] = compile(sources, program, program);
+        const auto [library, id_map] = compile(sources, program, program, givm::compile_mode::normal);
         const auto alpha_id = prepared_ids.get_id<givm::card_definition>("Alpha");
         const auto zulu_id = prepared_ids.get_id<givm::card_definition>("Zulu");
         const auto alpha_tag = prepared_ids.get_tag_id("alpha");

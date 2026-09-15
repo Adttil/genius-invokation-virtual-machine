@@ -2,7 +2,7 @@
 
 # 事件分派与历史协议
 
-这里记录广播如何恢复执行、为什么费用预览不能立即执行提交副作用，以及旧事件设计还有哪些领域流程没有实现。公开接口的用法与字段见[事件 reference](../reference/executor/events.md)。
+这里记录广播如何恢复执行、为什么费用预览不能立即执行提交副作用，以及旧事件设计还有哪些领域流程没有实现。公开接口的用法与字段见[事件 reference](../reference/definition/events.md)。
 
 事件 context 表达响应程序的语义限制；onpay 是现有费用事件的类型映射与提交现场，不另建事件类别。完整栈 ABI 的历史边界统一见[设计演变](history.md)。
 
@@ -10,7 +10,7 @@
 
 | | |
 | --- | --- |
-| [指令、重入与调用现场](event_dispatch/execution_protocol.md) | const 指令、完整执行、干净退出、stage、执行控制、activation 和 view 生命周期 |
+| [指令、重入与调用现场](event_dispatch/execution_protocol.md) | const 操作数、完整 command、干净退出、执行位置恢复、activation 和 view 生命周期 |
 | [默认广播与事件事务](event_dispatch/broadcast.md) | handler ID 类型、响应者快照、默认遍历顺序、游标、自身 ID、失效过滤及单目标初始化 |
 | [费用预览与提交](event_dispatch/payment_commit.md) | 候选与 handler 矩阵、每项参数、报价重算、延迟提交、取消与缓存生命周期 |
 
@@ -25,7 +25,7 @@
 
 ## const 成员的编译器适配
 
-当前 [`events.hpp`](../../../include/givm/executor/events.hpp) 用 `GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND` 为含 const 成员的多种事件显式删除赋值运算符。这是源码为平凡复制相关编译器问题保留的处理，不意味着事件整体可以被随意赋值，也不是允许去掉 const 元数据的理由。该文件还对 `after_elemental_reaction` 的大小保留 `<= 64` 的静态断言；栈与指令存储限制分别见相应实现备忘。
+当前 [`events.hpp`](../../../include/givm/definition/events.hpp) 用 `GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND` 为含 const 成员的多种事件显式删除赋值运算符。这是源码为平凡复制相关编译器问题保留的处理，不意味着事件整体可以被随意赋值，也不是允许去掉 const 元数据的理由。该文件还对 `after_elemental_reaction` 的大小保留 `<= 64` 的静态断言；栈与指令存储限制分别见相应实现备忘。
 
 ## 核对范围
 

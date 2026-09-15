@@ -17,20 +17,20 @@ TEST_CASE("initialization and round programs accept tuple-like and range forms",
     const std::vector round{ givm::end_game{ givm::game_result::player_0_win } };
 
     givm::definition_source_library sources;
-    const auto [library, id_map] = compile(sources, initialization, round);
+    const auto [library, id_map] = compile(sources, initialization, round, givm::compile_mode::normal);
     auto random = []() -> std::uint32_t { return 0; };
     givm::table table;
     givm::executor executor;
     executor.enter_entry(library);
-    REQUIRE(executor.run(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(table.state().round_number == 1);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
 
     const givm::definition_selection selection{};
-    const auto [selected_library, selected_id_map] = compile(sources, selection, initialization, round);
+    const auto [selected_library, selected_id_map] = compile(sources, selection, initialization, round, givm::compile_mode::normal);
     givm::table selected_table;
     executor.enter_entry(selected_library);
-    REQUIRE(executor.run(selected_library, selected_table, random) == givm::execution_state::finished);
+    REQUIRE(executor.step(selected_library, selected_table, random) == givm::execution_state::finished);
     CHECK(selected_table.state().round_number == 1);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
 }

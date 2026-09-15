@@ -10,13 +10,13 @@
 
 ## 调用协议
 
-`executor::run` 与 `executor::step` 以非常量左值引用接收可调用对象；其无参数调用结果必须可转换为 `std::uint32_t`：
+`executor::step` 以非常量左值引用接收可调用对象；其无参数调用结果必须可转换为 `std::uint32_t`：
 
 ```cpp
 executor.step(library, table, random);
 ```
 
-本次同步调用内部会把它作为非持有 `random_fn` 传给当前指令和 definition handler。核心不会把该引用写入指令、table 或 executor stack，也不会在 `run` 或 `step` 返回后继续持有它。因此相邻两步可以使用不同的生成器、记录包装器或回放条带。
+本次同步调用内部会把它作为非持有 `random_fn` 传给当前指令和 definition handler。核心不会把该引用写入指令、table 或 executor stack，也不会在 `step` 返回后继续持有它。因此相邻两步可以使用不同的生成器、记录包装器或回放条带。
 
 拓展者只依赖 `random_fn` 可调用并返回 `std::uint32_t` 的语义。
 
@@ -28,7 +28,7 @@ executor.step(library, table, random);
 
 上层记录器应记录所有实际发生的随机调用。即使一次调用发生在最终挂起之前，它仍属于本次同步执行步骤。
 
-推进到输入或终局的接口见 [`executor::run`](../reference/executor/executor/run.md)，逐观察现场推进见 [`executor::step`](../reference/executor/executor/step.md)。
+推进接口统一为 [`executor::step`](../reference/executor/executor/step.md)，是否提供额外观察由 [`compile_mode`](../reference/executor/compile_mode.md) 决定。
 
 ## 记录与回放
 
@@ -68,17 +68,17 @@ struct tape_random
 
 ## 模拟分叉
 
-模拟器可以在一次 `run` 或 `step` 返回后复制彼此匹配的 table 与 executor，并为不同分支提供不同随机源。两个分支每次推进时都须显式传入与其现场及定义 ID 配套的不可变 definition library。
+模拟器可以在一次 `step` 返回后复制彼此匹配的 table 与 executor，并为不同分支提供不同随机源。两个分支每次推进时都须显式传入与其现场及定义 ID 配套的不可变 definition library。
 
 每个记录的 `std::uint32_t` 都是独立输入，可以单独替换。若替换导致后续控制流和随机调用次数发生变化，分支可以使用调整后的条带或在条带耗尽时切换到后备生成器。
 
 复制暂停状态也会复制 stack 中已经预发的随机值。更换后续传入的随机源只影响之后的新调用，不会替换已经保存在 stack 中的随机池；若要替换这些值所对应的随机输入，应从预发之前的状态重新回放。
 
-单条指令内部是同步执行过程。只有 `run` 或 `step` 返回后，当前执行位置、table 和 stack 才共同构成可复制、可观察的暂停状态。
+单条指令内部是同步执行过程。只有 `step` 返回后，当前执行位置、table 和 stack 才共同构成可复制、可观察的暂停状态。
 
 ## 数值语义
 
-每次随机调用返回一个原始 `std::uint32_t`。不同操作采用不同的数值映射；完整规则分别见 [`shuffle_deck`](../reference/executor/instructions/shuffle_deck.md)、[`replace_cards`](../reference/executor/instructions/replace_cards.md)、[`replace_cards_both`](../reference/executor/instructions/replace_cards_both.md) 和 [`start_dice_roll_phase`](../reference/executor/instructions/start_dice_roll_phase.md)。这些规则决定特定随机序列的游戏效果，属于公开语义，不能随内部实现重构任意改变。无论该值最终是否改变结果，只要随机函数被调用，上层记录器就应把它计入条带。
+每次随机调用返回一个原始 `std::uint32_t`。不同操作采用不同的数值映射；完整规则分别见 [`shuffle_deck`](../reference/definition/commands/shuffle_deck.md)、[`replace_cards`](../reference/definition/commands/replace_cards.md)、[`replace_cards_both`](../reference/definition/commands/replace_cards_both.md) 和 [`start_dice_roll_phase`](../reference/definition/commands/start_dice_roll_phase.md)。这些规则决定特定随机序列的游戏效果，属于公开语义，不能随内部实现重构任意改变。无论该值最终是否改变结果，只要随机函数被调用，上层记录器就应把它计入条带。
 
 [返回文档入口](../notes.md)
 

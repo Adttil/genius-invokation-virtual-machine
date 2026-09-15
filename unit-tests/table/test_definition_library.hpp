@@ -41,11 +41,12 @@ namespace givm::test
         }
 
         const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-        return compile(source_library, program, program);
+        return compile(source_library, program, program, givm::compile_mode::normal);
     }
 
     template<class TInitialization, class TRound, class... TSources>
     auto compile_definitions_with_program(
+        givm::compile_mode mode,
         TInitialization&& initialization,
         TRound&& round,
         const TSources&... sources
@@ -59,7 +60,7 @@ namespace givm::test
 
         return compile(source_library,
             std::forward<TInitialization>(initialization),
-            std::forward<TRound>(round)
+            std::forward<TRound>(round), mode
         );
     }
 }

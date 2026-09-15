@@ -1,11 +1,14 @@
 #ifndef GIVM_EXECUTOR_EXECUTOR_HPP
 #define GIVM_EXECUTOR_EXECUTOR_HPP
 
+#include <cstddef>
 #include <cstdint>
+#include <new>
+#include <type_traits>
 #include <utility>
 
 #include "random_fn.hpp"
-#include "events.hpp"
+#include "../definition/events.hpp"
 #include "library.hpp"
 #include "../table.hpp"
 #include "../utils/debug.hpp"
@@ -37,11 +40,6 @@ namespace givm
     namespace detail
     {
         inline constexpr execution_state continue_execution = static_cast<execution_state>(0);
-
-        constexpr bool is_input_state(execution_state state) noexcept
-        {
-            return state >= execution_state::card_selection && state <= execution_state::action;
-        }
     }
 
     class executor;
@@ -78,8 +76,6 @@ namespace givm
 
 namespace givm::detail
 {
-    using stage_t = std::uint8_t;
-
     class execution_context
     {
     public:
@@ -92,11 +88,34 @@ namespace givm::detail
 
         constexpr auto& stack(this auto& self) noexcept { return self.stack_; }
 
+        constexpr execution_position position() const noexcept { return position_; }
+
+        template<std::size_t N, class T>
+        const T& instruction_data(const definition_library& library) const noexcept
+        {
+            static_assert(std::is_trivially_copyable_v<T>);
+            static_assert(alignof(T) <= program_alignment);
+            const auto& bytes = library.program_;
+            const auto data_position = position_ + N * sizeof(execute_fn);
+            GIVM_ASSERT(position_ % program_alignment == 0);
+            GIVM_ASSERT(data_position <= bytes.size() && sizeof(T) <= bytes.size() - data_position);
+            return *std::launder(reinterpret_cast<const T*>(bytes.data() + data_position));
+        }
+
+        constexpr execution_state jump(execution_position position) noexcept
+        {
+            position_ = position;
+            return continue_execution;
+        }
+
+        constexpr execution_state advance(std::size_t bytes) noexcept
+        {
+            return jump(position_ + bytes);
+        }
+
         constexpr execution_state enter_next() noexcept
         {
-            current_stage() = stage_t{};
-            ++position_;
-            return continue_execution;
+            return advance(sizeof(execute_fn));
         }
 
         constexpr execution_state yield_next(execution_state state) noexcept
@@ -111,7 +130,7 @@ namespace givm::detail
         constexpr execution_state enter(program_entry<TContext> entry)
         {
             GIVM_ASSERT(not entry.is_null());
-            stack_.push(return_info{ position_ }, stage_t{});
+            stack_.push(return_info{ position_ });
             position_ = entry.position_;
             return continue_execution;
         }
@@ -123,24 +142,17 @@ namespace givm::detail
             return execution_state::finished;
         }
 
-        constexpr stage_t& current_stage() noexcept
+        constexpr execution_state return_from_subroutine()
         {
-            auto&& [stage] = stack_.top<stage_t>();
-            return stage;
+            const auto [info] = stack_.top<return_info>();
+            const auto target = info.return_position;
+            stack_.pop<return_info>();
+            return jump(target);
         }
 
     private:
         friend class ::givm::executor;
         constexpr execution_context() noexcept = default;
-
-        constexpr void return_from_subroutine()
-        {
-            auto&& [info_ref, stage] = stack_.top<return_info, stage_t>();
-            GIVM_ASSERT(stage == stage_t{});
-            const auto info = info_ref;
-            stack_.pop<return_info, stage_t>();
-            position_ = info.return_position;
-        }
 
         execution_position position_ = null_program_position;
         frame_stack stack_;
@@ -168,7 +180,6 @@ namespace givm
         constexpr void enter_entry(const definition_library& library)
         {
             context_.stack_.clear();
-            context_.stack_.push(detail::stage_t{});
             context_.position_ = library.entry();
 #ifndef NDEBUG
             last_state_ = detail::continue_execution;
@@ -179,14 +190,7 @@ namespace givm
         execution_state step(const definition_library& library, table& card_table, TRandom& random_source)
         {
             GIVM_ASSERT(last_state_ != execution_state::finished);
-            return advance<true>(library, card_table, random_source);
-        }
-
-        template<class TRandom>
-        execution_state run(const definition_library& library, table& card_table, TRandom& random_source)
-        {
-            GIVM_ASSERT(last_state_ == detail::continue_execution || detail::is_input_state(last_state_));
-            return advance<false>(library, card_table, random_source);
+            return advance(library, card_table, random_source);
         }
 
         template<execution_state State>
@@ -204,16 +208,15 @@ namespace givm
         }
 
     private:
-        template<bool Observed, class TRandom>
+        template<class TRandom>
         execution_state advance(const definition_library& library, table& table, TRandom& random_source)
         {
             detail::unrestricted_table& runtime_table = table;
             random_fn random{ random_source };
             while(true)
             {
-                settle_control_instructions(library);
-                const auto instruction = library.instruction(context_.position_);
-                const auto state = instruction.template execute<Observed>(library, runtime_table, context_, random);
+                const auto execute = context_.instruction_data<0, detail::execute_fn>(library);
+                const auto state = execute(library, runtime_table, context_, random);
                 if(state != detail::continue_execution)
                 {
 #ifndef NDEBUG
@@ -221,25 +224,6 @@ namespace givm
 #endif
                     return state;
                 }
-            }
-        }
-
-        constexpr void settle_control_instructions(const definition_library& library)
-        {
-            while(true)
-            {
-                const auto instruction = library.instruction(context_.position_);
-                if(instruction.template is<detail::return_instruction>())
-                {
-                    context_.return_from_subroutine();
-                    continue;
-                }
-                if(instruction.template is<detail::jump_instruction>())
-                {
-                    context_.position_ = instruction.template as<detail::jump_instruction>().target;
-                    continue;
-                }
-                return;
             }
         }
 

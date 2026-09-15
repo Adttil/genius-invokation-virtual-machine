@@ -9,7 +9,7 @@ template<class TEvent>
 using handler_program_context_t = typename handler_program_context<TEvent>::type;
 ```
 
-一个事件的响应效果所使用的 context 类型，用于登记只在该事件下执行的指令序列。
+一个事件的响应效果所使用的 context 类型，用于登记只在该事件下执行的命令序列。
 
 ## 模板参数
 
@@ -60,7 +60,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{} }
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
 }
 ```

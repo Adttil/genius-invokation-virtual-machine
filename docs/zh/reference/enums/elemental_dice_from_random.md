@@ -46,4 +46,4 @@ int main()
 |  |  |
 | --- | --- |
 | [`elemental_dice`](elemental_dice.md) | 元素骰的种类 |
-| [`start_dice_roll_phase`](../executor/instructions/start_dice_roll_phase.md) | 投骰与重投对随机值的使用 |
+| [`start_dice_roll_phase`](../definition/commands/start_dice_roll_phase.md) | 投骰与重投对随机值的使用 |

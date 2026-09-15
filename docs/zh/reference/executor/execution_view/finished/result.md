@@ -29,12 +29,12 @@ int main()
     givm::definition_source_library sources{};
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 0 } });
+        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
     givm::table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
-    const auto state = execution.run(library, table, random);
+    const auto state = execution.step(library, table, random);
     if(state == givm::execution_state::finished)
     {
         std::println("双方告负: {}",

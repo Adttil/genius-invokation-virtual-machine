@@ -11,7 +11,7 @@ constexpr void enter_entry(const definition_library& library);
 
 准备按照 `library` 提供的游戏流程开始一场对局。
 
-原有的待完成结算被丢弃。本函数不执行指令；通过 [`run`](run.md) 或 [`step`](step.md) 开始推进。
+原有的待完成结算被丢弃。本函数不执行命令；通过 [`step`](step.md) 开始推进。
 
 ## 参数
 
@@ -42,14 +42,14 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
-        std::tuple{ givm::start_round{ .max_rounds = 1 } }
+        std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::normal
     );
     givm::table table{};
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);
     std::println("牌桌回合数保持原值: {}", table.state().round_number);
-    const auto state = execution.run(library, table, random);
+    const auto state = execution.step(library, table, random);
     std::println("随后推进至终局: {}", state == givm::execution_state::finished);
 }
 ```
@@ -65,5 +65,4 @@ int main()
 
 | | |
 | --- | --- |
-| [`run`](run.md) | 推进至输入现场或终局 |
-| [`step`](step.md) | 推进至下一处观察或输入现场 |
+| [`step`](step.md) | 推进至编译模式要求报告的下一处现场 |
