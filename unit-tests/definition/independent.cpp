@@ -55,6 +55,17 @@ namespace
     }
 }
 
+TEST_CASE("payment responses can be constructed without executor headers", "[definition][program]")
+{
+    const givm::onpay_item<givm::cost_of_switch> item{};
+
+    STATIC_REQUIRE(std::same_as<
+        decltype(item.entry),
+        givm::program_entry<givm::onpay_context<givm::cost_of_switch>>
+    >);
+    CHECK(item.entry.is_null());
+}
+
 TEST_CASE("definition sources can be registered and enumerated without executor headers", "[definition][source_library]")
 {
     const named_source<givm::card_definition> card{ "Card" };

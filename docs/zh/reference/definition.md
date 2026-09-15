@@ -14,6 +14,7 @@
 | --- | --- |
 | [`definition_source_library`](definition/definition_source_library.md) | 可供编译的定义源集合 |
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
+| [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
 
 ### 名称、ID 与标签
 

@@ -7,6 +7,7 @@
 #include <optional>
 #include <variant>
 
+#include "program_entry.hpp"
 #include "../table.hpp"
 #include "../enums/action_speed.hpp"
 #include "../enums/damage_flags.hpp"
@@ -20,9 +21,6 @@
 
 namespace givm
 {
-    template<class TContext>
-    class program_entry;
-
     template<class TCostEvent>
     struct onpay_context;
 

@@ -2,7 +2,6 @@
 #define GIVM_EXECUTOR_HPP
 
 #include "executor/instruction.hpp"
-#include "executor/program_entry.hpp"
 #include "executor/library.hpp"
 #include "executor/executor.hpp"
 #include "executor/selector.hpp"

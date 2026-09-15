@@ -25,10 +25,13 @@ namespace givm::detail
     class unrestricted_table;
     class execution_context;
 
+    using execution_position = std::size_t;
+
     using execute_fn = execution_state (*)(
         const definition_library&, unrestricted_table&, execution_context&, random_fn&
     );
 
+    inline constexpr execution_position entry_position = sizeof(execute_fn);
     inline constexpr std::size_t program_alignment = alignof(execute_fn);
 
     constexpr std::size_t align_program_size(std::size_t size) noexcept

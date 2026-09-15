@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "instruction.hpp"
-#include "program_entry.hpp"
+#include "../definition/program_entry.hpp"
 #include "../definition.hpp"
 
 #include "../macro_define.hpp"

@@ -3,7 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <givm/executor/program_entry.hpp>
+#include <givm/definition/program_entry.hpp>
 
 namespace
 {
@@ -11,7 +11,7 @@ namespace
     struct other_context{};
 }
 
-TEST_CASE("program entries preserve their context and null identity", "[executor][program]")
+TEST_CASE("program entries preserve their context and null identity", "[definition][program]")
 {
     using entry_type = givm::program_entry<event_context>;
 

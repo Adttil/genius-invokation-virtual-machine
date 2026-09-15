@@ -6,7 +6,7 @@
 
 源先加入 [`definition_source_library`](definition_source_library.md)，再与本场对局需要的其他源一起编译。源对象不由库拥有，应在源库使用期间保持有效；名称、标签及依赖字符串的字符存储也必须保持有效，编译后名称和标签仍由定义库使用。
 
-最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 和 [`program_entry`](../executor/program_entry.md) 在执行模块中完整定义；编写定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开命令和事件。
+最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。[`program_entry`](program_entry.md) 由定义模块提供，定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 在执行模块中完整定义；编写需要调用编译上下文的定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开命令和事件。
 
 ## 必需成员
 

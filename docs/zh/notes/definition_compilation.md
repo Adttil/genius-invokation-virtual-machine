@@ -4,7 +4,7 @@
 
 对照基线为 `b3d6c50`。旧记录的 Context/栈 ABI 称法、源对象生命周期概括、逻辑编译步骤与实际写入顺序在相应位置标明差异。持久化一节记录上层格式的设计方向，不声称核心已经提供现成序列化器。
 
-当前模块边界：definition 保留定义源协议、源库、source view、ID 准备、command 与命令 variant；executor 提供最终编译的非成员 `givm::compile`，并拥有完整的编译上下文、程序入口及编译后的定义库。source 协议只需前置声明上下文和入口；定义拓展者包含 `givm.hpp` 后取得完整类型。本文的 `source.compile(context)` 始终指单项源的编译操作，整库编译则通过 `compile(source_library, ...)` 调用。
+当前模块边界：definition 保留定义源协议、源库、source view、ID 准备、command、命令 variant、事件与程序入口；executor 提供最终编译的非成员 `givm::compile`，并拥有完整的编译上下文及编译后的定义库。source 协议只需前置声明上下文，程序入口则由 definition 提供完整类型；定义拓展者调用编译上下文时包含 `givm.hpp`。入口索引的生成与解释仍由 executor 负责。本文的 `source.compile(context)` 始终指单项源的编译操作，整库编译则通过 `compile(source_library, ...)` 调用。
 
 definition source 是一个描述单项游戏规则的 C++ 对象。它可以代表一张卡牌、一个角色、一种状态、一个召唤物或其他一种 definition。核心先读取它的身份与依赖，再调用它编译出不可变的 definition；对局执行规则时只读取编译结果，不再调用原 source 对象。原记录由此概括“source 仍需保持存活，因为源库和编译库可以保存由它提供的非拥有字符串视图”；源对象、字符存储和编译结果的具体拥有边界在下文“注册与生命周期”中分别核对。
 

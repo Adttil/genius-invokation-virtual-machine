@@ -1,18 +1,18 @@
-[givm](../../../reference.md) / [执行](../../executor.md) / [program_entry](../program_entry.md) / **is_null**
+[givm](../../../reference.md) / [定义](../../definition.md) / [program_entry](../program_entry.md) / **(构造函数)**
 
-# givm::program_entry::is_null
+# givm::program_entry::program_entry
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-[[nodiscard]] constexpr bool is_null() const noexcept;
+constexpr program_entry() noexcept = default;
 ```
 
-检查入口是否为空。
+构造一个表示没有后续效果的空入口。
 
 ## 返回值
 
-空入口返回 `true`，非空入口返回 `false`。
+（无）
 
 ## 示例
 
@@ -35,7 +35,7 @@ struct result_source
         std::println("尚无后续效果: {}", effect.is_null());
         effect = context.add_program<givm::round_ended>(
             std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } });
-        std::println("已选择终局效果: {}", !effect.is_null());
+        std::println("已选择终局效果: {}", static_cast<bool>(effect));
         return effect;
     }
     static entry_type handle(

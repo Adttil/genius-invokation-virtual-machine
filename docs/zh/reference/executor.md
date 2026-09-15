@@ -12,7 +12,6 @@
 | --- | --- |
 | [`definition_compile_context`](executor/definition_compile_context.md) | 单项定义的编译上下文 |
 | [`definition_library`](executor/definition_library.md) | 对局使用的定义与流程 |
-| [`program_entry`](executor/program_entry.md) | 响应效果的入口 |
 
 ### 对局执行
 

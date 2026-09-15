@@ -1,8 +1,8 @@
-[givm](../../reference.md) / [执行](../executor.md) / **program_entry**
+[givm](../../reference.md) / [定义](../definition.md) / **program_entry**
 
 # givm::program_entry
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 template<class TContext>
@@ -28,7 +28,7 @@ class program_entry;
 
 ## 注意
 
-非空入口由 [`definition_compile_context::add_program`](definition_compile_context/add_program.md) 产生，不能跨定义库使用。context 不同的入口不能相互转换。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](../definition/commands/end_game.md) 编入其程序。
+非空入口由 [`definition_compile_context::add_program`](../executor/definition_compile_context/add_program.md) 产生，不能跨定义库使用。context 不同的入口不能相互转换。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](commands/end_game.md) 编入其程序。
 
 ## 非成员函数
 

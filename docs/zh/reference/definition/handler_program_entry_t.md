@@ -81,4 +81,4 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`program_entry`](../executor/program_entry.md) | 响应程序入口与空入口 |
+| [`program_entry`](program_entry.md) | 响应程序入口与空入口 |

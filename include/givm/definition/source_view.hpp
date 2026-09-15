@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "program_entry.hpp"
 #include "subscribed_events.hpp"
 #include "definition_categories.hpp"
 
@@ -19,9 +20,6 @@ namespace givm
     class definition_compile_context;
     class definition_library;
     class random_fn;
-
-    template<class TContext>
-    class program_entry;
 
     template<class TCostEvent>
     struct onpay_context;

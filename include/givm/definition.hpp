@@ -1,6 +1,7 @@
 #ifndef GIVM_DEFINITION_HPP
 #define GIVM_DEFINITION_HPP
 
+#include "definition/program_entry.hpp"
 #include "definition/events.hpp"
 #include "definition/commands.hpp"
 #include "definition/source_view.hpp"

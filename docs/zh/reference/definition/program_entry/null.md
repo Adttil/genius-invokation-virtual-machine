@@ -1,8 +1,8 @@
-[givm](../../../reference.md) / [执行](../../executor.md) / [program_entry](../program_entry.md) / **null**
+[givm](../../../reference.md) / [定义](../../definition.md) / [program_entry](../program_entry.md) / **null**
 
 # givm::program_entry::null
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 [[nodiscard]] static constexpr program_entry null() noexcept;

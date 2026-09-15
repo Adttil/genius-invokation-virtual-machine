@@ -79,5 +79,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`program_entry`](../../executor/program_entry.md) | 响应程序入口 |
+| [`program_entry`](../program_entry.md) | 响应程序入口 |
 | [`execution_view<finished>`](../../executor/execution_view/finished.md) | 已结束对局的结果视图 |

@@ -60,16 +60,16 @@ executor -> definition -> table
 executor ----------------> table
 ```
 
-- `definition.hpp`：定义源协议、源库及其视图、依赖选择、ID 映射、公开 command 与命令 variant，以及牌组名称链接。
+- `definition.hpp`：定义源协议、源库及其视图、依赖选择、ID 映射、公开 command 与命令 variant、事件、程序入口，以及牌组名称链接。
 - `table.hpp`：牌桌状态、`issued_id` 及其 `definition_id`、`tag_id` 别名、定义类别、实体 ID、实体访问对象、`linked_deck` 和 `table`。
-- `executor.hpp`：最终编译、编译上下文、程序入口、编译后的定义库、事件、随机输入和 `executor`。
+- `executor.hpp`：最终编译、编译上下文、编译后的定义库、随机输入和 `executor`。
 - `utils/stack.hpp`：可独立使用的栈与 frame view 工具；其公开性不意味着 executor 提供原始栈访问。
 
 跨核心模块包含公共入口，依赖方向保持一致。definition 使用 table 提供的游戏数据类型，不包含 executor 实现。跨模块包含保持从上层指向下层。table 的直接及传递包含均不进入 definition 或 executor；definition 使用 table 提供的游戏数据类型，executor 通过 source view 完成最终编译。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
 
 table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 
-definition 中的 source 适配只传递 `definition_compile_context&`，handler 协议只需声明返回 `program_entry<TContext>`，因此可以使用前置声明。完整上下文、入口表示及编译执行实现归 executor；公开 command 与 `any_command_for` variant 则归 definition。定义拓展者编写 source 时包含 `givm.hpp`，在实际调用 `add_program`、保存入口和定义 handler 前取得完整类型。不能为了让 definition 独立完成所有拓展者代码而把编译实现或桥接接口放回下层。
+definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry<TContext>` 的完整类型归 definition，保存入口索引并约束 Context；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command_for` variant 与事件同样归 definition。定义拓展者可以仅包含 `definition.hpp` 保存和返回入口；实际调用 `add_program` 时包含 `givm.hpp`，取得完整编译上下文。
 
 源库提供登记、名称查找、按类别遍历 source view 和建立 ID 映射的能力，不提供成员编译函数。成员 `sources.make_issued_id_map(...)` 使用登记时保留的声明信息完成选择、依赖闭包和 ID 分配；executor 中的非成员 `compile(sources, ..., initialization_program, round_program, mode)` 调用这个成员取得映射，再通过 source view 构建完整定义库。`source.compile(context)` 仍是单项定义源协议，不与整库编译入口混淆。
 

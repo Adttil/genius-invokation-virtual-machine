@@ -26,7 +26,7 @@ program_entry<TContext> add_program(TCommands&& commands);
 
 ## 返回值
 
-登记效果的非空 [`program_entry<TContext>`](../program_entry.md)。
+登记效果的非空 [`program_entry<TContext>`](../../definition/program_entry.md)。
 
 ## 注意
 

@@ -1,8 +1,8 @@
-[givm](../../../reference.md) / [执行](../../executor.md) / [program_entry](../program_entry.md) / **operator== (program_entry)**
+[givm](../../../reference.md) / [定义](../../definition.md) / [program_entry](../program_entry.md) / **operator== (program_entry)**
 
 # givm::operator== (program_entry)
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 friend constexpr bool operator==(program_entry, program_entry) noexcept = default;

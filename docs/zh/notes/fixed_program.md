@@ -88,6 +88,6 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 每个 command 的编译重载与 execute 定义集中在其 executor 实现文件内。ADL 通过实际的 `detail::program_writer` 类型找到 `detail::compile(writer, command, mode)`；无需 command_backend 类或全局 opcode 编号。函数直接在定义处提供实现，汇总头包含各 command 实现后，编译上下文才实例化统一遍历。
 
-definition 保留 command、variant 与事件声明。编译上下文、定义库、整体编译入口及返回、跳转控制函数集中在 executor 的 `library.hpp` 中；各 command 的编译与执行仍集中在对应实现文件内，由 `instructions.hpp` 汇总。
+definition 保留 command、variant、事件与程序入口类型。入口索引的生成与解释由 executor 负责。编译上下文、定义库、整体编译入口及返回、跳转控制函数集中在 executor 的 `library.hpp` 中；各 command 的编译与执行仍集中在对应实现文件内，由 `instructions.hpp` 汇总。
 
 [返回架构总览](architecture.md)

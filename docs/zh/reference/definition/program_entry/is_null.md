@@ -1,18 +1,18 @@
-[givm](../../../reference.md) / [执行](../../executor.md) / [program_entry](../program_entry.md) / **operator bool**
+[givm](../../../reference.md) / [定义](../../definition.md) / [program_entry](../program_entry.md) / **is_null**
 
-# givm::program_entry::operator bool
+# givm::program_entry::is_null
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-[[nodiscard]] constexpr explicit operator bool() const noexcept;
+[[nodiscard]] constexpr bool is_null() const noexcept;
 ```
 
-检查入口是否非空。
+检查入口是否为空。
 
 ## 返回值
 
-空入口返回 `false`，非空入口返回 `true`。
+空入口返回 `true`，非空入口返回 `false`。
 
 ## 示例
 
@@ -32,10 +32,10 @@ struct result_source
     entry_type compile(givm::definition_compile_context& context) const
     {
         entry_type effect{};
-        std::println("尚无后续效果: {}", !static_cast<bool>(effect));
+        std::println("尚无后续效果: {}", effect.is_null());
         effect = context.add_program<givm::round_ended>(
             std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } });
-        std::println("已选择终局效果: {}", static_cast<bool>(effect));
+        std::println("已选择终局效果: {}", !effect.is_null());
         return effect;
     }
     static entry_type handle(

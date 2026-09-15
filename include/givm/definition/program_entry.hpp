@@ -1,8 +1,7 @@
-#ifndef GIVM_EXECUTOR_PROGRAM_ENTRY_HPP
-#define GIVM_EXECUTOR_PROGRAM_ENTRY_HPP
+#ifndef GIVM_DEFINITION_PROGRAM_ENTRY_HPP
+#define GIVM_DEFINITION_PROGRAM_ENTRY_HPP
 
 #include <cstddef>
-#include "instruction.hpp"
 
 namespace givm
 {
@@ -12,9 +11,7 @@ namespace givm
     {
         class execution_context;
 
-        using execution_position = std::size_t;
-        inline constexpr execution_position null_program_position = 0;
-        inline constexpr execution_position entry_position = sizeof(execute_fn);
+        inline constexpr std::size_t null_program_position = 0;
     }
 
     template<class TContext>
