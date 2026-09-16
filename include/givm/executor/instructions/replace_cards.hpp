@@ -8,6 +8,7 @@
 #include <bitset>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <span>
 #include <utility>
 #include <vector>
@@ -28,9 +29,16 @@ namespace givm::detail
         TOnDrawn& on_drawn
     )
     {
+        const size_t selected_count = selected.count();
+        if(selected_count == 0)
+        {
+            return;
+        }
         auto player_entity = table[player];
         std::vector<hand_card_id> selected_cards;
         std::vector<size_t> blacklist;
+        selected_cards.reserve(selected_count);
+        blacklist.reserve(selected_count);
         size_t hand_index = 0;
         for(auto card : player_entity.hand_cards<false>())
         {
@@ -60,12 +68,6 @@ namespace givm::detail
                 static_cast<std::uint64_t>(next_random()) * (deck_count + 1) >> 32
             );
             player_entity.insert_deck_card(insertion_index, std::move(card));
-        }
-
-        const size_t selected_count = selected_cards.size();
-        if(selected_count == 0)
-        {
-            return;
         }
 
         std::vector<size_t> non_blacklisted_indices;
@@ -103,11 +105,10 @@ namespace givm::detail
             std::ranges::sort(drawn_indices, std::greater{});
         }
 
-        auto drawn_card_datas = player_entity.take_deck_cards(drawn_indices);
-        for(auto& card : drawn_card_datas)
+        player_entity.take_deck_cards(drawn_indices, [&](card_data card)
         {
             std::invoke(on_drawn, player_entity.add_hand_card(std::move(card)).id());
-        }
+        });
     }
 
     inline execution_state prepare_card_selection(
@@ -129,21 +130,23 @@ namespace givm::detail
         const auto& input = get<0>(context.stack().top<selector>());
         const auto selected = input.selected;
         const auto player = input.player;
-        auto next_random = [&random]{ return random(); };
-        std::vector<hand_card_id> drawn_cards;
-        drawn_cards.reserve(selected.count());
-        auto on_drawn = [&](hand_card_id card)
-        {
-            drawn_cards.push_back(card);
-        };
-        detail::replace_cards(table, player, selected, next_random, on_drawn);
         context.stack().pop<selector>();
-        if(drawn_cards.empty())
+        if(selected.none())
         {
             return context.advance(2 * sizeof(execute_fn));
         }
 
-        prepare_drawn_cards(library, table, context, drawn_cards);
+        auto next_random = [&random]{ return random(); };
+        auto drawn_cards = get<0>(context.stack().push(
+            dynamic_array<hand_card_id>(selected.count()), stack_count_t{ 1 }));
+        size_t drawn_count = 0;
+        auto on_drawn = [&](hand_card_id card)
+        {
+            std::construct_at(&drawn_cards[drawn_count++], card);
+        };
+        detail::replace_cards(table, player, selected, next_random, on_drawn);
+
+        prepare_drawn_cards(library, table, context);
         return context.enter_next();
     }
 

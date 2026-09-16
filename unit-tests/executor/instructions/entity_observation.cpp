@@ -1,5 +1,6 @@
 #include <array>
 #include <bitset>
+#include <cstddef>
 #include <cstdint>
 #include <ranges>
 #include <string_view>
@@ -83,6 +84,7 @@ namespace
     struct entity_event_log
     {
         std::vector<givm::hand_card_id> drawn;
+        std::vector<std::array<std::size_t, 2>> card_counts_at_drawn;
         std::vector<givm::character_id> active;
     };
 
@@ -116,19 +118,34 @@ namespace
     struct entity_observer_source
     {
         using definition_category = givm::character_view;
-        struct definition_type { entity_event_log* log; };
+        struct definition_type
+        {
+            entity_event_log* log;
+            givm::program_entry<givm::card_drawn> draw_response;
+        };
         entity_event_log* log;
+        bool respond_to_draws = false;
 
         constexpr std::string_view name() const noexcept { return "EntityObserver"; }
-        constexpr definition_type compile(givm::definition_compile_context&) const noexcept { return { log }; }
+        definition_type compile(givm::definition_compile_context& context) const
+        {
+            return {
+                log,
+                respond_to_draws
+                    ? context.add_program<givm::card_drawn>(std::tuple{ givm::start_round{ .max_rounds = 10 } })
+                    : givm::program_entry<givm::card_drawn>::null()
+            };
+        }
 
         static givm::program_entry<givm::card_drawn> handle(
             const definition_type& data, const givm::character_view&, givm::card_drawn& event,
-            const givm::table&, givm::random_fn&
+            const givm::table& table, givm::random_fn&
         )
         {
             data.log->drawn.push_back(event.card);
-            return givm::program_entry<givm::card_drawn>::null();
+            const auto player = table[event.card.player_id];
+            data.log->card_counts_at_drawn.push_back({ player.hand_card_count(), player.deck_card_count() });
+            return data.draw_response;
         }
 
         static givm::program_entry<givm::active_character_changed> handle(
@@ -322,6 +339,7 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     normal.enter_entry(normal_compilation.library);
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     log.drawn.clear();
+    log.card_counts_at_drawn.clear();
 
     givm::executor observed;
     observed.enter_entry(library);
@@ -332,6 +350,9 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     std::vector<givm::hand_card_id> hand_ids;
     for(const auto card : player.hand_cards()) hand_ids.push_back(card.id());
     CHECK(log.drawn == hand_ids);
+    std::vector<std::array<std::size_t, 2>> expected_counts(initial_hand_count, { initial_hand_count, 3 });
+    if(initial_hand_count == 1) expected_counts.push_back({ 2, 0 });
+    CHECK(log.card_counts_at_drawn == expected_counts);
     for(const auto card : log.drawn) CHECK(table[card].definition_id() == card_definition);
     CHECK(player.hand_card_count() == normal_table[givm::player_id{ 0 }].hand_card_count());
     CHECK(player.deck_card_count() == normal_table[givm::player_id{ 0 }].deck_card_count());
@@ -518,8 +539,9 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
 TEST_CASE("replacing selected cards broadcasts the replacements before the next command", "[entity-observation][replace_cards][compile-mode]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    const bool respond_to_draws = GENERATE(false, true);
     entity_event_log log;
-    const entity_observer_source observer{ &log };
+    const entity_observer_source observer{ &log, respond_to_draws };
     const givm::test::named_definition_source<givm::card_definition> first{ "FirstCard" };
     const givm::test::named_definition_source<givm::card_definition> second{ "SecondCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -539,13 +561,22 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
-    REQUIRE(target.step(library, table, random) == givm::execution_state::card_selection);
+    const auto step_until_input = [&]
+    {
+        auto state = target.step(library, table, random);
+        while(state == givm::execution_state::round_started)
+            state = target.step(library, table, random);
+        return state;
+    };
+    REQUIRE(step_until_input() == givm::execution_state::card_selection);
     REQUIRE(log.drawn.size() == 2);
+    CHECK(log.card_counts_at_drawn == std::vector<std::array<std::size_t, 2>>{ { 2, 4 }, { 2, 4 } });
     for(const auto card : table[givm::player_id{ 0 }].hand_cards()) CHECK(card.definition_id() == first_id);
     log.drawn.clear();
+    log.card_counts_at_drawn.clear();
 
     target.view_in<givm::execution_state::card_selection>().select(std::bitset<givm::selection_capacity>{ 0b11 });
-    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(step_until_input() == givm::execution_state::finished);
     REQUIRE(log.drawn.size() == 3);
     std::vector<givm::hand_card_id> hand;
     for(const auto card : table[givm::player_id{ 0 }].hand_cards())
@@ -554,7 +585,9 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
         hand.push_back(card.id());
     }
     CHECK(log.drawn == hand);
+    CHECK(log.card_counts_at_drawn == std::vector<std::array<std::size_t, 2>>{ { 2, 4 }, { 2, 4 }, { 3, 3 } });
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 3);
     CHECK(table[givm::player_id{ 0 }].deck_card_count() == 3);
+    CHECK(table.state().round_number == (respond_to_draws ? 5 : 0));
     CHECK(random.calls == 2);
 }

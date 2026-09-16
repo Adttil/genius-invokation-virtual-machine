@@ -4,8 +4,9 @@
 #include "../executor.hpp"
 #include "../../definition/commands.hpp"
 
-#include <cstdint>
-#include <vector>
+#include <algorithm>
+#include <cstddef>
+#include <memory>
 
 #include "../broadcast.hpp"
 #include "../../definition/events.hpp"
@@ -36,10 +37,10 @@ namespace givm::detail
 
     inline void prepare_drawn_cards(
         const definition_library& library, const unrestricted_table& table,
-        execution_context& context, const std::vector<hand_card_id>& cards)
+        execution_context& context)
     {
-        context.stack().push(dynamic_array<hand_card_id>(cards), stack_count_t{ 1 });
-        prepare_broadcast(library, card_drawn{ .card = cards.front() }, table, context.stack());
+        const auto first_card = get<0>(context.stack().top<hand_card_id[], stack_count_t>()).front();
+        prepare_broadcast(library, card_drawn{ .card = first_card }, table, context.stack());
     }
 
     inline execution_state draw_cards_execute(
@@ -52,31 +53,39 @@ namespace givm::detail
             ? table.state().active_player
             : other_player(table.state().active_player);
         auto player_entity = table[target_player];
-        std::vector<hand_card_id> drawn_cards;
-        drawn_cards.reserve(command.count);
-
-        for(std::uint32_t index = 0; index < command.count; ++index)
-        {
-            if(player_entity.deck_card_count() == 0)
-            {
-                break;
-            }
-            if(player_entity.hand_card_count() >= table.parameters().hand_limit)
-            {
-                player_entity.discard_top_deck_card();
-                continue;
-            }
-
-            auto card = player_entity.take_top_deck_card();
-            drawn_cards.push_back(player_entity.add_hand_card(std::move(card)).id());
-        }
-
-        if(drawn_cards.empty())
+        const auto count = std::min<size_t>(command.count, player_entity.deck_card_count());
+        if(count == 0)
         {
             return context.advance(instruction_extent<1, givm::draw_cards> + sizeof(execute_fn));
         }
 
-        prepare_drawn_cards(library, table, context, drawn_cards);
+        const auto hand_count = player_entity.hand_card_count();
+        const auto hand_limit = table.parameters().hand_limit;
+        const auto drawn_count = hand_count < hand_limit
+            ? std::min<size_t>(count, hand_limit - hand_count) : size_t{ 0 };
+
+        // No responses run until the entire batch, including overflow discards, is complete.
+        if(drawn_count != 0)
+        {
+            auto drawn_cards = get<0>(context.stack().push(
+                dynamic_array<hand_card_id>(drawn_count), stack_count_t{ 1 }));
+            for(auto& id : drawn_cards)
+            {
+                auto card = player_entity.take_top_deck_card();
+                std::construct_at(&id, player_entity.add_hand_card(std::move(card)).id());
+            }
+        }
+        for(size_t index = drawn_count; index < count; ++index)
+        {
+            player_entity.discard_top_deck_card();
+        }
+
+        if(drawn_count == 0)
+        {
+            return context.advance(instruction_extent<1, givm::draw_cards> + sizeof(execute_fn));
+        }
+
+        prepare_drawn_cards(library, table, context);
         return context.advance(instruction_extent<1, givm::draw_cards>);
     }
 

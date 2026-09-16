@@ -2,6 +2,7 @@
 #define GIVM_TABLE_ENTITIES_PLAYER_HANDLE_HPP
 
 #include <algorithm>
+#include <functional>
 #include <ranges>
 #include <optional>
 #include <span>
@@ -280,19 +281,24 @@ namespace givm::detail
             return result;
         }
 
-        constexpr std::vector<card_data> take_deck_cards(
-            std::span<const size_t> descending_indices
+        template<class TConsume>
+        constexpr void take_deck_cards(
+            std::span<const size_t> descending_indices, TConsume&& consume
         ) const requires is_mutable
         {
-            std::vector<card_data> result;
-            result.reserve(descending_indices.size());
+            if(descending_indices.empty())
+            {
+                return;
+            }
 
+            // The internal consumer must not alter the deck or run event responses.
+            // All removals finish before the caller broadcasts any resulting events.
             size_t previous_index = storage_.data->deck_card_order.size();
             for(size_t index : descending_indices)
             {
                 GIVM_ASSERT(index < previous_index);
                 auto& source = storage_.data->deck_card_datas[storage_.data->deck_card_order[index]];
-                result.push_back(std::move(source));
+                std::invoke(consume, std::move(source));
                 source.definition_id.set_invalid();
                 source.first_status = invalid_status_index;
                 source.last_status = invalid_status_index;
@@ -300,8 +306,8 @@ namespace givm::detail
             }
 
             auto selected = descending_indices.rbegin();
-            size_t write_index = 0;
-            for(size_t read_index = 0; read_index < storage_.data->deck_card_order.size(); ++read_index)
+            size_t write_index = descending_indices.back();
+            for(size_t read_index = write_index; read_index < storage_.data->deck_card_order.size(); ++read_index)
             {
                 if(selected != descending_indices.rend() && *selected == read_index)
                 {
@@ -316,7 +322,6 @@ namespace givm::detail
                 ++write_index;
             }
             storage_.data->deck_card_order.resize(write_index);
-            return result;
         }
 
         constexpr card_data take_hand_card(hand_card_id card_id) const requires is_mutable
