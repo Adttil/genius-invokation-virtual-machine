@@ -2,6 +2,7 @@
 #define GIVM_TABLE_ENTITIES_DECK_CARD_HANDLE_HPP
 
 #include <algorithm>
+#include <limits>
 #include <type_traits>
 
 #include "../entity_id.hpp"
@@ -43,7 +44,7 @@ namespace givm::detail
 
         constexpr bool is_valid() const
         {
-            return storage_.data->definition_id.is_valid();
+            return (storage_.data->definition_and_flags & erased_mask) == 0;
         }
 
         constexpr explicit operator bool() const
@@ -78,25 +79,26 @@ namespace givm::detail
 
         constexpr deck_card_id id() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
             return { player().id(), storage_.slot };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(is_valid());
-            return storage_.data->definition_id;
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            return detail::table_accessor::make_issued_id<card_definition>(
+                storage_.data->definition_and_flags & ~erased_mask);
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
             return storage_.data->state;
         }
 
         constexpr auto statuses() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
             using status_entity_type = deck_card_status_handle<TStorage>;
             return card_status_range<TStorage, status_entity_type, deck_card_id>{
                 *storage_.table, id(), storage_.data->first_status
@@ -123,13 +125,16 @@ namespace givm::detail
         constexpr void erase() const requires is_mutable
         {
             detail::erase_statuses(*storage_.table, *storage_.data);
-            storage_.data->definition_id.set_invalid();
+            storage_.data->definition_and_flags |= erased_mask;
             const auto order = std::ranges::find(storage_.player->deck_card_order, storage_.slot);
             GIVM_ASSERT(order != storage_.player->deck_card_order.end());
             storage_.player->deck_card_order.erase(order);
         }
 
     private:
+        static constexpr size_t erased_mask =
+            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+
         constexpr basic_deck_card_handle(detail::uninitialized_entity_t) noexcept {}
 
         storage_type storage_;

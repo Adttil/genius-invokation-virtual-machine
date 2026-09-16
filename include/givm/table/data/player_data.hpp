@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <optional>
 #include <ranges>
 #include <vector>
@@ -25,7 +26,10 @@ namespace givm
         dice_counts dice;
         std::optional<character_id> active_character;
     };
+}
 
+namespace givm::detail
+{
     struct player_data
     {
         player_state state;
@@ -42,7 +46,11 @@ namespace givm
         {
             constexpr auto clean_up_datas = [](auto& datas)
             {
-                std::erase_if(datas, [](const auto& data){ return not data.definition_id.is_valid(); });
+                std::erase_if(datas, [](const auto& data)
+                {
+                    constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+                    return (data.definition_and_flags & erased_mask) != 0;
+                });
                 if constexpr(requires{ (*datas.begin()).clean_up(); })
                 {
                     for(auto&& data : datas)
@@ -53,15 +61,16 @@ namespace givm
             };
             clean_up_datas(hand_card_datas);
 
+            constexpr size_t deck_card_erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
             size_t front = 0;
             size_t back = deck_card_datas.size();
             while(true)
             {
-                while(front < back && deck_card_datas[front].definition_id.is_valid())
+                while(front < back && (deck_card_datas[front].definition_and_flags & deck_card_erased_mask) == 0)
                 {
                     ++front;
                 }
-                while(front < back && not deck_card_datas[back - 1].definition_id.is_valid())
+                while(front < back && (deck_card_datas[back - 1].definition_and_flags & deck_card_erased_mask) != 0)
                 {
                     --back;
                 }
@@ -72,7 +81,7 @@ namespace givm
 
                 const size_t source = --back;
                 deck_card_datas[front] = std::move(deck_card_datas[source]);
-                deck_card_datas[source].definition_id.set_invalid();
+                deck_card_datas[source].definition_and_flags = static_cast<size_t>(-1);
                 deck_card_datas[source].first_status = invalid_status_index;
                 deck_card_datas[source].last_status = invalid_status_index;
 

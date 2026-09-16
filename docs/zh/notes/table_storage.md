@@ -73,16 +73,16 @@ using character_view = character_entity<const detail::table_storage>;
 
 公开使用时还应注意：[is_valid](../reference/table/hand_card_view/is_valid.md) 不能检测已经悬空的访问对象。以下“不复用”是本设计的执行期分配策略，不是允许跨清理继续尝试旧 ID 的保护机制。
 
-本项目不采用带 generation 的通用 slot map。执行过程中实体只会被标记删除或从所属链/顺序表中脱离，不复用其槽位。只有在仍有效的执行现场、日志和展示任务都不再依赖旧实体 ID 的安全点才调用 `table.clean_up()`。终局会逻辑废弃旧执行现场，不再要求主动清栈；上层仍须结束自身对旧实体身份的观察和展示任务。
+本项目不采用带 generation 的通用 slot map。执行过程中删除实体会保留其原槽位及信息，不复用槽位；单个 status 的删除也保留原链连接，等到清理时再摘除。只有在仍有效的执行现场、日志和展示任务都不再依赖旧实体 ID 的安全点才调用 `table.clean_up()`。终局会逻辑废弃旧执行现场，不再要求主动清栈；上层仍须结束自身对旧实体身份的观察和展示任务。
 
 这意味着：
 
-- cleanup 前，仍存活且未转移的实体保持原 ID；删除或转移的实体，其旧 ID 立即失效；
+- cleanup 前，仍存活且未转移的实体保持原 ID；删除后 `is_valid()` 为 false，原有 ID 仍可读取保留的定义、状态和归属；区域转移后的旧 ID 不保证可读；
 - cleanup 可以重排槽位并使旧 ID 整体失效；
 - 不需要为每个槽位长期保存 generation；
 - cleanup 以前不能复用被删除槽位。
 
-槽位 ID 稳定不保证数据地址稳定。现有 entity/view 保存的数据指针，以及它们返回的引用，可能因底层 `vector` 扩容而在 cleanup 前失效；持有有效 ID 的调用方应重新取得访问对象。
+槽位 ID 稳定不保证数据地址稳定。现有 entity/view 保存的数据指针，以及它们返回的引用，可能因底层 `vector` 扩容而在 cleanup 前失效；通过仍可定位的 ID 重新取得访问对象，对已删除实体的读取也遵循这个要求。
 
 ### 2.5 status ID 保存 owner
 
@@ -184,31 +184,35 @@ std::vector<card_data> hand_card_datas; // 继续尾插、标记删除
 所有卡牌共用一个 table 级节点池：
 
 ```cpp
-struct status_slot {
-    status_data data;
-    size_t next;
-};
+namespace givm::detail
+{
+    struct status_slot {
+        status_data data;
+        size_t next = invalid_status_index;
+    };
 
-std::vector<status_slot> status_slots;
+    // table_storage 的成员示意。
+    std::vector<status_slot> status_slots;
+}
 ```
 
-每张卡只保存 `first_status` 与 `last_status`。status 通常只有零至四个，删除时可从 owner 所指卡牌的链首扫描前驱，然后立即断链并把 `definition_id` 标记无效。追加利用 `last_status` 保持 O(1)。
+每张卡只保存 `first_status` 与 `last_status`。删除单个 status 只标记该节点，保留其定义、状态与链接；清理前完整链仍包含已删除节点，默认遍历跳过它们。cleanup 时才把已删除节点从链中摘除。追加利用 `last_status` 保持 O(1)。
 
-`status_data::definition_id` 已经承担有效/删除标记，所以不再让 `next` 兼职删除标记。节点也不保存 owner；owner 只存在于 ID 中。
+`status_data` 仅保存 `size_t definition_and_flags` 与公开的 `givm::status_state`。对应 handle 解释定义编号与删除标记，并在对外读取时通过 `table_accessor` 构造强类型定义 ID；`next` 在执行期间保留完整链关系。节点不重复保存 owner，owner 由实体 ID 表达。
 
 优点：
 
 - 实现简单；
 - 所有 status 数据共享一个连续池，按池容量扩容；
 - 不再有每张牌一个小 vector 的独立分配；
-- ID 可直接索引节点，删除后仍能用定义 ID 判无效；
+- ID 可直接索引节点，删除后仍可读取保留信息并判定其已移除；
 - 存储层以后可在不改变实体语义的前提下换成分段池。
 
 缺点：
 
 - 同一张牌的节点只在连续追加、没有交错创建时才连续；
 - 遍历每个节点都要读取 `next`，跨卡交错创建后局部性一般；
-- 任意 status 的删除需要扫描很短的 owner 链寻找前驱。
+- cleanup 前默认遍历需要跳过完整链中的已删除节点。
 
 第一版实现选择此方案，并采用“只在尾部追加，安全点原地 compact”的策略。
 
@@ -274,7 +278,7 @@ address = pool_base + id.byte_offset;
 
 cleanup 不默认分配一个大小刚好的新数组。曾经达到过的容量通常以后还会再次需要；丢弃容量会让后续扩容重新付出分配和搬移代价。`resize(live_count)` 只缩短 size，不调用 `shrink_to_fit`。
 
-对单向索引链表，原地填洞并非简单搬一次节点就结束。可使用以下 O(n) 时间、O(1) 额外空间流程：
+cleanup 先从存活卡牌的完整链中摘除已删除节点，更新链首尾，再压缩 status 池。对单向索引链表，原地填洞并非简单搬一次节点就结束。可使用以下 O(n) 时间、O(1) 额外空间流程：
 
 1. 从前向后寻找空洞，从后向前寻找仍存活的节点；
 2. 把尾部存活节点搬到前部空洞；

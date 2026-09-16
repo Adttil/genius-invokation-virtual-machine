@@ -4,12 +4,18 @@
 #include <cstddef>
 #include <string_view>
 
+namespace givm::detail
+{
+    struct table_accessor;
+}
+
 namespace givm
 {
     template<class TTag>
     class issued_id
     {
         friend class issued_id_map;
+        friend struct detail::table_accessor;
 
     public:
         static constexpr size_t invalid_value = static_cast<size_t>(-1);

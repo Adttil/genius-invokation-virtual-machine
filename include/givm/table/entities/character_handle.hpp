@@ -1,6 +1,7 @@
 #ifndef GIVM_TABLE_ENTITIES_CHARACTER_HANDLE_HPP
 #define GIVM_TABLE_ENTITIES_CHARACTER_HANDLE_HPP
 
+#include <limits>
 #include <type_traits>
 #include <ranges>
 
@@ -44,7 +45,7 @@ namespace givm::detail
 
         constexpr bool is_valid() const
         {
-            return storage_.data->definition_id.is_valid();
+            return (storage_.data->definition_and_flags & erased_mask) == 0;
         }
 
         constexpr explicit operator bool() const
@@ -79,7 +80,7 @@ namespace givm::detail
 
         constexpr character_id id() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
             return {
                 player().id(),
                 static_cast<size_t>(storage_.data - storage_.player->character_datas.data())
@@ -88,13 +89,14 @@ namespace givm::detail
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(is_valid());
-            return storage_.data->definition_id;
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            return detail::table_accessor::make_issued_id<character_view>(
+                storage_.data->definition_and_flags & ~erased_mask);
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
             return storage_.data->state;
         }
 
@@ -109,7 +111,7 @@ namespace givm::detail
             {
                 attachment.erase();
             }
-            storage_.data->definition_id.set_invalid();
+            storage_.data->definition_and_flags |= erased_mask;
         }
 
         template<bool SkipErased = true>
@@ -117,7 +119,7 @@ namespace givm::detail
         {
             if constexpr(SkipErased)
             {
-                GIVM_ASSERT(is_valid());
+                GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
                 return skills<false>() | std::views::filter([](auto&& skill){ return skill.is_valid(); });
             }
             else
@@ -142,7 +144,7 @@ namespace givm::detail
         {
             if constexpr(SkipErased)
             {
-                GIVM_ASSERT(is_valid());
+                GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
                 return attachments<false>() | std::views::filter([](auto&& attachment){ return attachment.is_valid(); });
             }
             else
@@ -165,7 +167,7 @@ namespace givm::detail
         constexpr skill_handle<TStorage> add(givm::definition_id<skill_view> definition_id, const skill_state& state) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
-            storage_.data->skill_datas.emplace_back(definition_id, state);
+            storage_.data->skill_datas.emplace_back(definition_id.value(), state);
             auto result = detail::table_accessor::make_uninitialized<skill_handle<TStorage>>();
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
@@ -179,7 +181,7 @@ namespace givm::detail
         constexpr attachment_handle<TStorage> add(givm::definition_id<attachment_view> definition_id, const attachment_state& state) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
-            storage_.data->attachment_datas.emplace_back(definition_id, state);
+            storage_.data->attachment_datas.emplace_back(definition_id.value(), state);
             auto result = detail::table_accessor::make_uninitialized<attachment_handle<TStorage>>();
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
@@ -197,6 +199,9 @@ namespace givm::detail
         }
 
     private:
+        static constexpr size_t erased_mask =
+            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+
         constexpr basic_character_handle(detail::uninitialized_entity_t) noexcept {}
 
         storage_type storage_;

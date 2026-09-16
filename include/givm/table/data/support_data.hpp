@@ -1,10 +1,8 @@
 #ifndef GIVM_TABLE_DATA_SUPPORT_DATA_HPP
 #define GIVM_TABLE_DATA_SUPPORT_DATA_HPP
 
+#include <cstddef>
 #include <cstdint>
-
-#include "../entity_fwd.hpp"
-#include "../issued_id.hpp"
 
 namespace givm
 {
@@ -12,10 +10,13 @@ namespace givm
     {
         std::uint32_t count;
     };
+}
 
+namespace givm::detail
+{
     struct support_data
     {
-        definition_id<support_view> definition_id;
+        size_t definition_and_flags = static_cast<size_t>(-1);
         support_state state;
     };
 }

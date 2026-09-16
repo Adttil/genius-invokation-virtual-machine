@@ -93,14 +93,14 @@ namespace givm::detail
             data.deck_card_order.reserve(deck.cards.size());
             for(definition_id<card_definition> definition : deck.cards)
             {
-                data.deck_card_datas.emplace_back(definition, card_state{});
+                data.deck_card_datas.emplace_back(definition.value(), card_state{});
                 data.deck_card_order.push_back(data.deck_card_datas.size() - 1);
             }
 
             data.character_datas.reserve(deck.characters.size());
             for(definition_id<character_view> definition : deck.characters)
             {
-                data.character_datas.emplace_back(definition, character_state{});
+                data.character_datas.emplace_back(definition.value(), character_state{});
             }
         }
 
@@ -227,15 +227,47 @@ namespace givm::detail
 
         constexpr void clean_up_statuses() noexcept
         {
+            constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+            // Unlink erased statuses before compaction reuses their next fields.
+            const auto clean_up_chain = [&](card_data& card)
+            {
+                size_t* link = &card.first_status;
+                card.last_status = invalid_status_index;
+                while(*link != invalid_status_index)
+                {
+                    auto& slot = storage_.status_slots[*link];
+                    if((slot.data.definition_and_flags & erased_mask) == 0)
+                    {
+                        card.last_status = *link;
+                        link = &slot.next;
+                    }
+                    else
+                    {
+                        *link = slot.next;
+                    }
+                }
+            };
+            for(auto& player : storage_.player_datas)
+            {
+                for(auto& card : player.hand_card_datas)
+                {
+                    clean_up_chain(card);
+                }
+                for(auto& card : player.deck_card_datas)
+                {
+                    clean_up_chain(card);
+                }
+            }
+
             size_t front = 0;
             size_t back = storage_.status_slots.size();
             while(true)
             {
-                while(front < back && storage_.status_slots[front].data.definition_id.is_valid())
+                while(front < back && (storage_.status_slots[front].data.definition_and_flags & erased_mask) == 0)
                 {
                     ++front;
                 }
-                while(front < back && not storage_.status_slots[back - 1].data.definition_id.is_valid())
+                while(front < back && (storage_.status_slots[back - 1].data.definition_and_flags & erased_mask) != 0)
                 {
                     --back;
                 }
@@ -246,7 +278,7 @@ namespace givm::detail
 
                 const size_t source = --back;
                 storage_.status_slots[front] = std::move(storage_.status_slots[source]);
-                storage_.status_slots[source].data.definition_id.set_invalid();
+                storage_.status_slots[source].data.definition_and_flags = static_cast<size_t>(-1);
                 storage_.status_slots[source].next = moved_status_mask | front;
                 ++front;
             }

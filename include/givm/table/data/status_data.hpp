@@ -4,20 +4,21 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "../issued_id.hpp"
-
 namespace givm
 {
-    inline constexpr size_t invalid_status_index = static_cast<size_t>(-1);
-
     struct status_state
     {
         std::uint32_t count;
     };
+}
+
+namespace givm::detail
+{
+    inline constexpr size_t invalid_status_index = static_cast<size_t>(-1);
 
     struct status_data
     {
-        definition_id<status_definition> definition_id;
+        size_t definition_and_flags = static_cast<size_t>(-1);
         status_state state;
     };
 

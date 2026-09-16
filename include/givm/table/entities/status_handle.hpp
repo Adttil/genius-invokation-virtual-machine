@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 
 #include "../entity_id.hpp"
@@ -15,16 +16,6 @@
 
 namespace givm::detail
 {
-    constexpr card_data& card_data_of(table_storage& storage, hand_card_id id) noexcept
-    {
-        return storage.player_datas[id.player_id.index].hand_card_datas[id.index];
-    }
-
-    constexpr card_data& card_data_of(table_storage& storage, deck_card_id id) noexcept
-    {
-        return storage.player_datas[id.player_id.index].deck_card_datas[id.index];
-    }
-
     template<class TStorage>
     constexpr size_t add_status(
         TStorage& storage,
@@ -33,9 +24,8 @@ namespace givm::detail
         const status_state& state
     )
     {
-        GIVM_ASSERT(card.definition_id.is_valid());
         storage.status_slots.push_back({
-            .data = { .definition_id = definition_id, .state = state },
+            .data = { .definition_and_flags = definition_id.value(), .state = state },
             .next = invalid_status_index
         });
         const size_t index = storage.status_slots.size() - 1;
@@ -52,52 +42,16 @@ namespace givm::detail
         return index;
     }
 
-    template<class TCardId>
-    constexpr void erase_status(table_storage& storage, TCardId owner, size_t index)
-    {
-        auto& data = card_data_of(storage, owner);
-        GIVM_ASSERT(data.definition_id.is_valid());
-
-        size_t previous = invalid_status_index;
-        size_t current = data.first_status;
-        while(current != index)
-        {
-            GIVM_ASSERT(current != invalid_status_index);
-            previous = current;
-            current = storage.status_slots[current].next;
-        }
-
-        auto& slot = storage.status_slots[index];
-        const size_t next = slot.next;
-        if(previous == invalid_status_index)
-        {
-            data.first_status = next;
-        }
-        else
-        {
-            storage.status_slots[previous].next = next;
-        }
-        if(data.last_status == index)
-        {
-            data.last_status = previous;
-        }
-        slot.data.definition_id.set_invalid();
-        slot.next = invalid_status_index;
-    }
-
     constexpr void erase_statuses(table_storage& storage, card_data& card) noexcept
     {
+        constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
         size_t current = card.first_status;
         while(current != invalid_status_index)
         {
             auto& slot = storage.status_slots[current];
-            const size_t next = slot.next;
-            slot.data.definition_id.set_invalid();
-            slot.next = invalid_status_index;
-            current = next;
+            slot.data.definition_and_flags |= erased_mask;
+            current = slot.next;
         }
-        card.first_status = invalid_status_index;
-        card.last_status = invalid_status_index;
     }
 
     template<class TStorage, class TStatusHandle, class TOwnerId>
@@ -124,6 +78,7 @@ namespace givm::detail
             {
                 GIVM_ASSERT(index_ < table_->status_slots.size());
                 index_ = table_->status_slots[index_].next;
+                skip_erased();
                 return *this;
             }
 
@@ -134,7 +89,19 @@ namespace givm::detail
 
             constexpr iterator(TStorage& table, TOwnerId owner, size_t index) noexcept
             : table_{ &table }, owner_{ owner }, index_{ index }
-            {}
+            {
+                skip_erased();
+            }
+
+            constexpr void skip_erased() noexcept
+            {
+                constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+                while(index_ != invalid_status_index
+                    && (table_->status_slots[index_].data.definition_and_flags & erased_mask) != 0)
+                {
+                    index_ = table_->status_slots[index_].next;
+                }
+            }
 
             TStorage* table_;
             TOwnerId owner_;
@@ -193,9 +160,7 @@ namespace givm::detail
 
         constexpr bool is_valid() const
         {
-            const auto& card = storage_.table->player_datas[storage_.owner.player_id.index]
-                .hand_card_datas[storage_.owner.index];
-            return card.definition_id.is_valid() && storage_.data->data.definition_id.is_valid();
+            return card().is_valid() && (storage_.data->data.definition_and_flags & erased_mask) == 0;
         }
 
         constexpr explicit operator bool() const
@@ -237,28 +202,32 @@ namespace givm::detail
 
         constexpr hand_card_status_id id() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
             return { storage_.owner, storage_.slot };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(is_valid());
-            return storage_.data->data.definition_id;
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
+            return table_accessor::make_issued_id<status_definition>(
+                storage_.data->data.definition_and_flags & ~erased_mask);
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
             return storage_.data->data.state;
         }
 
         constexpr void erase() const requires is_mutable
         {
-            detail::erase_status(*storage_.table, storage_.owner, storage_.slot);
+            GIVM_ASSERT(card().is_valid());
+            storage_.data->data.definition_and_flags |= erased_mask;
         }
 
     private:
+        static constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+
         constexpr basic_hand_card_status_handle(detail::uninitialized_entity_t) noexcept {}
 
         storage_type storage_;
@@ -291,9 +260,7 @@ namespace givm::detail
 
         constexpr bool is_valid() const
         {
-            const auto& card = storage_.table->player_datas[storage_.owner.player_id.index]
-                .deck_card_datas[storage_.owner.index];
-            return card.definition_id.is_valid() && storage_.data->data.definition_id.is_valid();
+            return card().is_valid() && (storage_.data->data.definition_and_flags & erased_mask) == 0;
         }
 
         constexpr explicit operator bool() const
@@ -336,28 +303,32 @@ namespace givm::detail
 
         constexpr deck_card_status_id id() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
             return { storage_.owner, storage_.slot };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(is_valid());
-            return storage_.data->data.definition_id;
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
+            return table_accessor::make_issued_id<status_definition>(
+                storage_.data->data.definition_and_flags & ~erased_mask);
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
             return storage_.data->data.state;
         }
 
         constexpr void erase() const requires is_mutable
         {
-            detail::erase_status(*storage_.table, storage_.owner, storage_.slot);
+            GIVM_ASSERT(card().is_valid());
+            storage_.data->data.definition_and_flags |= erased_mask;
         }
 
     private:
+        static constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+
         constexpr basic_deck_card_status_handle(detail::uninitialized_entity_t) noexcept {}
 
         storage_type storage_;

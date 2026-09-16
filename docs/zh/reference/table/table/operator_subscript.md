@@ -28,7 +28,7 @@ constexpr auto operator[](skill_id skill_id) const;
 constexpr auto operator[](attachment_id attachment_id) const;
 ```
 
-取得 ID 指定的玩家或场上实体。
+取得 ID 指定的玩家或实体。
 
 ## 参数
 
@@ -42,7 +42,7 @@ constexpr auto operator[](attachment_id attachment_id) const;
 
 ## 注意
 
-ID 必须仍能定位其所属实体；本函数不检查越界或失效的 ID。实体访问对象的有效性和 ID 的保存期限见[实体的身份与访问](../entity_access.md)。
+ID 必须仍能定位其所属实体；本函数不检查越界或失效的 ID。实体删除后、清理前，原有 ID 仍可用于取得视图并读取保留的信息；转移后的旧区域 ID 不享有此保证。实体访问对象的存活条件和 ID 的保存期限见[实体的身份与访问](../entity_access.md)。
 
 
 ## 示例

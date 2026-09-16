@@ -4,7 +4,7 @@
 
 对照基线为 `b3d6c50`；牌堆/手牌共享卡牌数据、分离实体身份、共用 status 节点池的实现仍与下述模型一致。“不需要弃牌区实体”和“挑选不是实体”是这个模型作出的设计选择，不表示任何商业游戏玩法都必须采用相同建模方式。
 
-保存牌实体的区域只有牌堆和手牌。“弃牌”是销毁牌实体的操作，不会把牌移动到一个弃牌区；“挑选”则是临时选择流程，不是牌区域。牌还可能携带附着状态。模型需要同时满足两个方向：
+保存牌实体的区域只有牌堆和手牌。“弃牌”使牌实体离场，不会把牌移动到一个弃牌区；删除后保留的数据供清理前读取，不构成新的牌区域。“挑选”则是临时选择流程，不是牌区域。牌还可能携带附着状态。模型需要同时满足两个方向：
 
 - 从事件响应角度，手牌、牌堆等区域的上下文不同。
 - 从转移角度，牌在手牌和牌堆之间移动时，牌本身状态和牌上附着状态应原样保留。
@@ -15,19 +15,21 @@
 
 ## Card Data
 
-`card_data` 是内部牌桌搬运卡牌时使用的数据，不属于公开接口；可观察的附着状态见 [status_state](../reference/table/status_state.md)。链首尾与共享池为何需要一起保留在这里说明。
+`givm::detail::card_data` 是内部牌桌搬运卡牌时使用的数据，不属于公开接口；可观察的附着状态见 [status_state](../reference/table/status_state.md)。链首尾与共享池为何需要一起保留在这里说明。
 
 手牌和牌堆中的真实牌都使用同一种 `card_data` 结构：
 
-- `definition_id<card_definition> definition_id`
-- `card_state state`
+- `size_t definition_and_flags`
+- `givm::card_state state`
 - `size_t first_status`
 - `size_t last_status`
 
-card status 数据存放在 table 级 `status_slots` 池中，牌只保存链首尾。`status_data` 是区域无关的数据：
+card status 数据存放在 table 级 `status_slots` 池中，牌只保存链首尾。`givm::detail::status_data` 是区域无关的数据：
 
-- `definition_id<status_definition> definition_id`
-- `status_state state`（包含 `std::uint32_t count`）
+- `size_t definition_and_flags`
+- `givm::status_state state`（包含 `std::uint32_t count`）
+
+`definition_and_flags` 保存定义编号及删除标记的纯整数。各实体 handle 负责掩码操作，对外读取定义身份时通过 `table_accessor` 构造对应的强类型 `definition_id`；data 本身不提供这类辅助方法或私有成员。data 类型、`status_slot` 与 `invalid_status_index` 位于 `givm::detail`，状态值类型仍在 `givm`。已有的数据清理方法保留在所属 data 中。
 
 因此，牌在牌堆和手牌之间移动时，不需要重建牌的状态，也不需要重映射牌上 status 的 definition id。移动的是完整 `card_data` 及其 status 链首尾，但其运行期实体 id 会从来源区域的 ID 域变为目标区域的 ID 域。
 
@@ -49,9 +51,9 @@ card status 数据存放在 table 级 `status_slots` 池中，牌只保存链首
 
 `hand_card_id.index` 标识手牌槽位；`deck_card_id.index` 标识牌堆槽位，而不是牌堆顺序中的位置。牌堆逻辑位置用于按顺序访问；插入或重排不改变 cleanup 前仍存活且未转移的牌堆实体的 ID。
 
-ID 用于保存实体身份，view 用于访问实体。需要在新增、删除或转移后继续访问实体时，按仍有效的 ID 重新取得 view。ID 的有效期与 view 的可用期不能混同。
+ID 用于保存实体身份，view 用于访问实体。新增或删除后继续读取时，按仍能定位的 ID 重新取得 view；删除后、清理前仍可读取保留的信息，但 `is_valid()` 为 false。转移后则使用新区域的 ID，旧区域 ID 不保证可读。ID 的可定位期限与 view 的可用期不能混同。
 
-两种实体仍指向相同结构的 `card_data`，并持有同一种 `definition_id<card_definition>`。这里共享的是定义 ID 类型，不是实体 ID 类型。
+两种实体仍指向相同结构的 `card_data`，其 `definition_id()` 返回同一种 `definition_id<card_definition>`。这里共享的是定义 ID 类型，不是实体 ID 类型。
 
 公共类型 `card_id` 是 `std::variant<hand_card_id, deck_card_id>`，供同步 event 描述广播当下的牌实体身份；实体离场后，同一个值可以作为历史 ID 随通知传递。若规则语义本身是“牌堆顶第 N 张”“某种定义的牌”等动态目标，后续固定程序仍应按位置、definition ID 或 tag ID 重新搜索。名称依赖在编译前声明、编译时解析，不要求对局运行期按名称查找。
 
@@ -70,13 +72,13 @@ ID 用于保存实体身份，view 用于访问实体。需要在新增、删除
 
 取出的 `card_data` 含有本 table 的 status 槽位索引，不是独立拥有这些节点的牌对象；不能据此把同一条 status 链挂到多张牌上，也不能直接转移到另一个 table。取出与重新加入之间不能调用 cleanup。
 
-手牌槽位和牌堆槽位都使用无效标记，避免尚未结算的 event、stack frame 或外层观察记录所持 ID 因压缩而漂移。删除或转移会使对应旧 ID 立即成为 invalid，但不会复用它的槽位；`table.clean_up()` 才会压缩存储并使此前保存的所有槽位 ID 不再可用。牌堆位置不是实体 ID；任何跨指令的动态牌堆目标都必须重新搜索，而不能保存牌堆位置索引。
+手牌槽位和牌堆槽位在删除后仍保留到清理，避免尚未结算的 event、stack frame 或外层观察记录所持 ID 因压缩而漂移。删除立即使 `is_valid()` 为 false，但原有 ID 仍可读取定义、状态和归属；区域转移后的旧 ID 不享有此读取保证。槽位不会在清理前复用；`table.clean_up()` 压缩存储后，此前保存的槽位 ID 不能继续使用。牌堆位置不是实体 ID；任何跨指令的动态牌堆目标都必须重新搜索，而不能保存牌堆位置索引。
 
 ## 弃牌语义
 
 内部牌桌通过卡牌句柄的 `erase()` 和玩家句柄的 `discard_top_deck_card()` 完成数据删除。领域结算中的事件另由[指令](../reference/definition/commands.md)组织，公开 view 不提供这些修改操作。
 
-弃牌不是区域转移。上述内部操作同时删除牌上 status，不会自动广播弃牌事件。弃牌后不存在可通过“弃牌区 ID”继续访问的牌实体。
+弃牌不是区域转移。上述内部操作同时标记牌和其 status 为已删除，保留定义、状态及完整 status 链至清理，不会自动广播弃牌事件。原区域的 ID 在清理前仍可读取这些信息，不需要“弃牌区 ID”。
 
 领域弃牌指令按规则在运行时确定目标：牌堆中的动态目标按位置、definition ID 或 tag ID 检索，不把一次对局中采样的 `deck_card_id` 固化到程序指令字段中。这不限制 table 层按该 ID 访问牌堆实体。
 

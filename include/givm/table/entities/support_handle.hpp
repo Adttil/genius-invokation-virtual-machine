@@ -1,6 +1,7 @@
 #ifndef GIVM_TABLE_ENTITIES_SUPPORT_HANDLE_HPP
 #define GIVM_TABLE_ENTITIES_SUPPORT_HANDLE_HPP
 
+#include <limits>
 #include <type_traits>
 
 #include "../entity_id.hpp"
@@ -40,7 +41,7 @@ namespace givm::detail
 
         constexpr bool is_valid() const
         {
-            return storage_.data->definition_id.is_valid();
+            return (storage_.data->definition_and_flags & erased_mask) == 0;
         }
 
         constexpr explicit operator bool() const
@@ -75,7 +76,7 @@ namespace givm::detail
 
         constexpr support_id id() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
             return {
                 player().id(),
                 static_cast<size_t>(storage_.data - storage_.player->support_datas.data())
@@ -84,22 +85,26 @@ namespace givm::detail
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(is_valid());
-            return storage_.data->definition_id;
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            return detail::table_accessor::make_issued_id<support_view>(
+                storage_.data->definition_and_flags & ~erased_mask);
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
             return storage_.data->state;
         }
 
         constexpr void erase() const requires is_mutable
         {
-            storage_.data->definition_id.set_invalid();
+            storage_.data->definition_and_flags |= erased_mask;
         }
 
     private:
+        static constexpr size_t erased_mask =
+            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+
         constexpr basic_support_handle(detail::uninitialized_entity_t) noexcept {}
 
         storage_type storage_;
