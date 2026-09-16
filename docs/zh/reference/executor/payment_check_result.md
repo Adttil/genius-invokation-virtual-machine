@@ -31,4 +31,4 @@ enum class payment_check_result : std::uint8_t
 
 | | |
 | --- | --- |
-| [`execution_view<action_selection>::check_payment`](execution_view/action_selection/check_payment.md) | 检查为指定候选选择的骰子能否支付其费用 |
+| [`execution_view<action_selection>::check_switch_payment`](execution_view/action_selection/check_switch_payment.md) | 检查所选骰子能否支付切换至指定角色的费用 |

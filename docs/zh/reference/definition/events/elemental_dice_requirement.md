@@ -26,7 +26,7 @@ struct elemental_dice_requirement;
 - `same` 是额外的一组同色骰子，可以混入万能骰，也可以全部使用万能骰；所选颜色不必与 `fixed` 相同。
 - `any` 可以使用剩余的任意种类骰子，包括万能骰。
 
-总数必须恰好为 `fixed.total() + same + any`，不能少付或多付。只要存在满足三部分的分配就符合费用要求；是否持有这些骰子另行检查。行动现场的 [`check_payment`](../../executor/execution_view/action_selection/check_payment.md) 会依次检查这两项。
+总数必须恰好为 `fixed.total() + same + any`，不能少付或多付。只要存在满足三部分的分配就符合费用要求；是否持有这些骰子另行检查。行动现场的 [`check_switch_payment`](../../executor/execution_view/action_selection/check_switch_payment.md) 会依次检查这两项。
 
 ## 示例
 

@@ -19,25 +19,15 @@ namespace givm
 {
     namespace detail
     {
-        enum class action_request_kind : std::uint8_t
+        struct switch_selection
         {
-            none,
-            do_action_with_cost,
-            do_action
+            stack_count_t switch_cost_index = 0;
+            dice_counts paid_dice;
         };
 
-        enum class action_kind : std::uint8_t
-        {
-            switch_active,
-            declare_round_end
-        };
+        struct round_end_selection {};
 
-        struct action_request
-        {
-            action_request_kind request_kind = action_request_kind::none;
-            action_kind action_kind = action_kind::switch_active;
-            stack_count_t action_index = 0;
-        };
+        using action_selection = std::variant<round_end_selection, switch_selection>;
     }
 
     enum class action_target_kind : std::uint8_t
@@ -68,26 +58,26 @@ namespace givm::detail
     {
         using switch_handler_id = handler_id<cost_of_switch>;
 
-        // Local labels describe this command's pointer sequence only. They never
+        // Offsets count execute_fn entries from the start of this command. They never
         // become runtime state or require a second dispatch after fetching the instruction.
-        inline constexpr std::size_t prepare_action_phase_slot = 0;
-        inline constexpr std::size_t action_phase_broadcast_slot = 1;
-        inline constexpr std::size_t before_action_slot = 2;
-        inline constexpr std::size_t before_action_with_switch_slot = 3;
-        inline constexpr std::size_t before_action_broadcast_slot = 4;
-        inline constexpr std::size_t wait_input_slot = 5;
-        inline constexpr std::size_t switch_onpay_slot = 6;
-        inline constexpr std::size_t after_fixed_switch_onpay_slot = 7;
-        inline constexpr std::size_t switch_payment_broadcast_slot = 8;
-        inline constexpr std::size_t switch_action_slot = 9;
-        inline constexpr std::size_t switch_action_apply_slot = 10;
+        inline constexpr std::size_t prepare_action_phase_offset = 0;
+        inline constexpr std::size_t action_phase_broadcast_offset = 1;
+        inline constexpr std::size_t before_action_offset = 2;
+        inline constexpr std::size_t before_action_with_switch_offset = 3;
+        inline constexpr std::size_t before_action_broadcast_offset = 4;
+        inline constexpr std::size_t execute_selection_offset = 5;
+        inline constexpr std::size_t switch_onpay_offset = 6;
+        inline constexpr std::size_t after_fixed_switch_onpay_offset = 7;
+        inline constexpr std::size_t switch_payment_broadcast_offset = 8;
+        inline constexpr std::size_t switch_action_offset = 9;
+        inline constexpr std::size_t switch_action_apply_offset = 10;
 
         template<bool Observed>
-        inline constexpr std::size_t switch_action_broadcast_slot = 10 + Observed;
+        inline constexpr std::size_t switch_action_broadcast_offset = 10 + Observed;
         template<bool Observed>
-        inline constexpr std::size_t first_round_end_broadcast_slot = 11 + Observed;
+        inline constexpr std::size_t first_round_end_broadcast_offset = 11 + Observed;
         template<bool Observed>
-        inline constexpr std::size_t second_round_end_broadcast_slot = 12 + Observed;
+        inline constexpr std::size_t second_round_end_broadcast_offset = 12 + Observed;
 
         template<std::size_t From, std::size_t To>
         execution_state go_to(execution_context& context) noexcept
@@ -99,11 +89,11 @@ namespace givm::detail
         {
             return stack.top<
                 switch_handler_id[],
+                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
-                action_argument,
-                action_request
+                action_selection
             >();
         }
 
@@ -116,11 +106,11 @@ namespace givm::detail
         {
             context.stack().pop<
                 switch_handler_id[],
+                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
-                action_argument,
-                action_request
+                action_selection
             >();
         }
 
@@ -135,21 +125,30 @@ namespace givm::detail
             };
         }
 
+        inline const switch_selection& selected_switch(const action_selection& selection) noexcept
+        {
+            // These continuations are entered only after a switch has been selected.
+            const auto* selected = std::get_if<switch_selection>(&selection);
+            GIVM_ASSERT(selected != nullptr);
+            return *selected;
+        }
+
         inline const cost_of_switch& calculate_switch_cost(
             const definition_library& library,
-            stack_count_t action_index,
+            stack_count_t cost_index,
             const table& card_table,
-            frame_stack& stack,
-            random_fn& random
+            frame_stack& stack
         )
         {
-            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(stack);
-            GIVM_ASSERT(action_index < costs.size());
-            auto& cost = costs[action_index];
+            auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] = action_frame(stack);
+            GIVM_ASSERT(cost_index < costs.size());
+            auto& cost = costs[cost_index];
             cost.requirement = default_switch_cost(cost.target).requirement;
 
+            auto zero_random = []() -> std::uint32_t { return 0; };
+            random_fn random{ zero_random };
             const auto handler_count = static_cast<stack_count_t>(handlers.size());
-            const auto row_begin = action_index * handler_count;
+            const auto row_begin = cost_index * handler_count;
             for(stack_count_t column = 0; column < handler_count; ++column)
             {
                 auto& onpay = onpay_items[row_begin + column];
@@ -213,8 +212,8 @@ namespace givm::detail
                 }
             }
             prepare_broadcast(library, before_action{}, table, context.stack());
-            constexpr auto from = Switch ? before_action_with_switch_slot : before_action_slot;
-            go_to<from, before_action_broadcast_slot>(context);
+            constexpr auto from = Switch ? before_action_with_switch_offset : before_action_offset;
+            go_to<from, before_action_broadcast_offset>(context);
             if constexpr(Switch && Observed)
             {
                 return context.yield(execution_state::action_started);
@@ -246,21 +245,29 @@ namespace givm::detail
             const auto cost_handlers = collect_all_broadcast_targets<cost_of_switch>(library, table);
             const auto handler_count = static_cast<stack_count_t>(cost_handlers.size());
             const auto matrix_size = switch_count * handler_count;
-            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = context.stack().push(
+            const auto characters = player.characters<false>();
+            const auto character_count = static_cast<stack_count_t>(characters.size());
+            auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] = context.stack().push(
                 dynamic_array<switch_handler_id>(cost_handlers),
+                dynamic_array<stack_count_t>(character_count),
                 dynamic_array<cost_of_switch>(switch_count),
                 dynamic_array<onpay_item<cost_of_switch>>(matrix_size),
                 stack_count_t{},
-                action_argument{},
-                action_request{}
+                action_selection{}
             );
 
             stack_count_t index = 0;
-            for(auto character : player.characters())
+            for(stack_count_t character_index = 0; character_index < character_count; ++character_index)
             {
-                if(is_switch_target(character))
+                const auto character = characters[character_index];
+                if(character && is_switch_target(character))
                 {
+                    switch_cost_indices[character_index] = index;
                     std::construct_at(&costs[index++], default_switch_cost(character.id()));
+                }
+                else
+                {
+                    switch_cost_indices[character_index] = switch_count;
                 }
             }
             return context.yield(execution_state::action_selection);
@@ -281,18 +288,13 @@ namespace givm::detail
         }
 
         template<bool Observed>
-        execution_state wait_input(
+        execution_state execute_selection(
             const definition_library& library, unrestricted_table& table,
-            execution_context& context, random_fn& random
+            execution_context& context, random_fn&
         )
         {
-            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
-            if(request.request_kind == action_request_kind::none)
-            {
-                return context.yield(execution_state::action_selection);
-            }
-
-            if(request.action_kind == action_kind::declare_round_end)
+            auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] = action_frame(context);
+            if(std::holds_alternative<round_end_selection>(selection))
             {
                 pop_action_frame(context);
                 auto& state = table.state();
@@ -304,11 +306,11 @@ namespace givm::detail
                 prepare_broadcast(library, round_end_declared{}, table, context.stack());
                 if(is_first)
                 {
-                    go_to<wait_input_slot, first_round_end_broadcast_slot<Observed>>(context);
+                    go_to<execute_selection_offset, first_round_end_broadcast_offset<Observed>>(context);
                 }
                 else
                 {
-                    go_to<wait_input_slot, second_round_end_broadcast_slot<Observed>>(context);
+                    go_to<execute_selection_offset, second_round_end_broadcast_offset<Observed>>(context);
                 }
                 if constexpr(Observed)
                 {
@@ -317,17 +319,7 @@ namespace givm::detail
                 return continue_execution;
             }
 
-            GIVM_ASSERT(request.action_kind == action_kind::switch_active);
-            GIVM_ASSERT(request.action_index < costs.size());
-            const auto action_index = request.action_index;
-            if(request.request_kind == action_request_kind::do_action)
-            {
-                calculate_switch_cost(library, action_index, table, context.stack(), random);
-            }
-            else
-            {
-                GIVM_ASSERT(request.request_kind == action_request_kind::do_action_with_cost);
-            }
+            GIVM_ASSERT(selected_switch(selection).switch_cost_index < costs.size());
 
             onpay_cursor = 0;
             return context.enter_next();
@@ -338,10 +330,11 @@ namespace givm::detail
             execution_context& context, random_fn&
         )
         {
-            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
-            GIVM_ASSERT(request.action_index < costs.size());
+            auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] = action_frame(context);
+            const auto& selected = selected_switch(selection);
+            GIVM_ASSERT(selected.switch_cost_index < costs.size());
             const auto handler_count = static_cast<stack_count_t>(handlers.size());
-            const auto row_begin = request.action_index * handler_count;
+            const auto row_begin = selected.switch_cost_index * handler_count;
             while(onpay_cursor < handler_count)
             {
                 const auto column = onpay_cursor++;
@@ -355,10 +348,10 @@ namespace givm::detail
                 }
             }
 
-            const auto paid_dice = argument.paid_dice;
+            const auto paid_dice = selected.paid_dice;
             if(paid_dice.total() == 0)
             {
-                return go_to<switch_onpay_slot, switch_action_slot>(context);
+                return go_to<switch_onpay_offset, switch_action_offset>(context);
             }
 
             const auto player = table.state().active_player;
@@ -367,7 +360,7 @@ namespace givm::detail
             player_dice -= paid_dice;
 
             prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack());
-            return go_to<switch_onpay_slot, switch_payment_broadcast_slot>(context);
+            return go_to<switch_onpay_offset, switch_payment_broadcast_offset>(context);
         }
 
         inline execution_state after_fixed_switch_onpay(
@@ -376,7 +369,7 @@ namespace givm::detail
         )
         {
             context.stack().pop<switch_handler_id, cost_effect_argument<cost_of_switch>>();
-            go_to<after_fixed_switch_onpay_slot, switch_onpay_slot>(context);
+            go_to<after_fixed_switch_onpay_offset, switch_onpay_offset>(context);
             return continue_switch_onpay(library, table, context, random);
         }
 
@@ -399,9 +392,10 @@ namespace givm::detail
             execution_context& context, random_fn&
         )
         {
-            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
-            GIVM_ASSERT(request.action_index < costs.size());
-            const auto target = costs[request.action_index].target;
+            auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] = action_frame(context);
+            const auto& selected = selected_switch(selection);
+            GIVM_ASSERT(selected.switch_cost_index < costs.size());
+            const auto target = costs[selected.switch_cost_index].target;
             GIVM_ASSERT(static_cast<bool>(table[target]));
             if constexpr(not Observed)
             {
@@ -428,15 +422,16 @@ namespace givm::detail
             }
             pop_broadcast<active_character_changed>(context);
 
-            auto&& [handlers, costs, onpay_items, onpay_cursor, argument, request] = action_frame(context);
-            GIVM_ASSERT(request.action_index < costs.size());
-            const auto speed = costs[request.action_index].requirement.speed;
+            auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] = action_frame(context);
+            const auto& selected = selected_switch(selection);
+            GIVM_ASSERT(selected.switch_cost_index < costs.size());
+            const auto speed = costs[selected.switch_cost_index].requirement.speed;
             pop_action_frame(context);
             if(speed == action_speed::combat)
             {
-                return go_to<switch_action_broadcast_slot<Observed>, before_action_with_switch_slot>(context);
+                return go_to<switch_action_broadcast_offset<Observed>, before_action_with_switch_offset>(context);
             }
-            return go_to<switch_action_broadcast_slot<Observed>, before_action_slot>(context);
+            return go_to<switch_action_broadcast_offset<Observed>, before_action_offset>(context);
         }
 
         inline execution_state apply_switch_action(
@@ -465,7 +460,7 @@ namespace givm::detail
             }
             pop_broadcast<round_end_declared>(context);
             table.state().active_player = other_player(table.state().active_player);
-            go_to<first_round_end_broadcast_slot<Observed>, before_action_slot>(context);
+            go_to<first_round_end_broadcast_offset<Observed>, before_action_offset>(context);
             if constexpr(Observed)
             {
                 return context.yield(execution_state::action_started);
@@ -494,7 +489,7 @@ namespace givm::detail
             writer.write<execute_fn>(&prepare_before_action<false, Observed>);
             writer.write<execute_fn>(&prepare_before_action<true, Observed>);
             writer.write<execute_fn>(&broadcast_before_action);
-            writer.write<execute_fn>(&wait_input<Observed>);
+            writer.write<execute_fn>(&execute_selection<Observed>);
             writer.write<execute_fn>(&continue_switch_onpay);
             writer.write<execute_fn>(&after_fixed_switch_onpay);
             writer.write<execute_fn>(&broadcast_switch_payment);

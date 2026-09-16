@@ -18,7 +18,7 @@ std::uint32_t operator()() const;
 
 可能改变原随机源的状态，即使 [`random_fn`](../random_fn.md) 自身为 const。随机源抛出的异常会传递给调用方。
 
-[费用响应](../../definition/events/cost_of_switch.md)按约定不得使用随机数；本函数不根据事件种类检查这一约定。
+[费用响应](../../definition/events/cost_of_switch.md)不得使用随机数；在费用响应中调用本函数属于未定义行为。
 
 ## 示例
 

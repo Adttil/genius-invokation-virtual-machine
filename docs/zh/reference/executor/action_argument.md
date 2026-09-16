@@ -8,7 +8,7 @@
 struct action_argument;
 ```
 
-执行一次行动时由调用方提交的支付骰子。
+一次行动的支付参数，记录选择支付的骰子。
 
 ## 成员对象
 
@@ -18,7 +18,7 @@ struct action_argument;
 
 ## 注意
 
-当前主动切换的目标由行动候选下标确定，无需另行填写目标。可以先用行动现场的 [`check_payment`](execution_view/action_selection/check_payment.md) 检查 `paid_dice`；提交接口不会自动检查。
+当前主动切换通过 [`switch_active_character`](execution_view/action_selection/switch_active_character.md) 直接接收角色 ID 和 `dice_counts`，无需构造本类型。可以先用行动现场的 [`check_switch_payment`](execution_view/action_selection/check_switch_payment.md) 检查所选骰子；提交接口不会自动检查。
 
 ## 示例
 

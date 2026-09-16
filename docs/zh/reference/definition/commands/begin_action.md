@@ -20,11 +20,13 @@ struct begin_action;
 
 先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持主动切换出战角色和宣布结束；当前行动方必须已有出战角色。主动切换可经过费用计算、支付、出战角色变更及行动权交接。双方均宣布结束后，本命令才结束行动阶段。
 
-等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、执行行动或宣布结束。主动切换时，候选下标按当前存活非出战角色的遍历顺序选择目标；[`action_argument`](../../executor/action_argument.md) 包含要支付的骰子，调用方负责保证支付满足计算出的费用。宣布结束无需支付骰子。
+等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、选择切换或宣布结束。主动切换使用角色 ID 指定目标，目标须为当前行动玩家存活、非出战的角色；调用方同时选择支付的骰子，并保证支付满足费用及持有数量。宣布结束无需支付骰子。
 
-通过 [`calculate_cost`](../../executor/execution_view/action_selection/calculate_cost.md) 可以同步预览指定候选的费用，无需推进执行器。调用时传入随机源，费用响应按定义编写约定不得使用随机数；候选目标为只读。完整报价后可调用 [`check_payment`](../../executor/execution_view/action_selection/check_payment.md)，检查所选骰子是否匹配费用且持有数量足够。
+调用方必须通过 `switch_active_character` 或 `declare_round_end` 提供本次行动输入后，才能再次调用 `step`。费用预览与支付检查不提供行动输入；等待玩家决定期间由上层保留当前现场。
 
-提交行动可采用已经计算的费用，也可在下一次推进中重新计算并执行；两条路径都不会自动检查支付是否合法。支付检查不涉及其他行动参数，当前切换目标由候选下标确定，没有额外的目标参数检查。
+通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`check_switch_payment`](../../executor/execution_view/action_selection/check_switch_payment.md)，检查所选骰子是否匹配费用且持有数量足够。
+
+通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 选择切换时，可采用已经计算的费用，也可传入定义库和牌桌，在本次调用中同步重新报价后提交。两种重载均由下一次推进执行已确认的费用效果、支付及切换，不自动检查支付是否合法。采用已计算费用时，由调用方保证该角色已经完整报价。
 
 在 [`compile_mode::observed`](../../executor/compile_mode.md) 模式下推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)给出目标，牌桌仍可读取原出战角色；随后推进先完成设置，再处理变更响应。到达此现场前，已确认的费用响应、骰子支付及 [`dice_removed`](../events/dice_removed.md) 响应均已完成。
 

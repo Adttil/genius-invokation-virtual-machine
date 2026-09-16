@@ -31,6 +31,6 @@
 
 ## 待处理问题
 
-[`begin_action`](../../../include/givm/executor/instructions/begin_action.hpp) 的结束声明分支只排除空请求，随后按行动种类决定是否宣告结束，因此其他非空请求种类也会进入该分支。原约定使用 `do_action + declare_round_end` 表达确认结束；实现接受更宽输入不应被理解为新增公开用法。
+[`begin_action`](../../../include/givm/executor/instructions/begin_action.hpp) 的输入由上层先行提供，再继续推进。内部只保存切换或结束声明两种最终选择，不保留空请求，也不检查未输入就推进的非法调用；具体取舍见[费用预览与提交](event_dispatch/payment_commit.md#支付检查与提交)。
 
-计算后候选费用曾缺少独立读取入口，旧测试因此直接访问缓存；如今由 execution_view<action_selection>::costs() 提供只读范围，完整缓存布局仍不属于公开接口。默认元素反应尚未完成的部分集中记录在[源码问题清单](reference_scope.md)。
+计算后候选费用曾缺少独立读取入口，旧测试因此直接访问缓存；如今由 execution_view<action_selection>::switch_costs() 提供只读范围，完整缓存布局仍不属于公开接口。默认元素反应尚未完成的部分集中记录在[源码问题清单](reference_scope.md)。

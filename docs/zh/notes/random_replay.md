@@ -18,7 +18,7 @@ executor.step(library, table, random);
 
 本次同步调用内部会把它作为非持有 `random_fn` 传给当前指令和 definition handler。核心不会把该引用写入指令、table 或 executor stack，也不会在 `step` 返回后继续持有它。因此相邻两步可以使用不同的生成器、记录包装器或回放条带。
 
-`calculate_cost` 同样以左值接收调用方的随机源，并通过统一的 handler 接口传给费用响应。费用 handler 按定义编写约定不得使用随机数，库不替换或拦截这一来源；执行行动前重新报价也透传当前 `step` 的随机源。正常费用响应遵守约定时，反复预览或改变预览顺序不会消耗对局随机序列，详见[费用预览与提交](event_dispatch/payment_commit.md)。
+`calculate_switch_cost` 和重新报价的 `switch_active_character` 重载不接收随机源，报价在调用中同步完成。费用 handler 保留统一的响应签名，但不得调用随机函数，违反此前提属于未定义行为。反复预览或改变预览顺序不会消耗对局随机序列；下一次 `step` 只执行已确认结果，其中真正执行的后续效果仍可使用该次推进的随机源。详见[费用预览与提交](event_dispatch/payment_commit.md)。
 
 随机函数的调用结果为 `std::uint32_t`；哪些响应应当使用随机数由对应事件的规则约定。
 

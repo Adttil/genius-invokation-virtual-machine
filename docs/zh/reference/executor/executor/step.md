@@ -43,6 +43,8 @@ execution_state step(
 
 首次推进前须由 [`enter_entry`](enter_entry.md) 准备开始，或取得有效执行器的副本。在输入现场按相应视图的约定填写输入后，再继续推进。`finished` 不能继续执行。
 
+从 [`action_selection`](../execution_view/action_selection.md) 现场继续推进前，须通过 `switch_active_character` 或 `declare_round_end` 提供行动输入。仅预览费用或检查支付不满足此前提；调用方负责保证输入已经提供。
+
 先处理本次现场，再调用 `step` 继续。返回后可观察的数据借用当前现场，下一次推进会使先前取得的视图失效。
 
 ## 示例

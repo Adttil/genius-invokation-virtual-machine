@@ -110,21 +110,19 @@ namespace
             return false;
         }
 
-        givm::action_argument argument{
-            .paid_dice = select_one_available_dice(table, acting_player)
-        };
-        if(argument.paid_dice.total() != 1)
+        const auto paid = select_one_available_dice(table, acting_player);
+        if(paid.total() != 1)
         {
             return false;
         }
 
         const auto current = target.view_in<givm::execution_state::action_selection>();
-        if(current.costs().empty())
+        if(current.switch_costs().empty())
         {
             return false;
         }
         const auto dice_before = table[acting_player].state().dice.total();
-        current.execute_action(0, argument);
+        current.switch_active_character(library, table, current.switch_costs()[0].target, paid);
         state = target.step(library, table, random);
 
         const auto active_after = table[acting_player].state().active_character;
