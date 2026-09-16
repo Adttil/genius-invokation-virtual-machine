@@ -167,6 +167,14 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_switch);
     };
 
+    struct cost_of_card
+    {
+        const hand_card_id card;
+        action_cost_requirement requirement;
+        cost_effect_argument<cost_of_card> effect_argument;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_card);
+    };
+
     // Card-zone and candidate events.
     struct hand_card_created
     {
@@ -216,12 +224,42 @@ namespace givm
     // Playing-card events.
     using card_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
 
+    struct card_cost_initialization
+    {
+        const hand_card_id card;
+        action_cost_requirement requirement{ .dice_requirement = {}, .speed = action_speed::fast };
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_cost_initialization);
+    };
+
+    enum class card_target_check_result : std::uint8_t
+    {
+        valid,
+        invalid_first_target,
+        invalid_second_target,
+        unmet_condition
+    };
+
+    struct card_target_check
+    {
+        const hand_card_id card;
+        const std::array<card_target_id, 2> targets;
+        card_target_check_result result = card_target_check_result::valid;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_target_check);
+    };
+
+    struct card_effect
+    {
+        const hand_card_id card;
+        const std::array<card_target_id, 2> targets;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_effect);
+    };
+
     struct card_will_be_played
     {
         const hand_card_id card;
         const definition_id<card_definition> definition_id;
-        card_target_id target;
-        action_speed speed;
+        const std::array<card_target_id, 2> targets;
+        const action_speed speed;
         bool effect_cancelled = false;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_will_be_played);
     };
@@ -230,9 +268,8 @@ namespace givm
     {
         const hand_card_id card;
         const definition_id<card_definition> definition_id;
-        const card_target_id target;
+        const std::array<card_target_id, 2> targets;
         const action_speed speed;
-        const bool effect_cancelled;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_played);
     };
 

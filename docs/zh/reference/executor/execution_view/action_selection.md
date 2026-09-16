@@ -9,12 +9,17 @@ template<>
 class execution_view<execution_state::action_selection>;
 ```
 
-选择行动的现场视图，提供当前切换候选的费用、支付检查及相应输入操作。
+选择行动的现场视图，用于打出手牌、切换出战角色或宣布结束本回合，并提供选择前所需的费用与合法性查询。
 
 ## 成员函数
 
 | | |
 | --- | --- |
+| [`card_costs`](action_selection/card_costs.md) | 取得当前手牌的出牌费用。 |
+| [`calculate_card_cost`](action_selection/calculate_card_cost.md) | 计算指定手牌的出牌费用并立即返回结果。 |
+| [`check_card_payment`](action_selection/check_card_payment.md) | 检查出牌骰子的费用匹配与持有数量。 |
+| [`check_card_targets`](action_selection/check_card_targets.md) | 请牌定义检查目标与用牌条件。 |
+| [`play_card`](action_selection/play_card.md) | 选择手牌、两个目标与支付骰子。 |
 | [`switch_costs`](action_selection/switch_costs.md) | 取得当前可切换角色的费用。 |
 | [`calculate_switch_cost`](action_selection/calculate_switch_cost.md) | 计算切换至指定角色的费用并立即返回结果。 |
 | [`check_switch_payment`](action_selection/check_switch_payment.md) | 检查所选骰子是否满足切换费用及持有数量。 |
@@ -23,7 +28,9 @@ class execution_view<execution_state::action_selection>;
 
 ## 注意
 
-在本现场继续调用 [`executor::step`](../executor/step.md) 前，调用方必须通过 [`switch_active_character`](action_selection/switch_active_character.md) 或 [`declare_round_end`](action_selection/declare_round_end.md) 提供行动输入。费用预览与支付检查不算行动输入；尚未提供输入时，上层应保留当前现场，不调用 `step`。
+在本现场继续调用 [`executor::step`](../executor/step.md) 前，调用方必须通过 [`play_card`](action_selection/play_card.md)、[`switch_active_character`](action_selection/switch_active_character.md) 或 [`declare_round_end`](action_selection/declare_round_end.md) 提供行动输入。费用预览、支付检查与目标检查不算行动输入；尚未提供输入时，上层应保留当前现场，不调用 `step`。
+
+出牌必须选择当前行动玩家仍在手中的有效手牌。两个目标位置由牌定义解释，未使用的位置忽略；支付与目标检查相互独立，由调用方按需使用，提交时不会自动执行检查。
 
 切换目标使用角色 ID，必须是当前行动玩家存活、非出战的角色；费用响应不能改变目标。刚建立现场时费用为默认值；费用预览同步更新指定角色的报价。支付检查及采用已计算费用的选择操作要求该角色已经完整报价，由调用方保证；提交行动时不会自动检查支付是否合法。
 

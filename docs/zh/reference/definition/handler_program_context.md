@@ -13,6 +13,9 @@ struct handler_program_context
 
 template<>
 struct handler_program_context<cost_of_switch>;
+
+template<>
+struct handler_program_context<cost_of_card>;
 ```
 
 事件类型与其响应效果所用 context 的映射。定义效果时应使用这层映射，让事件的语义限制与具体类型对应起来。
@@ -31,7 +34,7 @@ struct handler_program_context<cost_of_switch>;
 
 ## 注意
 
-通常映射为事件本身；[`cost_of_switch`](events/cost_of_switch.md) 的响应效果在确认行动后执行，使用单独的响应语境。编写定义源时通过 [`handler_program_context_t`](handler_program_context_t.md) 取得相应类型，不需要依赖该语境的具体类型名。
+通常映射为事件本身；[`cost_of_switch`](events/cost_of_switch.md) 与 [`cost_of_card`](events/cost_of_card.md) 的响应效果在确认行动后执行，使用单独的响应语境。编写定义源时通过 [`handler_program_context_t`](handler_program_context_t.md) 取得相应类型，不需要依赖该语境的具体类型名。
 
 ## 示例
 

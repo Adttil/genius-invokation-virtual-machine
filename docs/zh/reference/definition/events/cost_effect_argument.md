@@ -15,7 +15,7 @@ struct cost_effect_argument;
 
 | | |
 | --- | --- |
-| `TCostEvent` | 这次支付对应的费用事件类型，例如 [`cost_of_switch`](cost_of_switch.md) |
+| `TCostEvent` | 这次支付对应的费用事件类型，例如 [`cost_of_switch`](cost_of_switch.md) 或 [`cost_of_card`](cost_of_card.md) |
 
 ## 成员对象
 

@@ -61,7 +61,9 @@ static givm::handler_program_entry_t<TEvent> handle(
 
 入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](events/character_initialization.md)要求在响应函数内直接填写初始状态。
 
-[费用响应](events/cost_of_switch.md)可以反复用于预览，不得使用随机数；在费用响应中调用随机函数属于未定义行为。费用响应仍采用上述统一签名，确认行动后才执行其返回的程序入口。
+切换的 [`cost_of_switch`](events/cost_of_switch.md) 与出牌的 [`cost_of_card`](events/cost_of_card.md) 费用响应可以反复用于预览，不得使用随机数；调用随机函数属于未定义行为。费用响应仍采用上述统一签名，确认行动后才执行其返回的程序入口。
+
+出牌的 [`card_cost_initialization`](events/card_cost_initialization.md) 与 [`card_target_check`](events/card_target_check.md) 只查询该牌自己的定义，响应只修改事件并返回空入口，也不得使用随机数。可打出的牌必须提供费用初始化与 [`card_effect`](events/card_effect.md) 原效果响应；目标检查响应可省略。原效果在费用结算与反制响应完成后执行，没有后续效果时也可直接返回空入口。
 
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
 

@@ -18,11 +18,15 @@ struct begin_action;
 
 ## 注意
 
-先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持主动切换出战角色和宣布结束；当前行动方必须已有出战角色。主动切换可经过费用计算、支付、出战角色变更及行动权交接。双方均宣布结束后，本命令才结束行动阶段。
+先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持打出手牌、主动切换出战角色和宣布结束；当前行动方必须已有出战角色。双方均宣布结束后，本命令才结束行动阶段。
 
-等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、选择切换或宣布结束。主动切换使用角色 ID 指定目标，目标须为当前行动玩家存活、非出战的角色；调用方同时选择支付的骰子，并保证支付满足费用及持有数量。宣布结束无需支付骰子。
+等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、检查或选择行动。出牌使用当前行动玩家的有效手牌 ID、固定两个目标位置与支付骰子；目标和用牌条件由牌定义决定，未使用的目标位置忽略。主动切换使用角色 ID 指定当前行动玩家存活、非出战的角色。调用方保证支付满足费用及持有数量；宣布结束无需支付骰子。
 
-调用方必须通过 `switch_active_character` 或 `declare_round_end` 提供本次行动输入后，才能再次调用 `step`。费用预览与支付检查不提供行动输入；等待玩家决定期间由上层保留当前现场。
+调用方必须通过 `play_card`、`switch_active_character` 或 `declare_round_end` 提供本次行动输入后，才能再次调用 `step`。费用预览、支付检查与目标检查不提供行动输入；等待玩家决定期间由上层保留当前现场。
+
+通过 [`calculate_card_cost`](../../executor/execution_view/action_selection/calculate_card_cost.md) 同步计算出牌费用，通过 [`check_card_payment`](../../executor/execution_view/action_selection/check_card_payment.md) 与 [`check_card_targets`](../../executor/execution_view/action_selection/check_card_targets.md) 分别检查支付及用牌条件；两项检查相互独立，由调用方按需使用。费用初始化、费用响应与目标检查不得使用随机数，调用随机函数属于未定义行为。
+
+[`play_card`](../../executor/execution_view/action_selection/play_card.md) 可采用已完整计算的费用，也可同步重新报价后选择出牌；不会自动检查支付或目标。下一次推进先让牌离手，再执行已确认的费用效果、扣骰与骰子变化响应，随后广播 [`card_will_be_played`](../events/card_will_be_played.md)。未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，之后均广播 [`card_played`](../events/card_played.md)。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
 
 通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`check_switch_payment`](../../executor/execution_view/action_selection/check_switch_payment.md)，检查所选骰子是否匹配费用且持有数量足够。
 

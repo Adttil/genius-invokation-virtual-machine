@@ -32,6 +32,8 @@
 | [`calculating_skill_payment`](events/calculating_skill_payment.md) | 使用技能时的支付计算事件 |
 | [`calculating_switch_payment`](events/calculating_switch_payment.md) | 切换出战角色时的支付计算事件 |
 | [`cost_of_switch`](events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
+| [`card_cost_initialization`](events/card_cost_initialization.md) | 请本牌定义准备基础出牌费用 |
+| [`cost_of_card`](events/cost_of_card.md) | 出牌的费用计算事件 |
 | [`elemental_dice_requirement`](events/elemental_dice_requirement.md) | 一项行动对元素骰的需求 |
 | [`action_cost_requirement`](events/action_cost_requirement.md) | 一项行动的骰子费用与行动速度 |
 | [`cost_effect_argument`](events/cost_effect_argument.md) | 费用调整效果的减费记录 |
@@ -47,6 +49,9 @@
 | [`elemental_tuning_will_apply`](events/elemental_tuning_will_apply.md) | 元素调和生效前的事件 |
 | [`elemental_tuning_applied`](events/elemental_tuning_applied.md) | 元素调和完成后的通知 |
 | [`card_will_be_played`](events/card_will_be_played.md) | 手牌效果生效前的事件 |
+| [`card_target_check`](events/card_target_check.md) | 请本牌定义检查目标与用牌条件 |
+| [`card_target_check_result`](events/card_target_check_result.md) | 出牌目标与用牌条件的检查结果 |
+| [`card_effect`](events/card_effect.md) | 执行打出的牌自身效果 |
 | [`card_played`](events/card_played.md) | 打出手牌完成后的通知 |
 | [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |
 | [`skill_used`](events/skill_used.md) | 技能使用完成后的通知 |

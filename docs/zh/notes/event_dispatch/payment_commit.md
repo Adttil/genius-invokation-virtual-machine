@@ -2,7 +2,7 @@
 
 # 费用预览、提交缓存与取消
 
-这里记录行动费用为何需要延迟提交，以及修改报价、响应缓存和取消行为时需要维护的条件。主动切换的公开字段与用法见 [cost_of_switch](../../reference/definition/events/cost_of_switch.md) 和 [begin_action](../../reference/definition/commands/begin_action.md)。`onpay_context` 是费用事件到提交现场的现有映射，不是另一类事件。
+这里记录行动费用为何需要延迟提交，以及修改报价、响应缓存和取消行为时需要维护的条件。主动切换与出牌的公开字段及用法见 [cost_of_switch](../../reference/definition/events/cost_of_switch.md)、[cost_of_card](../../reference/definition/events/cost_of_card.md) 和 [begin_action](../../reference/definition/commands/begin_action.md)。`onpay_context` 是费用事件到提交现场的现有映射，不是另一类事件。
 
 ## 为什么预览与提交隔离
 
@@ -10,7 +10,11 @@
 
 选择行动的公开现场为 `execution_state::action_selection`。[`calculate_switch_cost`](../../reference/executor/execution_view/action_selection/calculate_switch_cost.md) 在当前现场按角色 ID 同步重新报价，更新该候选的报价和 onpay 缓存，并返回报价的只读引用。它不接收调用方的随机源，不填写行动请求，也不推进执行器。`switch_active_character(target, paid)` 采用已经计算的费用；传入定义库和牌桌的重载先同步重新报价，成功后再填写选择。下一次 `step` 只执行已确认的费用结果，不再负责报价。
 
+出牌沿用同一分工：`calculate_card_cost` 先以零骰子的快速行动构造 `card_cost_initialization`，只询问本牌定义，再依次调用 `cost_of_card` 响应并保存其 onpay。`play_card(card, targets, paid)` 采用已报价结果，带定义库与牌桌的重载同步重报；最终选择保存两个固定目标，不记录目标数量。
+
 费用 handler 保留统一的响应签名，但不得调用随机函数，违反此前提属于未定义行为。内部为这项签名提供的随机函数不连接对局随机源，其返回值不构成公开保证。报价及该行 onpay 结果在原处更新，不提供异常回滚。响应抛出异常后，该候选可能留下部分结果，调用方须重新完整报价成功后才能检查或采用；其他候选不受影响。重新报价的选择操作只有成功后才填写本次请求。
+
+`card_cost_initialization` 与 `card_target_check` 都是本牌查询响应，只修改事件并返回空入口；仅目标检查响应可以省略，可打出的牌必须提供费用初始化和 `card_effect` 原效果响应。费用初始化、目标检查与 `cost_of_card` 使用内部零值随机函数适配统一签名；调用随机函数仍是文档规定的未定义行为，没有运行时检查机制。实际执行的 `card_effect` 可以使用本次 `step` 的随机源。
 
 提交使用当次报价为该响应保存的参数，而不是重新计算一次减费。否则前后 table 状态的变化，或者其他响应已经产生的修改，可能使真正消耗的次数与先前采用的减费不一致。这个隔离也不等于数据库式事务：当前提交效果在扣除骰子之前执行，进入提交后已经完成的副作用不会自动回滚。不能把 onpay 理解为“扣款完成后才执行”。
 
@@ -46,11 +50,13 @@
 
 费用匹配算法由 [`action_selection` 视图](../../../../include/givm/executor/views/action_selection.hpp) 的私有静态函数 `payment_matches` 实现，随该视图的检查接口维护。
 
-费用检查与行动参数检查分别负责不同的条件。当前只支持切人和宣布结束，切人接口直接接收角色 ID 与 `dice_counts`，有效目标是调用前提；牌和技能的参数检查尚未增加。公开类型 `action_argument`、`action_target` 及其种类仍保留，当前切人接口无需调用方构造它们。
+出牌的 `check_card_payment` 同样先检查费用匹配，再检查骰子持有量，并使用独立的 `card_payment_check_result`。`check_card_targets` 只询问本牌的 `card_target_check`，不依赖报价，也不验证支付；检查顺序与结果由牌定义负责，未使用的目标位置忽略。两项检查都是独立可选查询，提交接口不会自动调用；输入合法性仍由上层保证。
 
-行动窗口内部用 `std::variant<detail::round_end_selection, detail::switch_selection>` 保存最终选择：`switch_selection` 把 `switch_cost_index` 与 `paid_dice` 一起保存，`round_end_selection` 不带参数。选择种类与对应参数始终成组，`action_argument` 不再进入行动帧，也不保存“未选择”标记。上层须先通过 `switch_active_character` 或 `declare_round_end` 提供输入，再调用 `step`；报价和支付检查不算输入，库不检查未输入就推进的非法调用。首备选 `round_end_selection` 仅用于内部默认构造，不构成默认宣布结束的公开约定。当前 Clang 22/x64 下该 variant 为 24 字节，与此前枚举加索引的 `action_selection` 的 16 字节及 `action_argument` 的 8 字节之和相同。这是当前工具链的布局结果；默认构造是否平凡与平凡可复制是不同要求，现有 `frame_stack` 要求后者，以便复制和搬移。
+行动窗口内部用 `std::variant<detail::round_end_selection, detail::switch_selection, detail::card_selection>` 保存最终选择：切换选择保存费用行与支付骰子，出牌选择还保存两个目标，结束声明不带参数。选择种类与对应参数始终成组，公开的 `action_argument`、`action_target` 不进入行动帧，也不保存“未选择”标记。上层须先通过 `play_card`、`switch_active_character` 或 `declare_round_end` 提供输入，再调用 `step`；查询与检查不算输入，库不检查未输入就推进的非法调用。首备选仅用于内部默认构造，不构成默认宣布结束的公开约定。默认构造是否平凡与平凡可复制是不同要求，现有 `frame_stack` 要求后者，以便复制和搬移。
 
-提交仍先执行所选行的 onpay，再扣除支付骰子。支付总数为零时直接进入切换，不执行减零操作，也不广播 `dice_removed`；这不会跳过此前应执行的 onpay。
+提交仍先执行所选行的 onpay，再扣除支付骰子。支付总数为零时跳过扣骰及 `dice_removed` 广播，直接进入切换或出牌本体；这不会跳过此前应执行的 onpay。
+
+出牌在 onpay 之前先标记选中手牌删除，使其离开普通手牌遍历与广播；原 ID 在清理前仍可读取。随后执行缓存 onpay、扣骰与骰子变化广播，再广播 `card_will_be_played`。未反制时单独调用本牌 `card_effect` 并执行原效果，最后无论是否反制都广播 `card_played`。已删除牌自身仍通过保存的牌 ID 和定义执行原效果，普通广播则跳过它；反制不会撤销此前的离手与支付。
 
 ## 取消与缓存的寿命
 
@@ -60,7 +66,7 @@
 
 行动现场被弹出或执行器重新开始后，旧缓存和从中取得的引用都不能沿用；栈扩容也可能更早使借用失效。进入终局后旧现场被逻辑废弃，即使字节仍在栈中，也不能继续解释或借用这份缓存。
 
-`calculate_switch_cost` 返回的引用与 `switch_costs()` 中的对应元素观察同一份报价，不提供独立快照。同一行动现场内重新计算该候选会更新引用所见的结果；公开借用仍只保持到下一次推进或重建现场之前。
+`calculate_switch_cost` 与 `calculate_card_cost` 返回的引用分别与 `switch_costs()`、`card_costs()` 中的对应元素观察同一份报价，不提供独立快照。同一行动现场内重新计算该候选会更新引用所见的结果；公开借用仍只保持到下一次推进或重建现场之前。
 
 旧 `calculating_card_payment`、`calculating_skill_payment`、`calculating_switch_payment` 所讨论的 table payment 槽位与 `on_pay` 属于另一批历史方案，见[旧 payment 设计](resource_events.md)。它们不能代替这里按报价保存响应结果的模型。
 

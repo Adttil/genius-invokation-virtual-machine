@@ -23,7 +23,7 @@ class random_fn;
 
 随机源无需采用特定生成算法，每次调用提供一个 `std::uint32_t` 值。一次执行推进中的命令和事件响应共享调用方传入的随机源，各次调用按实际执行顺序使用同一序列。随机值对应的游戏效果及消耗次序由各[命令](../definition/commands.md)和定义响应约定。
 
-[费用响应](../definition/events/cost_of_switch.md)不得使用随机数；在费用响应中调用随机函数属于未定义行为。同步预览费用无需传入随机源。
+[`cost_of_switch`](../definition/events/cost_of_switch.md)、[`cost_of_card`](../definition/events/cost_of_card.md) 费用响应，以及本牌的 [`card_cost_initialization`](../definition/events/card_cost_initialization.md)、[`card_target_check`](../definition/events/card_target_check.md) 查询响应不得使用随机数；调用随机函数属于未定义行为。这些同步查询无需传入随机源。
 
 ## 示例
 

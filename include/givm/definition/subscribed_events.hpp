@@ -9,8 +9,17 @@ namespace givm
     template<class EntityView>
     struct subscribed_events;
 
+    namespace subscribed_events_detail
+    {
+        template<class TList, class... TExtra>
+        struct append;
+
+        template<class... TEvents, class... TExtra>
+        struct append<type_list<TEvents...>, TExtra...> : type_list<TEvents..., TExtra...>{};
+    }
+
     template<>
-    struct subscribed_events<hand_card_view> : type_list<
+    struct subscribed_events<hand_card_status_view> : type_list<
         struct test_event,
         struct action_phase_started,
         struct battle_started,
@@ -19,6 +28,7 @@ namespace givm
         struct round_ended,
         struct dice_roll_preparation,
         struct calculating_card_payment,
+        struct cost_of_card,
         struct hand_card_created,
         struct card_drawn,
         struct card_discarded,
@@ -29,6 +39,14 @@ namespace givm
         struct active_character_changed,
         struct entity_will_leave,
         struct entity_left
+    >{};
+
+    template<>
+    struct subscribed_events<hand_card_view> : subscribed_events_detail::append<
+        subscribed_events<hand_card_status_view>::apply<type_list>,
+        struct card_cost_initialization,
+        struct card_target_check,
+        struct card_effect
     >{};
 
     template<>
@@ -49,20 +67,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<hand_card_status_view> : subscribed_events<hand_card_view>{};
-
-    template<>
     struct subscribed_events<deck_card_status_view> : subscribed_events<deck_card_view>{};
-
-    namespace subscribed_events_detail
-    {
-        template<class TList, class... TExtra>
-        struct append;
-
-        template<class... TEvents, class... TExtra>
-        struct append<type_list<TEvents...>, TExtra...> : type_list<TEvents..., TExtra...>{};
-
-    }
 
     using support_subscribed_events = type_list<
         struct test_event,
@@ -82,6 +87,7 @@ namespace givm
         struct calculating_card_payment,
         struct calculating_skill_payment,
         struct calculating_switch_payment,
+        struct cost_of_card,
         struct cost_of_switch,
         struct hand_card_created,
         struct card_drawn,
