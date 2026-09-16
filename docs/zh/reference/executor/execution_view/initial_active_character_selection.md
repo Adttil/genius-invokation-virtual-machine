@@ -15,6 +15,7 @@ class execution_view<execution_state::initial_active_character_selection>;
 
 | | |
 | --- | --- |
+| [`check_selection`](initial_active_character_selection/check_selection.md) | 检查首次出战角色选择是否合法。 |
 | [`select`](initial_active_character_selection/select.md) | 填写首先提交的出战角色选择。 |
 
 ## 注意

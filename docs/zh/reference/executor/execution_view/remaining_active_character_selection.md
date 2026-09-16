@@ -16,8 +16,9 @@ class execution_view<execution_state::remaining_active_character_selection>;
 | | |
 | --- | --- |
 | [`player`](remaining_active_character_selection/player.md) | 取得尚待选择出战角色的玩家。 |
-| [`selected`](remaining_active_character_selection/selected.md) | 取得已经接受的第一份角色选择。 |
-| [`select`](remaining_active_character_selection/select.md) | 填写剩余玩家选择的角色下标。 |
+| [`first_selected_character`](remaining_active_character_selection/first_selected_character.md) | 取得已经接受的第一份角色选择。 |
+| [`check_selection`](remaining_active_character_selection/check_selection.md) | 检查角色是否为待选玩家的有效角色。 |
+| [`select`](remaining_active_character_selection/select.md) | 填写剩余玩家选择的角色 ID。 |
 
 ## 注意
 

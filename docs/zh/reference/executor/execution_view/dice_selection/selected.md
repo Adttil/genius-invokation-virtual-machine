@@ -5,12 +5,12 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr std::bitset<selection_capacity> selected() const noexcept;
+constexpr dice_counts selected() const noexcept;
 ```
-[`selection_capacity`](../../selection_capacity.md)
+[`dice_counts`](../../../enums/dice_counts.md)
 
 取得当前填写的重投选择。
 
 ## 返回值
 
-选择位集的副本。
+当前填写的各类重投骰子数量的副本。

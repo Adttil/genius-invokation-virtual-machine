@@ -325,8 +325,8 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
         CHECK(log.previews == count);
         CHECK(cost.target == givm::character_id{ givm::player_id{ 0 }, 1 });
         CHECK(cost.requirement.dice_requirement.any == 1);
-        CHECK(action.check_switch_payment(table, next, dice({ { givm::elemental_dice::omni, 1 } })) == givm::payment_check_result::valid);
-        CHECK(action.check_switch_payment(table, next, {}) == givm::payment_check_result::requirement_mismatch);
+        CHECK(action.check_switch_payment(table, next, dice({ { givm::elemental_dice::omni, 1 } })) == givm::switch_payment_check_result::valid);
+        CHECK(action.check_switch_payment(table, next, {}) == givm::switch_payment_check_result::requirement_mismatch);
         CHECK(log.previews == count);
         CHECK(log.opportunities == opportunities);
         const auto costs = target.view_in<givm::execution_state::action_selection>().switch_costs();
@@ -382,7 +382,7 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
         CHECK(cost.target == next);
         CHECK(cost.requirement.dice_requirement.any == 1);
         const auto paid = dice({ { givm::elemental_dice::omni, 1 } });
-        CHECK(action.check_switch_payment(table, next, paid) == givm::payment_check_result::valid);
+        CHECK(action.check_switch_payment(table, next, paid) == givm::switch_payment_check_result::valid);
         action.switch_active_character(next, paid);
         REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
         CHECK(table[givm::player_id{ 0 }].state().active_character == next);
@@ -456,7 +456,7 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
     else
     {
         action.calculate_switch_cost(library, table, next);
-        CHECK(action.check_switch_payment(table, next, paid) == givm::payment_check_result::valid);
+        CHECK(action.check_switch_payment(table, next, paid) == givm::switch_payment_check_result::valid);
         action.switch_active_character(next, paid);
     }
     CHECK(log.previews == 1);
@@ -536,10 +536,10 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     CHECK(control.quoted == expected_quotes);
     CHECK(empty_control.quoted == expected_quotes);
     CHECK(random.calls == calls_before_queries);
-    CHECK(action.check_switch_payment(table, first, dice({ { givm::elemental_dice::omni, 2 } })) == givm::payment_check_result::valid);
+    CHECK(action.check_switch_payment(table, first, dice({ { givm::elemental_dice::omni, 2 } })) == givm::switch_payment_check_result::valid);
     if(quote_both)
     {
-        CHECK(action.check_switch_payment(table, second, dice({ { givm::elemental_dice::omni, 3 } })) == givm::payment_check_result::valid);
+        CHECK(action.check_switch_payment(table, second, dice({ { givm::elemental_dice::omni, 3 } })) == givm::switch_payment_check_result::valid);
     }
     CHECK(control.quoted == expected_quotes);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
@@ -555,7 +555,7 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
         const auto paid = dice({ { givm::elemental_dice::omni, static_cast<std::uint8_t>(index + 2) } });
         const auto branch_action = branch.view_in<givm::execution_state::action_selection>();
         const auto next = index == 0 ? first : second;
-        CHECK(branch_action.check_switch_payment(branch_table, next, paid) == givm::payment_check_result::valid);
+        CHECK(branch_action.check_switch_payment(branch_table, next, paid) == givm::switch_payment_check_result::valid);
         branch_action.switch_active_character(next, paid);
         auto state = branch.step(library, branch_table, random);
         if(observed)
@@ -584,7 +584,7 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
 TEST_CASE("payment checks match exact dice requirements before checking the player's inventory", "[begin_action][payment][compile-mode]")
 {
     using enum givm::elemental_dice;
-    using enum givm::payment_check_result;
+    using enum givm::switch_payment_check_result;
     const bool observed = GENERATE(false, true);
     const auto inventory = dice({ { omni, 4 }, { pyro, 3 }, { hydro, 2 }, { cryo, 1 }, { electro, 1 } });
     quote_control control{ .replace_requirement = true, .enable_payment = true };
@@ -615,7 +615,7 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
         const char* description;
         givm::elemental_dice_requirement requirement;
         givm::dice_counts paid;
-        givm::payment_check_result expected;
+        givm::switch_payment_check_result expected;
     };
     const std::vector<payment_example> examples{
         { "one arbitrary die", { .any = 1 }, dice({ { pyro, 1 } }), valid },
@@ -709,7 +709,7 @@ TEST_CASE("recalculating a candidate replaces a previously nonempty payment resp
     else
     {
         CHECK(action.calculate_switch_cost(library, table, next).requirement.dice_requirement.any == 1);
-        CHECK(action.check_switch_payment(table, next, paid) == givm::payment_check_result::valid);
+        CHECK(action.check_switch_payment(table, next, paid) == givm::switch_payment_check_result::valid);
         action.switch_active_character(next, paid);
     }
     REQUIRE(control.quoted.size() == 2);

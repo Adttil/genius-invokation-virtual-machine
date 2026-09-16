@@ -17,6 +17,7 @@ class execution_view<execution_state::card_selection>;
 | --- | --- |
 | [`player`](card_selection/player.md) | 取得本次等待换牌的玩家。 |
 | [`selected`](card_selection/selected.md) | 取得当前填写的换牌选择。 |
+| [`check_selection`](card_selection/check_selection.md) | 检查当前玩家的换牌选择是否合法。 |
 | [`select`](card_selection/select.md) | 填写要替换的手牌选择。 |
 
 ## 注意

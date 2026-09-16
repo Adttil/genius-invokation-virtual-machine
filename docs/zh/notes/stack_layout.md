@@ -12,6 +12,8 @@ executor stack 是执行期数据栈，用来保存 event、输入等待对象�
 
 一次 `push(...)` 创建一个 frame。普通 `top<T...>()` 和 `pop<T...>()` 访问栈顶的单个 frame，模板参数按 `push` 参数顺序书写，最后一个类型是物理栈顶。
 
+下文的 `A`、`B`、`C`、`Header` 和 `Input` 都是说明栈操作的示例类型，不代表执行器中的现行类型。
+
 ```cpp
 const auto frame = stack.push(A{}, B{});
 auto&& [a, b] = frame;
@@ -23,7 +25,7 @@ stack.pop(frame);
 `push` 返回新增 frame 的 `frame_view`。`top` 也返回 `frame_view`，即使只访问单个对象也使用结构化绑定：
 
 ```cpp
-const auto frame = stack.top<selector>();
+const auto frame = stack.top<Input>();
 auto&& [input] = frame;
 ```
 
@@ -58,10 +60,10 @@ auto&& [values, header_ref] = frame;
 对最上层 frame，`top<T...>()` 可以访问该 frame 的固定部分后缀：
 
 ```cpp
-stack.push(dynamic_array<std::uint32_t>(count), header, selector{});
+stack.push(dynamic_array<std::uint32_t>(count), header, Input{});
 
-auto&& [input] = stack.top<selector>();          // 固定部分后缀
-auto&& [head, input2] = stack.top<Header, selector>();
+auto&& [input] = stack.top<Input>();          // 固定部分后缀
+auto&& [head, input2] = stack.top<Header, Input>();
 ```
 
 输入实现可以把输入区放在 frame 尾部的完整固定对象序列中，由对应 execution_view 的参数式操作定位；外层不再读取指令或改写原始输入槽。stack 本身不记录哪些后缀对象是输入，也不检查输入类型。
@@ -69,7 +71,7 @@ auto&& [head, input2] = stack.top<Header, selector>();
 动态数组不属于可单独后缀访问的固定部分。若 `top<T...>()` 中包含动态数组，则它必须描述整个 frame：
 
 ```cpp
-auto&& [values, head, input] = stack.top<std::uint32_t[], Header, selector>(); // 整个 frame
+auto&& [values, head, input] = stack.top<std::uint32_t[], Header, Input>(); // 整个 frame
 ```
 
 不要写只覆盖一部分动态区域的 `top`，例如从第二个动态数组开始访问，或只访问动态数组而跳过后面的固定部分。只有当整个 frame 本身就是该动态数组时，`top<T[]>()` 才是完整 frame 访问。
@@ -81,7 +83,7 @@ auto&& [values, head, input] = stack.top<std::uint32_t[], Header, selector>(); /
 推荐在消费 frame 时保存完整 view，并直接传给 `pop`：
 
 ```cpp
-const auto frame = stack.top<selector>();
+const auto frame = stack.top<Input>();
 auto&& [input] = frame;
 const auto selected = input.selected;
 stack.pop(frame);

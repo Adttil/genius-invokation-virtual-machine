@@ -13,4 +13,4 @@ constexpr player_id player() const noexcept;
 
 ## 返回值
 
-仍需接受出战选择的一方，与 [`selected()`](selected.md) 所属玩家不同。
+仍需接受出战选择的一方，与 [`first_selected_character()`](first_selected_character.md) 所属玩家不同。

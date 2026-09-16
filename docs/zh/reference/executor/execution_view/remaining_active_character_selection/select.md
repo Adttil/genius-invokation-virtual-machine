@@ -5,16 +5,17 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr void select(std::size_t index) const noexcept;
+constexpr void select(character_id character) const noexcept;
 ```
+[`character_id`](../../../table/character_id.md)
 
-填写剩余玩家选择的角色下标。
+填写剩余玩家选择的角色 ID。
 
 ## 参数
 
 | | |
 | --- | --- |
-| `index` | [`player()`](player.md) 对应玩家的一名有效角色的下标，即其角色 ID 的 `index` 字段 |
+| `character` | [`player()`](player.md) 对应玩家的一名有效角色的完整 ID |
 
 ## 返回值
 
@@ -22,4 +23,4 @@ constexpr void select(std::size_t index) const noexcept;
 
 ## 注意
 
-所属玩家由当前现场确定。本操作只填写选择，下一次推进才同时设置双方的出战角色。
+所属玩家由当前现场确定。可先通过 [`check_selection`](check_selection.md) 独立检查；本操作不自动检查，只填写选择，下一次推进才同时设置双方的出战角色。

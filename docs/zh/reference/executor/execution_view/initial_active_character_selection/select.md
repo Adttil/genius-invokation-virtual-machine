@@ -23,4 +23,4 @@ constexpr void select(character_id character) const noexcept;
 
 ## 注意
 
-本操作只填写选择，下一次推进才消费输入；另一方的出战角色随后再选择。
+可先通过 [`check_selection`](check_selection.md) 独立检查。本操作不自动检查，只填写选择，下一次推进才消费输入；另一方的出战角色随后再选择。

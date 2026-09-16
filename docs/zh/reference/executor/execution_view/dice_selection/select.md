@@ -5,11 +5,11 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr void select(std::bitset<selection_capacity> selected) const noexcept;
-constexpr void select(player_id player, std::bitset<selection_capacity> selected) const noexcept;
+constexpr void select(const dice_counts& selected) const noexcept;
+constexpr void select(player_id player, const dice_counts& selected) const noexcept;
 ```
 [`player_id`](../../../table/player_id.md)
-[`selection_capacity`](../../selection_capacity.md)
+[`dice_counts`](../../../enums/dice_counts.md)
 
 填写要重投的骰子选择。第一个重载沿用当前玩家，第二个重载同时指定玩家。
 
@@ -18,7 +18,7 @@ constexpr void select(player_id player, std::bitset<selection_capacity> selected
 | | |
 | --- | --- |
 | `player` | 本次提交选择的玩家，必须仍有重投机会。 |
-| `selected` | 按当前骰子组成展开的选择位集；空选择表示放弃该方所有剩余重投机会。 |
+| `selected` | 要重投的各类骰子数量，不得超过该方当前持有的数量；全零表示放弃该方所有剩余重投机会。 |
 
 ## 返回值
 
@@ -26,4 +26,4 @@ constexpr void select(player_id player, std::bitset<selection_capacity> selected
 
 ## 注意
 
-本操作只填写选择，下一次推进才消费输入。
+可先通过 [`check_selection`](check_selection.md) 独立检查。本操作不自动检查，只填写选择，下一次推进才消费输入。

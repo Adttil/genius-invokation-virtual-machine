@@ -19,11 +19,12 @@ class execution_view<execution_state::dice_selection>;
 | [`selected`](dice_selection/selected.md) | 取得当前填写的重投选择。 |
 | [`remaining`](dice_selection/remaining.md) | 取得当前玩家剩余的重投次数。 |
 | [`dice_count`](dice_selection/dice_count.md) | 取得本次投骰阶段的骰子数量。 |
+| [`check_selection`](dice_selection/check_selection.md) | 检查玩家是否还有重投机会，且持有所选骰子。 |
 | [`select`](dice_selection/select.md) | 填写当前玩家要重投的骰子选择。 |
 
 ## 注意
 
-位置按当前骰子种类顺序展开：万能、冰、水、火、雷、风、岩、草，同种骰子逐个计数；重投后应按新组成解释位置。非空选择消耗一次重投机会，空选择放弃该方全部剩余机会。默认玩家只是建议，调用方可以提交任何仍有重投机会的玩家。
+选择用 [`dice_counts`](../../enums/dice_counts.md) 表示每种骰子要重投的数量，各类数量不得超过该玩家当前持有的数量。非空选择消耗一次重投机会，空选择放弃该方全部剩余机会。默认玩家只是建议，调用方可以提交任何仍有重投机会的玩家。
 
 ## 参阅
 

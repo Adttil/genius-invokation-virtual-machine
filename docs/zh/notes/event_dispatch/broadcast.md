@@ -75,12 +75,12 @@ handler 不能通过收到的 `const table&` 直接修改持久状态。需要�
 
 ### 多个预备广播的快照边界
 
-[`select_active_character_both`](../../../../include/givm/executor/instructions/select_active_character_both.hpp) 在收齐双方选择、同时写入出战角色之后，先压玩家 1 的广播，再压玩家 0 的广播。观察模式先报告初选完成，下一次推进才用仍保留的原选择帧准备这两个广播；外部从牌桌读取双方结果。栈顶先处理玩家 0 的通知，但两个响应者快照此前都已建立。因此玩家 0 的响应新建的实体不会进入已经预备好的玩家 1 快照。这个例子解释为什么不能把“每个事件有自己的快照”误写成“前一个广播结束后才采样下一个”。
+[`select_active_character_both`](../../../../include/givm/executor/commands/select_active_character_both.hpp) 在收齐双方选择、同时写入出战角色之后，先压玩家 1 的广播，再压玩家 0 的广播。观察模式先报告初选完成，下一次推进才用仍保留的原选择帧准备这两个广播；外部从牌桌读取双方结果。栈顶先处理玩家 0 的通知，但两个响应者快照此前都已建立。因此玩家 0 的响应新建的实体不会进入已经预备好的玩家 1 快照。这个例子解释为什么不能把“每个事件有自己的快照”误写成“前一个广播结束后才采样下一个”。
 
 相比之下，`draw_cards`、单方 `replace_cards` 和元素反应后的通知，是推进到后一个广播时才重新调用 `prepare_broadcast`；后一个广播可采样之前响应创建的实体。
 
 ### 初始化特例的额外前提
 
-[`enter_character`](../../../../include/givm/executor/instructions/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/instructions/initialize_characters.hpp) 直接调用当前角色定义的 `handle<character_initialization>`，没有先调用 `can_handle` 检查。角色定义必须提供这个 handler。事件是函数内的局部值，调用后把 `event.state` 写回角色，返回入口被 `(void)` 丢弃；即使 handler 返回含 end_game 的程序入口也不会由这两条指令进入。旧文建议返回 null 保持这个事实明确。
+[`enter_character`](../../../../include/givm/executor/commands/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/commands/initialize_characters.hpp) 直接调用当前角色定义的 `handle<character_initialization>`，没有先调用 `can_handle` 检查。角色定义必须提供这个 handler。事件是函数内的局部值，调用后把 `event.state` 写回角色，返回入口被 `(void)` 丢弃；即使 handler 返回含 end_game 的程序入口也不会由这两条指令进入。旧文建议返回 null 保持这个事实明确。
 
 旧文把“将来可增加静态限制但应保持现有语义”作为设计余地。这里仍保留该余地，不把它误记为已有静态限制。

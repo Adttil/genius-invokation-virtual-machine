@@ -433,10 +433,10 @@ TEST_CASE("initial active choices update both players before either response", "
     REQUIRE(log.active.empty());
     REQUIRE(target.step(library, table, random) == givm::execution_state::remaining_active_character_selection);
     const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
-    CHECK(remaining.selected() == first_choice);
+    CHECK(remaining.first_selected_character() == first_choice);
     CHECK(remaining.player() == other_player(first_player));
-    remaining.select(1);
-    CHECK(remaining.selected() == first_choice);
+    remaining.select(givm::character_id{ other_player(first_player), 1 });
+    CHECK(remaining.first_selected_character() == first_choice);
     CHECK(remaining.player() == other_player(first_player));
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());

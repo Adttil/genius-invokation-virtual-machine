@@ -42,7 +42,9 @@
 
 ## 支付检查与提交
 
-[`check_switch_payment`](../../reference/executor/execution_view/action_selection/check_switch_payment.md) 按角色 ID 读取已经完整报价的候选行，先检查所选骰子能否恰好满足 `fixed`、`same`、`any`，再检查当前行动玩家的持有数量，返回 `payment_check_result`。它不计算费用、不提交、不执行 onpay，也不修改 table；提交接口不会自动调用它。
+[`check_switch_payment`](../../reference/executor/execution_view/action_selection/check_switch_payment.md) 按角色 ID 读取已经完整报价的候选行，先检查所选骰子能否恰好满足 `fixed`、`same`、`any`，再检查当前行动玩家的持有数量，返回 `switch_payment_check_result`。它不计算费用、不提交、不执行 onpay，也不修改 table；提交接口不会自动调用它。
+
+费用匹配算法由 [`action_selection` 视图](../../../../include/givm/executor/views/action_selection.hpp) 的私有静态函数 `payment_matches` 实现，随该视图的检查接口维护。
 
 费用检查与行动参数检查分别负责不同的条件。当前只支持切人和宣布结束，切人接口直接接收角色 ID 与 `dice_counts`，有效目标是调用前提；牌和技能的参数检查尚未增加。公开类型 `action_argument`、`action_target` 及其种类仍保留，当前切人接口无需调用方构造它们。
 
@@ -62,4 +64,4 @@
 
 旧 `calculating_card_payment`、`calculating_skill_payment`、`calculating_switch_payment` 所讨论的 table payment 槽位与 `on_pay` 属于另一批历史方案，见[旧 payment 设计](resource_events.md)。它们不能代替这里按报价保存响应结果的模型。
 
-实现核对位置：[begin_action.hpp](../../../../include/givm/executor/instructions/begin_action.hpp)。
+实现核对位置：[begin_action.hpp](../../../../include/givm/executor/commands/begin_action.hpp)。

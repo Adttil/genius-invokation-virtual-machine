@@ -19,6 +19,8 @@
 
 namespace givm
 {
+    inline constexpr size_t selection_capacity = 64;
+
     enum class execution_state : std::uint8_t
     {
         finished = 1,

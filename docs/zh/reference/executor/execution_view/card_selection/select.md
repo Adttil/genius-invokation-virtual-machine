@@ -23,4 +23,4 @@ constexpr void select(std::bitset<selection_capacity> selected) const noexcept;
 
 ## 注意
 
-本操作不执行换牌。下一次推进才消费选择，不检查位集或现场是否合法。
+可先通过 [`check_selection`](check_selection.md) 独立检查。本操作不执行换牌；下一次推进才消费选择，不自动检查位集或现场是否合法。

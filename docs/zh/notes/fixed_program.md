@@ -86,8 +86,10 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 整库 `compile` 显式接收 `compile_mode::normal` 或 `compile_mode::observed`。编译上下文保存该选择，所有 `add_program` 使用同一模式。两种模式生成相同的 `definition_library` 类型；内部指令类型、数量、数据类型与布局都可以不同。运行时统一通过 `executor::step` 推进，不再选择另一套分派入口。
 
-每个 command 的编译重载与 execute 定义集中在其 executor 实现文件内。ADL 通过实际的 `detail::program_writer` 类型找到 `detail::compile(writer, command, mode)`；无需 command_backend 类或全局 opcode 编号。函数直接在定义处提供实现，汇总头包含各 command 实现后，编译上下文才实例化统一遍历。
+每个 command 的编译重载与执行指令集中在 [`executor/commands/`](../../../include/givm/executor/commands) 的对应实现文件内，由 [`commands.hpp`](../../../include/givm/executor/commands.hpp) 统一汇总。编译函数和执行函数直接定义在 `givm::detail`，函数名称描述具体操作。ADL 通过实际的 `detail::program_writer` 类型找到 `detail::compile(writer, command, mode)`；无需 command_backend 类或全局 opcode 编号。函数直接在定义处提供实现，汇总头包含各 command 实现后，编译上下文才实例化统一遍历。
 
-definition 保留 command、variant、事件与程序入口类型。入口索引的生成与解释由 executor 负责。编译上下文、定义库、整体编译入口及返回、跳转控制函数集中在 executor 的 `library.hpp` 中；各 command 的编译与执行仍集中在对应实现文件内，由 `instructions.hpp` 汇总。
+多个 command 使用的基础执行指令仍随其所属 command 放置：抽牌通知推进及相关辅助函数放在 [`draw_cards.hpp`](../../../include/givm/executor/commands/draw_cards.hpp)，[`replace_cards.hpp`](../../../include/givm/executor/commands/replace_cards.hpp) 直接包含并复用；元素反应推进及相关辅助函数放在 [`apply_element.hpp`](../../../include/givm/executor/commands/apply_element.hpp)，[`deal_damage.hpp`](../../../include/givm/executor/commands/deal_damage.hpp) 直接包含并复用。各 command 的其他专属执行函数保留在各自文件中，共用关系由这些直接依赖表达。
+
+definition 保留 command、variant、事件与程序入口类型。入口索引的生成与解释由 executor 负责。编译上下文、定义库、整体编译入口及返回、跳转控制函数集中在 executor 的 `library.hpp` 中；各 command 的编译与执行由上述文件组织。
 
 [返回架构总览](architecture.md)

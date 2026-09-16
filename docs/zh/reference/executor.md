@@ -40,7 +40,11 @@
 | --- | --- |
 | [`compile_mode`](executor/compile_mode.md) | 编译时选择普通推进或额外观察 |
 | [`execution_state`](executor/execution_state.md) | 执行器交回控制权时的执行现场种类 |
-| [`payment_check_result`](executor/payment_check_result.md) | 骰子支付检查的结果 |
+| [`initial_card_selection_check_result`](executor/initial_card_selection_check_result.md) | 首次换牌选择检查的结果 |
+| [`initial_active_character_selection_check_result`](executor/initial_active_character_selection_check_result.md) | 首次出战角色选择检查的结果 |
+| [`remaining_active_character_selection_check_result`](executor/remaining_active_character_selection_check_result.md) | 剩余一方出战角色选择检查的结果 |
+| [`dice_selection_check_result`](executor/dice_selection_check_result.md) | 显式指定玩家的骰子重投选择检查结果 |
+| [`switch_payment_check_result`](executor/switch_payment_check_result.md) | 切换出战角色的骰子支付检查结果 |
 | [`action_target_kind`](executor/action_target_kind.md) | 行动目标种类 |
 
 ## 常量

@@ -227,8 +227,8 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     REQUIRE(state == givm::execution_state::remaining_active_character_selection);
     const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
     REQUIRE(remaining.player() == second_selection_player);
-    CHECK(remaining.selected() == givm::character_id{ .player_id = first_selection_player, .index = 0 });
-    remaining.select(0);
+    CHECK(remaining.first_selected_character() == givm::character_id{ .player_id = first_selection_player, .index = 0 });
+    remaining.select(givm::character_id{ .player_id = second_selection_player, .index = 0 });
     state = target.step(library, table, random);
 
     REQUIRE(table[givm::player_id{ 0 }].state().active_character.has_value());
@@ -245,9 +245,9 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
 
         const auto prepared_random_count = random.value;
         REQUIRE(target.view_in<givm::execution_state::dice_selection>().remaining(first_selection_player) == 1);
-        target.view_in<givm::execution_state::dice_selection>().select(
-            first_selection_player, std::bitset<givm::selection_capacity>{ 1 }
-        );
+        givm::dice_counts rerolled;
+        rerolled[givm::elemental_dice::omni] = 1;
+        target.view_in<givm::execution_state::dice_selection>().select(first_selection_player, rerolled);
         state = target.step(library, table, random);
         REQUIRE(state == givm::execution_state::dice_selection);
 
@@ -336,10 +336,10 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
-    CHECK(remaining.selected() == player1_choice);
+    CHECK(remaining.first_selected_character() == player1_choice);
     CHECK(remaining.player() == givm::player_id{ 0 });
-    remaining.select(player0_choice.index);
-    CHECK(remaining.selected() == player1_choice);
+    remaining.select(player0_choice);
+    CHECK(remaining.first_selected_character() == player1_choice);
     CHECK(remaining.player() == givm::player_id{ 0 });
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
