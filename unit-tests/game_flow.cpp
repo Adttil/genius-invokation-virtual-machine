@@ -117,12 +117,12 @@ namespace
         }
 
         const auto current = target.view_in<givm::execution_state::action_selection>();
-        if(current.switch_costs().empty())
+        if(current.switch_target_count() == 0)
         {
             return false;
         }
         const auto dice_before = table[acting_player].state().dice.total();
-        current.switch_active_character(library, table, current.switch_costs()[0].target, paid);
+        current.switch_active_character(library, table, 0, paid);
         state = target.step(library, table, random);
 
         const auto active_after = table[acting_player].state().active_character;

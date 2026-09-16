@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -27,6 +28,8 @@ namespace
         std::vector<givm::hand_card_id> effects;
         std::vector<card_targets> effect_targets;
         std::vector<card_targets> played_targets;
+        std::vector<std::size_t> target_check_steps;
+        std::vector<card_targets> checked_targets;
         std::vector<std::string> events;
         std::vector<std::uint32_t> dice_at_draw;
         std::optional<givm::hand_card_id> selected;
@@ -60,17 +63,21 @@ namespace
             play_log* log;
             std::uint8_t cost;
             givm::action_speed speed;
+            bool single_target;
+            bool optional_targets;
             givm::program_entry<givm::card_effect> effect;
         };
         play_log* log;
         std::string_view source_name;
         std::uint8_t cost = 1;
         givm::action_speed speed = givm::action_speed::fast;
+        bool single_target = false;
+        bool optional_targets = false;
 
         std::string_view name() const noexcept { return source_name; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, cost, speed,
+            return { log, cost, speed, single_target, optional_targets,
                 context.add_program<givm::card_effect>(std::tuple{ givm::draw_cards{ .count = 1 } }) };
         }
         static givm::handler_program_entry_t<givm::card_cost_initialization> handle(
@@ -91,14 +98,38 @@ namespace
         {
             CHECK(event.card == self.id());
             ++data.log->target_checks;
-            const auto* first = std::get_if<givm::character_id>(&event.targets[0]);
-            const auto* second = std::get_if<givm::character_id>(&event.targets[1]);
-            if(first == nullptr || first->player_id != self.id().player_id)
-                event.result = givm::card_target_check_result::invalid_first_target;
-            else if(second == nullptr || second->player_id == self.id().player_id)
-                event.result = givm::card_target_check_result::invalid_second_target;
-            else if(not data.log->condition_met)
-                event.result = givm::card_target_check_result::unmet_condition;
+            CHECK(event.result == givm::card_target_check_result::valid_complete);
+            data.log->target_check_steps.push_back(event.target_count);
+            data.log->checked_targets.push_back(event.targets);
+            if(event.target_count == 0)
+            {
+                if(not data.log->condition_met)
+                    event.result = givm::card_target_check_result::invalid;
+                else
+                    event.result = data.optional_targets ? givm::card_target_check_result::valid_complete_or_continue
+                        : givm::card_target_check_result::valid_incomplete;
+            }
+            else if(event.target_count == 1)
+            {
+                const auto* first = std::get_if<givm::character_id>(&event.targets[0]);
+                if(first == nullptr || first->player_id != self.id().player_id || not data.log->condition_met)
+                    event.result = givm::card_target_check_result::invalid;
+                else
+                    event.result = data.single_target ? givm::card_target_check_result::valid_complete
+                        : data.optional_targets ? givm::card_target_check_result::valid_complete_or_continue
+                        : givm::card_target_check_result::valid_incomplete;
+            }
+            else if(data.single_target)
+            {
+                event.result = givm::card_target_check_result::invalid;
+            }
+            else
+            {
+                const auto first = std::get<givm::character_id>(event.targets[0]);
+                const auto* second = std::get_if<givm::character_id>(&event.targets[1]);
+                event.result = second != nullptr && second->player_id != first.player_id
+                    ? givm::card_target_check_result::valid_complete : givm::card_target_check_result::invalid;
+            }
             return givm::handler_program_entry_t<givm::card_target_check>::null();
         }
         static givm::program_entry<givm::card_effect> handle(
@@ -298,26 +329,26 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    REQUIRE(action.card_costs().size() == 2);
-    const auto first = action.card_costs()[0].card;
-    const auto second = action.card_costs()[1].card;
+    REQUIRE(action.card_count() == 2);
+    const auto first = action.card_id(0);
+    const auto second = action.card_id(1);
     const card_targets targets{ givm::character_id{ givm::player_id{ 0 }, 0 }, givm::character_id{ givm::player_id{ 1 }, 0 } };
     REQUIRE(table[first].definition_id() == ids.get_id<givm::card_definition>(first_source.name()));
     REQUIRE(table[second].definition_id() == ids.get_id<givm::card_definition>(second_source.name()));
     CHECK(log.initialized.empty());
     CHECK(log.quoted.empty());
     const auto random_calls = random.calls;
-    if(quote_both) CHECK(action.calculate_card_cost(library, table, second).requirement.dice_requirement.any == 3);
-    CHECK(action.calculate_card_cost(library, table, first).requirement.dice_requirement.any == 2);
-    CHECK(action.calculate_card_cost(library, table, first).requirement.dice_requirement.any == 2);
+    if(quote_both) CHECK(action.calculate_card_cost(library, table, 1).requirement.dice_requirement.any == 3);
+    CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 2);
+    CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 2);
     const auto expected_quotes = quote_both ? std::vector{ second, first, first } : std::vector{ first, first };
     CHECK(log.initialized == expected_quotes);
     CHECK(log.quoted == expected_quotes);
-    CHECK(action.card_costs()[1].requirement.dice_requirement.any == (quote_both ? 3 : 0));
-    CHECK(action.check_card_payment(table, first, pay(2)) == givm::card_payment_check_result::valid);
-    CHECK(action.check_card_payment(table, first, {}) == givm::card_payment_check_result::requirement_mismatch);
-    CHECK(action.check_card_payment(table, first, pay(3)) == givm::card_payment_check_result::requirement_mismatch);
-    CHECK(action.check_card_payment(table, first, pay(2, givm::elemental_dice::dendro))
+    CHECK(action.card_cost(1).requirement.dice_requirement.any == (quote_both ? 3 : 0));
+    CHECK(action.check_card_payment(table, 0, pay(2)) == givm::card_payment_check_result::valid);
+    CHECK(action.check_card_payment(table, 0, {}) == givm::card_payment_check_result::requirement_mismatch);
+    CHECK(action.check_card_payment(table, 0, pay(3)) == givm::card_payment_check_result::requirement_mismatch);
+    CHECK(action.check_card_payment(table, 0, pay(2, givm::elemental_dice::dendro))
         == givm::card_payment_check_result::insufficient_dice);
     CHECK(log.quoted == expected_quotes);
     CHECK(random.calls == random_calls);
@@ -333,8 +364,8 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
         const auto selected = index == 0 ? first : second;
         const auto branch_action = branch.view_in<givm::execution_state::action_selection>();
         const auto paid = pay(static_cast<std::uint8_t>(index + 2));
-        CHECK(branch_action.check_card_payment(branch_table, selected, paid) == givm::card_payment_check_result::valid);
-        branch_action.play_card(selected, targets, paid);
+        CHECK(branch_action.check_card_payment(branch_table, index, paid) == givm::card_payment_check_result::valid);
+        branch_action.play_card(index, paid, targets);
         REQUIRE(advance(branch, library, branch_table, random) == givm::execution_state::action_selection);
         CHECK(log.effects == std::vector{ selected });
         CHECK(log.effect_targets == std::vector{ targets });
@@ -353,11 +384,12 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
 }
 
-TEST_CASE("card target checks are explicit and untargeted cards need no target handler", "[play_card][targets][compile-mode]")
+TEST_CASE("card target checks advance one step at a time and untargeted cards need no handler", "[play_card][targets][compile-mode]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    const bool single_target = GENERATE(false, true);
     play_log log{ .enable_payment = false };
-    const playable_card_source source{ &log, "TargetedCard", 0 };
+    const playable_card_source source{ &log, "TargetedCard", 0, givm::action_speed::fast, single_target };
     const play_observer_source observer{ &log };
     const givm::test::initialized_character_source character;
     const untargeted_card_source plain{ &log };
@@ -374,48 +406,153 @@ TEST_CASE("card target checks are explicit and untargeted cards need no target h
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    REQUIRE(action.card_costs().size() == 2);
-    const auto targeted = action.card_costs()[0].card;
-    const auto plain_card = action.card_costs()[1].card;
+    REQUIRE(action.card_count() == 2);
+    const auto targeted = action.card_id(0);
+    const auto plain_card = action.card_id(1);
     const card_targets targets{ givm::character_id{ givm::player_id{ 0 }, 0 }, givm::character_id{ givm::player_id{ 1 }, 0 } };
-    CHECK(action.check_card_targets(library, table, targeted, {}) == givm::card_target_check_result::invalid_first_target);
-    CHECK(action.check_card_targets(library, table, targeted, { targets[0], targets[0] })
-        == givm::card_target_check_result::invalid_second_target);
+    const auto first_target = std::span{ targets }.first(1);
+    CHECK(action.card_cost(0).card == targeted);
+    CHECK(action.card_cost(1).card == plain_card);
+    const auto random_calls = random.calls;
+    if(not single_target)
+    {
+        CHECK(action.check_card_targets(library, table, 0, targets) == givm::card_target_check_result::valid_complete);
+        CHECK(log.target_check_steps == std::vector<std::size_t>{ 2 });
+        log.target_check_steps.clear();
+        log.checked_targets.clear();
+        log.target_checks = 0;
+    }
+    CHECK(action.check_card_targets(library, table, 0) == givm::card_target_check_result::valid_incomplete);
+    CHECK(log.checked_targets.back() == card_targets{});
     log.condition_met = false;
-    CHECK(action.check_card_targets(library, table, targeted, targets) == givm::card_target_check_result::unmet_condition);
+    CHECK(action.check_card_targets(library, table, 0) == givm::card_target_check_result::invalid);
+    CHECK(action.check_card_targets(library, table, 0, first_target) == givm::card_target_check_result::invalid);
     log.condition_met = true;
-    CHECK(action.check_card_targets(library, table, targeted, targets) == givm::card_target_check_result::valid);
-    CHECK(log.target_checks == 4);
+    const std::array invalid_first{ targets[1] };
+    CHECK(action.check_card_targets(library, table, 0, invalid_first) == givm::card_target_check_result::invalid);
+    CHECK(action.check_card_targets(library, table, 0, first_target)
+        == (single_target ? givm::card_target_check_result::valid_complete : givm::card_target_check_result::valid_incomplete));
+    CHECK(log.checked_targets.back() == card_targets{ targets[0], {} });
+    if(not single_target)
+    {
+        const card_targets repeated{ targets[0], targets[0] };
+        CHECK(action.check_card_targets(library, table, 0, repeated)
+            == givm::card_target_check_result::invalid);
+        CHECK(action.check_card_targets(library, table, 0, targets) == givm::card_target_check_result::valid_complete);
+    }
+    else
+    {
+        CHECK(action.check_card_targets(library, table, 0, targets) == givm::card_target_check_result::invalid);
+    }
+    const auto expected_steps = single_target ? std::vector<std::size_t>{ 0, 0, 1, 1, 1, 2 }
+        : std::vector<std::size_t>{ 0, 0, 1, 1, 1, 2, 2 };
+    CHECK(log.target_check_steps == expected_steps);
+    CHECK(log.target_checks == expected_steps.size());
+    CHECK(random.calls == random_calls);
     CHECK(log.quoted.empty());
     CHECK(log.effects.empty());
-    const auto& cost = action.calculate_card_cost(library, table, targeted);
+    const auto& cost = action.calculate_card_cost(library, table, 0);
     CHECK(cost.requirement.dice_requirement.any == 0);
-    CHECK(action.check_card_payment(table, targeted, {}) == givm::card_payment_check_result::valid);
-    CHECK(action.check_card_payment(table, targeted, pay(1)) == givm::card_payment_check_result::requirement_mismatch);
-    action.play_card(library, table, targeted, targets, {});
+    CHECK(action.check_card_payment(table, 0, {}) == givm::card_payment_check_result::valid);
+    CHECK(action.check_card_payment(table, 0, pay(1)) == givm::card_payment_check_result::requirement_mismatch);
+    const auto selected_targets = single_target ? first_target : std::span{ targets };
+    const card_targets submitted_targets{ targets[0], single_target ? givm::card_target_id{} : targets[1] };
+    action.play_card(library, table, 0, {}, selected_targets);
     CHECK(log.quoted == std::vector{ targeted, targeted });
-    CHECK(log.target_checks == 4);
+    CHECK(log.target_checks == expected_steps.size());
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(log.effects == std::vector{ targeted });
-    CHECK(log.effect_targets == std::vector{ targets });
-    CHECK(log.played_targets == std::vector{ targets });
-    CHECK(log.target_checks == 4);
+    CHECK(log.effect_targets == std::vector{ submitted_targets });
+    CHECK(log.played_targets == std::vector{ submitted_targets });
+    CHECK(log.target_checks == expected_steps.size());
     CHECK(log.quoted == std::vector{ targeted, targeted });
     CHECK(table.state().active_player == givm::player_id{ 0 });
     const auto next_action = target.view_in<givm::execution_state::action_selection>();
-    REQUIRE(next_action.card_costs().size() == 1);
-    CHECK(next_action.card_costs()[0].card == plain_card);
-    const auto& plain_cost = next_action.calculate_card_cost(library, table, plain_card);
+    REQUIRE(next_action.card_count() == 1);
+    CHECK_FALSE(table[targeted].is_valid());
+    CHECK(next_action.card_id(0) == plain_card);
+    CHECK(next_action.card_cost(0).card == plain_card);
+    const auto& plain_cost = next_action.calculate_card_cost(library, table, 0);
     CHECK(plain_cost.requirement.dice_requirement.any == 0);
     CHECK(plain_cost.requirement.speed == givm::action_speed::fast);
-    CHECK(next_action.check_card_targets(library, table, plain_card, {}) == givm::card_target_check_result::valid);
-    next_action.play_card(plain_card, {}, {});
+    CHECK(next_action.check_card_targets(library, table, 0) == givm::card_target_check_result::valid_complete);
+    CHECK(next_action.check_card_targets(library, table, 0, targets) == givm::card_target_check_result::valid_complete);
+    CHECK(next_action.check_card_payment(table, 0, {}) == givm::card_payment_check_result::valid);
+    next_action.play_card(0, {});
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
     CHECK(table.state().active_player == givm::player_id{ 0 });
-    CHECK(log.target_checks == 4);
+    CHECK(log.target_checks == expected_steps.size());
+    CHECK(log.target_check_steps == expected_steps);
     CHECK(log.effects == std::vector{ targeted, plain_card });
+    CHECK(log.effect_targets == std::vector{ submitted_targets, card_targets{} });
+}
+
+TEST_CASE("optional targets may finish or continue and target spans ignore entries after the second", "[play_card][check][compile-mode]")
+{
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    const auto selected_count = GENERATE(std::size_t{ 0 }, std::size_t{ 1 }, std::size_t{ 2 }, std::size_t{ 3 });
+    const bool automatic_quote = GENERATE(false, true);
+    play_log log{ .enable_payment = false };
+    const playable_card_source source{ &log, "OptionalTargetsCard", 0, givm::action_speed::fast, false, true };
+    const play_observer_source observer{ &log };
+    const givm::test::initialized_character_source character;
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        mode, setup(1), std::tuple{}, source, observer, character);
+    givm::table table;
+    table.load_deck(givm::player_id{ 0 }, {
+        .cards = { ids.get_id<givm::card_definition>(source.name()) },
+        .characters = { ids.get_id<givm::character_view>(observer.name()) }
+    });
+    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
+    givm::executor target;
+    target.enter_entry(library);
+    counting_random random;
+    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    const auto action = target.view_in<givm::execution_state::action_selection>();
+    REQUIRE(action.card_count() == 1);
+    const auto card = action.card_id(0);
+    const std::array<givm::card_target_id, 3> targets{
+        givm::character_id{ givm::player_id{ 0 }, 0 }, givm::character_id{ givm::player_id{ 1 }, 0 }, {}
+    };
+    const auto random_calls = random.calls;
+    CHECK(action.check_card_targets(library, table, 0) == givm::card_target_check_result::valid_complete_or_continue);
+    CHECK(action.check_card_targets(library, table, 0, std::span{ targets }.first(1))
+        == givm::card_target_check_result::valid_complete_or_continue);
+    CHECK(action.check_card_targets(library, table, 0, std::span{ targets }.first(2))
+        == givm::card_target_check_result::valid_complete);
+    CHECK(action.check_card_targets(library, table, 0, targets) == givm::card_target_check_result::valid_complete);
+    CHECK(log.target_check_steps == std::vector<std::size_t>{ 0, 1, 2, 2 });
+    CHECK(log.checked_targets == std::vector<card_targets>{ {}, { targets[0], {} }, { targets[0], targets[1] }, { targets[0], targets[1] } });
+    CHECK(random.calls == random_calls);
+    CHECK(log.quoted.empty());
+    CHECK(log.effects.empty());
+
+    if(not automatic_quote)
+        CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 0);
+    if(selected_count == 0)
+    {
+        if(automatic_quote) action.play_card(library, table, 0, {});
+        else action.play_card(0, {});
+    }
+    else
+    {
+        const auto selected = std::span{ targets }.first(selected_count);
+        if(automatic_quote) action.play_card(library, table, 0, {}, selected);
+        else action.play_card(0, {}, selected);
+    }
+    CHECK(log.target_checks == 4);
+    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    const card_targets expected_targets{
+        selected_count > 0 ? targets[0] : givm::card_target_id{},
+        selected_count > 1 ? targets[1] : givm::card_target_id{}
+    };
+    CHECK(log.effects == std::vector{ card });
+    CHECK(log.effect_targets == std::vector{ expected_targets });
+    CHECK(log.played_targets == std::vector{ expected_targets });
+    CHECK(log.target_checks == 4);
+    CHECK(target.view_in<givm::execution_state::action_selection>().card_count() == 0);
 }
 
 TEST_CASE("card payment and broadcasts resume in order after removal even when its effect is countered", "[play_card][onpay][broadcast][compile-mode]")
@@ -443,16 +580,16 @@ TEST_CASE("card payment and broadcasts resume in order after removal even when i
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    REQUIRE(action.card_costs().size() == 1);
-    const auto card = action.card_costs()[0].card;
+    REQUIRE(action.card_count() == 1);
+    const auto card = action.card_id(0);
     const card_targets targets{ givm::character_id{ givm::player_id{ 0 }, 0 }, givm::character_id{ givm::player_id{ 1 }, 0 } };
     log.selected = card;
     log.record = true;
-    if(automatic_quote) action.play_card(library, table, card, targets, pay(1));
+    if(automatic_quote) action.play_card(library, table, 0, pay(1), targets);
     else
     {
-        action.calculate_card_cost(library, table, card);
-        action.play_card(card, targets, pay(1));
+        action.calculate_card_cost(library, table, 0);
+        action.play_card(0, pay(1), targets);
     }
     CHECK(log.quoted == std::vector{ card });
     CHECK(log.events.empty());

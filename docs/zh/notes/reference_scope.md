@@ -25,8 +25,8 @@
 - `player_data::clean_up()` 压缩角色数据后，没有同步重映射 `player_state::active_character`。这是源码阅读发现的风险，需要结合角色移除和清理场景另行验证。
 - 从非 const 的 `random_fn` 左值构造另一个 `random_fn` 时，模板构造可能优先于隐式复制构造；此时经模板构造的新包装会引用前一个包装对象。已经用独立小程序验证：重新给原包装赋值后，新包装也改用新的来源。后续若修改构造约束，需要同时检视生命周期说明。
 - 两个 `damage_flag_bits` 参数的 `operator|` 定义为 `damage_flags` 的隐藏友元；仅有枚举实参时，不能依赖它自然被实参相关查找找到。使用 `damage_flags` 对象作为左操作数可正常组合标志。
-- 行动费用原本缺少独立的公开读取入口；如今由 execution_view<action_selection> 的 switch_costs() 与 card_costs() 提供只读范围。内部缓存布局仍不属于公开契约。
-- `cost_of_switch::target` 已改为只读，重新报价始终使用建立候选时确定的角色。`action_selection` 视图以角色 ID 接收切换目标，`calculate_switch_cost` 同步报价，无需传入随机源；费用 handler 中调用随机函数属于未定义行为。独立的 `check_switch_payment` 检查费用匹配及骰子持有量，`switch_active_character` 采用已报价结果或同步重新报价后提交，不自动检查支付。提交缓存中的 onpay 时仍不再次检查原响应者是否有效，后续需核对前一项效果使后一响应者失效的场景，详见[费用缓存的核对事项](event_dispatch/payment_commit.md#重新报价与响应者变化)。
+- 行动费用原本缺少独立的公开读取入口；如今由 execution_view<action_selection> 的 switch_cost(target_index) 与 card_cost(card_index) 提供指定候选的只读费用引用。内部缓存布局仍不属于公开契约。
+- `cost_of_switch::target` 已改为只读，重新报价始终使用建立候选时确定的角色。`action_selection` 视图以连续候选索引接收切换目标和待打出的牌，并提供索引到实体 ID 的查询；牌的效果目标仍使用 ID，检查由定义响应分步完成。`calculate_switch_cost` 同步报价，无需传入随机源；费用 handler 中调用随机函数属于未定义行为。独立的 `check_switch_payment` 检查费用匹配及骰子持有量，`switch_active_character` 采用已报价结果或同步重新报价后提交，不自动检查支付。提交缓存中的 onpay 时仍不再次检查原响应者是否有效，后续需核对前一项效果使后一响应者失效的场景，详见[费用缓存的核对事项](event_dispatch/payment_commit.md#重新报价与响应者变化)。
 
 ## 维护方式
 

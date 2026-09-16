@@ -125,10 +125,9 @@ namespace givm::detail
         frame_stack& stack
     )
     {
-        auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] =
+        auto&& [handlers, costs, onpay_items, onpay_cursor, selection] =
             stack.top<
                 switch_handler_id[],
-                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
@@ -169,11 +168,11 @@ namespace givm::detail
         frame_stack& stack
     )
     {
-        auto&& [handlers, card_cost_indices, costs, onpay_items,
-                switch_handlers, switch_cost_indices, switch_costs, switch_onpay_items,
+        auto&& [handlers, costs, onpay_items,
+                switch_handlers, switch_costs, switch_onpay_items,
                 onpay_cursor, selection] = stack.top<
-            card_cost_handler_id[], stack_count_t[], cost_of_card[], onpay_item<cost_of_card>[],
-            switch_handler_id[], stack_count_t[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
             stack_count_t, action_selection
         >();
         GIVM_ASSERT(cost_index < costs.size());
@@ -282,20 +281,15 @@ namespace givm::detail
         const auto cost_handlers = collect_all_broadcast_targets<cost_of_switch>(library, table);
         const auto handler_count = static_cast<stack_count_t>(cost_handlers.size());
         const auto matrix_size = switch_count * handler_count;
-        const auto characters = player.characters<false>();
-        const auto character_count = static_cast<stack_count_t>(characters.size());
-        const auto cards = player.hand_cards<false>();
         const auto card_count = static_cast<stack_count_t>(player.hand_card_count());
         const auto card_handlers = card_count == 0 ? std::vector<card_cost_handler_id>{}
             : collect_all_broadcast_targets<cost_of_card>(library, table);
-        auto&& [stored_card_handlers, card_cost_indices, card_costs, card_onpay_items,
-                handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] = context.stack().push(
+        auto&& [stored_card_handlers, card_costs, card_onpay_items,
+                handlers, costs, onpay_items, onpay_cursor, selection] = context.stack().push(
             dynamic_array<card_cost_handler_id>(card_handlers),
-            dynamic_array<stack_count_t>(static_cast<stack_count_t>(cards.size())),
             dynamic_array<cost_of_card>(card_count),
             dynamic_array<onpay_item<cost_of_card>>(card_count * card_handlers.size()),
             dynamic_array<switch_handler_id>(cost_handlers),
-            dynamic_array<stack_count_t>(character_count),
             dynamic_array<cost_of_switch>(switch_count),
             dynamic_array<onpay_item<cost_of_switch>>(matrix_size),
             stack_count_t{},
@@ -303,34 +297,19 @@ namespace givm::detail
         );
 
         stack_count_t card_index = 0;
-        for(stack_count_t hand_index = 0; hand_index < cards.size(); ++hand_index)
+        for(auto card : player.hand_cards())
         {
-            const auto card = cards[hand_index];
-            if(card)
-            {
-                card_cost_indices[hand_index] = card_index;
-                std::construct_at(&card_costs[card_index++], cost_of_card{
-                    .card = card.id(), .requirement = { .speed = action_speed::fast }
-                });
-            }
-            else
-            {
-                card_cost_indices[hand_index] = card_count;
-            }
+            std::construct_at(&card_costs[card_index++], cost_of_card{
+                .card = card.id(), .requirement = { .speed = action_speed::fast }
+            });
         }
 
         stack_count_t index = 0;
-        for(stack_count_t character_index = 0; character_index < character_count; ++character_index)
+        for(auto character : player.characters())
         {
-            const auto character = characters[character_index];
-            if(character && is_switch_target(character))
+            if(is_switch_target(character))
             {
-                switch_cost_indices[character_index] = index;
                 std::construct_at(&costs[index++], default_switch_cost(character.id()));
-            }
-            else
-            {
-                switch_cost_indices[character_index] = switch_count;
             }
         }
         return context.yield(execution_state::action_selection);
@@ -356,10 +335,9 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] =
+        auto&& [handlers, costs, onpay_items, onpay_cursor, selection] =
             context.stack().top<
                 switch_handler_id[],
-                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
@@ -368,9 +346,8 @@ namespace givm::detail
         if(std::holds_alternative<round_end_selection>(selection))
         {
             context.stack().pop<
-                card_cost_handler_id[], stack_count_t[], cost_of_card[], onpay_item<cost_of_card>[],
+                card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
                 switch_handler_id[],
-                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
@@ -402,9 +379,9 @@ namespace givm::detail
         if(const auto* selected = std::get_if<card_selection>(&selection))
         {
             const auto card_index = selected->card_cost_index;
-            const auto& cost = get<2>(context.stack().top<
-                card_cost_handler_id[], stack_count_t[], cost_of_card[], onpay_item<cost_of_card>[],
-                switch_handler_id[], stack_count_t[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            const auto& cost = get<1>(context.stack().top<
+                card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+                switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
                 stack_count_t, action_selection
             >())[card_index];
             table[cost.card].erase();
@@ -425,10 +402,9 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] =
+        auto&& [handlers, costs, onpay_items, onpay_cursor, selection] =
             context.stack().top<
                 switch_handler_id[],
-                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
@@ -496,10 +472,9 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] =
+        auto&& [handlers, costs, onpay_items, onpay_cursor, selection] =
             context.stack().top<
                 switch_handler_id[],
-                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
@@ -535,10 +510,9 @@ namespace givm::detail
         }
         pop_broadcast<active_character_changed>(context);
 
-        auto&& [handlers, switch_cost_indices, costs, onpay_items, onpay_cursor, selection] =
+        auto&& [handlers, costs, onpay_items, onpay_cursor, selection] =
             context.stack().top<
                 switch_handler_id[],
-                stack_count_t[],
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
@@ -549,9 +523,8 @@ namespace givm::detail
         GIVM_ASSERT(selected->switch_cost_index < costs.size());
         const auto speed = costs[selected->switch_cost_index].requirement.speed;
         context.stack().pop<
-            card_cost_handler_id[], stack_count_t[], cost_of_card[], onpay_item<cost_of_card>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
             switch_handler_id[],
-            stack_count_t[],
             cost_of_switch[],
             onpay_item<cost_of_switch>[],
             stack_count_t,
@@ -584,11 +557,11 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        auto&& [handlers, card_cost_indices, costs, onpay_items,
-                switch_handlers, switch_cost_indices, switch_costs, switch_onpay_items,
+        auto&& [handlers, costs, onpay_items,
+                switch_handlers, switch_costs, switch_onpay_items,
                 onpay_cursor, selection] = context.stack().top<
-            card_cost_handler_id[], stack_count_t[], cost_of_card[], onpay_item<cost_of_card>[],
-            switch_handler_id[], stack_count_t[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
             stack_count_t, action_selection
         >();
         const auto* selected = std::get_if<card_selection>(&selection);
@@ -637,10 +610,10 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        auto&& [costs, onpay_items, switch_handlers, switch_cost_indices, switch_costs,
+        auto&& [costs, onpay_items, switch_handlers, switch_costs,
                 switch_onpay_items, onpay_cursor, selection] = context.stack().top<
             cost_of_card[], onpay_item<cost_of_card>[],
-            switch_handler_id[], stack_count_t[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
             stack_count_t, action_selection
         >();
         const auto* selected = std::get_if<card_selection>(&selection);
@@ -663,10 +636,10 @@ namespace givm::detail
         {
             context.stack().pop<card_effect, handler_id<card_effect>>();
         }
-        auto&& [costs, onpay_items, switch_handlers, switch_cost_indices, switch_costs,
+        auto&& [costs, onpay_items, switch_handlers, switch_costs,
                 switch_onpay_items, onpay_cursor, selection] = context.stack().top<
             cost_of_card[], onpay_item<cost_of_card>[],
-            switch_handler_id[], stack_count_t[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
             stack_count_t, action_selection
         >();
         const auto* selected = std::get_if<card_selection>(&selection);
@@ -721,8 +694,8 @@ namespace givm::detail
         const auto speed = get<0>(context.stack().top<card_played, handler_id<card_played>>()).speed;
         pop_broadcast<card_played>(context);
         context.stack().pop<
-            card_cost_handler_id[], stack_count_t[], cost_of_card[], onpay_item<cost_of_card>[],
-            switch_handler_id[], stack_count_t[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
             stack_count_t, action_selection
         >();
         if(speed == action_speed::combat)

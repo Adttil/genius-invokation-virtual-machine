@@ -244,14 +244,14 @@ TEST_CASE("action and round observations precede their handlers and ended player
     const auto switch_active = [&](givm::player_id next_player)
     {
         const auto player = table.state().active_player;
-        const auto next = target.view_in<givm::execution_state::action_selection>().switch_costs()[0].target;
+        const auto next = target.view_in<givm::execution_state::action_selection>().switch_target(0);
         const auto previous = table[player].state().active_character;
         const auto dice_before = table[player].state().dice.total();
         const auto switch_count = log.switches.size();
         const auto before_count = log.opportunities.size();
         givm::dice_counts paid;
         paid[givm::elemental_dice::omni] = 1;
-        target.view_in<givm::execution_state::action_selection>().switch_active_character(library, table, next, paid);
+        target.view_in<givm::execution_state::action_selection>().switch_active_character(library, table, 0, paid);
         REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
         CHECK(target.view_in<givm::execution_state::active_character_changed>().character() == next);
         CHECK(table[player].state().active_character == previous);
@@ -317,22 +317,21 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
     CHECK(log.previews == 0);
     const auto opportunities = log.opportunities;
-    const givm::character_id next{ givm::player_id{ 0 }, 1 };
     for(std::uint32_t count = 1; count <= 2; ++count)
     {
         const auto action = target.view_in<givm::execution_state::action_selection>();
-        const auto& cost = action.calculate_switch_cost(library, table, next);
+        const auto& cost = action.calculate_switch_cost(library, table, 0);
         CHECK(log.previews == count);
         CHECK(cost.target == givm::character_id{ givm::player_id{ 0 }, 1 });
         CHECK(cost.requirement.dice_requirement.any == 1);
-        CHECK(action.check_switch_payment(table, next, dice({ { givm::elemental_dice::omni, 1 } })) == givm::switch_payment_check_result::valid);
-        CHECK(action.check_switch_payment(table, next, {}) == givm::switch_payment_check_result::requirement_mismatch);
+        CHECK(action.check_switch_payment(table, 0, dice({ { givm::elemental_dice::omni, 1 } })) == givm::switch_payment_check_result::valid);
+        CHECK(action.check_switch_payment(table, 0, {}) == givm::switch_payment_check_result::requirement_mismatch);
         CHECK(log.previews == count);
         CHECK(log.opportunities == opportunities);
-        const auto costs = target.view_in<givm::execution_state::action_selection>().switch_costs();
-        REQUIRE(costs.size() == 1);
-        CHECK(costs[0].target == givm::character_id{ givm::player_id{ 0 }, 1 });
-        CHECK(costs[0].requirement.dice_requirement.any == 1);
+        REQUIRE(action.switch_target_count() == 1);
+        const auto& cached_cost = action.switch_cost(0);
+        CHECK(cached_cost.target == givm::character_id{ givm::player_id{ 0 }, 1 });
+        CHECK(cached_cost.requirement.dice_requirement.any == 1);
         CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 0 });
         CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
     }
@@ -340,7 +339,7 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     CHECK(log.opportunities == opportunities);
     givm::dice_counts paid;
     paid[givm::elemental_dice::omni] = 1;
-    target.view_in<givm::execution_state::action_selection>().switch_active_character(next, paid);
+    target.view_in<givm::execution_state::action_selection>().switch_active_character(0, paid);
     REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
     CHECK(log.previews == 2);
@@ -371,19 +370,19 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     zero_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    const auto choices = action.switch_costs();
-    REQUIRE(choices.size() == (living_standby ? 1 : 0));
+    REQUIRE(action.switch_target_count() == (living_standby ? 1 : 0));
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 1 - active_index }].state().health == 0);
     if(living_standby)
     {
         const givm::character_id next{ givm::player_id{ 0 }, 2 };
-        CHECK(choices[0].target == next);
-        const auto& cost = action.calculate_switch_cost(library, table, next);
+        CHECK(action.switch_cost(0).target == next);
+        CHECK(action.switch_target(0) == next);
+        const auto& cost = action.calculate_switch_cost(library, table, 0);
         CHECK(cost.target == next);
         CHECK(cost.requirement.dice_requirement.any == 1);
         const auto paid = dice({ { givm::elemental_dice::omni, 1 } });
-        CHECK(action.check_switch_payment(table, next, paid) == givm::switch_payment_check_result::valid);
-        action.switch_active_character(next, paid);
+        CHECK(action.check_switch_payment(table, 0, paid) == givm::switch_payment_check_result::valid);
+        action.switch_active_character(0, paid);
         REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
         CHECK(table[givm::player_id{ 0 }].state().active_character == next);
         CHECK(table[givm::player_id{ 0 }].state().dice.total() == 3);
@@ -446,18 +445,17 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
     log.switches.clear();
 
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    const givm::character_id next{ givm::player_id{ 0 }, 1 };
     const auto paid = dice({ { givm::elemental_dice::omni, static_cast<std::uint8_t>(free_switch ? 0 : 1) } });
     CHECK(log.previews == 0);
     if(automatic_quote)
     {
-        action.switch_active_character(library, table, next, paid);
+        action.switch_active_character(library, table, 0, paid);
     }
     else
     {
-        action.calculate_switch_cost(library, table, next);
-        CHECK(action.check_switch_payment(table, next, paid) == givm::switch_payment_check_result::valid);
-        action.switch_active_character(next, paid);
+        action.calculate_switch_cost(library, table, 0);
+        CHECK(action.check_switch_payment(table, 0, paid) == givm::switch_payment_check_result::valid);
+        action.switch_active_character(0, paid);
     }
     CHECK(log.previews == 1);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
@@ -513,33 +511,35 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
     const auto calls_before_queries = random.calls;
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    REQUIRE(action.switch_costs().size() == 2);
+    REQUIRE(action.switch_target_count() == 2);
     const givm::character_id first{ givm::player_id{ 0 }, 1 };
     const givm::character_id second{ givm::player_id{ 0 }, 2 };
+    CHECK(action.switch_target(0) == first);
+    CHECK(action.switch_target(1) == second);
     if(quote_both)
     {
-        CHECK(action.calculate_switch_cost(library, table, second).requirement.dice_requirement.any == 3);
-        CHECK(action.switch_costs()[0].target == first);
-        CHECK(action.switch_costs()[0].requirement.dice_requirement.any == 1);
+        CHECK(action.calculate_switch_cost(library, table, 1).requirement.dice_requirement.any == 3);
+        CHECK(action.switch_cost(0).target == first);
+        CHECK(action.switch_cost(0).requirement.dice_requirement.any == 1);
     }
-    const auto& first_cost = action.calculate_switch_cost(library, table, first);
+    const auto& first_cost = action.calculate_switch_cost(library, table, 0);
     CHECK(first_cost.target == first);
     CHECK(first_cost.requirement.dice_requirement.any == 2);
     if(quote_both)
     {
-        CHECK(action.calculate_switch_cost(library, table, second).requirement.dice_requirement.any == 3);
+        CHECK(action.calculate_switch_cost(library, table, 1).requirement.dice_requirement.any == 3);
     }
-    CHECK(action.calculate_switch_cost(library, table, first).requirement.dice_requirement.any == 2);
-    CHECK(action.switch_costs()[1].target == second);
-    CHECK(action.switch_costs()[1].requirement.dice_requirement.any == (quote_both ? 3 : 1));
+    CHECK(action.calculate_switch_cost(library, table, 0).requirement.dice_requirement.any == 2);
+    CHECK(action.switch_cost(1).target == second);
+    CHECK(action.switch_cost(1).requirement.dice_requirement.any == (quote_both ? 3 : 1));
     const auto expected_quotes = quote_both ? std::vector{ second, first, second, first } : std::vector{ first, first };
     CHECK(control.quoted == expected_quotes);
     CHECK(empty_control.quoted == expected_quotes);
     CHECK(random.calls == calls_before_queries);
-    CHECK(action.check_switch_payment(table, first, dice({ { givm::elemental_dice::omni, 2 } })) == givm::switch_payment_check_result::valid);
+    CHECK(action.check_switch_payment(table, 0, dice({ { givm::elemental_dice::omni, 2 } })) == givm::switch_payment_check_result::valid);
     if(quote_both)
     {
-        CHECK(action.check_switch_payment(table, second, dice({ { givm::elemental_dice::omni, 3 } })) == givm::switch_payment_check_result::valid);
+        CHECK(action.check_switch_payment(table, 1, dice({ { givm::elemental_dice::omni, 3 } })) == givm::switch_payment_check_result::valid);
     }
     CHECK(control.quoted == expected_quotes);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
@@ -554,9 +554,8 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
         auto branch_table = table;
         const auto paid = dice({ { givm::elemental_dice::omni, static_cast<std::uint8_t>(index + 2) } });
         const auto branch_action = branch.view_in<givm::execution_state::action_selection>();
-        const auto next = index == 0 ? first : second;
-        CHECK(branch_action.check_switch_payment(branch_table, next, paid) == givm::switch_payment_check_result::valid);
-        branch_action.switch_active_character(next, paid);
+        CHECK(branch_action.check_switch_payment(branch_table, index, paid) == givm::switch_payment_check_result::valid);
+        branch_action.switch_active_character(index, paid);
         auto state = branch.step(library, branch_table, random);
         if(observed)
         {
@@ -577,8 +576,8 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     }
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
-    CHECK(target.view_in<givm::execution_state::action_selection>().switch_costs()[0].requirement.dice_requirement.any == 2);
-    CHECK(target.view_in<givm::execution_state::action_selection>().switch_costs()[1].requirement.dice_requirement.any == (quote_both ? 3 : 1));
+    CHECK(target.view_in<givm::execution_state::action_selection>().switch_cost(0).requirement.dice_requirement.any == 2);
+    CHECK(target.view_in<givm::execution_state::action_selection>().switch_cost(1).requirement.dice_requirement.any == (quote_both ? 3 : 1));
 }
 
 TEST_CASE("payment checks match exact dice requirements before checking the player's inventory", "[begin_action][payment][compile-mode]")
@@ -646,15 +645,14 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
         { "payment totals do not wrap at 255", { .same = 1, .any = 255 }, dice({ { omni, 255 }, { pyro, 1 } }), insufficient_dice }
     };
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    const givm::character_id next{ givm::player_id{ 0 }, 1 };
     for(const auto& example : examples)
     {
         CAPTURE(example.description);
         control.requirement = example.requirement;
-        action.calculate_switch_cost(library, table, next);
+        action.calculate_switch_cost(library, table, 0);
         const auto quote_count = control.quoted.size();
-        CHECK(action.check_switch_payment(table, next, example.paid) == example.expected);
-        CHECK(action.check_switch_payment(table, next, example.paid) == example.expected);
+        CHECK(action.check_switch_payment(table, 0, example.paid) == example.expected);
+        CHECK(action.check_switch_payment(table, 0, example.paid) == example.expected);
         CHECK(control.quoted.size() == quote_count);
         CHECK(random.calls == random_calls);
         CHECK(table[givm::player_id{ 0 }].state().dice == inventory);
@@ -693,8 +691,7 @@ TEST_CASE("recalculating a candidate replaces a previously nonempty payment resp
     const auto random_calls = random.calls;
     const auto action = target.view_in<givm::execution_state::action_selection>();
     const auto paid = dice({ { givm::elemental_dice::omni, 1 } });
-    const givm::character_id next{ givm::player_id{ 0 }, 1 };
-    action.calculate_switch_cost(library, table, next);
+    action.calculate_switch_cost(library, table, 0);
     REQUIRE(control.quoted.size() == 1);
     CHECK(random.calls == random_calls);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
@@ -704,13 +701,13 @@ TEST_CASE("recalculating a candidate replaces a previously nonempty payment resp
     control.enable_payment = false;
     if(automatic_quote)
     {
-        action.switch_active_character(library, table, next, paid);
+        action.switch_active_character(library, table, 0, paid);
     }
     else
     {
-        CHECK(action.calculate_switch_cost(library, table, next).requirement.dice_requirement.any == 1);
-        CHECK(action.check_switch_payment(table, next, paid) == givm::switch_payment_check_result::valid);
-        action.switch_active_character(next, paid);
+        CHECK(action.calculate_switch_cost(library, table, 0).requirement.dice_requirement.any == 1);
+        CHECK(action.check_switch_payment(table, 0, paid) == givm::switch_payment_check_result::valid);
+        action.switch_active_character(0, paid);
     }
     REQUIRE(control.quoted.size() == 2);
     auto state = target.step(library, table, random);

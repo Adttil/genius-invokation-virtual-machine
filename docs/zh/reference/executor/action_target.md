@@ -21,7 +21,7 @@ struct action_target;
 
 ## 注意
 
-当前主动切换通过 [`switch_active_character`](execution_view/action_selection/switch_active_character.md) 直接接收角色 ID 和支付骰子，不使用本类型。
+当前主动切换通过 [`switch_active_character`](execution_view/action_selection/switch_active_character.md) 接收切换候选索引和支付骰子，不使用本类型。
 
 ## 示例
 

@@ -233,17 +233,18 @@ namespace givm
 
     enum class card_target_check_result : std::uint8_t
     {
-        valid,
-        invalid_first_target,
-        invalid_second_target,
-        unmet_condition
+        invalid,
+        valid_incomplete,
+        valid_complete_or_continue,
+        valid_complete
     };
 
     struct card_target_check
     {
         const hand_card_id card;
         const std::array<card_target_id, 2> targets;
-        card_target_check_result result = card_target_check_result::valid;
+        const std::size_t target_count;
+        card_target_check_result result = card_target_check_result::valid_complete;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_target_check);
     };
 

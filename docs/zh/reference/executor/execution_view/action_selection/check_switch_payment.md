@@ -7,13 +7,12 @@
 ```cpp
 constexpr switch_payment_check_result check_switch_payment(
     const table& card_table,
-    character_id target,
+    std::size_t target_index,
     const dice_counts& paid_dice
 ) const noexcept;
 ```
 [`switch_payment_check_result`](../../switch_payment_check_result.md)
 [`table`](../../../table/table.md)
-[`character_id`](../../../table/character_id.md)
 [`dice_counts`](../../../enums/dice_counts.md)
 
 检查所选骰子能否支付切换至指定角色的费用。
@@ -23,7 +22,7 @@ constexpr switch_payment_check_result check_switch_payment(
 | | |
 | --- | --- |
 | `card_table` | 当前行动发生的牌桌。 |
-| `target` | 已经完整计算切换费用的角色 ID，须为当前行动玩家存活、非出战的角色。 |
+| `target_index` | 从零开始的切换候选索引，须小于 [`switch_target_count()`](switch_target_count.md)，且该候选已经完整报价。 |
 | `paid_dice` | 准备支付的各类骰子数量。 |
 
 ## 返回值
@@ -42,4 +41,4 @@ constexpr switch_payment_check_result check_switch_payment(
 
 所选骰子须恰好支付 [`elemental_dice_requirement`](../../../definition/events/elemental_dice_requirement.md) 的 `fixed`、`same` 和 `any` 三部分，具体匹配规则见该类型。费用不匹配时立即返回 `requirement_mismatch`，匹配后才检查持有数量。
 
-支付检查只涉及费用和所选骰子；传入有效切换目标仍是调用前提。
+支付检查只涉及费用和所选骰子；传入当前现场内有效的候选索引仍是调用前提。

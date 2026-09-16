@@ -1,7 +1,9 @@
 #ifndef GIVM_EXECUTOR_VIEWS_ACTION_SELECTION_HPP
 #define GIVM_EXECUTOR_VIEWS_ACTION_SELECTION_HPP
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <tuple>
@@ -32,33 +34,47 @@ namespace givm
     class execution_view<execution_state::action_selection>
     {
     public:
-        constexpr std::span<const cost_of_switch> switch_costs() const noexcept
+        constexpr std::size_t switch_target_count() const noexcept
         {
             return get<0>(std::as_const(*stack_).top<
                 cost_of_switch[],
                 onpay_item<cost_of_switch>[],
                 stack_count_t,
                 detail::action_selection
-            >());
+            >()).size();
+        }
+
+        constexpr const cost_of_switch& switch_cost(std::size_t target_index) const noexcept
+        {
+            return get<0>(std::as_const(*stack_).top<
+                cost_of_switch[],
+                onpay_item<cost_of_switch>[],
+                stack_count_t,
+                detail::action_selection
+            >())[target_index];
+        }
+
+        constexpr character_id switch_target(std::size_t target_index) const noexcept
+        {
+            return switch_cost(target_index).target;
         }
 
         const cost_of_switch& calculate_switch_cost(
             const definition_library& library, const table& card_table,
-            character_id target
+            std::size_t target_index
         ) const
         {
             return detail::calculate_switch_cost(
-                library, switch_cost_index(target), card_table, *stack_
+                library, target_index, card_table, *stack_
             );
         }
 
         constexpr switch_payment_check_result check_switch_payment(
-            const table& card_table, character_id target, const dice_counts& paid_dice
+            const table& card_table, std::size_t target_index, const dice_counts& paid_dice
         ) const noexcept
         {
-            const auto index = switch_cost_index(target);
-            const auto available_costs = switch_costs();
-            if(not payment_matches(available_costs[index].requirement.dice_requirement, paid_dice))
+            const auto& cost = switch_cost(target_index);
+            if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
             {
                 return switch_payment_check_result::requirement_mismatch;
             }
@@ -70,54 +86,68 @@ namespace givm
             return switch_payment_check_result::valid;
         }
 
-        constexpr void switch_active_character(character_id target, const dice_counts& paid_dice) const noexcept
+        constexpr void switch_active_character(std::size_t target_index, const dice_counts& paid_dice) const noexcept
         {
             // Assign the complete variant through its trivial assignment operator.
             get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
-                detail::switch_selection{ .switch_cost_index = switch_cost_index(target), .paid_dice = paid_dice }
+                detail::switch_selection{ .switch_cost_index = target_index, .paid_dice = paid_dice }
             };
         }
 
         void switch_active_character(
             const definition_library& library, const table& card_table,
-            character_id target, const dice_counts& paid_dice
+            std::size_t target_index, const dice_counts& paid_dice
         ) const
         {
-            const auto index = switch_cost_index(target);
-            detail::calculate_switch_cost(library, index, card_table, *stack_);
+            detail::calculate_switch_cost(library, target_index, card_table, *stack_);
             // Assign the complete variant through its trivial assignment operator.
             get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
-                detail::switch_selection{ .switch_cost_index = index, .paid_dice = paid_dice }
+                detail::switch_selection{ .switch_cost_index = target_index, .paid_dice = paid_dice }
             };
         }
 
-        constexpr std::span<const cost_of_card> card_costs() const noexcept
+        constexpr std::size_t card_count() const noexcept
         {
             return get<0>(std::as_const(*stack_).top<
                 cost_of_card[], onpay_item<cost_of_card>[],
-                detail::switch_handler_id[], stack_count_t[],
+                detail::switch_handler_id[],
                 cost_of_switch[], onpay_item<cost_of_switch>[],
                 stack_count_t, detail::action_selection
-            >());
+            >()).size();
+        }
+
+        constexpr const cost_of_card& card_cost(std::size_t card_index) const noexcept
+        {
+            return get<0>(std::as_const(*stack_).top<
+                cost_of_card[], onpay_item<cost_of_card>[],
+                detail::switch_handler_id[],
+                cost_of_switch[], onpay_item<cost_of_switch>[],
+                stack_count_t, detail::action_selection
+            >())[card_index];
+        }
+
+        constexpr hand_card_id card_id(std::size_t card_index) const noexcept
+        {
+            return card_cost(card_index).card;
         }
 
         const cost_of_card& calculate_card_cost(
-            const definition_library& library, const table& card_table, hand_card_id card
+            const definition_library& library, const table& card_table, std::size_t card_index
         ) const
         {
-            return detail::calculate_card_cost(library, card_cost_index(card), card_table, *stack_);
+            return detail::calculate_card_cost(library, card_index, card_table, *stack_);
         }
 
         constexpr card_payment_check_result check_card_payment(
-            const table& card_table, hand_card_id card, const dice_counts& paid_dice
+            const table& card_table, std::size_t card_index, const dice_counts& paid_dice
         ) const noexcept
         {
-            const auto& cost = card_costs()[card_cost_index(card)];
+            const auto& cost = card_cost(card_index);
             if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
             {
                 return card_payment_check_result::requirement_mismatch;
             }
-            if(not card_table[card.player_id].state().dice.contains(paid_dice))
+            if(not card_table[cost.card.player_id].state().dice.contains(paid_dice))
             {
                 return card_payment_check_result::insufficient_dice;
             }
@@ -126,16 +156,23 @@ namespace givm
 
         card_target_check_result check_card_targets(
             const definition_library& library, const table& card_table,
-            hand_card_id card, const std::array<card_target_id, 2>& targets
+            std::size_t card_index, std::span<const card_target_id> targets = {}
         ) const
         {
-            const auto entity = card_table[card];
+            const auto id = card_id(card_index);
+            const auto entity = card_table[id];
             const auto definition = library[entity.definition_id()];
             if(not definition.can_handle<card_target_check, hand_card_view>())
             {
-                return card_target_check_result::valid;
+                return card_target_check_result::valid_complete;
             }
-            card_target_check event{ .card = card, .targets = targets };
+            std::array<card_target_id, 2> selected_targets{};
+            const auto target_count = std::min(targets.size(), selected_targets.size());
+            for(std::size_t index = 0; index < target_count; ++index)
+            {
+                selected_targets[index] = targets[index];
+            }
+            card_target_check event{ .card = id, .targets = selected_targets, .target_count = target_count };
             auto zero_random = []() -> std::uint32_t { return 0; };
             random_fn random{ zero_random };
             (void)definition.handle<card_target_check>(entity, event, card_table, random);
@@ -143,26 +180,29 @@ namespace givm
         }
 
         constexpr void play_card(
-            hand_card_id card, const std::array<card_target_id, 2>& targets, const dice_counts& paid_dice
+            std::size_t card_index, const dice_counts& paid_dice, std::span<const card_target_id> targets = {}
         ) const noexcept
         {
+            std::array<card_target_id, 2> selected_targets{};
+            const auto target_count = std::min(targets.size(), selected_targets.size());
+            for(std::size_t index = 0; index < target_count; ++index)
+            {
+                selected_targets[index] = targets[index];
+            }
             get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
                 detail::card_selection{
-                    .card_cost_index = card_cost_index(card), .targets = targets, .paid_dice = paid_dice
+                    .card_cost_index = card_index, .targets = selected_targets, .paid_dice = paid_dice
                 }
             };
         }
 
         void play_card(
             const definition_library& library, const table& card_table,
-            hand_card_id card, const std::array<card_target_id, 2>& targets, const dice_counts& paid_dice
+            std::size_t card_index, const dice_counts& paid_dice, std::span<const card_target_id> targets = {}
         ) const
         {
-            const auto index = card_cost_index(card);
-            detail::calculate_card_cost(library, index, card_table, *stack_);
-            get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
-                detail::card_selection{ .card_cost_index = index, .targets = targets, .paid_dice = paid_dice }
-            };
+            detail::calculate_card_cost(library, card_index, card_table, *stack_);
+            play_card(card_index, paid_dice, targets);
         }
 
         constexpr void declare_round_end() const noexcept
@@ -211,40 +251,6 @@ namespace givm
             return omni >= required_omni
                 && largest_remaining_group + (omni - required_omni) >= requirement.same;
         }
-
-        constexpr stack_count_t switch_cost_index(character_id target) const noexcept
-        {
-            const auto&& [indices, costs, onpay_items, onpay_cursor, selection] =
-                std::as_const(*stack_).top<
-                    stack_count_t[],
-                    cost_of_switch[],
-                    onpay_item<cost_of_switch>[],
-                    stack_count_t,
-                    detail::action_selection
-                >();
-            GIVM_ASSERT(target.index < indices.size());
-            const auto index = indices[target.index];
-            GIVM_ASSERT(index < costs.size());
-            GIVM_ASSERT(costs[index].target == target);
-            return index;
-        }
-
-        constexpr stack_count_t card_cost_index(hand_card_id card) const noexcept
-        {
-            const auto&& [indices, costs, onpay_items,
-                          switch_handlers, switch_indices, switch_costs, switch_onpay_items,
-                          onpay_cursor, selection] = std::as_const(*stack_).top<
-                stack_count_t[], cost_of_card[], onpay_item<cost_of_card>[],
-                detail::switch_handler_id[], stack_count_t[], cost_of_switch[], onpay_item<cost_of_switch>[],
-                stack_count_t, detail::action_selection
-            >();
-            GIVM_ASSERT(card.index < indices.size());
-            const auto index = indices[card.index];
-            GIVM_ASSERT(index < costs.size());
-            GIVM_ASSERT(costs[index].card == card);
-            return index;
-        }
-
     };
 }
 

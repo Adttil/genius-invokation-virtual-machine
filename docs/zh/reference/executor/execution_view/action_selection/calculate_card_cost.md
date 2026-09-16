@@ -8,11 +8,10 @@
 const cost_of_card& calculate_card_cost(
     const definition_library& library,
     const table& card_table,
-    hand_card_id card
+    std::size_t card_index
 ) const;
 ```
 [`cost_of_card`](../../../definition/events/cost_of_card.md)
-[`hand_card_id`](../../../table/hand_card_id.md)
 
 计算打出指定手牌的费用，并立即返回结果。
 
@@ -22,11 +21,11 @@ const cost_of_card& calculate_card_cost(
 | --- | --- |
 | `library` | 与当前现场及牌桌配套的定义库。 |
 | `card_table` | 当前行动发生的牌桌。 |
-| `card` | 当前行动玩家仍在手中的有效手牌 ID。 |
+| `card_index` | 从零开始的出牌候选索引，须小于 [`card_count()`](card_count.md)。 |
 
 ## 返回值
 
-借用当前现场的只读费用引用，与 [`card_costs()`](card_costs.md) 中该牌的费用相同。
+借用当前现场的只读费用引用，与 [`card_cost(card_index)`](card_cost.md) 读取的费用相同。
 
 ## 异常
 

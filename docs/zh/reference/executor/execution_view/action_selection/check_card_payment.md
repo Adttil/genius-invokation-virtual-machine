@@ -7,7 +7,7 @@
 ```cpp
 constexpr card_payment_check_result check_card_payment(
     const table& card_table,
-    hand_card_id card,
+    std::size_t card_index,
     const dice_counts& paid_dice
 ) const noexcept;
 ```
@@ -20,7 +20,7 @@ constexpr card_payment_check_result check_card_payment(
 | | |
 | --- | --- |
 | `card_table` | 当前行动发生的牌桌。 |
-| `card` | 当前行动玩家的有效手牌 ID，其费用须已完整计算。 |
+| `card_index` | 从零开始的出牌候选索引，须小于 [`card_count()`](card_count.md)，且该候选已经完整报价。 |
 | `paid_dice` | 准备支付的各类骰子数量。 |
 
 ## 返回值
@@ -32,4 +32,3 @@ constexpr card_payment_check_result check_card_payment(
 费用匹配规则见 [`elemental_dice_requirement`](../../../definition/events/elemental_dice_requirement.md)。本操作读取已计算费用和牌桌，不重新报价、不检查目标、不提交行动或修改牌桌。
 
 支付检查与 [`check_card_targets`](check_card_targets.md) 相互独立，由调用方按需使用；[`play_card`](play_card.md) 不会自动调用它们。即使检查通过，也须显式提供行动输入后才能继续推进。
-

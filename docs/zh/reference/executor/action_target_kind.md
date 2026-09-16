@@ -27,7 +27,7 @@ enum class action_target_kind : std::uint8_t
 
 ## 注意
 
-当前主动切换通过 [`switch_active_character`](execution_view/action_selection/switch_active_character.md) 直接接收角色 ID，不使用本枚举提交目标。
+当前主动切换通过 [`switch_active_character`](execution_view/action_selection/switch_active_character.md) 接收切换候选索引，不使用本枚举提交目标。
 
 ## 示例
 

@@ -70,7 +70,7 @@ handler 仅修改 event、返回空入口时，不应把该次修改当作一次
 
 多条件检查按以下顺序检查，遇到首个失败立即返回：首次换牌先检查玩家编号，再检查选中位置；角色选择先检查玩家编号，再检查是否为待选玩家（仅第二份选择），最后检查角色是否存在且有效；显式指定玩家的重投检查先检查玩家编号，再检查剩余机会，最后检查持有数量。角色下标越界和已移除都归为 `invalid_character`，表达同一项公开实体有效性条件。检查成功均返回对应枚举的 `valid`。
 
-选择行动的现场使用 `action_selection`。视图以角色 ID 接收切换目标，`calculate_switch_cost` 同步重算费用并返回只读引用，`check_switch_payment` 独立检查已报价目标的支付；两者都不推进执行器。报价接口无需随机源，费用响应中调用随机函数属于未定义行为。`switch_active_character(target, paid)` 采用已报价结果，传入定义库和牌桌的重载则同步重新报价后提交；下一次推进只执行已确认结果。出牌通过 `card_costs`、`calculate_card_cost` 与 `play_card` 采用同样的预览和提交分工，另提供独立的 `check_card_payment` 与 `check_card_targets`；目标检查只询问本牌定义，固定两个目标位置中未使用的位置忽略。查询和检查均不代替行动输入，提交接口不自动检查。缓存及引用约定见[费用预览与提交](event_dispatch/payment_commit.md)。
+选择行动的现场使用 `action_selection`。视图以从零开始的索引接收切换或出牌候选，`switch_target_count`、`card_count` 提供候选数量，`switch_target` 与 `card_id` 将索引转换为实体 ID，供上层查询牌桌。`switch_cost` 读取指定候选费用，`calculate_switch_cost` 同步重算并返回只读引用，`check_switch_payment` 独立检查已报价候选的支付；这些操作都不推进执行器。报价接口无需随机源，费用响应中调用随机函数属于未定义行为。`switch_active_character(target_index, paid)` 采用已报价结果，传入定义库和牌桌的重载则同步重新报价后提交；下一次推进只执行已确认结果。出牌通过 `card_cost`、`calculate_card_cost` 与 `play_card` 采用同样的预览和提交分工，另提供独立的 `check_card_payment` 与 `check_card_targets`。目标仍使用 ID，以默认可空的 span 提供，至多采用前两个元素；检查只询问本牌定义，按目标数量分步返回无效、必须继续选择、可以完成也可以继续，以及已完成且不能继续。空选择也可以检查，检查第二目标时以前一目标合法为前提。查询和检查均不代替行动输入，提交接口不自动检查。缓存及引用约定见[费用预览与提交](event_dispatch/payment_commit.md)。
 
 状态描述已经确定的协议阶段，不编码玩家身份，也不为每个“command、内部恢复点”的组合机械分配一个状态。不同实现位置需要相同的访问操作时可以共用视图；例如单方换牌与开局换牌的第二次输入都已经确定待选玩家，共用 `card_selection`。该玩家来自换牌流程，不一定是 `active_player`。玩家身份和次数继续作为数据，不为把它们塞进枚举而增加指令端分支。
 

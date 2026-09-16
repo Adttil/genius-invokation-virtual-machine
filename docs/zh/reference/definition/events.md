@@ -49,8 +49,8 @@
 | [`elemental_tuning_will_apply`](events/elemental_tuning_will_apply.md) | 元素调和生效前的事件 |
 | [`elemental_tuning_applied`](events/elemental_tuning_applied.md) | 元素调和完成后的通知 |
 | [`card_will_be_played`](events/card_will_be_played.md) | 手牌效果生效前的事件 |
-| [`card_target_check`](events/card_target_check.md) | 请本牌定义检查目标与用牌条件 |
-| [`card_target_check_result`](events/card_target_check_result.md) | 出牌目标与用牌条件的检查结果 |
+| [`card_target_check`](events/card_target_check.md) | 请本牌定义分步检查目标与用牌条件 |
+| [`card_target_check_result`](events/card_target_check_result.md) | 当前目标是否合法，以及能否完成或继续选择 |
 | [`card_effect`](events/card_effect.md) | 执行打出的牌自身效果 |
 | [`card_played`](events/card_played.md) | 打出手牌完成后的通知 |
 | [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |

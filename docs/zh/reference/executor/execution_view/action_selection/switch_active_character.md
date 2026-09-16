@@ -6,17 +6,16 @@
 
 ```cpp
 constexpr void switch_active_character(
-    character_id target, const dice_counts& paid_dice
+    std::size_t target_index, const dice_counts& paid_dice
 ) const noexcept;
 
 void switch_active_character(
     const definition_library& library,
     const table& card_table,
-    character_id target,
+    std::size_t target_index,
     const dice_counts& paid_dice
 ) const;
 ```
-[`character_id`](../../../table/character_id.md)
 [`dice_counts`](../../../enums/dice_counts.md)
 [`definition_library`](../../definition_library.md)
 [`table`](../../../table/table.md)
@@ -27,7 +26,7 @@ void switch_active_character(
 
 | | |
 | --- | --- |
-| `target` | 当前行动玩家存活、非出战的角色 ID。 |
+| `target_index` | 从零开始的切换候选索引，须小于 [`switch_target_count()`](switch_target_count.md)。 |
 | `paid_dice` | 本次实际支付的各类骰子数量，须满足采用的费用及持有数量。 |
 | `library` | 与当前执行现场及牌桌配套的定义库。 |
 | `card_table` | 当前行动发生的牌桌。 |
@@ -42,10 +41,10 @@ void switch_active_character(
 
 ## 注意
 
-只接收 `target` 和 `paid_dice` 的重载采用已计算费用。调用方须先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 为该角色完整报价，并自行保证该报价可用；本操作不重新计算费用。
+只接收 `target_index` 和 `paid_dice` 的重载采用已计算费用。调用方须先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 为该候选完整报价，并自行保证该报价可用；本操作不重新计算费用。
 
 带 `library` 和 `card_table` 的重载先同步重新计算该角色的切换费用，成功后填写选择。本次调用完成报价与选择，无需在两者之间推进执行器。
 
-两种重载都不自动检查支付是否合法。需要检查时，可先报价并调用 [`check_switch_payment`](check_switch_payment.md)，再用只接收 `target` 和 `paid_dice` 的重载采用该费用。
+两种重载都不自动检查支付是否合法。需要检查时，可先报价并调用 [`check_switch_payment`](check_switch_payment.md)，再用只接收 `target_index` 和 `paid_dice` 的重载采用该费用。
 
 选择后，下一次 [`executor::step`](../../executor/step.md) 才执行已确认的费用效果、支付骰子和切换；不会再次报价。调用本函数不会修改牌桌或推进执行器。

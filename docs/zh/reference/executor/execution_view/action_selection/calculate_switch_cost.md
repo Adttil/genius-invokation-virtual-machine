@@ -8,13 +8,12 @@
 const cost_of_switch& calculate_switch_cost(
     const definition_library& library,
     const table& card_table,
-    character_id target
+    std::size_t target_index
 ) const;
 ```
 [`cost_of_switch`](../../../definition/events/cost_of_switch.md)
 [`definition_library`](../../definition_library.md)
 [`table`](../../../table/table.md)
-[`character_id`](../../../table/character_id.md)
 
 计算切换至指定角色的费用，并立即返回计算结果。
 
@@ -24,11 +23,11 @@ const cost_of_switch& calculate_switch_cost(
 | --- | --- |
 | `library` | 与当前执行现场及牌桌配套的定义库。 |
 | `card_table` | 当前行动发生的牌桌。 |
-| `target` | 当前行动玩家存活、非出战的角色 ID。 |
+| `target_index` | 从零开始的切换候选索引，须小于 [`switch_target_count()`](switch_target_count.md)。 |
 
 ## 返回值
 
-借用当前现场的只读费用引用，与 [`switch_costs()`](switch_costs.md) 中对应角色的费用相同。
+借用当前现场的只读费用引用，与 [`switch_cost(target_index)`](switch_cost.md) 读取的费用相同。
 
 ## 异常
 
