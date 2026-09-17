@@ -21,6 +21,7 @@ namespace givm
         valid,
         requirement_mismatch,
         insufficient_dice,
+        energy_tag_mismatch,
         insufficient_energy
     };
 
@@ -29,6 +30,7 @@ namespace givm
         valid,
         requirement_mismatch,
         insufficient_dice,
+        energy_tag_mismatch,
         insufficient_energy
     };
 
@@ -37,6 +39,7 @@ namespace givm
         valid,
         requirement_mismatch,
         insufficient_dice,
+        energy_tag_mismatch,
         insufficient_energy
     };
 
@@ -94,7 +97,12 @@ namespace givm
                 return switch_payment_validation::insufficient_dice;
             }
             const auto active = *card_table[player].state().active_character;
-            if(card_table[active].state().energy < cost.requirement.energy)
+            const auto& state = card_table[active].state();
+            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
+            {
+                return switch_payment_validation::energy_tag_mismatch;
+            }
+            if(state.energy < cost.requirement.energy)
             {
                 return switch_payment_validation::insufficient_energy;
             }
@@ -167,7 +175,12 @@ namespace givm
                 return card_payment_validation::insufficient_dice;
             }
             const auto active = *card_table[cost.card.player_id].state().active_character;
-            if(card_table[active].state().energy < cost.requirement.energy)
+            const auto& state = card_table[active].state();
+            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
+            {
+                return card_payment_validation::energy_tag_mismatch;
+            }
+            if(state.energy < cost.requirement.energy)
             {
                 return card_payment_validation::insufficient_energy;
             }
@@ -267,7 +280,12 @@ namespace givm
                 return skill_payment_validation::insufficient_dice;
             }
             const auto active = *card_table[cost.skill.character_id.player_id].state().active_character;
-            if(card_table[active].state().energy < cost.requirement.energy)
+            const auto& state = card_table[active].state();
+            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
+            {
+                return skill_payment_validation::energy_tag_mismatch;
+            }
+            if(state.energy < cost.requirement.energy)
             {
                 return skill_payment_validation::insufficient_energy;
             }

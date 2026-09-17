@@ -142,8 +142,9 @@ namespace givm
     struct action_cost_requirement
     {
         elemental_dice_requirement dice_requirement;
-        std::uint32_t energy = 0;
         action_speed speed = action_speed::combat;
+        std::uint32_t energy = 0;
+        tag_id energy_tag{};
     };
 
     template<class TCostEvent>

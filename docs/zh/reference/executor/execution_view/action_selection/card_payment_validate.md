@@ -25,7 +25,14 @@ constexpr card_payment_validation card_payment_validate(
 
 ## 返回值
 
-先判断所选骰子能否恰好满足费用，不匹配时立即返回 `requirement_mismatch`；匹配后检查当前行动玩家的持有数量，不足时返回 `insufficient_dice`；最后检查出战角色充能，不足时返回 `insufficient_energy`，全部通过时返回 `valid`。
+依次进行以下检查，遇到第一个失败立即返回：
+
+1. 所选骰子能否恰好满足费用，不匹配时返回 `requirement_mismatch`。
+2. 当前行动玩家是否持有所选骰子，不足时返回 `insufficient_dice`。
+3. 充能费用非零时，出战角色与费用的 `energy_tag` 是否相等，不匹配时返回 `energy_tag_mismatch`。充能费用为零时忽略类型。
+4. 出战角色充能数量是否足够，不足时返回 `insufficient_energy`。
+
+全部通过时返回 `valid`。
 
 ## 注意
 

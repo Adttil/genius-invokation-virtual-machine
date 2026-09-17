@@ -19,6 +19,11 @@ struct character_state;
 | `health` | `std::uint32_t` | 当前生命值 |
 | `energy` | `std::uint32_t` | 当前充能 |
 | `aura` | [`element_aura`](../enums/element_aura.md) | 当前元素附着，默认 none |
+| `energy_tag` | [`tag_id`](tag_id.md) | 充能类型；默认无效 ID 表示普通充能，有效 ID 表示对应标签的替代充能 |
+
+## 注意
+
+普通充能和替代充能共用 `energy` 与 `max_energy`，分别表示当前点数与上限。角色在同一时刻只持有 `energy_tag` 指定的一种充能。
 
 ## 示例
 

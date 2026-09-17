@@ -23,4 +23,6 @@ struct skill_initial_cost
 
 本查询没有参数，结果在编译定义库时按具体定义保存；每次报价直接读取，不重新调用定义源的查询函数，也不依赖所选目标。
 
+结果的 `energy_tag` 指定费用需要的充能类型。需要替代充能时，定义源通过 `tag_dependencies()` 声明资源标签，在 `compile` 中用 [`resolve_tag`](../../executor/definition_compile_context/resolve_tag.md) 取得 ID，再写入本查询结果。
+
 未提供源查询时，[默认方法](../query_default.md)返回零骰子、零充能费用与 `action_speed::combat`。

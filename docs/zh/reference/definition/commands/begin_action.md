@@ -32,7 +32,7 @@ struct begin_action;
 
 [`play_card`](../../executor/execution_view/action_selection/play_card.md) 可采用已完整计算的费用，也可同步重新报价后选择出牌；不会自动检查支付或目标。下一次推进先让牌离手，再执行已确认的费用效果、扣除骰子与充能，再依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../events/card_will_be_played.md)。未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，之后均广播 [`card_played`](../events/card_played.md)。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
 
-通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`switch_payment_validate`](../../executor/execution_view/action_selection/switch_payment_validate.md)，依次检查骰子是否匹配费用、持有数量是否足够及出战角色充能是否足够。
+通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`switch_payment_validate`](../../executor/execution_view/action_selection/switch_payment_validate.md)，依次检查骰子是否匹配费用、持有数量是否足够、非零充能费用的类型是否匹配及出战角色充能是否足够。
 
 通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 选择切换时，可采用已经计算的费用，也可传入定义库和牌桌，在本次调用中同步重新报价后提交。两种重载均由下一次推进执行已确认的费用效果、支付及切换，不自动检查支付是否合法。采用已计算费用时，由调用方保证该角色已经完整报价。
 

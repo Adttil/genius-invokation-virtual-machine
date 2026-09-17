@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../../enums/element_aura.hpp"
+#include "../issued_id.hpp"
 #include "attachment_data.hpp"
 #include "skill_data.hpp"
 
@@ -20,6 +21,7 @@ namespace givm
         std::uint32_t health;
         std::uint32_t energy;
         element_aura aura = element_aura::none;
+        tag_id energy_tag{};
     };
 }
 

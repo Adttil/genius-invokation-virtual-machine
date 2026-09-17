@@ -64,7 +64,7 @@ struct skill_source
 
     static givm::action_cost_requirement query(const int&, const givm::skill_initial_cost&)
     {
-        return { .energy = 1, .speed = givm::action_speed::combat };
+        return { .speed = givm::action_speed::combat, .energy = 1 };
     }
 
     static givm::handler_program_entry_t<givm::skill_effect> handle(
