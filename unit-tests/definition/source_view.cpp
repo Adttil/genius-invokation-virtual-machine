@@ -289,7 +289,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { card_id } });
+    load_deck(table, library, givm::linked_deck{ .cards = { card_id } }, {});
     zero_random random_source;
     givm::executor executor;
     executor.enter_entry(library);

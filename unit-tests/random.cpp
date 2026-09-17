@@ -57,7 +57,7 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
     {
         INFO(value);
         givm::table table;
-        table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { a, b } });
+        load_deck(table, library, givm::linked_deck{ .cards = { a, b } }, {});
         givm::executor execution;
         execution.enter_entry(library);
         random_tape random{ { value } };
@@ -70,7 +70,7 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
     for(const auto cards : { std::vector<givm::definition_id<givm::card_definition>>{}, std::vector{ a } })
     {
         givm::table table;
-        table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = cards });
+        load_deck(table, library, givm::linked_deck{ .cards = cards }, {});
         givm::executor execution;
         execution.enter_entry(library);
         random_tape random;
@@ -102,10 +102,8 @@ TEST_CASE("initial replacements assign random values by player and selected card
     const auto d = ids.get_id<givm::card_definition>(delta.name());
     const auto e = ids.get_id<givm::card_definition>(epsilon.name());
     givm::table initial_table;
-    for(const givm::player_id player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
-    {
-        initial_table.load_deck(player, givm::linked_deck{ .cards = { a, b, c, d, e } });
-    }
+    const givm::linked_deck deck{ .cards = { a, b, c, d, e } };
+    load_deck(initial_table, library, deck, deck);
     givm::executor initial_execution;
     initial_execution.enter_entry(library);
     random_tape random{ { 0u, 0xaaaaaaaau, 0xffffffffu, 0xffffffffu, 0x55555555u, 0u } };
@@ -162,7 +160,7 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
         const auto d = ids.get_id<givm::card_definition>(delta.name());
         const auto e = ids.get_id<givm::card_definition>(epsilon.name());
         givm::table table;
-        table.load_deck(givm::player_id{ 0 }, { .cards = { a, d, c, e, c, b, a } });
+        load_deck(table, library, { .cards = { a, d, c, e, c, b, a } }, {});
         givm::executor execution;
         execution.enter_entry(library);
         random_tape random{ { 0u, 0xffffffffu, 0x80000000u } };

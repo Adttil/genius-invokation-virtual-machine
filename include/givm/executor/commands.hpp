@@ -5,7 +5,6 @@
 #include "commands/insert_deck_card.hpp"
 #include "commands/enter_character.hpp"
 #include "commands/shuffle_deck.hpp"
-#include "commands/initialize_characters.hpp"
 #include "commands/set_active_character.hpp"
 #include "commands/select_active_character_both.hpp"
 #include "commands/draw_cards.hpp"

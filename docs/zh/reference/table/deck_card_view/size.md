@@ -44,7 +44,7 @@ int main()
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { definition } });
+    load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});
     const givm::deck_card_view view = table[givm::deck_card_id{ givm::player_id{ 0 }, 0 }];
     std::println("单实体范围大小: {}", view.size());
 }

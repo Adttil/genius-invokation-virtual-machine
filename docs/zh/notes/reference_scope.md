@@ -5,7 +5,7 @@
 ## 公开边界
 
 - 定义源和游戏流程必须使用核心给定的公开命令集合；编译入口检查核心集合与 context 兼容性。指令字段供定义源构造，事件字段供响应函数访问，二者都是公开接口，不因采用结构体或参与内部结算而变成仅供实现使用的数据。
-- 牌桌公开 `table`、独立的只读 `xxx_view`、ID、状态值类型和参数。`table` 只提供只读访问及 `load_deck()`、`clean_up()` 等规定入口；完整修改操作由内部 `unrestricted_table` 和 `basic_xxx_handle<TStorage>` 提供。`xxx_handle<TStorage>` 是内部类型选择别名，不是公开 view 的定义方式。`card_data`、其余后台 `*_data`、`status_slot`、`invalid_status_index` 和存储辅助对象均不作为独立用户接口。
+- 牌桌公开 `table`、独立的只读 `xxx_view`、ID、状态值类型和参数。`table` 只提供只读访问及 `clean_up()` 等规定入口；牌组由 `load_deck()` 装载，完整修改操作由内部 `unrestricted_table` 和 `basic_xxx_handle<TStorage>` 提供。`xxx_handle<TStorage>` 是内部类型选择别名，不是公开 view 的定义方式。`card_data`、其余后台 `*_data`、`status_slot`、`invalid_status_index` 和存储辅助对象均不作为独立用户接口。
 - 定义库取指、执行位置与指令类型标识只供内部使用。公开运行接口返回 execution_state，由 view_in 取得相应访问对象；纯通知使用空视图，相关数据直接读取 table。
 - execution_context 与行动选择实现类型位于 `givm::detail` 命名空间，文件按所属功能组织。换牌现场直接保存玩家 ID 与选择位集，公开读写通过 execution_view 的读取方法和参数式输入。executor 不公开栈访问，不维护外部输入槽或完整帧 ABI。utils 中的栈工具可以独立使用。
 - `onpay_item` 只用于 `begin_action` 保存费用响应及其减费记录，不是定义源响应参数，也不由公开输入接口暴露，因此不单列 reference。旧测试访问完整费用缓存时使用它，不能据此把缓存布局作为公开契约。

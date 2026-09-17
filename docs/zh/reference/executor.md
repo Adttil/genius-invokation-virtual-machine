@@ -33,6 +33,7 @@
 |  |  |
 | --- | --- |
 | [`compile`](executor/compile.md) | 编译选定定义与对局流程 |
+| [`load_deck`](executor/load_deck.md) | 装载双方牌组并初始化角色状态与技能 |
 
 ## 枚举
 

@@ -48,7 +48,7 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     const auto beta_id = id_map.get_id<givm::card_definition>(beta.name());
     const auto gamma_id = id_map.get_id<givm::card_definition>(gamma.name());
     givm::table table{ givm::game_parameters{ .hand_limit = 2 } };
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { alpha_id, beta_id, gamma_id } });
+    load_deck(table, library, givm::linked_deck{ .cards = { alpha_id, beta_id, gamma_id } }, {});
     const auto player = table[givm::player_id{ 0 }];
     auto copy = table;
 

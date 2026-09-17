@@ -55,4 +55,4 @@ int main()
 |  |  |
 | --- | --- |
 | [`link_deck`](../definition/link_deck.md) | 按名称准备牌组 |
-| [`table::load_deck`](table/load_deck.md) | 将牌组载入牌桌 |
+| [`load_deck`](../executor/load_deck.md) | 将牌组载入牌桌 |

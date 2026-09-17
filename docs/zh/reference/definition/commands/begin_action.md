@@ -80,15 +80,16 @@ int main()
     sources.add(card);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::initialize_characters{ .player = givm::player_id{ 1 } }, givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } }, givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } }, givm::draw_cards{ .count = 1 }, givm::begin_action{} },
+        std::tuple{ givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } }, givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } }, givm::draw_cards{ .count = 1 }, givm::begin_action{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
     givm::table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
     const auto card_definition = ids.get_id<givm::card_definition>("card");
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
-        .cards = { card_definition }, .characters = { definition, definition }
-    });
-    table.load_deck(givm::player_id{ 1 }, givm::linked_deck{ .characters = { definition } });
+    load_deck(table, library,
+        givm::linked_deck{
+            .cards = { card_definition }, .characters = { definition, definition }
+        },
+        givm::linked_deck{ .characters = { definition } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

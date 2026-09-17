@@ -108,9 +108,9 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
     const auto drawn_definition = ids.get_id<givm::card_definition>(drawn.name());
     const givm::player_id player{ 0 };
     givm::table table{ givm::game_parameters{ .hand_limit = 1 } };
-    table.load_deck(player, {
+    load_deck(table, library, {
         .cards = { first_definition, second_definition, discarded_definition, drawn_definition }
-    });
+    }, {});
     std::vector<givm::deck_card_id> original_cards;
     for(const auto card : table[player].deck_cards())
         original_cards.push_back(card.id());

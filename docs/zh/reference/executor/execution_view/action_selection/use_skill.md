@@ -107,8 +107,6 @@ int main()
     sources.add(character);
     const auto [library, ids] = compile(sources,
         std::tuple{
-            givm::initialize_characters{ .player = givm::player_id{ 0 } },
-            givm::initialize_characters{ .player = givm::player_id{ 1 } },
             givm::set_active_character{ .target = { givm::player_id{ 0 }, 0 } },
             givm::set_active_character{ .target = { givm::player_id{ 1 }, 0 } },
             givm::begin_action{}, givm::end_game{ .result = givm::game_result::both_loss }
@@ -116,8 +114,9 @@ int main()
 
     givm::table table{};
     const auto character_definition = ids.get_id<givm::character_view>("example_character");
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { character_definition } });
-    table.load_deck(givm::player_id{ 1 }, givm::linked_deck{ .characters = { character_definition } });
+    load_deck(table, library,
+        givm::linked_deck{ .characters = { character_definition } },
+        givm::linked_deck{ .characters = { character_definition } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

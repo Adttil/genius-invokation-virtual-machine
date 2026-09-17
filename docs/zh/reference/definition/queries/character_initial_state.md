@@ -11,7 +11,7 @@ struct character_initial_state
 };
 ```
 
-取得角色定义的初始状态，包括最大生命、初始生命、充能上限等。[`initialize_characters`](../commands/initialize_characters.md) 与 [`enter_character`](../commands/enter_character.md) 使用该结果初始化角色。
+取得角色定义的初始状态，包括最大生命、初始生命、充能上限等。[`load_deck`](../../executor/load_deck.md) 与 [`enter_character`](../commands/enter_character.md) 使用该结果初始化角色。
 
 ## 成员类型
 

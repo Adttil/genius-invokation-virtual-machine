@@ -247,7 +247,36 @@ namespace givm
             return { *this, id };
         }
 
+        friend void load_deck(
+            table& card_table, const definition_library& library,
+            const linked_deck& first_deck, const linked_deck& second_deck
+        )
+        {
+            library.load_deck(card_table, player_id{ 0 }, first_deck);
+            library.load_deck(card_table, player_id{ 1 }, second_deck);
+        }
+
     private:
+        void load_deck(table& card_table, player_id player, const linked_deck& deck) const
+        {
+            auto& writable_table = static_cast<detail::unrestricted_table&>(card_table);
+            writable_table.load_deck(player, deck);
+            for(const auto character : writable_table[player].characters())
+            {
+                const auto definition = (*this)[character.definition_id()];
+                character.state() = definition.query(character_initial_state{});
+                for(std::size_t skill_index = 0; ; ++skill_index)
+                {
+                    const auto skill = definition.query(character_initial_skill{ skill_index });
+                    if(not skill)
+                    {
+                        break;
+                    }
+                    character.add(skill, {});
+                }
+            }
+        }
+
         static constexpr detail::execution_position entry() noexcept
         {
             return detail::entry_position;

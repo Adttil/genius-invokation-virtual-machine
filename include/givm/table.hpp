@@ -9,6 +9,7 @@ namespace givm
     {
         friend class detail::unrestricted_table;
         friend class executor;
+        friend class definition_library;
 
     public:
         using game_state = table_state;
@@ -87,7 +88,6 @@ namespace givm
             return static_cast<const detail::unrestricted_table&>(*this)[id];
         }
 
-        using detail::unrestricted_table::load_deck;
         using detail::unrestricted_table::clean_up;
     };
 }

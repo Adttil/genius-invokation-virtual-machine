@@ -59,7 +59,7 @@ int main()
     givm::table table{};
     auto player = table[givm::player_id{ 0 }];
     const auto card = ids.get_id<givm::card_definition>("first");
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .cards = { card, card } });
+    load_deck(table, library, givm::linked_deck{ .cards = { card, card } }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

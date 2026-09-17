@@ -194,7 +194,6 @@ namespace
     auto action_setup(std::uint32_t dice_count = 4, std::size_t active_index = 0)
     {
         return std::tuple{
-            givm::initialize_characters{ givm::player_id{ 0 } }, givm::initialize_characters{ givm::player_id{ 1 } },
             givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, active_index } },
             givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::start_dice_roll_phase{ .count = dice_count, .reroll_count = { 0, 0 } }
@@ -224,8 +223,9 @@ TEST_CASE("action and round observations precede their handlers and ended player
     );
     givm::table table;
     const auto plain = ids.get_id<givm::character_view>(character.name());
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { plain, plain } });
+    load_deck(table, library,
+        { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } },
+        { .characters = { plain, plain } });
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
@@ -302,8 +302,7 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     );
     givm::table table;
     const auto plain = ids.get_id<givm::character_view>(character.name());
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { plain } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } }, { .characters = { plain } });
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
@@ -355,10 +354,9 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     const auto alive = ids.get_id<givm::character_view>(living.name());
     const auto dead = ids.get_id<givm::character_view>(defeated.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .characters = { active_in_middle ? dead : alive, active_in_middle ? alive : dead, living_standby ? alive : dead }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { alive } });
+    }, { .characters = { alive } });
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
@@ -426,11 +424,10 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
     );
     const auto plain = ids.get_id<givm::character_view>(character.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(observer.name()), plain }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { plain } });
+    }, { .characters = { plain } });
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
@@ -493,11 +490,10 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     const auto plain = ids.get_id<givm::character_view>(character.name());
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
         .characters = { ids.get_id<givm::character_view>(source.name()), plain, plain }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(empty_source.name()) } });
+    }, { .characters = { ids.get_id<givm::character_view>(empty_source.name()) } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
@@ -590,11 +586,10 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
     );
     const auto plain = ids.get_id<givm::character_view>(character.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(source.name()), plain }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { plain } });
+    }, { .characters = { plain } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
@@ -672,11 +667,10 @@ TEST_CASE("recalculating a candidate replaces a previously nonempty payment resp
     );
     const auto plain = ids.get_id<givm::character_view>(character.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(source.name()), plain }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { plain } });
+    }, { .characters = { plain } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;

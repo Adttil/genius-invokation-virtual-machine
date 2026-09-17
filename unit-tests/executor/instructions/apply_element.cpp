@@ -124,15 +124,15 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
-            givm::initialize_characters{ givm::player_id{ 1 } },
             givm::set_element_aura{ .target = affected, .aura = initial_aura },
             givm::apply_element{ .source = source, .target = affected, .element = incoming },
             givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, observer, victim
     );
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+    load_deck(table, library,
+        { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
     givm::executor target;
     target.enter_entry(library);
     zero_random random;

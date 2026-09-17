@@ -1,12 +1,12 @@
 # 牌组链接、装载与初始化的分工
 
-本篇保留牌组准备拆成多个阶段的理由、阶段之间的拥有关系和匹配约束，供修改对局创建流程时查阅。当前接口分别见 [link_deck](../reference/definition/link_deck.md)、[linked_deck](../reference/table/linked_deck.md) 和 [table::load_deck](../reference/table/table/load_deck.md)；以下保留跨接口组合时容易遗漏的条件，不另设一套牌组 API。
+本篇保留牌组准备拆成多个阶段的理由、阶段之间的拥有关系和匹配约束，供修改对局创建流程时查阅。当前接口分别见 [link_deck](../reference/definition/link_deck.md)、[linked_deck](../reference/table/linked_deck.md) 和 [load_deck](../reference/executor/load_deck.md)；以下保留跨接口组合时容易遗漏的条件，不另设一套牌组 API。
 
-对照基线为 `b3d6c50`：链接对象与链接函数已经位于 definition 模块的 `include/givm/definition/deck.hpp`，装载仍是 table 的操作，洗牌和角色初始化仍由 executor 的公开指令完成。这项职责划分解释了为何仓库不需要第四个独立 deck 核心模块。
+链接对象与链接函数位于 definition 模块；装载由 executor 模块的 `load_deck` 完成，使用定义库初始化角色。table 模块保存实体而不依赖定义库接口，仓库不需要第四个独立 deck 核心模块。
 
 牌组是每局游戏的输入，不是游戏规则程序的一部分。上层可以用文件、网络消息或其他拥有式格式按 definition 名称保存牌组；核心不规定这种持久化对象的具体类型，也不取得名称字符串的所有权。
 
-核心把进入对局前的准备分为链接和装载两个阶段。链接把名称转换为当前规则库的 issued ID；装载把已经链接的牌组写入 table。随机洗牌和角色初始化仍由初始化程序中的公开指令执行。
+核心把进入对局前的准备分为链接和装载两个阶段。链接把名称转换为当前规则库的 issued ID；装载把已经链接的牌组写入 table，并初始化角色状态和技能。随机洗牌、抽牌和出战角色选择由初始化程序中的公开命令执行。
 
 ## 编译结果
 
@@ -57,29 +57,28 @@ std::vector<definition_id<character_view>> linked_deck::characters;
 
 ## 装载牌组
 
-当前函数另带 `constexpr`，见 [table::load_deck](../reference/table/table/load_deck.md)；下面省略该修饰的声明只展示原记录中的阶段边界。
+装载是由 ADL 查找的非成员操作，一次接收双方牌组，见 [load_deck](../reference/executor/load_deck.md)：
 
 ```cpp
-void table::load_deck(player_id player, const linked_deck& deck);
+void load_deck(table& table, const definition_library& library, const linked_deck& deck1, const linked_deck& deck2);
 ```
 
-`player` 指定接收牌组的玩家。该玩家的牌堆和角色区必须为空。
+`deck1` 和 `deck2` 分别装入玩家 0 和玩家 1。双方的牌堆和角色区必须为空。
 
-函数按 `deck` 中的顺序创建使用默认 `card_state{}` 的牌堆实体和使用默认 `character_state{}` 的角色实体。它不使用随机数、不广播事件、不调用 definition handler，也不进入 executor 程序。
+函数按双方牌组各自的顺序创建使用默认 `card_state{}` 的牌堆实体，并为每个角色查询初始状态和技能。它不使用随机数、不广播事件、不调用 definition handler，也不进入 executor 程序或选择出战角色。
 
 装载完成后的 table 是一份尚未开始执行游戏流程的初始状态。它可以在进入游戏主入口前复制，用于从同一未经随机化的牌组状态开始多场独立对局。
 
+初始技能通过 `character_initial_skill{skill_index}` 在装载时按索引逐项查询，首次无效 ID 结束。定义源自行选择储存或计算方式；定义库不保存一份通用不定长技能列表。`enter_character` 也为新角色加载初始技能；两者使用默认技能状态。
+
+角色初始状态由 [character_initial_state](../reference/definition/queries/character_initial_state.md) 提供，在每项角色定义编译后求值一次并保存在定义库中。`load_deck` 和 `enter_character` 直接把该结果写入角色，不在对局运行时调用初始化响应。
+
 ## 初始化程序
-
-初始技能通过 `character_initial_skill{skill_index}` 在初始化时按索引逐项查询，首次无效 ID 结束。定义源自行选择储存或计算方式；定义库不保存一份通用不定长技能列表。`initialize_characters` 移除原技能并重新加载，`enter_character` 给新角色加载初始技能；两者使用默认技能状态。
-
-角色初始状态由 [character_initial_state](../reference/definition/queries/character_initial_state.md) 提供，在每项角色定义编译后求值一次并保存在定义库中。`initialize_characters` 和 `enter_character` 直接把该结果写入角色，不在对局运行时调用初始化响应。
 
 需要随机性或 definition 逻辑的准备步骤属于游戏规则，应由初始化程序表达：
 
 1. [`shuffle_deck`](../reference/definition/commands/shuffle_deck.md) 随机重排指定玩家的牌堆。
-2. [`initialize_characters`](../reference/definition/commands/initialize_characters.md) 读取指定玩家每个角色定义的初始状态查询结果。
-3. 初始化程序继续执行初始抽牌、换牌和选择出战角色等规则。
+2. 初始化程序继续执行初始抽牌、换牌和选择出战角色等规则。
 
 具体顺序由编译调用方提供的初始化程序决定。`load_deck` 不隐式补做这些步骤。
 

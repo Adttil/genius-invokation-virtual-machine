@@ -53,9 +53,9 @@ int main()
         sources,
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
+    load_deck(table, library, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("observer") }
-    });
+    }, {});
     const auto observer = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     auto random_source = []() -> std::uint32_t { return 0; };
     givm::random_fn random{ random_source };

@@ -64,12 +64,13 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::initialize_characters{ .player = givm::player_id{ 1 } }, givm::deal_damage{ .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }, .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .value = 3, .type = givm::damage_type::physical, .flags = {} } },
+        std::tuple{ givm::deal_damage{ .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }, .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .value = 3, .type = givm::damage_type::physical, .flags = {} } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
     givm::table table{};
     const auto definition = ids.get_id<givm::character_view>("character");
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
-    table.load_deck(givm::player_id{ 1 }, givm::linked_deck{ .characters = { definition } });
+    load_deck(table, library,
+        givm::linked_deck{ .characters = { definition } },
+        givm::linked_deck{ .characters = { definition } });
     const givm::character_id attacker{ givm::player_id{ 0 }, 0 };
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     auto random = []() -> std::uint32_t { return 0; };

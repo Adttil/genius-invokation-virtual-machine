@@ -41,9 +41,7 @@ TEST_CASE("table constructs and copies without a definition library", "[table][d
     STATIC_REQUIRE(not std::constructible_from<givm::definition_id<givm::character_view>, std::size_t>);
     STATIC_REQUIRE(not givm::definition_id<givm::card_definition>{}.is_valid());
 
-    const givm::linked_deck deck{};
     givm::table table{ givm::game_parameters{ .hand_limit = 2 } };
-    table.load_deck(givm::player_id{ 0 }, deck);
 
     STATIC_REQUIRE(not exposes_definition_library<givm::table>);
     STATIC_REQUIRE(not resolves_definition<givm::deck_card_view>);

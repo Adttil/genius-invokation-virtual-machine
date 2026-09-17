@@ -96,7 +96,7 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
     );
 
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, deck);
+    load_deck(table, library, deck, {});
     const auto player = table[givm::player_id{ 0 }];
 
     CHECK(deck_definition_values(player) == std::vector<std::size_t>{
@@ -149,7 +149,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     };
 
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, deck);
+    load_deck(table, library, deck, {});
     std::vector<givm::deck_card_id> original_ids;
     for(const auto card : table[givm::player_id{ 0 }].deck_cards())
     {
@@ -189,7 +189,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     );
 }
 
-TEST_CASE("initialize_characters applies cached initial states to loaded characters", "[deck][instruction]")
+TEST_CASE("loading decks immediately initializes characters from cached states independently for each player", "[deck][query]")
 {
     std::uint32_t initial_state_queries = 0;
     const initializing_character_source alpha{ "Alpha", 10, &initial_state_queries };
@@ -198,7 +198,7 @@ TEST_CASE("initialize_characters applies cached initial states to loaded charact
     givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta));
     const auto [library, id_map] = compile(sources,
-        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } } },
+        std::tuple{},
         std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, givm::compile_mode::normal
     );
     CHECK(initial_state_queries == 2);
@@ -210,19 +210,24 @@ TEST_CASE("initialize_characters applies cached initial states to loaded charact
     };
 
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, deck);
-    givm::executor target;
-    target.enter_entry(library);
-    sequence_random random{ .values = { 2, 3 } };
-
-    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
+    load_deck(table, library, deck, {
+        .characters = { id_map.get_id<givm::character_view>("Alpha") }
+    });
     CHECK(initial_state_queries == 2);
-    CHECK(random.position == 0);
 
     const auto player = table[givm::player_id{ 0 }];
     auto characters = player.characters();
     auto iterator = characters.begin();
     CHECK((*iterator).state().health == 20);
+    CHECK((*iterator).state().max_health == 20);
+    CHECK((*iterator).state().max_energy == 3);
+    CHECK((*iterator).state().energy == 0);
     ++iterator;
     CHECK((*iterator).state().health == 10);
+    CHECK_FALSE(player.state().active_character.has_value());
+
+    CHECK(table[givm::character_id{ givm::player_id{ 1 }, 0 }].state().health == 10);
+    CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().health == 20);
+    CHECK(table[givm::character_id{ givm::player_id{ 0 }, 1 }].state().health == 10);
+    CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
 }

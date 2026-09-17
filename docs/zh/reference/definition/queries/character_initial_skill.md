@@ -12,7 +12,7 @@ struct character_initial_skill
 };
 ```
 
-按索引取得角色初始具有的一项技能定义。[`initialize_characters`](../commands/initialize_characters.md) 与 [`enter_character`](../commands/enter_character.md) 使用这些定义为角色建立技能集合。
+按索引取得角色初始具有的一项技能定义。[`load_deck`](../../executor/load_deck.md) 与 [`enter_character`](../commands/enter_character.md) 使用这些定义为角色建立技能集合。
 
 ## 成员类型
 

@@ -54,8 +54,8 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     const auto b = ids.get_id<givm::card_definition>(beta.name());
     const auto c = ids.get_id<givm::card_definition>(gamma.name());
     givm::table table;
-    for(const givm::player_id player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
-        table.load_deck(player, { .cards = { a, b, c } });
+    const givm::linked_deck deck{ .cards = { a, b, c } };
+    load_deck(table, library, deck, deck);
     givm::executor execution;
     execution.enter_entry(library);
     counting_random random;
@@ -122,7 +122,7 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     deck.cards.assign(hand_count + 1, a);
     deck.cards.front() = b;
     givm::table table{ givm::game_parameters{ .hand_limit = static_cast<std::uint32_t>(hand_count) } };
-    table.load_deck(givm::player_id{ 0 }, deck);
+    load_deck(table, library, deck, {});
     givm::executor execution;
     execution.enter_entry(library);
     counting_random random;
@@ -155,8 +155,8 @@ TEST_CASE("initial character checks validate ownership and existence without req
     );
     const auto definition = ids.get_id<givm::character_view>(character.name());
     givm::table table;
-    for(const givm::player_id player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
-        table.load_deck(player, { .characters = { definition, definition } });
+    const givm::linked_deck deck{ .characters = { definition, definition } };
+    load_deck(table, library, deck, deck);
     const givm::character_id first_choice{ givm::player_id{ 1 }, 1 };
     const givm::character_id second_choice{ givm::player_id{ 0 }, 1 };
     REQUIRE(table[first_choice].state().health == 0);

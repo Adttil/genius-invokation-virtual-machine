@@ -57,9 +57,9 @@ int main()
         std::tuple{ givm::start_round{}, givm::start_battle{} },
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{
+    load_deck(table, library, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("observer") }
-    });
+    }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

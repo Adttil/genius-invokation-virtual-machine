@@ -45,13 +45,6 @@ namespace givm
         player_id player;
     };
 
-    struct initialize_characters
-    {
-        using context_type = void;
-
-        player_id player;
-    };
-
     struct set_active_character
     {
         using context_type = void;
@@ -181,7 +174,6 @@ namespace givm::detail
         insert_deck_card,
         enter_character,
         shuffle_deck,
-        initialize_characters,
         set_active_character,
         select_active_character_both,
         draw_cards,

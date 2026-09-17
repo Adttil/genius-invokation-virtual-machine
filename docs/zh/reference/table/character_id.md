@@ -27,7 +27,7 @@ friend constexpr bool operator==(character_id, character_id) = default;
 
 ## 注意
 
-通过 [`load_deck`](table/load_deck.md) 初次装载角色时，角色位置与 `linked_deck::characters` 中的下标对应。规则中新入场的角色应通过牌桌的角色视图取得 ID。
+通过 [`load_deck`](../executor/load_deck.md) 初次装载角色时，角色位置与 `linked_deck::characters` 中的下标对应。规则中新入场的角色应通过牌桌的角色视图取得 ID。
 
 ID 本身不包含牌桌身份。清理实体后，原有 ID 可能失效；详见[实体的身份与访问](entity_access.md)。
 
@@ -63,15 +63,11 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     const auto definition = ids.get_id<givm::character_view>("示例");
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, givm::linked_deck{ .characters = { definition } });
+    load_deck(table, library, givm::linked_deck{ .characters = { definition } }, {});
 
-    auto random = []() -> std::uint32_t { return 0; };
-    givm::executor execution{};
-    execution.enter_entry(library);
-    execution.step(library, table, random);
     const givm::character_view view = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
     const givm::character_id id = view.id();
     std::println("通过 ID 取得定义: {}", library[table[id].definition_id()].name());

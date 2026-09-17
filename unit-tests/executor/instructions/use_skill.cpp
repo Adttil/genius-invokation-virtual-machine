@@ -308,8 +308,6 @@ namespace
     auto setup(std::uint32_t cards = 0)
     {
         return std::tuple{
-            givm::initialize_characters{ givm::player_id{ 0 } },
-            givm::initialize_characters{ givm::player_id{ 1 } },
             givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, 0 } },
             givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::draw_cards{ .count = cards },
@@ -328,7 +326,7 @@ namespace
     }
 }
 
-TEST_CASE("initial skills are queried by index and only active skills become action candidates", "[use_skill][query][compile-mode]")
+TEST_CASE("deck loading initializes indexed skills once and only active skills become action candidates", "[use_skill][deck][query][compile-mode]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     skill_log log;
@@ -338,7 +336,7 @@ TEST_CASE("initial skills are queried by index and only active skills become act
     const skill_character_source owner{ &log };
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple_cat(std::tuple{ givm::initialize_characters{ givm::player_id{ 0 } } }, setup()),
+        setup(),
         std::tuple{}, active, passive, untargeted, owner, plain);
     CHECK(log.initial_skill_indices.empty());
     CHECK(log.initial_cost_queries == 1);
@@ -346,24 +344,30 @@ TEST_CASE("initial skills are queried by index and only active skills become act
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     CHECK_FALSE(library[plain_id].query(givm::character_initial_skill{ 0 }).is_valid());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .characters = { owner_id, plain_id } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { plain_id } });
-    givm::executor target;
-    target.enter_entry(library);
-    counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
-    CHECK(log.initial_skill_indices == std::vector<std::size_t>{ 0, 1, 2, 3, 0, 1, 2, 3 });
+    load_deck(table, library, { .characters = { owner_id, plain_id } }, { .characters = { plain_id } });
+    CHECK(log.initial_skill_indices == std::vector<std::size_t>{ 0, 1, 2, 3 });
+    CHECK(table[givm::character_id{ givm::player_id{ 0 }, 1 }].skills().empty());
+    CHECK(table[givm::character_id{ givm::player_id{ 1 }, 0 }].skills().empty());
     const auto character = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
+    CHECK(character.state().health == 10);
+    CHECK(character.state().energy == 3);
     std::vector<givm::skill_id> skills;
     for(const auto skill : character.skills())
     {
         skills.push_back(skill.id());
+        CHECK(skill.character().id() == character.id());
         CHECK(skill.state().count == 0);
     }
     REQUIRE(skills.size() == 3);
     CHECK(table[skills[0]].definition_id() == ids.get_id<givm::skill_view>(active.name()));
     CHECK(table[skills[1]].definition_id() == ids.get_id<givm::skill_view>(passive.name()));
     CHECK(table[skills[2]].definition_id() == ids.get_id<givm::skill_view>(untargeted.name()));
+    CHECK(log.passive_responses == 0);
+    givm::executor target;
+    target.enter_entry(library);
+    counting_random random;
+    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    CHECK(log.initial_skill_indices == std::vector<std::size_t>{ 0, 1, 2, 3 });
     CHECK(log.passive_responses == 1);
     const auto action = target.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.skill_count() == 2);
@@ -389,7 +393,7 @@ TEST_CASE("initial skills are queried by index and only active skills become act
     CHECK(table.state().active_player == givm::player_id{ 1 });
     CHECK(target.view_in<givm::execution_state::action_selection>().skill_count() == 0);
     CHECK(log.initial_cost_queries == 1);
-    CHECK(log.initial_skill_indices.size() == 8);
+    CHECK(log.initial_skill_indices.size() == 4);
 }
 
 TEST_CASE("skill targets validate incrementally and submission ignores targets beyond two", "[use_skill][targets][compile-mode]")
@@ -406,8 +410,9 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain);
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(owner.name()) } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
+    load_deck(table, library,
+        { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
+        { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
@@ -461,8 +466,9 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain);
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(owner.name()) } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
+    load_deck(table, library,
+        { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
+        { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
@@ -509,10 +515,9 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain, filler);
     const auto card = ids.get_id<givm::card_definition>(filler.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { card, card, card, card, card, card }, .characters = { ids.get_id<givm::character_view>(owner.name()) }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
+    }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
@@ -571,11 +576,10 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(1), std::tuple{}, active, passive, untargeted, owner, plain, card);
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(owner.name()), ids.get_id<givm::character_view>(plain.name()) }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
+    }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
@@ -622,7 +626,7 @@ TEST_CASE("entering a character loads its indexed initial skills without deck in
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, active, passive, untargeted, owner, enter);
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(enter.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(enter.name()) } }, {});
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
@@ -653,10 +657,9 @@ TEST_CASE("card energy validation follows dice requirement and ownership checks"
         givm::compile_mode::normal, setup(1), std::tuple{}, character, card);
     givm::table table;
     const auto character_id = ids.get_id<givm::character_view>(character.name());
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) }, .characters = { character_id }
-    });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { character_id } });
+    }, { .characters = { character_id } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;

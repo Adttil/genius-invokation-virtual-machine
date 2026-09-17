@@ -14,7 +14,6 @@
 | --- | --- |
 | [`insert_deck_card`](commands/insert_deck_card.md) | 向牌堆插入指定牌的命令 |
 | [`enter_character`](commands/enter_character.md) | 角色入场命令 |
-| [`initialize_characters`](commands/initialize_characters.md) | 已有角色的初始化命令 |
 | [`shuffle_deck`](commands/shuffle_deck.md) | 洗牌命令 |
 | [`set_active_character`](commands/set_active_character.md) | 直接设置出战角色的命令 |
 | [`select_active_character_both`](commands/select_active_character_both.md) | 双方开局出战角色的选择命令 |

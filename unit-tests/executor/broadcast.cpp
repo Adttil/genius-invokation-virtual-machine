@@ -97,9 +97,9 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
         std::tuple{ givm::test_command{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .characters = {
+    load_deck(table, library, { .characters = {
         ids.get_id<givm::character_view>(first.name()), ids.get_id<givm::character_view>(second.name())
-    } });
+    } }, {});
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
@@ -133,10 +133,10 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
     );
     givm::table table;
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
-    table.load_deck(givm::player_id{ 0 }, {
+    load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
         .characters = { ids.get_id<givm::character_view>(source.name()) }
-    });
+    }, {});
     givm::executor target;
     target.enter_entry(library);
     zero_random random;

@@ -27,7 +27,6 @@ class table;
 | [`state`](table/state.md) | 访问对局的共同状态 |
 | [`players`](table/players.md) | 遍历双方玩家 |
 | [`operator[]`](table/operator_subscript.md) | 通过实体 ID 访问实体 |
-| [`load_deck`](table/load_deck.md) | 为玩家装载牌组 |
 | [`clean_up`](table/clean_up.md) | 清理已经移除的实体 |
 
 
@@ -60,4 +59,5 @@ int main()
 |  |  |
 | --- | --- |
 | [实体的身份与访问](entity_access.md) | ID、实体访问对象和只读视图的使用约定 |
+| [`load_deck`](../executor/load_deck.md) | 装载牌组并初始化角色 |
 | [`executor`](../executor/executor.md) | 游戏对局的执行器 |

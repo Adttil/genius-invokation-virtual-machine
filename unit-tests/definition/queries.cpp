@@ -102,7 +102,7 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
         std::tuple{}, source);
     const auto id = ids.get_id<givm::card_definition>(source.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .cards = { id, id, id } });
+    load_deck(table, library, { .cards = { id, id, id } }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor first_draw;
     first_draw.enter_entry(library);
@@ -145,7 +145,7 @@ TEST_CASE("missing queries use their operation specific defaults", "[definition]
     CHECK(cost.speed == givm::action_speed::fast);
 
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .cards = { card_definition } });
+    load_deck(table, library, { .cards = { card_definition } }, {});
     givm::executor draw;
     draw.enter_entry(library);
     auto random = []() -> std::uint32_t { return 0; };

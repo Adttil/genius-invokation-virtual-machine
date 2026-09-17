@@ -155,8 +155,6 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const auto initialization = std::tuple{
         givm::shuffle_deck{ .player = givm::player_id{ 0 } },
         givm::shuffle_deck{ .player = givm::player_id{ 1 } },
-        givm::initialize_characters{ .player = givm::player_id{ 0 } },
-        givm::initialize_characters{ .player = givm::player_id{ 1 } },
         givm::draw_cards{ .count = 5, .player = givm::relative_player::current },
         givm::draw_cards{ .count = 5, .player = givm::relative_player::other },
         givm::replace_cards_both{},
@@ -183,8 +181,7 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
             .hand_limit = 10
         }
     };
-    table.load_deck(givm::player_id{ 0 }, deck);
-    table.load_deck(givm::player_id{ 1 }, deck);
+    load_deck(table, library, deck, deck);
     givm::executor target;
     target.enter_entry(library);
     increasing_random random;
@@ -284,8 +281,6 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     REQUIRE(sources.add(card_source, character_source));
     const auto [library, id_map] = compile(sources,
         std::tuple{
-            givm::initialize_characters{ .player = givm::player_id{ 0 } },
-            givm::initialize_characters{ .player = givm::player_id{ 1 } },
             givm::draw_cards{ .count = 5, .player = givm::relative_player::current },
             givm::draw_cards{ .count = 5, .player = givm::relative_player::other },
             givm::replace_cards_both{},
@@ -300,8 +295,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     characters.fill(character_source.name());
     const auto deck = link_deck(id_map, cards, characters);
     givm::table table{ givm::game_parameters{ .hand_limit = 10 } };
-    table.load_deck(givm::player_id{ 0 }, deck);
-    table.load_deck(givm::player_id{ 1 }, deck);
+    load_deck(table, library, deck, deck);
     givm::executor target;
     target.enter_entry(library);
     increasing_random random;

@@ -239,7 +239,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(program_source.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(program_source.name()) } }, {});
     auto normal_table = table;
     counting_random normal_random;
     givm::executor normal;
@@ -281,7 +281,7 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{};
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(source.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } }, {});
     auto normal_table = table;
     counting_random random;
     givm::executor normal;
@@ -321,11 +321,10 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{ { .hand_limit = 2 } };
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(observer_source.name()) } });
     const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
     givm::linked_deck deck;
     deck.cards.assign(initial_hand_count + 3, card_definition);
-    table.load_deck(givm::player_id{ 0 }, deck);
+    load_deck(table, library, deck, { .characters = { ids.get_id<givm::character_view>(observer_source.name()) } });
     const auto player = table[givm::player_id{ 0 }];
 
     auto normal_table = table;
@@ -373,7 +372,7 @@ TEST_CASE("single-player active-character observation precedes the table update 
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{};
     const auto definition = ids.get_id<givm::character_view>(character_source.name());
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer_source.name()), definition } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer_source.name()), definition } }, {});
 
     auto normal_table = table;
     counting_random random;
@@ -414,8 +413,9 @@ TEST_CASE("initial active choices update both players before either response", "
     );
     givm::table table{};
     const auto character = ids.get_id<givm::character_view>(character_source.name());
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(observer.name()), character } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { character, character } });
+    load_deck(table, library,
+        { .characters = { ids.get_id<givm::character_view>(observer.name()), character } },
+        { .characters = { character, character } });
 
     givm::executor target;
     target.enter_entry(library);
@@ -494,7 +494,7 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
     );
     givm::table table{};
     const auto character = ids.get_id<givm::character_view>(character_source.name());
-    table.load_deck(givm::player_id{ 0 }, { .characters = { ids.get_id<givm::character_view>(response.name()), character } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(response.name()), character } }, {});
     auto normal_table = table;
     givm::executor normal;
     normal.enter_entry(normal_compilation.library);
@@ -551,8 +551,9 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     const auto first_id = ids.get_id<givm::card_definition>(first.name());
     const auto second_id = ids.get_id<givm::card_definition>(second.name());
     givm::table table;
-    table.load_deck(givm::player_id{ 0 }, { .cards = { second_id, second_id, second_id, second_id, first_id, first_id } });
-    table.load_deck(givm::player_id{ 1 }, { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
+    load_deck(table, library,
+        { .cards = { second_id, second_id, second_id, second_id, first_id, first_id } },
+        { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
     givm::executor target;
     target.enter_entry(library);
     counting_random random;
