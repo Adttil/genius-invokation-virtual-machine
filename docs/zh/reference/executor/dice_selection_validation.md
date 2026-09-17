@@ -1,11 +1,11 @@
-[givm](../../reference.md) / [执行](../executor.md) / **dice_selection_check_result**
+[givm](../../reference.md) / [执行](../executor.md) / **dice_selection_validation**
 
-# givm::dice_selection_check_result
+# givm::dice_selection_validation
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-enum class dice_selection_check_result : std::uint8_t
+enum class dice_selection_validation : std::uint8_t
 {
     valid,
     invalid_player,
@@ -14,7 +14,7 @@ enum class dice_selection_check_result : std::uint8_t
 };
 ```
 
-显式指定玩家调用 `check_selection(card_table, player, selected)` 的检查结果，区分玩家编号非法、没有重投机会和持有骰子不足。
+显式指定玩家调用 `selection_validate(card_table, player, selected)` 的检查结果，区分玩家编号非法、没有重投机会和持有骰子不足。
 
 ## 枚举值
 
@@ -37,4 +37,4 @@ enum class dice_selection_check_result : std::uint8_t
 
 | | |
 | --- | --- |
-| [`execution_view<dice_selection>::check_selection`](execution_view/dice_selection/check_selection.md) | 检查骰子重投选择 |
+| [`execution_view<dice_selection>::selection_validate`](execution_view/dice_selection/selection_validate.md) | 检查骰子重投选择 |

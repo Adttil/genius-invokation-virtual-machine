@@ -35,14 +35,9 @@ namespace
         constexpr std::string_view name() const noexcept { return "ObservedCharacter"; }
         constexpr definition_type compile(givm::definition_compile_context&) const noexcept { return {}; }
 
-        static givm::handler_program_entry_t<givm::character_initialization> handle(
-            const definition_type&, const givm::character_view&, givm::character_initialization& event,
-            const givm::table&, givm::random_fn& random
-        )
+        static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
-            const auto health = 10 + random();
-            event.state = { .max_health = health, .max_energy = 3, .health = health, .energy = 1 };
-            return givm::handler_program_entry_t<givm::character_initialization>::null();
+            return { .max_health = 12, .max_energy = 3, .health = 12, .energy = 1 };
         }
     };
 
@@ -266,7 +261,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     CHECK(table[givm::player_id{ 1 }].deck_card_definition(0) == ids.get_id<givm::card_definition>(other_card_source.name()));
     CHECK(table[givm::player_id{ 1 }].deck_card_definition(1) == ids.get_id<givm::card_definition>(card_source.name()));
     CHECK(random.calls == normal_random.calls);
-    CHECK(random.calls == 1);
+    CHECK(random.calls == 0);
     const auto normal_character = *normal_table[givm::player_id{ 1 }].characters().begin();
     CHECK(table[character].state().health == normal_character.state().health);
     CHECK(table[givm::player_id{ 1 }].deck_card_count() == normal_table[givm::player_id{ 1 }].deck_card_count());

@@ -1,11 +1,11 @@
-[givm](../../reference.md) / [执行](../executor.md) / **switch_payment_check_result**
+[givm](../../reference.md) / [执行](../executor.md) / **switch_payment_validation**
 
-# givm::switch_payment_check_result
+# givm::switch_payment_validation
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-enum class switch_payment_check_result : std::uint8_t
+enum class switch_payment_validation : std::uint8_t
 {
     valid,
     requirement_mismatch,
@@ -31,4 +31,4 @@ enum class switch_payment_check_result : std::uint8_t
 
 | | |
 | --- | --- |
-| [`execution_view<action_selection>::check_switch_payment`](execution_view/action_selection/check_switch_payment.md) | 检查所选骰子能否支付切换至指定角色的费用 |
+| [`execution_view<action_selection>::switch_payment_validate`](execution_view/action_selection/switch_payment_validate.md) | 检查所选骰子能否支付切换至指定角色的费用 |

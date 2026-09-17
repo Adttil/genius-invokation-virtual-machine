@@ -42,7 +42,7 @@ void play_card(
 
 ## 注意
 
-不带定义库与牌桌的重载采用已完整计算的费用。另一重载同步重新报价后填写选择；两者都不自动检查支付、目标或其他用牌条件。调用方可以独立使用 [`check_card_payment`](check_card_payment.md) 与分步的 [`check_card_targets`](check_card_targets.md)，并负责保证输入合法、当前选择允许完成。
+不带定义库与牌桌的重载采用已完整计算的费用。另一重载同步重新报价后填写选择；两者都不自动检查支付、目标或其他用牌条件。调用方可以独立使用 [`card_payment_validate`](card_payment_validate.md) 与分步的 [`card_targets_validate`](card_targets_validate.md)，并负责保证输入合法、当前选择允许完成。
 
 目标由牌定义解释，未使用的位置忽略。无需目标时可直接调用 `play_card(card_index, paid_dice)`。本操作复制采用的目标 ID，调用完成后无需保留传入的目标范围。
 

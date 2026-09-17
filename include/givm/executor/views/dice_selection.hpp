@@ -9,7 +9,7 @@
 
 namespace givm
 {
-    enum class dice_selection_check_result : std::uint8_t
+    enum class dice_selection_validation : std::uint8_t
     {
         valid,
         invalid_player,
@@ -51,30 +51,30 @@ namespace givm
             ).dice_count;
         }
 
-        constexpr bool check_selection(
+        constexpr bool selection_validate(
             const table& card_table, const dice_counts& selected
         ) const noexcept
         {
             return card_table[player()].state().dice.contains(selected);
         }
 
-        constexpr dice_selection_check_result check_selection(
+        constexpr dice_selection_validation selection_validate(
             const table& card_table, player_id player, const dice_counts& selected
         ) const noexcept
         {
             if(player.index >= 2)
             {
-                return dice_selection_check_result::invalid_player;
+                return dice_selection_validation::invalid_player;
             }
             if(remaining(player) == 0)
             {
-                return dice_selection_check_result::no_rerolls_remaining;
+                return dice_selection_validation::no_rerolls_remaining;
             }
             if(not card_table[player].state().dice.contains(selected))
             {
-                return dice_selection_check_result::insufficient_dice;
+                return dice_selection_validation::insufficient_dice;
             }
-            return dice_selection_check_result::valid;
+            return dice_selection_validation::valid;
         }
 
         constexpr void select(const dice_counts& selected) const noexcept

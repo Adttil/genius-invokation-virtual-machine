@@ -45,21 +45,14 @@ namespace
             return {};
         }
 
-        static givm::handler_program_entry_t<givm::character_initialization> handle(
-            const definition_type&,
-            const givm::character_view&,
-            givm::character_initialization& event,
-            const givm::table&,
-            givm::random_fn&
-        )
+        static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
-            event.state = {
+            return {
                 .max_health = 10,
                 .max_energy = 3,
                 .health = 10,
                 .energy = 0
             };
-            return givm::handler_program_entry_t<givm::character_initialization>::null();
         }
     };
 

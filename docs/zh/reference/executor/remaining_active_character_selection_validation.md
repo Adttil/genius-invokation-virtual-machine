@@ -1,11 +1,11 @@
-[givm](../../reference.md) / [执行](../executor.md) / **remaining_active_character_selection_check_result**
+[givm](../../reference.md) / [执行](../executor.md) / **remaining_active_character_selection_validation**
 
-# givm::remaining_active_character_selection_check_result
+# givm::remaining_active_character_selection_validation
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-enum class remaining_active_character_selection_check_result : std::uint8_t
+enum class remaining_active_character_selection_validation : std::uint8_t
 {
     valid,
     invalid_player,
@@ -35,4 +35,4 @@ enum class remaining_active_character_selection_check_result : std::uint8_t
 
 | | |
 | --- | --- |
-| [`execution_view<remaining_active_character_selection>::check_selection`](execution_view/remaining_active_character_selection/check_selection.md) | 检查剩余一方的出战角色选择 |
+| [`execution_view<remaining_active_character_selection>::selection_validate`](execution_view/remaining_active_character_selection/selection_validate.md) | 检查剩余一方的出战角色选择 |

@@ -19,14 +19,14 @@ class execution_view<execution_state::action_selection>;
 | [`card_id`](action_selection/card_id.md) | 按出牌候选索引取得手牌 ID。 |
 | [`card_cost`](action_selection/card_cost.md) | 取得指定手牌的当前出牌费用。 |
 | [`calculate_card_cost`](action_selection/calculate_card_cost.md) | 计算指定手牌的出牌费用并立即返回结果。 |
-| [`check_card_payment`](action_selection/check_card_payment.md) | 检查出牌骰子的费用匹配与持有数量。 |
-| [`check_card_targets`](action_selection/check_card_targets.md) | 请牌定义分步检查目标，并告知能否完成或继续选择。 |
+| [`card_payment_validate`](action_selection/card_payment_validate.md) | 检查出牌骰子的费用匹配与持有数量。 |
+| [`card_targets_validate`](action_selection/card_targets_validate.md) | 请牌定义分步检查目标，并告知能否完成或继续选择。 |
 | [`play_card`](action_selection/play_card.md) | 选择手牌、支付骰子及至多两个目标。 |
 | [`switch_target_count`](action_selection/switch_target_count.md) | 取得当前切换候选数量。 |
 | [`switch_target`](action_selection/switch_target.md) | 按切换候选索引取得角色 ID。 |
 | [`switch_cost`](action_selection/switch_cost.md) | 取得指定角色的当前切换费用。 |
 | [`calculate_switch_cost`](action_selection/calculate_switch_cost.md) | 计算切换至指定角色的费用并立即返回结果。 |
-| [`check_switch_payment`](action_selection/check_switch_payment.md) | 检查所选骰子是否满足切换费用及持有数量。 |
+| [`switch_payment_validate`](action_selection/switch_payment_validate.md) | 检查所选骰子是否满足切换费用及持有数量。 |
 | [`switch_active_character`](action_selection/switch_active_character.md) | 选择切换角色及支付骰子，可采用已计算费用或同步重新报价。 |
 | [`declare_round_end`](action_selection/declare_round_end.md) | 填写当前玩家宣布结束回合的请求。 |
 

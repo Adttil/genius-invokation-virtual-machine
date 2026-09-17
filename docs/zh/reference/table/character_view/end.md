@@ -39,12 +39,9 @@ struct example_source
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
 
-    static givm::program_entry<givm::character_initialization> handle(
-        const definition_type&, const givm::character_view&,
-        givm::character_initialization& event, const givm::table&, givm::random_fn&)
+    static givm::character_state query(const definition_type&, const givm::character_initial_state&)
     {
-        event.state = { .max_health = 10, .health = 10 };
-        return givm::program_entry<givm::character_initialization>::null();
+        return { .max_health = 10, .health = 10 };
     }
 };
 

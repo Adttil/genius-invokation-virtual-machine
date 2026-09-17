@@ -19,7 +19,7 @@ class execution_view<execution_state::dice_selection>;
 | [`selected`](dice_selection/selected.md) | 取得当前填写的重投选择。 |
 | [`remaining`](dice_selection/remaining.md) | 取得当前玩家剩余的重投次数。 |
 | [`dice_count`](dice_selection/dice_count.md) | 取得本次投骰阶段的骰子数量。 |
-| [`check_selection`](dice_selection/check_selection.md) | 检查玩家是否还有重投机会，且持有所选骰子。 |
+| [`selection_validate`](dice_selection/selection_validate.md) | 检查玩家是否还有重投机会，且持有所选骰子。 |
 | [`select`](dice_selection/select.md) | 填写当前玩家要重投的骰子选择。 |
 
 ## 注意

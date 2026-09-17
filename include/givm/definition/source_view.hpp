@@ -13,6 +13,7 @@
 
 #include "program_entry.hpp"
 #include "subscribed_events.hpp"
+#include "supported_queries.hpp"
 #include "definition_categories.hpp"
 
 namespace givm
@@ -62,6 +63,9 @@ namespace givm
 
 namespace givm::detail
 {
+    template<class TQuery>
+    using query_fn_t = TQuery::result_t (*)(const definition_data&, const TQuery&);
+
     using definition_dependency_lists =
         std::array<std::vector<std::string_view>, definition_types::size()>;
 
@@ -292,6 +296,11 @@ namespace givm
             std::make_index_sequence<views_of_definition<TCategory>::size()>
         >::type;
 
+        template<class... TQueries>
+        using query_fn_tuple_for = std::tuple<detail::query_fn_t<TQueries>...>;
+
+        using query_fn_tuple_t = supported_queries<TCategory>::template apply<query_fn_tuple_for>;
+
         struct rtti_t
         {
             std::string_view(*name)(const void*);
@@ -302,6 +311,12 @@ namespace givm
                 dependencies_by_tag;
             definition_data(*compile)(const void*, definition_compile_context&);
             handle_fn_getter_tuple_t handle_fn_getters;
+#ifdef _MSC_VER
+            [[msvc::no_unique_address]]
+#else
+            [[no_unique_address]]
+#endif
+            query_fn_tuple_t query_fns;
         };
 
         definition_data compile(definition_compile_context& context) const
@@ -371,12 +386,56 @@ namespace givm
                 },
                 .handle_fn_getters = make_handle_fn_getters<TSource>(
                     std::make_index_sequence<views_of_definition<TCategory>::size()>{}
+                ),
+                .query_fns = make_query_fns<TSource>(
+                    std::make_index_sequence<supported_queries<TCategory>::size()>{}
                 )
             };
         }
 
         template<class TSource>
         static constexpr rtti_t rtti_for = make_rtti<TSource>();
+
+        template<class TQuery>
+        detail::query_fn_t<TQuery> get_query_fn() const
+        {
+            return std::get<supported_queries<TCategory>::template index_of<TQuery>()>(rtti_->query_fns);
+        }
+
+        template<class TSource, std::size_t... I>
+        static constexpr query_fn_tuple_t make_query_fns(std::index_sequence<I...>)
+        {
+            return { make_query_fn<TSource, typename supported_queries<TCategory>::template type_at<I>>()... };
+        }
+
+        template<class TSource, class TQuery>
+        static constexpr detail::query_fn_t<TQuery> make_query_fn()
+        {
+            using definition_type = detail::definition_for_source_t<TSource>;
+            if constexpr(requires(const definition_type& definition, const TQuery& query)
+            {
+                TSource::query(definition, query);
+            })
+            {
+                static_assert(std::same_as<decltype(TSource::query(
+                    std::declval<const definition_type&>(), std::declval<const TQuery&>()
+                )), typename TQuery::result_t>);
+                return +[](const definition_data& data, const TQuery& query) -> TQuery::result_t
+                {
+                    return TSource::query(std::any_cast<const definition_type&>(data), query);
+                };
+            }
+            else
+            {
+                static_assert(std::same_as<
+                    decltype(query_default(std::declval<const TQuery&>())), typename TQuery::result_t
+                >);
+                return +[](const definition_data&, const TQuery& query) -> TQuery::result_t
+                {
+                    return query_default(query);
+                };
+            }
+        }
 
         template<class TSource, std::size_t... I>
         static constexpr auto make_dependencies(std::index_sequence<I...>)

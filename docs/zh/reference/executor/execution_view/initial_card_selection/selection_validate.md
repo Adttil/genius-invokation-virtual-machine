@@ -1,17 +1,17 @@
-[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<initial_card_selection>](../initial_card_selection.md) / **check_selection**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<initial_card_selection>](../initial_card_selection.md) / **selection_validate**
 
-# givm::execution_view<execution_state::initial_card_selection>::check_selection
+# givm::execution_view<execution_state::initial_card_selection>::selection_validate
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr initial_card_selection_check_result check_selection(
+constexpr initial_card_selection_validation selection_validate(
     const table& card_table,
     player_id player,
     std::bitset<selection_capacity> selected
 ) const noexcept;
 ```
-[`initial_card_selection_check_result`](../../initial_card_selection_check_result.md)
+[`initial_card_selection_validation`](../../initial_card_selection_validation.md)
 [`table`](../../../table/table.md)
 [`player_id`](../../../table/player_id.md)
 [`selection_capacity`](../../selection_capacity.md)
@@ -32,9 +32,9 @@ constexpr initial_card_selection_check_result check_selection(
 
 | | |
 | --- | --- |
-| `initial_card_selection_check_result::invalid_player` | 玩家编号不是 0 或 1。 |
-| `initial_card_selection_check_result::invalid_card_position` | 至少一个选中位置不对应该玩家的当前有效手牌。 |
-| `initial_card_selection_check_result::valid` | 玩家和选中位置均合法。 |
+| `initial_card_selection_validation::invalid_player` | 玩家编号不是 0 或 1。 |
+| `initial_card_selection_validation::invalid_card_position` | 至少一个选中位置不对应该玩家的当前有效手牌。 |
+| `initial_card_selection_validation::valid` | 玩家和选中位置均合法。 |
 
 合法玩家的空选择返回 `valid`，表示保留全部手牌。
 

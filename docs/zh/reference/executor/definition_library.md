@@ -35,6 +35,7 @@ class definition_library;
 | [`matches_tags`](definition_library/matches_tags.md) | 按必需与排除标签检查定义 |
 | [`can_handle`](definition_library/can_handle.md) | 检查定义能否响应事件 |
 | [`handle`](definition_library/handle.md) | 请求定义响应事件 |
+| [`query`](definition_library/query.md) | 取得定义的规则信息或检查结果 |
 
 ## 注意
 

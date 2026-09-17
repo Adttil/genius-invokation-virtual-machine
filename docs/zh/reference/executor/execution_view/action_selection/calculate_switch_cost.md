@@ -41,4 +41,4 @@ const cost_of_switch& calculate_switch_cost(
 
 返回的引用不是费用快照；再次计算同一候选会更新引用所见的结果。下一次推进或重建现场后，先前取得的引用失效。
 
-计算完成后，可通过 [`check_switch_payment`](check_switch_payment.md) 检查所选骰子是否满足费用及持有数量，再通过 [`switch_active_character`](switch_active_character.md) 选择采用该费用的切换。
+计算完成后，可通过 [`switch_payment_validate`](switch_payment_validate.md) 检查所选骰子是否满足费用及持有数量，再通过 [`switch_active_character`](switch_active_character.md) 选择采用该费用的切换。

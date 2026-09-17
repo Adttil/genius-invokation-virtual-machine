@@ -1,21 +1,21 @@
-[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<dice_selection>](../dice_selection.md) / **check_selection**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<dice_selection>](../dice_selection.md) / **selection_validate**
 
-# givm::execution_view<execution_state::dice_selection>::check_selection
+# givm::execution_view<execution_state::dice_selection>::selection_validate
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr bool check_selection(
+constexpr bool selection_validate(
     const table& card_table,
     const dice_counts& selected
 ) const noexcept;
-constexpr dice_selection_check_result check_selection(
+constexpr dice_selection_validation selection_validate(
     const table& card_table,
     player_id player,
     const dice_counts& selected
 ) const noexcept;
 ```
-[`dice_selection_check_result`](../../dice_selection_check_result.md)
+[`dice_selection_validation`](../../dice_selection_validation.md)
 [`table`](../../../table/table.md)
 [`player_id`](../../../table/player_id.md)
 [`dice_counts`](../../../enums/dice_counts.md)
@@ -38,10 +38,10 @@ constexpr dice_selection_check_result check_selection(
 
 | | |
 | --- | --- |
-| `dice_selection_check_result::invalid_player` | 玩家编号不是 0 或 1。 |
-| `dice_selection_check_result::no_rerolls_remaining` | 该玩家已经没有重投机会。 |
-| `dice_selection_check_result::insufficient_dice` | 至少一种所选骰子的数量超过该玩家当前持有数量。 |
-| `dice_selection_check_result::valid` | 玩家合法、仍有重投机会，且持有所选骰子。 |
+| `dice_selection_validation::invalid_player` | 玩家编号不是 0 或 1。 |
+| `dice_selection_validation::no_rerolls_remaining` | 该玩家已经没有重投机会。 |
+| `dice_selection_validation::insufficient_dice` | 至少一种所选骰子的数量超过该玩家当前持有数量。 |
+| `dice_selection_validation::valid` | 玩家合法、仍有重投机会，且持有所选骰子。 |
 
 所有数量均为零的选择表示放弃该方全部剩余机会。不指定玩家时返回 `true`；显式指定合法且仍有机会的玩家时返回 `valid`。
 

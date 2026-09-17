@@ -3,6 +3,7 @@
 
 #include "definition/program_entry.hpp"
 #include "definition/events.hpp"
+#include "definition/queries.hpp"
 #include "definition/commands.hpp"
 #include "definition/source_view.hpp"
 #include "definition/source_library.hpp"

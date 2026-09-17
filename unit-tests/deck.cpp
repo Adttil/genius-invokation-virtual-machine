@@ -33,12 +33,12 @@ namespace
         {
             std::string_view name;
             std::uint32_t base_health;
-            std::vector<std::string_view>* initialization_order;
+            std::uint32_t* initial_state_queries;
         };
 
         std::string_view source_name;
         std::uint32_t base_health;
-        std::vector<std::string_view>* initialization_order;
+        std::uint32_t* initial_state_queries;
 
         std::string_view name() const noexcept
         {
@@ -50,27 +50,19 @@ namespace
             return {
                 .name = source_name,
                 .base_health = base_health,
-                .initialization_order = initialization_order
+                .initial_state_queries = initial_state_queries
             };
         }
 
-        static givm::handler_program_entry_t<givm::character_initialization> handle(
-            const definition_type& definition,
-            const givm::character_view&,
-            givm::character_initialization& event,
-            const givm::table&,
-            givm::random_fn& random
-        )
+        static givm::character_state query(const definition_type& definition, const givm::character_initial_state&)
         {
-            definition.initialization_order->push_back(definition.name);
-            const std::uint32_t health = definition.base_health + random();
-            event.state = {
-                .max_health = health,
+            ++*definition.initial_state_queries;
+            return {
+                .max_health = definition.base_health,
                 .max_energy = 3,
-                .health = health,
+                .health = definition.base_health,
                 .energy = 0
             };
-            return givm::handler_program_entry_t<givm::character_initialization>::null();
         }
     };
 
@@ -197,11 +189,11 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     );
 }
 
-TEST_CASE("initialize_characters initializes loaded characters in slot order", "[deck][instruction]")
+TEST_CASE("initialize_characters applies cached initial states to loaded characters", "[deck][instruction]")
 {
-    std::vector<std::string_view> initialization_order;
-    const initializing_character_source alpha{ "Alpha", 10, &initialization_order };
-    const initializing_character_source beta{ "Beta", 20, &initialization_order };
+    std::uint32_t initial_state_queries = 0;
+    const initializing_character_source alpha{ "Alpha", 10, &initial_state_queries };
+    const initializing_character_source beta{ "Beta", 20, &initial_state_queries };
 
     givm::definition_source_library sources;
     REQUIRE(sources.add(alpha, beta));
@@ -209,6 +201,7 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
         std::tuple{ givm::initialize_characters{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, givm::compile_mode::normal
     );
+    CHECK(initial_state_queries == 2);
     const givm::linked_deck deck{
         .characters = {
             id_map.get_id<givm::character_view>("Beta"),
@@ -223,15 +216,13 @@ TEST_CASE("initialize_characters initializes loaded characters in slot order", "
     sequence_random random{ .values = { 2, 3 } };
 
     REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
-    REQUIRE(initialization_order.size() == 2);
-    CHECK(bool(initialization_order[0] == "Beta"));
-    CHECK(bool(initialization_order[1] == "Alpha"));
-    CHECK(random.position == 2);
+    CHECK(initial_state_queries == 2);
+    CHECK(random.position == 0);
 
     const auto player = table[givm::player_id{ 0 }];
     auto characters = player.characters();
     auto iterator = characters.begin();
-    CHECK((*iterator).state().health == 22);
+    CHECK((*iterator).state().health == 20);
     ++iterator;
-    CHECK((*iterator).state().health == 13);
+    CHECK((*iterator).state().health == 10);
 }

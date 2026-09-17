@@ -19,6 +19,7 @@
 | [命令](reference/definition/commands.md) | 游戏规则的操作描述 |
 | [`any_command_for`](reference/definition/any_command_for.md) | 兼容给定 context 的命令 variant |
 | [事件](reference/definition/events.md) | 可响应的游戏事件 |
+| [查询](reference/definition/queries.md) | 定义提供的规则信息与检查结果 |
 
 ## [牌桌](reference/table.md)
 

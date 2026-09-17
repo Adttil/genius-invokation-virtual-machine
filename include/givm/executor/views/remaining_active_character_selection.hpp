@@ -9,7 +9,7 @@
 
 namespace givm
 {
-    enum class remaining_active_character_selection_check_result : std::uint8_t
+    enum class remaining_active_character_selection_validation : std::uint8_t
     {
         valid,
         invalid_player,
@@ -31,24 +31,24 @@ namespace givm
             return get<1>(std::as_const(*stack_).top<std::size_t, character_id>());
         }
 
-        constexpr remaining_active_character_selection_check_result check_selection(
+        constexpr remaining_active_character_selection_validation selection_validate(
             const table& card_table, character_id character
         ) const noexcept
         {
             if(character.player_id.index >= 2)
             {
-                return remaining_active_character_selection_check_result::invalid_player;
+                return remaining_active_character_selection_validation::invalid_player;
             }
             if(character.player_id != player())
             {
-                return remaining_active_character_selection_check_result::wrong_player;
+                return remaining_active_character_selection_validation::wrong_player;
             }
             const auto characters = card_table[character.player_id].characters<false>();
             if(character.index >= characters.size() || not characters[character.index].is_valid())
             {
-                return remaining_active_character_selection_check_result::invalid_character;
+                return remaining_active_character_selection_validation::invalid_character;
             }
-            return remaining_active_character_selection_check_result::valid;
+            return remaining_active_character_selection_validation::valid;
         }
 
         constexpr void select(character_id character) const noexcept

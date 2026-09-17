@@ -67,6 +67,15 @@ TEST_CASE("payment responses can be constructed without executor headers", "[def
     CHECK(entry.is_null());
 }
 
+TEST_CASE("query parameters and defaults are available without executor headers", "[definition][query]")
+{
+    STATIC_REQUIRE(std::same_as<givm::character_initial_state::result_t, givm::character_state>);
+    STATIC_REQUIRE(std::same_as<givm::card_initial_cost::result_t, givm::action_cost_requirement>);
+    STATIC_REQUIRE(std::same_as<givm::card_target_validation::result_t, givm::target_validation>);
+    CHECK(query_default(givm::character_initial_state{}).health == 0);
+    CHECK(query_default(givm::card_initial_cost{}).speed == givm::action_speed::fast);
+}
+
 TEST_CASE("definition sources can be registered and enumerated without executor headers", "[definition][source_library]")
 {
     const named_source<givm::card_definition> card{ "Card" };

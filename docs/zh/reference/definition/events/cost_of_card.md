@@ -20,7 +20,7 @@ struct cost_of_card;
 
 ## 注意
 
-每次报价先通过 [`card_cost_initialization`](card_cost_initialization.md) 取得基础费用，再依次处理费用响应。响应不得调用随机函数，违反此前提属于未定义行为。
+每次报价先读取定义库已保存的 [`card_initial_cost`](../queries/card_initial_cost.md) 结果作为基础费用，再依次处理费用响应。响应不得调用随机函数，违反此前提属于未定义行为。
 
 需要在确认出牌后执行的效果由响应返回的 [`handler_program_entry_t`](../handler_program_entry_t.md) 表达；其语境通过 [`handler_program_context_t`](../handler_program_context_t.md) 取得。报价时不会执行这些效果，确认后只执行所选牌的费用效果，且执行时机在扣除骰子之前。
 

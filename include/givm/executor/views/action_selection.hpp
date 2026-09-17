@@ -16,14 +16,14 @@
 
 namespace givm
 {
-    enum class switch_payment_check_result : std::uint8_t
+    enum class switch_payment_validation : std::uint8_t
     {
         valid,
         requirement_mismatch,
         insufficient_dice
     };
 
-    enum class card_payment_check_result : std::uint8_t
+    enum class card_payment_validation : std::uint8_t
     {
         valid,
         requirement_mismatch,
@@ -69,21 +69,21 @@ namespace givm
             );
         }
 
-        constexpr switch_payment_check_result check_switch_payment(
+        constexpr switch_payment_validation switch_payment_validate(
             const table& card_table, std::size_t target_index, const dice_counts& paid_dice
         ) const noexcept
         {
             const auto& cost = switch_cost(target_index);
             if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
             {
-                return switch_payment_check_result::requirement_mismatch;
+                return switch_payment_validation::requirement_mismatch;
             }
             const auto player = card_table.state().active_player;
             if(not card_table[player].state().dice.contains(paid_dice))
             {
-                return switch_payment_check_result::insufficient_dice;
+                return switch_payment_validation::insufficient_dice;
             }
-            return switch_payment_check_result::valid;
+            return switch_payment_validation::valid;
         }
 
         constexpr void switch_active_character(std::size_t target_index, const dice_counts& paid_dice) const noexcept
@@ -138,23 +138,23 @@ namespace givm
             return detail::calculate_card_cost(library, card_index, card_table, *stack_);
         }
 
-        constexpr card_payment_check_result check_card_payment(
+        constexpr card_payment_validation card_payment_validate(
             const table& card_table, std::size_t card_index, const dice_counts& paid_dice
         ) const noexcept
         {
             const auto& cost = card_cost(card_index);
             if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
             {
-                return card_payment_check_result::requirement_mismatch;
+                return card_payment_validation::requirement_mismatch;
             }
             if(not card_table[cost.card.player_id].state().dice.contains(paid_dice))
             {
-                return card_payment_check_result::insufficient_dice;
+                return card_payment_validation::insufficient_dice;
             }
-            return card_payment_check_result::valid;
+            return card_payment_validation::valid;
         }
 
-        card_target_check_result check_card_targets(
+        target_validation card_targets_validate(
             const definition_library& library, const table& card_table,
             std::size_t card_index, std::span<const card_target_id> targets = {}
         ) const
@@ -162,21 +162,15 @@ namespace givm
             const auto id = card_id(card_index);
             const auto entity = card_table[id];
             const auto definition = library[entity.definition_id()];
-            if(not definition.can_handle<card_target_check, hand_card_view>())
-            {
-                return card_target_check_result::valid_complete;
-            }
             std::array<card_target_id, 2> selected_targets{};
             const auto target_count = std::min(targets.size(), selected_targets.size());
             for(std::size_t index = 0; index < target_count; ++index)
             {
                 selected_targets[index] = targets[index];
             }
-            card_target_check event{ .card = id, .targets = selected_targets, .target_count = target_count };
-            auto zero_random = []() -> std::uint32_t { return 0; };
-            random_fn random{ zero_random };
-            (void)definition.handle<card_target_check>(entity, event, card_table, random);
-            return event.result;
+            return definition.query(card_target_validation{
+                .card = entity, .table = card_table, .targets = selected_targets, .target_count = target_count
+            });
         }
 
         constexpr void play_card(

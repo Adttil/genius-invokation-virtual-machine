@@ -15,7 +15,7 @@ class execution_view<execution_state::initial_card_selection>;
 
 | | |
 | --- | --- |
-| [`check_selection`](initial_card_selection/check_selection.md) | 检查指定玩家的换牌选择是否合法。 |
+| [`selection_validate`](initial_card_selection/selection_validate.md) | 检查指定玩家的换牌选择是否合法。 |
 | [`select`](initial_card_selection/select.md) | 指定玩家并填写其换牌选择。 |
 
 ## 注意

@@ -18,7 +18,7 @@ struct action_argument;
 
 ## 注意
 
-当前主动切换通过 [`switch_active_character`](execution_view/action_selection/switch_active_character.md) 接收切换候选索引和 `dice_counts`，无需构造本类型。可以先用行动现场的 [`check_switch_payment`](execution_view/action_selection/check_switch_payment.md) 检查所选骰子；提交接口不会自动检查。
+当前主动切换通过 [`switch_active_character`](execution_view/action_selection/switch_active_character.md) 接收切换候选索引和 `dice_counts`，无需构造本类型。可以先用行动现场的 [`switch_payment_validate`](execution_view/action_selection/switch_payment_validate.md) 检查所选骰子；提交接口不会自动检查。
 
 ## 示例
 

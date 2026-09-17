@@ -23,4 +23,4 @@ constexpr void select(character_id character) const noexcept;
 
 ## 注意
 
-所属玩家由当前现场确定。可先通过 [`check_selection`](check_selection.md) 独立检查；本操作不自动检查，只填写选择，下一次推进才同时设置双方的出战角色。
+所属玩家由当前现场确定。可先通过 [`selection_validate`](selection_validate.md) 独立检查；本操作不自动检查，只填写选择，下一次推进才同时设置双方的出战角色。

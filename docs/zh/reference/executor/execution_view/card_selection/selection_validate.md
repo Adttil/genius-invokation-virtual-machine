@@ -1,11 +1,11 @@
-[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<card_selection>](../card_selection.md) / **check_selection**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<card_selection>](../card_selection.md) / **selection_validate**
 
-# givm::execution_view<execution_state::card_selection>::check_selection
+# givm::execution_view<execution_state::card_selection>::selection_validate
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr bool check_selection(
+constexpr bool selection_validate(
     const table& card_table,
     std::bitset<selection_capacity> selected
 ) const noexcept;

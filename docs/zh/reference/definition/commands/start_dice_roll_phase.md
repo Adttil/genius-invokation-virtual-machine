@@ -58,7 +58,7 @@ struct start_dice_roll_phase;
 
 ### 重投选择
 
-等待重投时，执行器返回 `execution_state::dice_selection`，通过相应的[现场视图](../../executor/execution_view/dice_selection.md)提交选择。选择以 [`dice_counts`](../../enums/dice_counts.md) 指定每种骰子要重投的数量，各类数量不得超过当前持有数量；可先使用视图的 `check_selection` 独立检查。非空选择移除选中的骰子，再加入上述新结果，并消耗该方一次重投机会。所有数量为零的选择放弃该方全部剩余机会；不再使用的预分配结果弃用。
+等待重投时，执行器返回 `execution_state::dice_selection`，通过相应的[现场视图](../../executor/execution_view/dice_selection.md)提交选择。选择以 [`dice_counts`](../../enums/dice_counts.md) 指定每种骰子要重投的数量，各类数量不得超过当前持有数量；可先使用视图的 `selection_validate` 独立检查。非空选择移除选中的骰子，再加入上述新结果，并消耗该方一次重投机会。所有数量为零的选择放弃该方全部剩余机会；不再使用的预分配结果弃用。
 
 默认提示仍有重投机会的玩家 0，否则提示玩家 1；调用方可以指定任意仍有机会的玩家先提交，提交顺序不改变各方获配的随机结果序列。双方均无重投机会时，继续后续流程。
 
@@ -94,7 +94,7 @@ int main()
     for(int submission = 0; submission < 2; ++submission)
     {
         const auto view = execution.view_in<givm::execution_state::dice_selection>();
-        if(not view.check_selection(table, selected))
+        if(not view.selection_validate(table, selected))
             return 1;
         view.select(selected);
         execution.step(library, table, random);

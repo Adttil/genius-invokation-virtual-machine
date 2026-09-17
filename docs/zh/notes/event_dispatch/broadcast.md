@@ -57,7 +57,7 @@ handler 不能通过收到的 `const table&` 直接修改持久状态。需要�
 
 领域指令可以准备自己的响应者集合，或直接调用单个 definition handler。具体指令和事件的公开约定说明响应范围、调用顺序及返回入口的处理；完整内部帧由源码维护。采用辅助工具的默认遍历不构成所有广播都必须遵循的规则。
 
-`character_initialization` 是当前单目标特例。`enter_character` 初始化刚创建的角色，`initialize_characters` 依次初始化已经装入 table 的角色；二者都只调用当前角色自己的 handler，约定其只修改局部 event 并返回空入口，当前不进入响应程序。这个限制目前是公开协议约定，未来若增加静态限制，需要保持现行语义。
+`card_effect` 是直接调用本牌定义的事件；费用预览也有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `initialize_characters` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
 
 ## 与当前实现逐项核对
 
@@ -79,8 +79,6 @@ handler 不能通过收到的 `const table&` 直接修改持久状态。需要�
 
 相比之下，`draw_cards`、单方 `replace_cards` 和元素反应后的通知，是推进到后一个广播时才重新调用 `prepare_broadcast`；后一个广播可采样之前响应创建的实体。
 
-### 初始化特例的额外前提
+### 角色初始状态的读取
 
-[`enter_character`](../../../../include/givm/executor/commands/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/commands/initialize_characters.hpp) 直接调用当前角色定义的 `handle<character_initialization>`，没有先调用 `can_handle` 检查。角色定义必须提供这个 handler。事件是函数内的局部值，调用后把 `event.state` 写回角色，返回入口被 `(void)` 丢弃；即使 handler 返回含 end_game 的程序入口也不会由这两条指令进入。旧文建议返回 null 保持这个事实明确。
-
-旧文把“将来可增加静态限制但应保持现有语义”作为设计余地。这里仍保留该余地，不把它误记为已有静态限制。
+[`enter_character`](../../../../include/givm/executor/commands/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/commands/initialize_characters.hpp) 通过 `query` 取得已编译定义的初始状态，直接写回角色。空查询在库编译期间求值，运行时不再构造初始化事件或进入响应函数；缺少源查询时采用 `query_default` 的空状态。

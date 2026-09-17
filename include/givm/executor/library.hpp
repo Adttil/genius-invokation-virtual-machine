@@ -211,6 +211,12 @@ namespace givm
                 return library_->template can_handle<TEvent, TView>(id_);
             }
 
+            template<class TQuery>
+            TQuery::result_t query(const TQuery& parameters) const
+            {
+                return library_->query(id_, parameters);
+            }
+
             template<class TEvent, class TView>
             handler_program_entry_t<TEvent> handle(
                 const TView& entity,
@@ -293,6 +299,22 @@ namespace givm
             return get_handle_fn<TEvent, TView>(id) != nullptr;
         }
 
+        template<class TDefinitionType, class TQuery>
+        TQuery::result_t query(definition_id<TDefinitionType> id, const TQuery& parameters) const
+        {
+            const auto& bucket = bucket_for<TDefinitionType>();
+            const auto& queries =
+                std::get<supported_queries<TDefinitionType>::template index_of<TQuery>()>(bucket.queries);
+            if constexpr(std::is_empty_v<TQuery>)
+            {
+                return queries[id.value()];
+            }
+            else
+            {
+                return queries[id.value()](bucket.data[id.value()], parameters);
+            }
+        }
+
         template<class TEvent, class TDefinitionType, class TView>
         handler_program_entry_t<TEvent> handle(
             definition_id<TDefinitionType> id,
@@ -345,6 +367,11 @@ namespace givm
             std::make_index_sequence<views_of_definition<TDefinitionType>::size()>
         >::type;
 
+        template<class... TQueries>
+        using query_vectors_for = std::tuple<std::vector<std::conditional_t<
+            std::is_empty_v<TQueries>, typename TQueries::result_t, detail::query_fn_t<TQueries>
+        >>...>;
+
         template<class TDefinitionType>
         struct bucket
         {
@@ -352,6 +379,12 @@ namespace givm
             std::vector<definition_data> data;
             std::vector<tag_mask> tags;
             handle_fn_vector_groups_t<TDefinitionType> handle_fns;
+#ifdef _MSC_VER
+            [[msvc::no_unique_address]]
+#else
+            [[no_unique_address]]
+#endif
+            typename supported_queries<TDefinitionType>::template apply<query_vectors_for> queries;
         };
 
         template<class...TDefinition>
@@ -403,6 +436,23 @@ namespace givm
             bucket.tags.push_back(make_tag_mask(declarations.tags, id_map));
             append_handle_fns(bucket, source,
                               std::make_index_sequence<views_of_definition<TDefinitionType>::size()>{});
+            if constexpr(supported_queries<TDefinitionType>::size() != 0)
+            {
+                supported_queries<TDefinitionType>::each([&]<class TQuery>
+                {
+                    auto& queries =
+                        std::get<supported_queries<TDefinitionType>::template index_of<TQuery>()>(bucket.queries);
+                    const auto query_fn = source.template get_query_fn<TQuery>();
+                    if constexpr(std::is_empty_v<TQuery>)
+                    {
+                        queries.push_back(query_fn(bucket.data.back(), TQuery{}));
+                    }
+                    else
+                    {
+                        queries.push_back(query_fn);
+                    }
+                });
+            }
         }
 
         static tag_mask make_tag_mask(

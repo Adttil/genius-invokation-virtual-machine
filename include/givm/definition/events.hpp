@@ -224,30 +224,6 @@ namespace givm
     // Playing-card events.
     using card_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
 
-    struct card_cost_initialization
-    {
-        const hand_card_id card;
-        action_cost_requirement requirement{ .dice_requirement = {}, .speed = action_speed::fast };
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_cost_initialization);
-    };
-
-    enum class card_target_check_result : std::uint8_t
-    {
-        invalid,
-        valid_incomplete,
-        valid_complete_or_continue,
-        valid_complete
-    };
-
-    struct card_target_check
-    {
-        const hand_card_id card;
-        const std::array<card_target_id, 2> targets;
-        const std::size_t target_count;
-        card_target_check_result result = card_target_check_result::valid_complete;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_target_check);
-    };
-
     struct card_effect
     {
         const hand_card_id card;
@@ -416,11 +392,6 @@ namespace givm
     {
         const entity_id entity;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(entity_left);
-    };
-
-    struct character_initialization
-    {
-        character_state state{};
     };
 
     using counted_entity_id = std::variant<hand_card_status_id, deck_card_status_id, support_id, summon_id,

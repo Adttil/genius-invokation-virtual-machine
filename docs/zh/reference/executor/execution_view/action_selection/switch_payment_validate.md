@@ -1,17 +1,17 @@
-[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **check_switch_payment**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **switch_payment_validate**
 
-# givm::execution_view<execution_state::action_selection>::check_switch_payment
+# givm::execution_view<execution_state::action_selection>::switch_payment_validate
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr switch_payment_check_result check_switch_payment(
+constexpr switch_payment_validation switch_payment_validate(
     const table& card_table,
     std::size_t target_index,
     const dice_counts& paid_dice
 ) const noexcept;
 ```
-[`switch_payment_check_result`](../../switch_payment_check_result.md)
+[`switch_payment_validation`](../../switch_payment_validation.md)
 [`table`](../../../table/table.md)
 [`dice_counts`](../../../enums/dice_counts.md)
 
@@ -31,9 +31,9 @@ constexpr switch_payment_check_result check_switch_payment(
 
 | | |
 | --- | --- |
-| `switch_payment_check_result::requirement_mismatch` | 所选骰子不符合费用要求。 |
-| `switch_payment_check_result::insufficient_dice` | 所选骰子符合费用要求，但持有数量不足。 |
-| `switch_payment_check_result::valid` | 所选骰子符合费用要求，且持有数量足够。 |
+| `switch_payment_validation::requirement_mismatch` | 所选骰子不符合费用要求。 |
+| `switch_payment_validation::insufficient_dice` | 所选骰子符合费用要求，但持有数量不足。 |
+| `switch_payment_validation::valid` | 所选骰子符合费用要求，且持有数量足够。 |
 
 ## 注意
 

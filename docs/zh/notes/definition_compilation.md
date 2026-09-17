@@ -350,7 +350,7 @@ static program_entry<damage_effect> handle(
 }
 ```
 
-`character_initialization` 沿用相同调用形状，但原记录约定 handler 只修改局部事件并返回空入口；`enter_character` 不进入它返回的程序。当前 `initialize_characters` 也遵循直接填写状态、不进入响应程序的处理方式，见 [character_initialization](../reference/definition/events/character_initialization.md)。原文将“具体事件字段、响应时序和栈 ABI”一并指向事件目录；现在前两者由事件及指令 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)，不作为事件使用者的完整栈协议。
+角色初始化现使用 [character_initial_state](../reference/definition/queries/character_initial_state.md)；卡牌初始费用与目标检查也改用查询，不再为只返回数据的操作制造事件及空入口。事件字段和响应时序由 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)。
 
 handler 使用静态函数，是因为运行时持有编译后的 definition，而不保留原 source。动态 adapter 需要的 Lua 状态引用、回调索引或其他稳定句柄应由 `compile(...)` 放进 definition，再由静态 handler 读取。
 
@@ -368,6 +368,16 @@ bool can_handle() const;
 普通静态 source 通常只需省略不支持的 `handle`，无需提供 `can_handle`。动态 adapter 可能拥有覆盖全部事件的通用 handler 模板，此时可根据脚本实际注册的回调返回准确结果。该判断只在编译定义库时发生，不增加对局运行时的字符串查询或脚本能力检查。
 
 `can_handle` 表示“存在这一类响应”，不保证 handler 每次调用都会返回非空入口。card 和 card status 可能为不同区域 view 提供不同响应，所以接口同时区分 view 与 event。
+
+## 查询与结果保存
+
+查询通过 `TSource::query(const definition_type&, const Q&)` 返回 `Q::result_t`，`definition_type` 是本源 `compile` 的返回类型。每个类别使用一份 `supported_queries<Category>`；类型为空的判据仅为 `std::is_empty_v<Q>`，嵌套 `result_t` 不影响这个判据。
+
+空查询在具体 definition 编译完成后调用一次，保存结果；非空查询保存对应的擦除函数，在收到参数时以 `std::any_cast` 取得 definition 后调用源的静态 query。运行期不需要查询种类的枚举或字符串查找。空查询按具体定义条目保存，不能按 C++ 源类型共享，因为同一源类型的不同实例可以有不同配置。
+
+没有匹配的源 query 时使用未限定的 `query_default(parameters)`，由 ADL 找到默认方法。源函数和默认方法都检查准确返回类型；存在源函数但返回错误类型不能静默退化为默认查询。各类别只保存自己支持的查询内容，没有另设查询能力标志。
+
+角色初始状态、初始费用采用值结果。若以后增加包含指针或视图的结果，缓存只保存该对象本身，不自动拥有目标数据；库复制后仍需遵守其借用关系。查询结果不在 source view 的按源类型共享 RTTI 中保存，源编译上下文解析出的 ID 可正常参与结果计算。
 
 ## 动态定义源
 
@@ -434,7 +444,7 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 2. 从 `definition_selection` 指定的定义求出依赖闭包，或选择全部定义。
 3. 为选中的定义和标签建立 issued id 映射。
 4. 为每个选中的 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应强类型入口。
-5. 根据有效 `handle` 调用和可选 `can_handle` 结果安装运行时分派。
+5. 保存空查询的结果与非空查询的调用函数；根据有效 `handle` 调用和可选 `can_handle` 结果安装事件运行时分派。
 6. 将 definition 响应程序与调用方提供的初始化程序、回合程序共同组成游戏规则程序。
 7. 所有 definition 完整构造后，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`。
 

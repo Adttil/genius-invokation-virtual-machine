@@ -29,6 +29,7 @@ class definition_view;
 | [`matches_tags`](definition_view/matches_tags.md) | 检查标签筛选条件 |
 | [`can_handle`](definition_view/can_handle.md) | 检查事件响应能力 |
 | [`handle`](definition_view/handle.md) | 请求响应一个事件 |
+| [`query`](definition_view/query.md) | 取得规则信息或检查结果 |
 
 ## 注意
 

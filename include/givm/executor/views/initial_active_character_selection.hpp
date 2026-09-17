@@ -7,7 +7,7 @@
 
 namespace givm
 {
-    enum class initial_active_character_selection_check_result : std::uint8_t
+    enum class initial_active_character_selection_validation : std::uint8_t
     {
         valid,
         invalid_player,
@@ -18,20 +18,20 @@ namespace givm
     class execution_view<execution_state::initial_active_character_selection>
     {
     public:
-        constexpr initial_active_character_selection_check_result check_selection(
+        constexpr initial_active_character_selection_validation selection_validate(
             const table& card_table, character_id character
         ) const noexcept
         {
             if(character.player_id.index >= 2)
             {
-                return initial_active_character_selection_check_result::invalid_player;
+                return initial_active_character_selection_validation::invalid_player;
             }
             const auto characters = card_table[character.player_id].characters<false>();
             if(character.index >= characters.size() || not characters[character.index].is_valid())
             {
-                return initial_active_character_selection_check_result::invalid_character;
+                return initial_active_character_selection_validation::invalid_character;
             }
-            return initial_active_character_selection_check_result::valid;
+            return initial_active_character_selection_validation::valid;
         }
 
         constexpr void select(character_id character) const noexcept

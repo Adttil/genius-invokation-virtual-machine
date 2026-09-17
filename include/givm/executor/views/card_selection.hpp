@@ -22,7 +22,7 @@ namespace givm
             return get<0>(std::as_const(*stack_).top<std::bitset<selection_capacity>>());
         }
 
-        constexpr bool check_selection(
+        constexpr bool selection_validate(
             const table& card_table, std::bitset<selection_capacity> selected
         ) const noexcept
         {

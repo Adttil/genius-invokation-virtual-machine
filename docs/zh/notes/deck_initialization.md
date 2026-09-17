@@ -71,12 +71,12 @@ void table::load_deck(player_id player, const linked_deck& deck);
 
 ## 初始化程序
 
-角色初始化事件的行为见 [character_initialization](../reference/definition/events/character_initialization.md)。它由每个角色自己的定义填写状态；当前 `initialize_characters` 和 `enter_character` 均不执行这个响应返回的程序入口。
+角色初始状态由 [character_initial_state](../reference/definition/queries/character_initial_state.md) 提供，在每项角色定义编译后求值一次并保存在定义库中。`initialize_characters` 和 `enter_character` 直接把该结果写入角色，不在对局运行时调用初始化响应。
 
 需要随机性或 definition 逻辑的准备步骤属于游戏规则，应由初始化程序表达：
 
 1. [`shuffle_deck`](../reference/definition/commands/shuffle_deck.md) 随机重排指定玩家的牌堆。
-2. [`initialize_characters`](../reference/definition/commands/initialize_characters.md) 调用指定玩家每个角色自己的 `character_initialization` handler。
+2. [`initialize_characters`](../reference/definition/commands/initialize_characters.md) 读取指定玩家每个角色定义的初始状态查询结果。
 3. 初始化程序继续执行初始抽牌、换牌和选择出战角色等规则。
 
 具体顺序由编译调用方提供的初始化程序决定。`load_deck` 不隐式补做这些步骤。

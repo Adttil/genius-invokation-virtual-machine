@@ -16,12 +16,9 @@ namespace givm::test
 
         std::string_view name() const noexcept { return source_name; }
         definition_type compile(givm::definition_compile_context&) const { return { initial_state }; }
-        static givm::handler_program_entry_t<givm::character_initialization> handle(
-            const definition_type& data, const givm::character_view&, givm::character_initialization& event,
-            const givm::table&, givm::random_fn&)
+        static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
         {
-            event.state = data.initial_state;
-            return givm::handler_program_entry_t<givm::character_initialization>::null();
+            return data.initial_state;
         }
     };
 }

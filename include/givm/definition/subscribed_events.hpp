@@ -44,8 +44,6 @@ namespace givm
     template<>
     struct subscribed_events<hand_card_view> : subscribed_events_detail::append<
         subscribed_events<hand_card_status_view>::apply<type_list>,
-        struct card_cost_initialization,
-        struct card_target_check,
         struct card_effect
     >{};
 
@@ -124,8 +122,7 @@ namespace givm
     struct subscribed_events<combat_status_view> : subscribed_events<support_view>{};
 
     template<>
-    struct subscribed_events<character_view>
-    : subscribed_events_detail::append<support_subscribed_events, struct character_initialization>{};
+    struct subscribed_events<character_view> : subscribed_events<support_view>{};
 
     template<>
     struct subscribed_events<skill_view> : subscribed_events<support_view>{};

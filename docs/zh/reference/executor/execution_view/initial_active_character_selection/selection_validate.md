@@ -1,16 +1,16 @@
-[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<initial_active_character_selection>](../initial_active_character_selection.md) / **check_selection**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<initial_active_character_selection>](../initial_active_character_selection.md) / **selection_validate**
 
-# givm::execution_view<execution_state::initial_active_character_selection>::check_selection
+# givm::execution_view<execution_state::initial_active_character_selection>::selection_validate
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr initial_active_character_selection_check_result check_selection(
+constexpr initial_active_character_selection_validation selection_validate(
     const table& card_table,
     character_id character
 ) const noexcept;
 ```
-[`initial_active_character_selection_check_result`](../../initial_active_character_selection_check_result.md)
+[`initial_active_character_selection_validation`](../../initial_active_character_selection_validation.md)
 [`table`](../../../table/table.md)
 [`character_id`](../../../table/character_id.md)
 
@@ -29,9 +29,9 @@ constexpr initial_active_character_selection_check_result check_selection(
 
 | | |
 | --- | --- |
-| `initial_active_character_selection_check_result::invalid_player` | 所属玩家编号不是 0 或 1。 |
-| `initial_active_character_selection_check_result::invalid_character` | 角色下标越界，或对应角色已被移除。 |
-| `initial_active_character_selection_check_result::valid` | 所属玩家合法，且角色存在并有效。 |
+| `initial_active_character_selection_validation::invalid_player` | 所属玩家编号不是 0 或 1。 |
+| `initial_active_character_selection_validation::invalid_character` | 角色下标越界，或对应角色已被移除。 |
+| `initial_active_character_selection_validation::valid` | 所属玩家合法，且角色存在并有效。 |
 
 首次选择允许任意一方。角色生命值不属于这项检查的条件。
 

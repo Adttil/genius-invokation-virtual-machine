@@ -26,4 +26,4 @@ constexpr void select(player_id player, const dice_counts& selected) const noexc
 
 ## 注意
 
-可先通过 [`check_selection`](check_selection.md) 独立检查。本操作不自动检查，只填写选择，下一次推进才消费输入。
+可先通过 [`selection_validate`](selection_validate.md) 独立检查。本操作不自动检查，只填写选择，下一次推进才消费输入。

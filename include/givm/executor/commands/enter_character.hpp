@@ -2,28 +2,18 @@
 #define GIVM_EXECUTOR_COMMANDS_ENTER_CHARACTER_HPP
 
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
-#include "../../definition/events.hpp"
-#include <utility>
+#include "../../definition.hpp"
 
 namespace givm::detail
 {
     inline execution_state enter_character_execute(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
+        execution_context& context, random_fn&
     )
     {
         const auto& instruction = context.instruction_data<1, givm::enter_character>(library);
-        const auto character = table[instruction.player].add(instruction.definition, character_state{}).id();
-        character_initialization event{};
-        const auto character_entity = std::as_const(table)[character];
-        (void)library[character_entity.definition_id()].template handle<character_initialization>(
-            character_entity,
-            event,
-            std::as_const(table),
-            random
-        );
-        table[character].state() = event.state;
+        const auto state = library[instruction.definition].query(character_initial_state{});
+        table[instruction.player].add(instruction.definition, state);
 
         return context.advance(instruction_extent<1, givm::enter_character>);
     }

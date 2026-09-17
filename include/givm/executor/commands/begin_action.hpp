@@ -180,9 +180,7 @@ namespace givm::detail
         const auto card = card_table[cost.card];
         auto zero_random = []() -> std::uint32_t { return 0; };
         random_fn random{ zero_random };
-        card_cost_initialization initial{ .card = cost.card };
-        (void)library[card.definition_id()].handle<card_cost_initialization>(card, initial, card_table, random);
-        cost.requirement = initial.requirement;
+        cost.requirement = library[card.definition_id()].query(card_initial_cost{});
 
         const auto handler_count = static_cast<stack_count_t>(handlers.size());
         const auto row_begin = cost_index * handler_count;

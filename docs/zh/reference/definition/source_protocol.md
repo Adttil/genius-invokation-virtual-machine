@@ -14,7 +14,7 @@
 | --- | --- |
 | `using definition_category = ...;` | 定义所属类别，取 [`definition_types`](definition_types.md) 中的类型 |
 | `name() const` | 返回同一类别内唯一的完整名称 |
-| `compile(definition_compile_context&) const` | 返回这项定义的配置数据，供后续事件响应使用 |
+| `compile(definition_compile_context&) const` | 返回这项定义的配置数据，供查询与事件响应使用 |
 
 `compile` 的返回值不能是 `void` 或引用，须能存入 `std::any`，因此其类型须可复制构造。返回类型由源自行决定，不必命名为 `definition_type`，也不必与 `definition_category` 相同。
 
@@ -59,13 +59,31 @@ static givm::handler_program_entry_t<TEvent> handle(
 
 响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
 
-入口是否执行以及何时执行由触发该事件的操作决定。例如，[角色初始化](events/character_initialization.md)要求在响应函数内直接填写初始状态。
+入口是否执行以及何时执行由触发该事件的操作决定。
 
 切换的 [`cost_of_switch`](events/cost_of_switch.md) 与出牌的 [`cost_of_card`](events/cost_of_card.md) 费用响应可以反复用于预览，不得使用随机数；调用随机函数属于未定义行为。费用响应仍采用上述统一签名，确认行动后才执行其返回的程序入口。
 
-出牌的 [`card_cost_initialization`](events/card_cost_initialization.md) 与 [`card_target_check`](events/card_target_check.md) 只查询该牌自己的定义，响应只修改事件并返回空入口，也不得使用随机数。目标检查按事件的 `target_count` 分步进行，只修改 `result`，给出无效、必须继续选择、可以完成也可以继续，或已完成且不能继续的结果；数量为零时检查空选择，检查第二目标时可假设第一目标合法。可打出的牌必须提供费用初始化与 [`card_effect`](events/card_effect.md) 原效果响应；目标检查响应可省略，省略时视为选择已完成且不能继续。原效果在费用结算与反制响应完成后执行，没有后续效果时也可直接返回空入口。
+可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可直接返回空入口。卡牌初始费用与目标检查采用下述查询接口。
 
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
+
+## 查询
+
+查询直接返回规则信息或检查结果，不返回效果入口，也不接收随机源。源可为所属类别的 [`supported_queries`](supported_queries.md) 提供以下静态函数；`definition_type` 仍是本源 `compile` 的实际返回类型，`Q` 是具体查询类型：
+
+```cpp
+static Q::result_t query(const definition_type& definition, const Q& parameters);
+```
+
+可按查询类型编写重载或受约束的函数模板，返回类型必须正好是 `Q::result_t`。查询类型除了嵌套的结果类型，还携带所需的全部参数；需要当前实体、牌桌或目标时，都通过参数对象提供。查询不修改对局状态。
+
+当 `std::is_empty_v<Q>` 为 `true` 时，查询结果只由编译后的定义决定。每次编译定义库时，在该项定义的 `compile` 完成后查询一次并保存结果；游戏运行期间读取已保存的结果，不再调用定义源的 `query`。查询类型须能以 `Q{}` 构造；结果不要求是 C++ 常量表达式。非空查询按每次提供的参数求值。
+
+缺少对应 `query` 时，使用通过参数相关查找（ADL）找到的 [`query_default(parameters)`](query_default.md)，返回类型同样必须是 `Q::result_t`。既没有源查询也没有默认方法时，定义源不满足协议。当前[查询列表](queries.md)中的每种查询均有默认方法；其中卡牌目标检查仅在目标数量为零时默认返回 `valid_complete`，非零数量返回 `invalid`。
+
+查询结果若包含引用、指针或视图，所引用的数据必须在结果使用期间保持有效。空查询的结果会随定义库保存与复制，定义源须相应保证其所借用数据的生命周期。
+
+`name`、`tags` 及其他各类别共用的分类与依赖接口仍采用各自的具名形式。
 
 ## 示例
 

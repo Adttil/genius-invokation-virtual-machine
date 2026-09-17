@@ -29,6 +29,7 @@
 | --- | --- |
 | [`views_of_definition`](definition/views_of_definition.md) | 定义对应的实体形态 |
 | [`subscribed_events`](definition/subscribed_events.md) | 实体形态可响应的事件 |
+| [`supported_queries`](definition/supported_queries.md) | 定义类别支持的查询 |
 | [`handler_program_context`](definition/handler_program_context.md) | 事件响应 context 的映射 |
 
 ## 类型别名
@@ -49,6 +50,7 @@
 |  |  |
 | --- | --- |
 | [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
+| [`query_default`](definition/query_default.md) | 定义源未提供查询时的默认结果 |
 
 ## 概念
 
@@ -63,3 +65,7 @@
 ## [事件](definition/events.md)
 
 对局中的响应时机与事件数据。
+
+## [查询](definition/queries.md)
+
+角色初始状态、卡牌初始费用与当前行动参数的合法性等规则信息。

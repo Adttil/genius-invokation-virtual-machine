@@ -24,7 +24,7 @@ struct initialize_characters;
 
 ## 注意
 
-每个角色分别响应 [`character_initialization`](../events/character_initialization.md)。已有角色状态会被这次准备的状态替换；本命令不创建角色。
+每个角色使用定义库已保存的 [`character_initial_state`](../queries/character_initial_state.md) 结果。已有角色状态会被此初始状态替换；本命令不创建角色。
 
 ## 示例
 
@@ -43,12 +43,9 @@ struct character_source
     std::string_view name() const { return "character"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
 
-    static givm::program_entry<givm::character_initialization> handle(
-        const definition_type&, const givm::character_view&,
-        givm::character_initialization& event, const givm::table&, givm::random_fn&)
+    static givm::character_state query(const definition_type&, const givm::character_initial_state&)
     {
-        event.state = { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 };
-        return givm::program_entry<givm::character_initialization>::null();
+        return { .max_health = 10, .max_energy = 3, .health = 10, .energy = 0 };
     }
 };
 
@@ -84,4 +81,4 @@ int main()
 
 | | |
 | --- | --- |
-| [`character_initialization`](../events/character_initialization.md) | 角色初始状态的准备事件 |
+| [`character_initial_state`](../queries/character_initial_state.md) | 角色初始状态查询 |

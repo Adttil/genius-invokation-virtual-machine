@@ -1,11 +1,11 @@
-[givm](../../reference.md) / [执行](../executor.md) / **initial_card_selection_check_result**
+[givm](../../reference.md) / [执行](../executor.md) / **initial_card_selection_validation**
 
-# givm::initial_card_selection_check_result
+# givm::initial_card_selection_validation
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-enum class initial_card_selection_check_result : std::uint8_t
+enum class initial_card_selection_validation : std::uint8_t
 {
     valid,
     invalid_player,
@@ -27,11 +27,11 @@ enum class initial_card_selection_check_result : std::uint8_t
 
 按玩家编号、选中位置的顺序检查，遇到首个失败立即返回；全部通过时返回 `valid`。合法玩家的空选择返回 `valid`，表示保留全部手牌。
 
-玩家已固定的 `execution_view<card_selection>::check_selection` 只判断手牌位置，返回 `bool`。
+玩家已固定的 `execution_view<card_selection>::selection_validate` 只判断手牌位置，返回 `bool`。
 
 ## 参阅
 
 | | |
 | --- | --- |
-| [`execution_view<initial_card_selection>::check_selection`](execution_view/initial_card_selection/check_selection.md) | 检查首次提交的玩家及换牌选择 |
-| [`execution_view<card_selection>::check_selection`](execution_view/card_selection/check_selection.md) | 检查指定玩家的换牌选择 |
+| [`execution_view<initial_card_selection>::selection_validate`](execution_view/initial_card_selection/selection_validate.md) | 检查首次提交的玩家及换牌选择 |
+| [`execution_view<card_selection>::selection_validate`](execution_view/card_selection/selection_validate.md) | 检查指定玩家的换牌选择 |

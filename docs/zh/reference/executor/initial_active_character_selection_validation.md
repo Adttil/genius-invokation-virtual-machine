@@ -1,11 +1,11 @@
-[givm](../../reference.md) / [执行](../executor.md) / **initial_active_character_selection_check_result**
+[givm](../../reference.md) / [执行](../executor.md) / **initial_active_character_selection_validation**
 
-# givm::initial_active_character_selection_check_result
+# givm::initial_active_character_selection_validation
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-enum class initial_active_character_selection_check_result : std::uint8_t
+enum class initial_active_character_selection_validation : std::uint8_t
 {
     valid,
     invalid_player,
@@ -33,4 +33,4 @@ enum class initial_active_character_selection_check_result : std::uint8_t
 
 | | |
 | --- | --- |
-| [`execution_view<initial_active_character_selection>::check_selection`](execution_view/initial_active_character_selection/check_selection.md) | 检查首次出战角色选择 |
+| [`execution_view<initial_active_character_selection>::selection_validate`](execution_view/initial_active_character_selection/selection_validate.md) | 检查首次出战角色选择 |

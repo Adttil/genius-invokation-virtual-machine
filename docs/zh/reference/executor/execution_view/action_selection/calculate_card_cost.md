@@ -33,10 +33,10 @@ const cost_of_card& calculate_card_cost(
 
 ## 注意
 
-每次报价先由该牌的 [`card_cost_initialization`](../../../definition/events/card_cost_initialization.md) 准备基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。初始需求为零骰子的快速行动，不沿用此前报价。
+每次报价先读取该牌定义已保存的 [`card_initial_cost`](../../../definition/queries/card_initial_cost.md) 结果作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。未提供初始费用查询时，默认需求为零骰子的快速行动。报价不沿用此前结果。
 
-报价无需先选择目标，目标及其他用牌条件通过 [`check_card_targets`](check_card_targets.md) 独立检查。可打出的牌必须提供费用初始化与原效果响应。
+报价无需先选择目标，目标及其他用牌条件通过 [`card_targets_validate`](card_targets_validate.md) 独立检查。可打出的牌提供原效果响应。
 
-两类响应都不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不选择出牌、不执行费用响应返回的后续效果，也不修改牌桌或推进执行器。
+费用响应不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不选择出牌、不执行费用响应返回的后续效果，也不修改牌桌或推进执行器。
 
-返回引用不是快照；再次报价会更新其内容。下一次推进或重建现场后，先前引用失效。完整报价后可独立检查 [支付](check_card_payment.md) 与 [目标及用牌条件](check_card_targets.md)，再通过 [`play_card`](play_card.md) 选择出牌。
+返回引用不是快照；再次报价会更新其内容。下一次推进或重建现场后，先前引用失效。完整报价后可独立检查 [支付](card_payment_validate.md) 与 [目标及用牌条件](card_targets_validate.md)，再通过 [`play_card`](play_card.md) 选择出牌。

@@ -55,7 +55,7 @@ using support_subscribed_events = type_list<
 
 ## 注意
 
-列表操作见 [`type_list`](../utils/type_list.md)。角色在此列表上额外订阅 [`character_initialization`](events/character_initialization.md)。
+列表操作见 [`type_list`](../utils/type_list.md)。角色初始状态由独立的 [`character_initial_state`](queries/character_initial_state.md) 查询提供。
 
 ## 示例
 

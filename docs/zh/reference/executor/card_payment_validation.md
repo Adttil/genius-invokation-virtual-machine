@@ -1,11 +1,11 @@
-[givm](../../reference.md) / [执行](../executor.md) / **card_payment_check_result**
+[givm](../../reference.md) / [执行](../executor.md) / **card_payment_validation**
 
-# givm::card_payment_check_result
+# givm::card_payment_validation
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-enum class card_payment_check_result : std::uint8_t
+enum class card_payment_validation : std::uint8_t
 {
     valid,
     requirement_mismatch,
@@ -25,5 +25,5 @@ enum class card_payment_check_result : std::uint8_t
 
 ## 注意
 
-[`check_card_payment`](execution_view/action_selection/check_card_payment.md) 先检查费用匹配，失败时立即返回 `requirement_mismatch`；匹配后才检查持有数量。此结果不表示牌的目标或其他用牌条件合法。
+[`card_payment_validate`](execution_view/action_selection/card_payment_validate.md) 先检查费用匹配，失败时立即返回 `requirement_mismatch`；匹配后才检查持有数量。此结果不表示牌的目标或其他用牌条件合法。
 
