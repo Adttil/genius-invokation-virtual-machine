@@ -32,9 +32,10 @@
 | [`calculating_skill_payment`](events/calculating_skill_payment.md) | 使用技能时的支付计算事件 |
 | [`calculating_switch_payment`](events/calculating_switch_payment.md) | 切换出战角色时的支付计算事件 |
 | [`cost_of_switch`](events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
+| [`cost_of_skill`](events/cost_of_skill.md) | 技能使用的费用计算事件 |
 | [`cost_of_card`](events/cost_of_card.md) | 出牌的费用计算事件 |
 | [`elemental_dice_requirement`](events/elemental_dice_requirement.md) | 一项行动对元素骰的需求 |
-| [`action_cost_requirement`](events/action_cost_requirement.md) | 一项行动的骰子费用与行动速度 |
+| [`action_cost_requirement`](events/action_cost_requirement.md) | 一项行动的骰子、充能费用与行动速度 |
 | [`cost_effect_argument`](events/cost_effect_argument.md) | 费用调整效果的减费记录 |
 
 ## 卡牌与技能
@@ -51,6 +52,7 @@
 | [`card_effect`](events/card_effect.md) | 执行打出的牌自身效果 |
 | [`card_played`](events/card_played.md) | 打出手牌完成后的通知 |
 | [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |
+| [`skill_effect`](events/skill_effect.md) | 执行所选技能自身效果 |
 | [`skill_used`](events/skill_used.md) | 技能使用完成后的通知 |
 
 ## 伤害、治疗与元素
@@ -81,6 +83,7 @@
 | | |
 | --- | --- |
 | [`card_id`](events/card_id.md) | 手牌或牌堆中的牌标识 |
+| [`skill_target_id`](events/skill_target_id.md) | 技能效果的目标标识 |
 | [`card_target_id`](events/card_target_id.md) | 卡牌效果的目标标识 |
 | [`damage_source_id`](events/damage_source_id.md) | 伤害的来源标识 |
 | [`effect_source_id`](events/effect_source_id.md) | 治疗等效果的来源标识 |

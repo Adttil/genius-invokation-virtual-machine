@@ -13,7 +13,7 @@ constexpr card_payment_validation card_payment_validate(
 ```
 [`card_payment_validation`](../../card_payment_validation.md)
 
-检查所选骰子能否支付指定手牌的出牌费用。
+检查所选骰子与出战角色充能能否支付指定手牌的出牌费用。
 
 ## 参数
 
@@ -25,7 +25,7 @@ constexpr card_payment_validation card_payment_validate(
 
 ## 返回值
 
-先判断所选骰子能否恰好满足费用，不匹配时立即返回 `requirement_mismatch`；匹配后检查当前行动玩家的持有数量，不足时返回 `insufficient_dice`；全部通过时返回 `valid`。
+先判断所选骰子能否恰好满足费用，不匹配时立即返回 `requirement_mismatch`；匹配后检查当前行动玩家的持有数量，不足时返回 `insufficient_dice`；最后检查出战角色充能，不足时返回 `insufficient_energy`，全部通过时返回 `valid`。
 
 ## 注意
 

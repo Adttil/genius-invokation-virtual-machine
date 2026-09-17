@@ -17,7 +17,6 @@
 | [`element_aura`](enums/element_aura.md) | 角色身上保留的元素附着 |
 | [`elemental_reaction`](enums/elemental_reaction.md) | 元素相遇时产生的反应种类 |
 | [`game_result`](enums/game_result.md) | 一场对局的结果，区分尚未结束、某一方获胜和双方均告负 |
-| [`skill_kind`](enums/skill_kind.md) | 角色技能的类别，用于区分普通攻击、元素战技、元素爆发及其他能力 |
 | [`weapon_type`](enums/weapon_type.md) | 角色或武器所属的武器类别 |
 | [`elemental_dice`](enums/elemental_dice.md) | 元素骰的种类，包括七种元素和万能元素 |
 

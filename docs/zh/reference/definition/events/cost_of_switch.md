@@ -15,7 +15,7 @@ struct cost_of_switch;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `target` | `const character_id` | 这次切换的目标角色；只读 |
-| `requirement` | [`action_cost_requirement`](action_cost_requirement.md) | 切换的骰子费用和行动速度 |
+| `requirement` | [`action_cost_requirement`](action_cost_requirement.md) | 切换的骰子、充能费用和行动速度 |
 | `effect_argument` | `cost_effect_argument<cost_of_switch>` | 当前费用响应记录的减费内容 |
 
 ## 注意

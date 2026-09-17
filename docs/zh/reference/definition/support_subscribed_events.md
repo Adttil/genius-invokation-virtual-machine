@@ -24,6 +24,7 @@ using support_subscribed_events = type_list<
     calculating_skill_payment,
     calculating_switch_payment,
     cost_of_card,
+    cost_of_skill,
     cost_of_switch,
     hand_card_created,
     card_drawn,

@@ -36,7 +36,14 @@ namespace givm
             dice_counts paid_dice;
         };
 
-        using action_selection = std::variant<round_end_selection, switch_selection, card_selection>;
+        struct skill_selection
+        {
+            stack_count_t skill_cost_index = 0;
+            std::array<skill_target_id, 2> targets;
+            dice_counts paid_dice;
+        };
+
+        using action_selection = std::variant<round_end_selection, switch_selection, card_selection, skill_selection>;
     }
 
     enum class action_target_kind : std::uint8_t
@@ -65,6 +72,7 @@ namespace givm::detail
 {
     using switch_handler_id = handler_id<cost_of_switch>;
     using card_cost_handler_id = handler_id<cost_of_card>;
+    using skill_cost_handler_id = handler_id<cost_of_skill>;
 
     // Offsets count execute_fn entries from the start of this command. They never
     // become runtime state or require a second dispatch after fetching the instruction.
@@ -76,30 +84,54 @@ namespace givm::detail
     inline constexpr std::size_t execute_action_selection_offset = 5;
     inline constexpr std::size_t switch_onpay_offset = 6;
     inline constexpr std::size_t after_fixed_switch_onpay_offset = 7;
-    inline constexpr std::size_t switch_payment_broadcast_offset = 8;
-    inline constexpr std::size_t switch_action_offset = 9;
-    inline constexpr std::size_t switch_action_apply_offset = 10;
+    inline constexpr std::size_t switch_dice_payment_offset = 8;
+    inline constexpr std::size_t switch_dice_energy_payment_offset = 9;
+    inline constexpr std::size_t switch_energy_payment_offset = 10;
+    inline constexpr std::size_t switch_action_offset = 11;
+    inline constexpr std::size_t switch_action_apply_offset = 12;
 
     template<bool Observed>
-    inline constexpr std::size_t switch_action_broadcast_offset = 10 + Observed;
+    inline constexpr std::size_t switch_action_broadcast_offset = 12 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t card_onpay_offset = 11 + Observed;
+    inline constexpr std::size_t card_onpay_offset = 13 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t after_card_onpay_offset = 12 + Observed;
+    inline constexpr std::size_t after_card_onpay_offset = 14 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t card_payment_broadcast_offset = 13 + Observed;
+    inline constexpr std::size_t card_dice_payment_offset = 15 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t prepare_card_play_offset = 14 + Observed;
+    inline constexpr std::size_t card_dice_energy_payment_offset = 16 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t card_will_be_played_broadcast_offset = 15 + Observed;
+    inline constexpr std::size_t card_energy_payment_offset = 17 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t after_card_effect_offset = 16 + Observed;
+    inline constexpr std::size_t prepare_card_play_offset = 18 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t card_played_broadcast_offset = 17 + Observed;
+    inline constexpr std::size_t card_will_be_played_broadcast_offset = 19 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t first_round_end_broadcast_offset = 18 + Observed;
+    inline constexpr std::size_t after_card_effect_offset = 20 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t second_round_end_broadcast_offset = 19 + Observed;
+    inline constexpr std::size_t card_played_broadcast_offset = 21 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t skill_onpay_offset = 22 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t after_skill_onpay_offset = 23 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t skill_dice_payment_offset = 24 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t skill_dice_energy_payment_offset = 25 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t skill_energy_payment_offset = 26 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t prepare_skill_use_offset = 27 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t skill_will_be_used_broadcast_offset = 28 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t after_skill_effect_offset = 29 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t skill_used_broadcast_offset = 30 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t first_round_end_broadcast_offset = 31 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t second_round_end_broadcast_offset = 32 + Observed;
 
     template<std::size_t From, std::size_t To>
     execution_state jump_to_action_instruction(execution_context& context) noexcept
@@ -203,6 +235,50 @@ namespace givm::detail
         return cost;
     }
 
+    inline const cost_of_skill& calculate_skill_cost(
+        const definition_library& library,
+        stack_count_t cost_index,
+        const table& card_table,
+        frame_stack& stack
+    )
+    {
+        auto&& [handlers, costs, onpay_items,
+                card_handlers, card_costs, card_onpay_items,
+                switch_handlers, switch_costs, switch_onpay_items,
+                onpay_cursor, selection] = stack.top<
+            skill_cost_handler_id[], cost_of_skill[], onpay_item<cost_of_skill>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            stack_count_t, action_selection
+        >();
+        GIVM_ASSERT(cost_index < costs.size());
+        auto& cost = costs[cost_index];
+        const auto skill = card_table[cost.skill];
+        auto zero_random = []() -> std::uint32_t { return 0; };
+        random_fn random{ zero_random };
+        cost.requirement = library[skill.definition_id()].query(skill_initial_cost{});
+
+        const auto handler_count = static_cast<stack_count_t>(handlers.size());
+        const auto row_begin = cost_index * handler_count;
+        for(stack_count_t column = 0; column < handler_count; ++column)
+        {
+            cost.effect_argument = {};
+            const auto entry = std::visit([&](auto handler)
+            {
+                const auto entity = card_table[handler];
+                if(not entity)
+                {
+                    return handler_program_entry_t<cost_of_skill>::null();
+                }
+                return library[entity.definition_id()].template handle<cost_of_skill>(
+                    entity, cost, card_table, random
+                );
+            }, handlers[column]);
+            onpay_items[row_begin + column] = { .entry = entry, .argument = cost.effect_argument };
+        }
+        return cost;
+    }
+
     inline execution_state prepare_action_phase(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&
@@ -282,8 +358,26 @@ namespace givm::detail
         const auto card_count = static_cast<stack_count_t>(player.hand_card_count());
         const auto card_handlers = card_count == 0 ? std::vector<card_cost_handler_id>{}
             : collect_all_broadcast_targets<cost_of_card>(library, table);
-        auto&& [stored_card_handlers, card_costs, card_onpay_items,
+        const auto is_active_skill = [&library](const auto& skill)
+        {
+            return library[skill.definition_id()].template can_handle<skill_effect, skill_view>();
+        };
+        stack_count_t skill_count = 0;
+        for(auto skill : table[*active_character].skills())
+        {
+            if(is_active_skill(skill))
+            {
+                ++skill_count;
+            }
+        }
+        const auto skill_handlers = skill_count == 0 ? std::vector<skill_cost_handler_id>{}
+            : collect_all_broadcast_targets<cost_of_skill>(library, table);
+        auto&& [stored_skill_handlers, skill_costs, skill_onpay_items,
+                stored_card_handlers, card_costs, card_onpay_items,
                 handlers, costs, onpay_items, onpay_cursor, selection] = context.stack().push(
+            dynamic_array<skill_cost_handler_id>(skill_handlers),
+            dynamic_array<cost_of_skill>(skill_count),
+            dynamic_array<onpay_item<cost_of_skill>>(skill_count * skill_handlers.size()),
             dynamic_array<card_cost_handler_id>(card_handlers),
             dynamic_array<cost_of_card>(card_count),
             dynamic_array<onpay_item<cost_of_card>>(card_count * card_handlers.size()),
@@ -293,6 +387,15 @@ namespace givm::detail
             stack_count_t{},
             action_selection{}
         );
+
+        stack_count_t skill_index = 0;
+        for(auto skill : table[*active_character].skills())
+        {
+            if(is_active_skill(skill))
+            {
+                std::construct_at(&skill_costs[skill_index++], cost_of_skill{ .skill = skill.id() });
+            }
+        }
 
         stack_count_t card_index = 0;
         for(auto card : player.hand_cards())
@@ -344,6 +447,7 @@ namespace givm::detail
         if(std::holds_alternative<round_end_selection>(selection))
         {
             context.stack().pop<
+                skill_cost_handler_id[], cost_of_skill[], onpay_item<cost_of_skill>[],
                 card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
                 switch_handler_id[],
                 cost_of_switch[],
@@ -374,6 +478,10 @@ namespace givm::detail
         }
 
         onpay_cursor = 0;
+        if(std::holds_alternative<skill_selection>(selection))
+        {
+            return jump_to_action_instruction<execute_action_selection_offset, skill_onpay_offset<Observed>>(context);
+        }
         if(const auto* selected = std::get_if<card_selection>(&selection))
         {
             const auto card_index = selected->card_cost_index;
@@ -393,6 +501,43 @@ namespace givm::detail
 #endif
 
         return context.enter_next();
+    }
+
+    template<std::size_t From, std::size_t Payment, std::size_t Next>
+    execution_state pay_action_cost(
+        const definition_library& library, unrestricted_table& table, execution_context& context,
+        player_id player, const dice_counts& paid_dice, std::uint32_t energy
+    )
+    {
+        auto& player_state = table[player].state();
+        const bool has_dice_payment = paid_dice.total() != 0;
+        if(has_dice_payment)
+        {
+            player_state.dice -= paid_dice;
+        }
+        if(energy != 0)
+        {
+            const auto character = *player_state.active_character;
+            auto& character_energy = table[character].state().energy;
+            const energy_changed event{
+                .target = character, .previous = character_energy, .current = character_energy - energy
+            };
+            character_energy -= energy;
+            if(has_dice_payment)
+            {
+                context.stack().push(event);
+                prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack());
+                return jump_to_action_instruction<From, Payment + 1>(context);
+            }
+            prepare_broadcast(library, event, table, context.stack());
+            return jump_to_action_instruction<From, Payment + 2>(context);
+        }
+        if(has_dice_payment)
+        {
+            prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack());
+            return jump_to_action_instruction<From, Payment>(context);
+        }
+        return jump_to_action_instruction<From, Next>(context);
     }
 
     inline execution_state continue_switch_onpay(
@@ -427,18 +572,10 @@ namespace givm::detail
         }
 
         const auto paid_dice = selected->paid_dice;
-        if(paid_dice.total() == 0)
-        {
-            return jump_to_action_instruction<switch_onpay_offset, switch_action_offset>(context);
-        }
-
-        const auto player = table.state().active_player;
-        auto& player_dice = table[player].state().dice;
-        GIVM_ASSERT(player_dice.contains(paid_dice));
-        player_dice -= paid_dice;
-
-        prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack());
-        return jump_to_action_instruction<switch_onpay_offset, switch_payment_broadcast_offset>(context);
+        const auto energy = costs[selected->switch_cost_index].requirement.energy;
+        return pay_action_cost<switch_onpay_offset, switch_dice_payment_offset, switch_action_offset>(
+            library, table, context, table.state().active_player, paid_dice, energy
+        );
     }
 
     inline execution_state after_fixed_switch_onpay(
@@ -451,7 +588,8 @@ namespace givm::detail
         return continue_switch_onpay(library, table, context, random);
     }
 
-    inline execution_state broadcast_action_payment(
+    template<std::size_t From, std::size_t To>
+    execution_state broadcast_action_dice_payment(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -461,6 +599,35 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<dice_removed>(context);
+        return jump_to_action_instruction<From, To>(context);
+    }
+
+    inline execution_state broadcast_action_dice_energy_payment(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<dice_removed>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        pop_broadcast<dice_removed>(context);
+        const auto event = get<0>(context.stack().top<energy_changed>());
+        context.stack().pop<energy_changed>();
+        prepare_broadcast(library, event, table, context.stack());
+        return context.enter_next();
+    }
+
+    inline execution_state broadcast_action_energy_payment(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<energy_changed>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        pop_broadcast<energy_changed>(context);
         return context.enter_next();
     }
 
@@ -521,6 +688,7 @@ namespace givm::detail
         GIVM_ASSERT(selected->switch_cost_index < costs.size());
         const auto speed = costs[selected->switch_cost_index].requirement.speed;
         context.stack().pop<
+            skill_cost_handler_id[], cost_of_skill[], onpay_item<cost_of_skill>[],
             card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
             switch_handler_id[],
             cost_of_switch[],
@@ -580,16 +748,10 @@ namespace givm::detail
         }
 
         const auto paid_dice = selected->paid_dice;
-        if(paid_dice.total() == 0)
-        {
-            return jump_to_action_instruction<card_onpay_offset<Observed>, prepare_card_play_offset<Observed>>(context);
-        }
-        const auto player = costs[selected->card_cost_index].card.player_id;
-        auto& player_dice = table[player].state().dice;
-        GIVM_ASSERT(player_dice.contains(paid_dice));
-        player_dice -= paid_dice;
-        prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack());
-        return jump_to_action_instruction<card_onpay_offset<Observed>, card_payment_broadcast_offset<Observed>>(context);
+        const auto& cost = costs[selected->card_cost_index];
+        return pay_action_cost<card_onpay_offset<Observed>, card_dice_payment_offset<Observed>, prepare_card_play_offset<Observed>>(
+            library, table, context, cost.card.player_id, paid_dice, cost.requirement.energy
+        );
     }
 
     template<bool Observed>
@@ -692,6 +854,7 @@ namespace givm::detail
         const auto speed = get<0>(context.stack().top<card_played, handler_id<card_played>>()).speed;
         pop_broadcast<card_played>(context);
         context.stack().pop<
+            skill_cost_handler_id[], cost_of_skill[], onpay_item<cost_of_skill>[],
             card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
             switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
             stack_count_t, action_selection
@@ -701,6 +864,147 @@ namespace givm::detail
             return jump_to_action_instruction<card_played_broadcast_offset<Observed>, before_action_with_switch_offset>(context);
         }
         return jump_to_action_instruction<card_played_broadcast_offset<Observed>, before_action_offset>(context);
+    }
+
+    template<bool Observed>
+    execution_state continue_skill_onpay(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn&
+    )
+    {
+        auto&& [handlers, costs, onpay_items,
+                card_handlers, card_costs, card_onpay_items,
+                switch_handlers, switch_costs, switch_onpay_items,
+                onpay_cursor, selection] = context.stack().top<
+            skill_cost_handler_id[], cost_of_skill[], onpay_item<cost_of_skill>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            stack_count_t, action_selection
+        >();
+        const auto* selected = std::get_if<skill_selection>(&selection);
+        GIVM_ASSERT(selected != nullptr);
+        const auto handler_count = static_cast<stack_count_t>(handlers.size());
+        const auto row_begin = selected->skill_cost_index * handler_count;
+        while(onpay_cursor < handler_count)
+        {
+            const auto column = onpay_cursor++;
+            const auto onpay = onpay_items[row_begin + column];
+            if(onpay.entry)
+            {
+                const auto handler = handlers[column];
+                context.stack().push(handler, onpay.argument);
+                context.enter_next();
+                return context.enter(onpay.entry);
+            }
+        }
+
+        const auto paid_dice = selected->paid_dice;
+        const auto& cost = costs[selected->skill_cost_index];
+        return pay_action_cost<skill_onpay_offset<Observed>, skill_dice_payment_offset<Observed>, prepare_skill_use_offset<Observed>>(
+            library, table, context, cost.skill.character_id.player_id, paid_dice, cost.requirement.energy
+        );
+    }
+
+    template<bool Observed>
+    execution_state after_skill_onpay(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        context.stack().pop<skill_cost_handler_id, cost_effect_argument<cost_of_skill>>();
+        jump_to_action_instruction<after_skill_onpay_offset<Observed>, skill_onpay_offset<Observed>>(context);
+        return continue_skill_onpay<Observed>(library, table, context, random);
+    }
+
+    inline execution_state prepare_skill_use(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn&
+    )
+    {
+        auto&& [costs, onpay_items, card_handlers, card_costs, card_onpay_items,
+                switch_handlers, switch_costs, switch_onpay_items, onpay_cursor, selection] = context.stack().top<
+            cost_of_skill[], onpay_item<cost_of_skill>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            stack_count_t, action_selection
+        >();
+        const auto& selected = std::get<skill_selection>(selection);
+        const auto& cost = costs[selected.skill_cost_index];
+        prepare_broadcast(library, skill_will_be_used{
+            .skill = cost.skill, .targets = selected.targets, .speed = cost.requirement.speed
+        }, table, context.stack());
+        return context.enter_next();
+    }
+
+    template<bool PopEffect>
+    execution_state finish_skill_effect(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn&
+    )
+    {
+        if constexpr(PopEffect)
+        {
+            context.stack().pop<skill_effect, handler_id<skill_effect>>();
+        }
+        const auto event = get<0>(context.stack().top<skill_used>());
+        context.stack().pop<skill_used>();
+        prepare_broadcast(library, event, table, context.stack());
+        return context.enter_next();
+    }
+
+    inline execution_state broadcast_skill_will_be_used(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<skill_will_be_used>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        const auto event = get<0>(context.stack().top<skill_will_be_used, handler_id<skill_will_be_used>>());
+        pop_broadcast<skill_will_be_used>(context);
+        context.enter_next();
+        context.stack().push(skill_used{
+            .skill = event.skill, .targets = event.targets, .speed = event.speed,
+            .effect_cancelled = event.effect_cancelled
+        });
+        if(not event.effect_cancelled)
+        {
+            skill_effect effect{ .skill = event.skill, .targets = event.targets };
+            const auto skill = std::as_const(table)[event.skill];
+            const auto entry = library[skill.definition_id()].handle<skill_effect>(skill, effect, table, random);
+            if(entry)
+            {
+                context.stack().push(effect, handler_id<skill_effect>{ event.skill });
+                return context.enter(entry);
+            }
+        }
+        return finish_skill_effect<false>(library, table, context, random);
+    }
+
+    template<bool Observed>
+    execution_state broadcast_skill_used(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<skill_used>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        const auto speed = get<0>(context.stack().top<skill_used, handler_id<skill_used>>()).speed;
+        pop_broadcast<skill_used>(context);
+        context.stack().pop<
+            skill_cost_handler_id[], cost_of_skill[], onpay_item<cost_of_skill>[],
+            card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+            switch_handler_id[], cost_of_switch[], onpay_item<cost_of_switch>[],
+            stack_count_t, action_selection
+        >();
+        if(speed == action_speed::combat)
+        {
+            return jump_to_action_instruction<skill_used_broadcast_offset<Observed>, before_action_with_switch_offset>(context);
+        }
+        return jump_to_action_instruction<skill_used_broadcast_offset<Observed>, before_action_offset>(context);
     }
 
     template<bool Observed>
@@ -747,7 +1051,9 @@ namespace givm::detail
         writer.write<execute_fn>(&execute_action_selection<Observed>);
         writer.write<execute_fn>(&continue_switch_onpay);
         writer.write<execute_fn>(&after_fixed_switch_onpay);
-        writer.write<execute_fn>(&broadcast_action_payment);
+        writer.write<execute_fn>(&broadcast_action_dice_payment<switch_dice_payment_offset, switch_action_offset>);
+        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
+        writer.write<execute_fn>(&broadcast_action_energy_payment);
         writer.write<execute_fn>(&execute_switch_action<Observed>);
         if constexpr(Observed)
         {
@@ -756,11 +1062,22 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_switch_action<Observed>);
         writer.write<execute_fn>(&continue_card_onpay<Observed>);
         writer.write<execute_fn>(&after_card_onpay<Observed>);
-        writer.write<execute_fn>(&broadcast_action_payment);
+        writer.write<execute_fn>(&broadcast_action_dice_payment<card_dice_payment_offset<Observed>, prepare_card_play_offset<Observed>>);
+        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
+        writer.write<execute_fn>(&broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_card_play);
         writer.write<execute_fn>(&broadcast_card_will_be_played);
         writer.write<execute_fn>(&finish_card_effect<true>);
         writer.write<execute_fn>(&broadcast_card_played<Observed>);
+        writer.write<execute_fn>(&continue_skill_onpay<Observed>);
+        writer.write<execute_fn>(&after_skill_onpay<Observed>);
+        writer.write<execute_fn>(&broadcast_action_dice_payment<skill_dice_payment_offset<Observed>, prepare_skill_use_offset<Observed>>);
+        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
+        writer.write<execute_fn>(&broadcast_action_energy_payment);
+        writer.write<execute_fn>(&prepare_skill_use);
+        writer.write<execute_fn>(&broadcast_skill_will_be_used);
+        writer.write<execute_fn>(&finish_skill_effect<true>);
+        writer.write<execute_fn>(&broadcast_skill_used<Observed>);
         writer.write<execute_fn>(&broadcast_first_round_end<Observed>);
         writer.write<execute_fn>(&broadcast_second_round_end);
     }

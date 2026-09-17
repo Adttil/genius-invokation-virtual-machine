@@ -33,7 +33,7 @@ const cost_of_card& calculate_card_cost(
 
 ## 注意
 
-每次报价先读取该牌定义已保存的 [`card_initial_cost`](../../../definition/queries/card_initial_cost.md) 结果作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。未提供初始费用查询时，默认需求为零骰子的快速行动。报价不沿用此前结果。
+每次报价先读取该牌定义已保存的 [`card_initial_cost`](../../../definition/queries/card_initial_cost.md) 结果作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。未提供初始费用查询时，默认需求为零骰子、零充能的快速行动。报价不沿用此前结果。
 
 报价无需先选择目标，目标及其他用牌条件通过 [`card_targets_validate`](card_targets_validate.md) 独立检查。可打出的牌提供原效果响应。
 

@@ -16,7 +16,16 @@ namespace givm
     >{};
 
     template<>
-    struct supported_queries<character_view> : type_list<character_initial_state>{};
+    struct supported_queries<character_view> : type_list<
+        character_initial_state,
+        character_initial_skill
+    >{};
+
+    template<>
+    struct supported_queries<skill_view> : type_list<
+        skill_initial_cost,
+        skill_target_validation
+    >{};
 }
 
 #endif

@@ -47,4 +47,4 @@ void switch_active_character(
 
 两种重载都不自动检查支付是否合法。需要检查时，可先报价并调用 [`switch_payment_validate`](switch_payment_validate.md)，再用只接收 `target_index` 和 `paid_dice` 的重载采用该费用。
 
-选择后，下一次 [`executor::step`](../../executor/step.md) 才执行已确认的费用效果、支付骰子和切换；不会再次报价。调用本函数不会修改牌桌或推进执行器。
+选择后，下一次 [`executor::step`](../../executor/step.md) 才执行已确认的费用效果、扣除骰子与出战角色充能、依次处理骰子移除与充能变化通知，再完成切换；不会再次报价。调用本函数不会修改牌桌或推进执行器。

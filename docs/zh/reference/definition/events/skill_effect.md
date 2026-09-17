@@ -1,0 +1,26 @@
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **skill_effect**
+
+# givm::skill_effect
+
+定义于头文件 `<givm/definition.hpp>`
+
+```cpp
+struct skill_effect;
+```
+
+执行所选技能自身效果时，提供这项技能及其目标。技能定义通过响应返回的入口实现技能效果。
+
+## 成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `skill` | `const skill_id` | 本次使用的技能；只读。 |
+| `targets` | `const std::array<skill_target_id, 2>` | 本次采用的两个目标位置；只读，未使用的位置忽略。 |
+
+## 注意
+
+行动选择只将出战角色中支持本事件的技能列为候选。不支持本事件的技能仍可响应其他事件，不会成为主动使用候选。支持响应不要求每次都返回非空入口。
+
+本事件仅调用所选技能自己的定义。在支付和 [`skill_will_be_used`](skill_will_be_used.md) 的响应完成后，只有未被取消的技能效果才执行本事件。其效果完成后再广播 [`skill_used`](skill_used.md)。
+
+技能分类通过定义标签表达，不影响本事件是否存在。

@@ -18,6 +18,10 @@ struct energy_changed;
 | `previous` | `const std::uint32_t` | 变化前的充能；只读 |
 | `current` | `const std::uint32_t` | 变化后的充能；只读 |
 
+## 注意
+
+行动支付充能时也发出本通知。支付先完成骰子与充能扣除，再处理非零骰子支付的 `dice_removed`，随后处理非零充能支付的本事件。费用已由报价确定，不在支付时通过 `changing_energy` 重新修改。
+
 ## 示例
 
 ```cpp

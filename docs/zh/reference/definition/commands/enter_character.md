@@ -8,7 +8,7 @@
 struct enter_character;
 ```
 
-角色入场命令，指定加入哪一方队伍的角色，并按其定义准备初始状态。
+角色入场命令，指定加入哪一方队伍的角色，并按其定义准备初始状态与技能。
 
 ## 成员类型
 
@@ -25,7 +25,7 @@ struct enter_character;
 
 ## 注意
 
-新角色使用定义库已保存的 [`character_initial_state`](../queries/character_initial_state.md) 结果作为初始状态；入场不自动将其设为出战角色。
+新角色使用定义库已保存的 [`character_initial_state`](../queries/character_initial_state.md) 结果作为初始状态，再从零开始逐项查询 [`character_initial_skill`](../queries/character_initial_skill.md)，直到首次得到无效 ID，并以默认技能状态加入角色。入场不自动将其设为出战角色。
 
 ## 示例
 
@@ -82,3 +82,4 @@ int main()
 | | |
 | --- | --- |
 | [`character_initial_state`](../queries/character_initial_state.md) | 角色初始状态查询 |
+| [`character_initial_skill`](../queries/character_initial_skill.md) | 角色初始技能查询 |

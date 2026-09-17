@@ -57,7 +57,7 @@ handler 不能通过收到的 `const table&` 直接修改持久状态。需要�
 
 领域指令可以准备自己的响应者集合，或直接调用单个 definition handler。具体指令和事件的公开约定说明响应范围、调用顺序及返回入口的处理；完整内部帧由源码维护。采用辅助工具的默认遍历不构成所有广播都必须遵循的规则。
 
-`card_effect` 是直接调用本牌定义的事件；费用预览也有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `initialize_characters` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
+`card_effect` 与 `skill_effect` 分别是直接调用本牌、本技能定义的事件；费用预览也有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `initialize_characters` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
 
 ## 与当前实现逐项核对
 
@@ -81,4 +81,4 @@ handler 不能通过收到的 `const table&` 直接修改持久状态。需要�
 
 ### 角色初始状态的读取
 
-[`enter_character`](../../../../include/givm/executor/commands/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/commands/initialize_characters.hpp) 通过 `query` 取得已编译定义的初始状态，直接写回角色。空查询在库编译期间求值，运行时不再构造初始化事件或进入响应函数；缺少源查询时采用 `query_default` 的空状态。
+[`enter_character`](../../../../include/givm/executor/commands/enter_character.hpp) 与 [`initialize_characters`](../../../../include/givm/executor/commands/initialize_characters.hpp) 通过 `query` 取得已编译定义的初始状态，直接写回角色，并通过有参 `character_initial_skill` 查询逐项加载初始技能。空查询在库编译期间求值，运行时不再构造初始化事件或进入响应函数；缺少源查询时采用 `query_default` 的空状态。

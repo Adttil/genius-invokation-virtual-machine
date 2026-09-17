@@ -17,7 +17,6 @@
 #include "../enums/element_aura.hpp"
 #include "../enums/elemental_dice.hpp"
 #include "../enums/elemental_reaction.hpp"
-#include "../enums/skill_kind.hpp"
 
 namespace givm
 {
@@ -143,6 +142,7 @@ namespace givm
     struct action_cost_requirement
     {
         elemental_dice_requirement dice_requirement;
+        std::uint32_t energy = 0;
         action_speed speed = action_speed::combat;
     };
 
@@ -150,6 +150,7 @@ namespace givm
     struct cost_effect_argument
     {
         elemental_dice_requirement reduced_dice;
+        std::uint32_t reduced_energy = 0;
     };
 
     template<class TCostEvent>
@@ -173,6 +174,14 @@ namespace givm
         action_cost_requirement requirement;
         cost_effect_argument<cost_of_card> effect_argument;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_card);
+    };
+
+    struct cost_of_skill
+    {
+        const skill_id skill;
+        action_cost_requirement requirement;
+        cost_effect_argument<cost_of_skill> effect_argument;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_skill);
     };
 
     // Card-zone and candidate events.
@@ -257,10 +266,19 @@ namespace givm
     };
 
     // Skill events.
+    using skill_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
+
+    struct skill_effect
+    {
+        const skill_id skill;
+        const std::array<skill_target_id, 2> targets;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(skill_effect);
+    };
+
     struct skill_will_be_used
     {
         const skill_id skill;
-        const skill_kind kind;
+        const std::array<skill_target_id, 2> targets;
         action_speed speed;
         bool effect_cancelled = false;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(skill_will_be_used);
@@ -269,7 +287,7 @@ namespace givm
     struct skill_used
     {
         const skill_id skill;
-        const skill_kind kind;
+        const std::array<skill_target_id, 2> targets;
         const action_speed speed;
         const bool effect_cancelled;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(skill_used);

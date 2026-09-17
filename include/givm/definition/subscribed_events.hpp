@@ -29,6 +29,7 @@ namespace givm
         struct dice_roll_preparation,
         struct calculating_card_payment,
         struct cost_of_card,
+        struct cost_of_skill,
         struct hand_card_created,
         struct card_drawn,
         struct card_discarded,
@@ -86,6 +87,7 @@ namespace givm
         struct calculating_skill_payment,
         struct calculating_switch_payment,
         struct cost_of_card,
+        struct cost_of_skill,
         struct cost_of_switch,
         struct hand_card_created,
         struct card_drawn,
@@ -125,7 +127,10 @@ namespace givm
     struct subscribed_events<character_view> : subscribed_events<support_view>{};
 
     template<>
-    struct subscribed_events<skill_view> : subscribed_events<support_view>{};
+    struct subscribed_events<skill_view> : subscribed_events_detail::append<
+        support_subscribed_events,
+        struct skill_effect
+    >{};
 
     template<>
     struct subscribed_events<attachment_view> : subscribed_events<support_view>{};

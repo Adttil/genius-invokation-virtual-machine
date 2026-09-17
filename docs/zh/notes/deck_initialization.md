@@ -71,6 +71,8 @@ void table::load_deck(player_id player, const linked_deck& deck);
 
 ## 初始化程序
 
+初始技能通过 `character_initial_skill{skill_index}` 在初始化时按索引逐项查询，首次无效 ID 结束。定义源自行选择储存或计算方式；定义库不保存一份通用不定长技能列表。`initialize_characters` 移除原技能并重新加载，`enter_character` 给新角色加载初始技能；两者使用默认技能状态。
+
 角色初始状态由 [character_initial_state](../reference/definition/queries/character_initial_state.md) 提供，在每项角色定义编译后求值一次并保存在定义库中。`initialize_characters` 和 `enter_character` 直接把该结果写入角色，不在对局运行时调用初始化响应。
 
 需要随机性或 definition 逻辑的准备步骤属于游戏规则，应由初始化程序表达：

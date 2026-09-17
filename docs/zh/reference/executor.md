@@ -44,8 +44,9 @@
 | [`initial_active_character_selection_validation`](executor/initial_active_character_selection_validation.md) | 首次出战角色选择检查的结果 |
 | [`remaining_active_character_selection_validation`](executor/remaining_active_character_selection_validation.md) | 剩余一方出战角色选择检查的结果 |
 | [`dice_selection_validation`](executor/dice_selection_validation.md) | 显式指定玩家的骰子重投选择检查结果 |
-| [`switch_payment_validation`](executor/switch_payment_validation.md) | 切换出战角色的骰子支付检查结果 |
-| [`card_payment_validation`](executor/card_payment_validation.md) | 出牌的骰子支付检查结果 |
+| [`switch_payment_validation`](executor/switch_payment_validation.md) | 切换出战角色的支付检查结果 |
+| [`card_payment_validation`](executor/card_payment_validation.md) | 出牌的支付检查结果 |
+| [`skill_payment_validation`](executor/skill_payment_validation.md) | 技能使用的支付检查结果 |
 | [`action_target_kind`](executor/action_target_kind.md) | 行动目标种类 |
 
 ## 常量

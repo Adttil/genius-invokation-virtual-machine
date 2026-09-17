@@ -15,7 +15,7 @@ constexpr switch_payment_validation switch_payment_validate(
 [`table`](../../../table/table.md)
 [`dice_counts`](../../../enums/dice_counts.md)
 
-检查所选骰子能否支付切换至指定角色的费用。
+检查所选骰子与出战角色充能能否支付切换至指定角色的费用。
 
 ## 参数
 
@@ -27,18 +27,19 @@ constexpr switch_payment_validation switch_payment_validate(
 
 ## 返回值
 
-先按该候选的费用判断支付骰子的种类和总数，符合后再检查当前行动玩家是否持有这些骰子：
+先按该候选的费用判断支付骰子的种类和总数，符合后检查当前行动玩家是否持有这些骰子，最后检查切换前的出战角色充能是否足够：
 
 | | |
 | --- | --- |
 | `switch_payment_validation::requirement_mismatch` | 所选骰子不符合费用要求。 |
 | `switch_payment_validation::insufficient_dice` | 所选骰子符合费用要求，但持有数量不足。 |
-| `switch_payment_validation::valid` | 所选骰子符合费用要求，且持有数量足够。 |
+| `switch_payment_validation::insufficient_energy` | 骰子检查通过，但切换前的出战角色充能不足。 |
+| `switch_payment_validation::valid` | 所选骰子符合费用要求，持有数量与出战角色充能均足够。 |
 
 ## 注意
 
 先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 完整计算该角色的切换费用，由调用方保证报价可用。本操作只读取已计算费用和牌桌，不计算费用、提交行动、执行费用响应的后续效果或修改牌桌；提交接口也不会自动调用它。
 
-所选骰子须恰好支付 [`elemental_dice_requirement`](../../../definition/events/elemental_dice_requirement.md) 的 `fixed`、`same` 和 `any` 三部分，具体匹配规则见该类型。费用不匹配时立即返回 `requirement_mismatch`，匹配后才检查持有数量。
+所选骰子须恰好支付 [`elemental_dice_requirement`](../../../definition/events/elemental_dice_requirement.md) 的 `fixed`、`same` 和 `any` 三部分，具体匹配规则见该类型。费用不匹配时立即返回 `requirement_mismatch`，匹配后检查持有数量，最后检查出战角色充能；遇到第一个失败立即返回。
 
-支付检查只涉及费用和所选骰子；传入当前现场内有效的候选索引仍是调用前提。
+支付检查涉及费用、所选骰子和出战角色充能；传入当前现场内有效的候选索引仍是调用前提。

@@ -61,9 +61,9 @@ static givm::handler_program_entry_t<TEvent> handle(
 
 入口是否执行以及何时执行由触发该事件的操作决定。
 
-切换的 [`cost_of_switch`](events/cost_of_switch.md) 与出牌的 [`cost_of_card`](events/cost_of_card.md) 费用响应可以反复用于预览，不得使用随机数；调用随机函数属于未定义行为。费用响应仍采用上述统一签名，确认行动后才执行其返回的程序入口。
+切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md) 与技能的 [`cost_of_skill`](events/cost_of_skill.md) 费用响应可以反复用于预览，不得使用随机数；调用随机函数属于未定义行为。费用响应仍采用上述统一签名，确认行动后才执行其返回的程序入口。
 
-可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可直接返回空入口。卡牌初始费用与目标检查采用下述查询接口。
+可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可直接返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。卡牌与技能的初始费用和目标检查采用下述查询接口。
 
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
 
@@ -79,7 +79,9 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 
 当 `std::is_empty_v<Q>` 为 `true` 时，查询结果只由编译后的定义决定。每次编译定义库时，在该项定义的 `compile` 完成后查询一次并保存结果；游戏运行期间读取已保存的结果，不再调用定义源的 `query`。查询类型须能以 `Q{}` 构造；结果不要求是 C++ 常量表达式。非空查询按每次提供的参数求值。
 
-缺少对应 `query` 时，使用通过参数相关查找（ADL）找到的 [`query_default(parameters)`](query_default.md)，返回类型同样必须是 `Q::result_t`。既没有源查询也没有默认方法时，定义源不满足协议。当前[查询列表](queries.md)中的每种查询均有默认方法；其中卡牌目标检查仅在目标数量为零时默认返回 `valid_complete`，非零数量返回 `invalid`。
+缺少对应 `query` 时，使用通过参数相关查找（ADL）找到的 [`query_default(parameters)`](query_default.md)，返回类型同样必须是 `Q::result_t`。既没有源查询也没有默认方法时，定义源不满足协议。当前[查询列表](queries.md)中的每种查询均有默认方法；其中卡牌与技能的目标检查仅在目标数量为零时默认返回 `valid_complete`，非零数量返回 `invalid`。
+
+角色初始技能通过有参查询 [`character_initial_skill`](queries/character_initial_skill.md) 按索引逐个取得，首次返回无效 ID 时结束。定义源自行决定如何产生和保存这些结果，不要求使用特定容器。
 
 查询结果若包含引用、指针或视图，所引用的数据必须在结果使用期间保持有效。空查询的结果会随定义库保存与复制，定义源须相应保证其所借用数据的生命周期。
 

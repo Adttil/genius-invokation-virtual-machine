@@ -15,13 +15,14 @@ struct cost_effect_argument;
 
 | | |
 | --- | --- |
-| `TCostEvent` | 这次支付对应的费用事件类型，例如 [`cost_of_switch`](cost_of_switch.md) 或 [`cost_of_card`](cost_of_card.md) |
+| `TCostEvent` | 这次支付对应的费用事件类型，例如 [`cost_of_switch`](cost_of_switch.md) 、[`cost_of_card`](cost_of_card.md) 或 [`cost_of_skill`](cost_of_skill.md) |
 
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `reduced_dice` | [`elemental_dice_requirement`](elemental_dice_requirement.md) | 本次效果减少的骰子需求 |
+| `reduced_energy` | `std::uint32_t` | 本次效果减少的充能需求 |
 
 ## 示例
 

@@ -12,8 +12,16 @@ namespace givm::detail
     )
     {
         const auto& instruction = context.instruction_data<1, givm::enter_character>(library);
-        const auto state = library[instruction.definition].query(character_initial_state{});
-        table[instruction.player].add(instruction.definition, state);
+        const auto definition = library[instruction.definition];
+        const auto state = definition.query(character_initial_state{});
+        const auto character = table[instruction.player].add(instruction.definition, state);
+        for(std::size_t skill_index = 0; ; ++skill_index)
+        {
+            const auto skill = definition.query(character_initial_skill{ skill_index });
+            if(not skill)
+                break;
+            character.add(skill, {});
+        }
 
         return context.advance(instruction_extent<1, givm::enter_character>);
     }

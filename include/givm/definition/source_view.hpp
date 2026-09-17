@@ -43,6 +43,12 @@ namespace givm
         using type = onpay_context<cost_of_card>;
     };
 
+    template<>
+    struct handler_program_context<cost_of_skill>
+    {
+        using type = onpay_context<cost_of_skill>;
+    };
+
     template<class TEvent>
     using handler_program_context_t = typename handler_program_context<TEvent>::type;
 

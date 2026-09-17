@@ -8,7 +8,7 @@
 struct initialize_characters;
 ```
 
-已有角色的初始化命令，用于按角色定义准备指定玩家全部角色的初始状态。它适用于角色已装入牌桌后的开局初始化。
+已有角色的初始化命令，用于按角色定义准备指定玩家全部角色的初始状态与技能。它适用于角色已装入牌桌后的开局初始化。
 
 ## 成员类型
 
@@ -25,6 +25,8 @@ struct initialize_characters;
 ## 注意
 
 每个角色使用定义库已保存的 [`character_initial_state`](../queries/character_initial_state.md) 结果。已有角色状态会被此初始状态替换；本命令不创建角色。
+
+随后重建角色技能：移除原有技能，从零开始逐项查询 [`character_initial_skill`](../queries/character_initial_skill.md)，直到首次得到无效 ID；新技能使用默认状态。重复初始化也会重建技能集合，但不改变角色附着实体。
 
 ## 示例
 
@@ -82,3 +84,4 @@ int main()
 | | |
 | --- | --- |
 | [`character_initial_state`](../queries/character_initial_state.md) | 角色初始状态查询 |
+| [`character_initial_skill`](../queries/character_initial_skill.md) | 角色初始技能查询 |

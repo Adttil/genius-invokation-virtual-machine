@@ -44,8 +44,8 @@ void play_card(
 
 不带定义库与牌桌的重载采用已完整计算的费用。另一重载同步重新报价后填写选择；两者都不自动检查支付、目标或其他用牌条件。调用方可以独立使用 [`card_payment_validate`](card_payment_validate.md) 与分步的 [`card_targets_validate`](card_targets_validate.md)，并负责保证输入合法、当前选择允许完成。
 
-目标由牌定义解释，未使用的位置忽略。无需目标时可直接调用 `play_card(card_index, paid_dice)`。本操作复制采用的目标 ID，调用完成后无需保留传入的目标范围。
+充能按费用要求自动从出战角色扣除，不需要另行选择支付量。目标由牌定义解释，未使用的位置忽略。无需目标时可直接调用 `play_card(card_index, paid_dice)`。本操作复制采用的目标 ID，调用完成后无需保留传入的目标范围。
 
-本操作不推进执行器，也不修改牌桌。下一次 [`step`](../../executor/step.md) 先让牌离开手牌，再执行确认的费用效果、扣除骰子并处理骰子变化响应，随后广播 [`card_will_be_played`](../../../definition/events/card_will_be_played.md)。若未被反制，则执行该牌的 [`card_effect`](../../../definition/events/card_effect.md)；之后均广播 [`card_played`](../../../definition/events/card_played.md)。反制只取消牌的原效果，不退还支付，也不撤销牌离手。
+本操作不推进执行器，也不修改牌桌。下一次 [`step`](../../executor/step.md) 先让牌离开手牌，再执行确认的费用效果、扣除骰子与充能，依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../../../definition/events/card_will_be_played.md)。若未被反制，则执行该牌的 [`card_effect`](../../../definition/events/card_effect.md)；之后均广播 [`card_played`](../../../definition/events/card_played.md)。反制只取消牌的原效果，不退还支付，也不撤销牌离手。
 
 这次行动沿用报价确定的行动速度：快速行动保留行动权，战斗行动按行动阶段规则交接。整个流程由 [`begin_action`](../../../definition/commands/begin_action.md) 处理。
