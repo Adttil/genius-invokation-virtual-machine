@@ -19,7 +19,9 @@ constexpr decltype(auto) get() const noexcept;
 
 ## 返回值
 
-固定元素的引用，或动态数组的 `std::span`；可修改性由所属 [`frame_view`](../frame_view.md) 的 `IsMutable` 决定。
+固定元素的引用、动态数组的 `std::span`，或[子栈视图](../substack_view.md)。元素的可修改性由所属栈的 const 属性决定；子栈能否增删内部帧还取决于 [`top`](../frame_stack/top.md) 的访问方式。
+
+取得的引用或 span 仍可能因存储扩容失效，即使帧 view 本身允许在子栈增长后继续使用，也需要重新取得这些引用或 span。
 
 ## 示例
 

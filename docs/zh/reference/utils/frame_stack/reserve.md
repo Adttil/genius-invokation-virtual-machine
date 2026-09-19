@@ -22,7 +22,7 @@ constexpr void reserve(size_t new_capacity);
 
 ## 注意
 
-本操作会重新分配存储，即使新容量没有增大，原有 view、引用和指针也会失效。
+本操作会重新分配存储，即使新容量没有增大，普通帧 view、字段引用、指针和 span 也会失效。含栈顶子栈的可重新定位 view 见 [`top`](top.md)；它们仍须重新取得原有字段引用或 span。
 
 ## 示例
 

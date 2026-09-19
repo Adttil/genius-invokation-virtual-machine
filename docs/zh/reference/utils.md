@@ -9,8 +9,10 @@
 |  |  |
 | --- | --- |
 | [`frame_stack`](utils/frame_stack.md) | 保存临时数据的栈 |
-| [`frame_view`](utils/frame_view.md) | 一组栈上数据的访问对象 |
+| [`frame_view`](utils/frame_view.md) | 普通帧的访问对象 |
 | [`frame_t`](utils/frame_t.md) | 帧的类型描述 |
+| [`substack_t`](utils/substack_t.md) | 帧尾子栈的类型标记 |
+| [子栈视图](utils/substack_view.md) | 访问帧中另一个栈的内容 |
 | [`type_list`](utils/type_list.md) | 编译期的有序类型序列 |
 
 ## 类型别名
@@ -34,3 +36,4 @@
 |  |  |
 | --- | --- |
 | [`get`](utils/get.md) | 访问帧中的元素 |
+| [`substack`](utils/substack.md) | 构造空子栈的初始化参数 |
