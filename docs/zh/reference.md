@@ -7,6 +7,8 @@
 | [`element`](reference/enums/element.md) | 元素 |
 | [`elemental_reaction`](reference/enums/elemental_reaction.md) | 元素反应 |
 | [`weapon_type`](reference/enums/weapon_type.md) | 武器类型 |
+| [`weapon_type_mask`](reference/enums/weapon_type_mask.md) | 允许装备的武器类别集合 |
+| [`equipment_type`](reference/enums/equipment_type.md) | 装备类别 |
 | [`game_result`](reference/enums/game_result.md) | 对局结果 |
 
 ## [定义](reference/definition.md)

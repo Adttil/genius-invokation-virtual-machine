@@ -75,6 +75,25 @@ namespace givm
         relative_player player = relative_player::current;
     };
 
+    struct add_attachment
+    {
+        using input_type = attachment_addition;
+    };
+
+    struct add_attachment_to_active_character
+    {
+        using input_type = void;
+
+        relative_player player = relative_player::current;
+        definition_id<attachment_view> definition;
+        attachment_state state;
+    };
+
+    struct remove_attachment
+    {
+        using input_type = attachment_removal;
+    };
+
     struct replace_cards
     {
         using input_type = void;
@@ -179,6 +198,9 @@ namespace givm::detail
         set_active_character_from_input,
         select_active_character_both,
         draw_cards,
+        add_attachment,
+        add_attachment_to_active_character,
+        remove_attachment,
         replace_cards,
         replace_cards_both,
         start_round,

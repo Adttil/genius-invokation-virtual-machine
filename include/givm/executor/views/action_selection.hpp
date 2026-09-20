@@ -202,7 +202,8 @@ namespace givm
                 selected_targets[index] = targets[index];
             }
             return definition.query(card_target_validation{
-                .card = entity, .table = card_table, .targets = selected_targets, .target_count = target_count
+                .card = entity, .table = card_table, .library = library,
+                .targets = selected_targets, .target_count = target_count
             });
         }
 
@@ -307,7 +308,8 @@ namespace givm
                 selected_targets[index] = targets[index];
             }
             return definition.query(skill_target_validation{
-                .skill = entity, .table = card_table, .targets = selected_targets, .target_count = target_count
+                .skill = entity, .table = card_table, .library = library,
+                .targets = selected_targets, .target_count = target_count
             });
         }
 

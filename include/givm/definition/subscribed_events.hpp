@@ -38,6 +38,7 @@ namespace givm
         struct card_will_be_played,
         struct card_played,
         struct active_character_changed,
+        struct attachment_added,
         struct entity_will_leave,
         struct entity_left
     >{};
@@ -61,6 +62,7 @@ namespace givm
         struct card_discarded,
         struct card_played,
         struct active_character_changed,
+        struct attachment_added,
         struct entity_will_leave,
         struct entity_left
     >{};
@@ -109,6 +111,7 @@ namespace givm
         struct after_elemental_reaction,
         struct character_will_be_defeated,
         struct character_defeated,
+        struct attachment_added,
         struct entity_will_leave,
         struct entity_left,
         struct entity_count_changed

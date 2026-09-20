@@ -21,7 +21,7 @@ target_validation card_targets_validate(
 
 | | |
 | --- | --- |
-| `library` | 与当前现场及牌桌配套的定义库。 |
+| `library` | 与当前现场及牌桌配套的定义库；传入牌定义的查询，供其检查目标的标签等定义信息。 |
 | `card_table` | 当前行动发生的牌桌。 |
 | `card_index` | 从零开始的出牌候选索引，须小于 [`card_count()`](card_count.md)。 |
 | `targets` | 按选择顺序提供的目标 ID，默认空 span 表示尚未选择目标。只采用前两个元素，多余元素忽略。 |

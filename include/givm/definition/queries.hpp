@@ -9,6 +9,8 @@
 
 namespace givm
 {
+    class definition_library;
+
     struct character_initial_state
     {
         using result_t = character_state;
@@ -45,6 +47,7 @@ namespace givm
 
         hand_card_view card;
         const givm::table& table;
+        const definition_library& library;
         std::array<card_target_id, 2> targets;
         std::size_t target_count;
     };
@@ -55,6 +58,7 @@ namespace givm
 
         skill_view skill;
         const givm::table& table;
+        const definition_library& library;
         std::array<skill_target_id, 2> targets;
         std::size_t target_count;
     };

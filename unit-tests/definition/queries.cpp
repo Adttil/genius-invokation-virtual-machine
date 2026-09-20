@@ -109,14 +109,14 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
     REQUIRE(first_draw.step(library, table, random) == givm::execution_state::finished);
     const auto card = (*table[givm::player_id{ 0 }].hand_cards().begin()).id();
     CHECK(counts.target_validation == 0);
-    CHECK(library.query(id, givm::card_target_validation{ table[card], table, {}, 0 })
+    CHECK(library.query(id, givm::card_target_validation{ table[card], table, library, {}, 0 })
         == givm::target_validation::valid_complete);
     CHECK(counts.target_validation == 1);
 
     givm::executor second_draw;
     second_draw.enter_entry(library);
     REQUIRE(second_draw.step(library, table, random) == givm::execution_state::finished);
-    CHECK(library[id].query(givm::card_target_validation{ table[card], table, {}, 0 })
+    CHECK(library[id].query(givm::card_target_validation{ table[card], table, library, {}, 0 })
         == givm::target_validation::invalid);
     CHECK(counts.target_validation == 2);
     CHECK(counts.initial_cost == 1);
@@ -151,10 +151,10 @@ TEST_CASE("missing queries use their operation specific defaults", "[definition]
     auto random = []() -> std::uint32_t { return 0; };
     REQUIRE(draw.step(library, table, random) == givm::execution_state::finished);
     const auto card = *table[givm::player_id{ 0 }].hand_cards().begin();
-    CHECK(library.query(card_definition, givm::card_target_validation{ card, table, {}, 0 })
+    CHECK(library.query(card_definition, givm::card_target_validation{ card, table, library, {}, 0 })
         == givm::target_validation::valid_complete);
-    CHECK(library.query(card_definition, givm::card_target_validation{ card, table, {}, 1 })
+    CHECK(library.query(card_definition, givm::card_target_validation{ card, table, library, {}, 1 })
         == givm::target_validation::invalid);
-    CHECK(library.query(card_definition, givm::card_target_validation{ card, table, {}, 2 })
+    CHECK(library.query(card_definition, givm::card_target_validation{ card, table, library, {}, 2 })
         == givm::target_validation::invalid);
 }

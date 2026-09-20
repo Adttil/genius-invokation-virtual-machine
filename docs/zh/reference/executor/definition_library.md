@@ -29,6 +29,7 @@ class definition_library;
 | [`operator[]`](definition_library/operator_at.md) | 查看指定定义 |
 | [`name`](definition_library/name.md) | 取得定义名称 |
 | [`tag_name`](definition_library/tag_name.md) | 取得标签名称 |
+| [`equipment_type`](definition_library/equipment_type.md) | 取得附着实体定义的装备类别 |
 | [`has_tag`](definition_library/has_tag.md) | 检查定义是否具有一个标签 |
 | [`has_all_tags`](definition_library/has_all_tags.md) | 检查定义是否具有全部标签 |
 | [`has_any_tag`](definition_library/has_any_tag.md) | 检查定义是否具有任一标签 |

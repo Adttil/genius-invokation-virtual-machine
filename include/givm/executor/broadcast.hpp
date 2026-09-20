@@ -2,6 +2,8 @@
 #define GIVM_EXECUTOR_BROADCAST_HPP
 
 #include <cstddef>
+#include <array>
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -93,9 +95,23 @@ namespace givm::detail
                 {
                     append_broadcast_target<TEvent>(library, skill, targets);
                 }
+                std::array<std::size_t, static_cast<std::size_t>(equipment_type::none)> equipment{};
+                std::size_t equipment_count = 0;
+                for(std::size_t index = 0; index != equipment.size(); ++index)
+                {
+                    const auto type = static_cast<equipment_type>(index);
+                    if(character.has(type))
+                    {
+                        const auto attachment = character.get(type);
+                        equipment[equipment_count++] = attachment.id().index;
+                        append_broadcast_target<TEvent>(library, attachment, targets);
+                    }
+                }
                 for(auto attachment : character.attachments())
                 {
-                    append_broadcast_target<TEvent>(library, attachment, targets);
+                    const auto end = equipment.begin() + equipment_count;
+                    if(std::find(equipment.begin(), end, attachment.id().index) == end)
+                        append_broadcast_target<TEvent>(library, attachment, targets);
                 }
             }
         }

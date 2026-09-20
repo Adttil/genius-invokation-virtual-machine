@@ -39,6 +39,8 @@
 
 登记后，名称、标签和依赖声明必须保持不变。登记、遍历和编译可以分别调用这些接口；每次返回的范围只消费一次，但多次调用须提供相同内容。
 
+attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 标签，分别表示武器、圣遗物、天赋、特技；没有这些标签时为普通附属实体。编译后的定义库通过 [`equipment_type`](../executor/definition_library/equipment_type.md) 提供这一分类。武器类型使用 `sword`、`claymore`、`polearm`、`bow`、`catalyst` 标签。同一组内的标签互斥，由定义源保证，不进行冲突检查。装备添加与替换行为见 [`add_attachment`](commands/add_attachment.md)。
+
 当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会自动加入所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
 
 ## 事件响应

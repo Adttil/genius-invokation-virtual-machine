@@ -9,7 +9,7 @@ template<bool SkipErased = true>
 constexpr auto attachments() const;
 ```
 
-遍历该角色的角色附属实体。
+遍历该角色的附属实体，包括普通附属状态和装备。
 
 ## 模板参数
 

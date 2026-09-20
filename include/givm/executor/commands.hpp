@@ -17,6 +17,8 @@
 #include "commands/start_dice_roll_phase.hpp"
 #include "commands/start_battle.hpp"
 #include "commands/reduce_combat_status_count.hpp"
+#include "commands/add_attachment.hpp"
+#include "commands/remove_attachment.hpp"
 #include "commands/apply_element.hpp"
 #include "commands/deal_damage.hpp"
 #include "commands/set_element_aura.hpp"

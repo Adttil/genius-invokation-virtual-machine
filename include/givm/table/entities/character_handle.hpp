@@ -6,6 +6,7 @@
 #include <ranges>
 
 #include "../../enums/element_aura.hpp"
+#include "../../enums/equipment_type.hpp"
 #include "../entity_id.hpp"
 #include "../entity_storage.hpp"
 #include "../table_accessor.hpp"
@@ -178,10 +179,46 @@ namespace givm::detail
             return result;
         }
 
+        constexpr bool has(equipment_type type) const
+        {
+            const auto equipment_index = static_cast<size_t>(type);
+            GIVM_ASSERT(equipment_index < storage_.data->equipment_indices.size());
+            return storage_.data->equipment_indices[equipment_index] != static_cast<size_t>(-1);
+        }
+
+        constexpr attachment_handle<TStorage> get(equipment_type type) const
+        {
+            GIVM_ASSERT(has(type));
+            auto result = detail::table_accessor::make_uninitialized<attachment_handle<TStorage>>();
+            detail::table_accessor::storage_of(result) = {
+                .table = storage_.table,
+                .player = storage_.player,
+                .character = storage_.data,
+                .data = &storage_.data->attachment_datas[storage_.data->equipment_indices[static_cast<size_t>(type)]]
+            };
+            return result;
+        }
+
         constexpr attachment_handle<TStorage> add(givm::definition_id<attachment_view> definition_id, const attachment_state& state) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
             storage_.data->attachment_datas.emplace_back(definition_id.value(), state);
+            auto result = detail::table_accessor::make_uninitialized<attachment_handle<TStorage>>();
+            detail::table_accessor::storage_of(result) = {
+                .table = storage_.table,
+                .player = storage_.player,
+                .character = storage_.data,
+                .data = &storage_.data->attachment_datas.back()
+            };
+            return result;
+        }
+
+        constexpr attachment_handle<TStorage> add(givm::definition_id<attachment_view> definition_id, const attachment_state& state, equipment_type type) const requires is_mutable
+        {
+            GIVM_ASSERT(is_valid());
+            GIVM_ASSERT(static_cast<size_t>(type) < storage_.data->equipment_indices.size());
+            storage_.data->attachment_datas.emplace_back(definition_id.value(), state);
+            storage_.data->equipment_indices[static_cast<size_t>(type)] = storage_.data->attachment_datas.size() - 1;
             auto result = detail::table_accessor::make_uninitialized<attachment_handle<TStorage>>();
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
@@ -228,6 +265,8 @@ namespace givm
         using base_type::state;
         using base_type::skills;
         using base_type::attachments;
+        using base_type::has;
+        using base_type::get;
 
     private:
         constexpr character_view(detail::uninitialized_entity_t tag) noexcept : base_type{ tag } {}

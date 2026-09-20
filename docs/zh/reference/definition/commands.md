@@ -42,6 +42,14 @@
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
 | [`set_element_aura`](commands/set_element_aura.md) | 直接设置元素附着的命令 |
 
+## 附属实体与装备
+
+| | |
+| --- | --- |
+| [`add_attachment`](commands/add_attachment.md) | 按输入的目标添加附属实体或替换装备 |
+| [`add_attachment_to_active_character`](commands/add_attachment_to_active_character.md) | 为指定一方的出战角色添加固定的附属实体或装备 |
+| [`remove_attachment`](commands/remove_attachment.md) | 按输入移除附属实体或装备 |
+
 ## 调试
 
 | | |

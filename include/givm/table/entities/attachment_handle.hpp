@@ -111,6 +111,15 @@ namespace givm::detail
 
         constexpr void erase() const requires is_mutable
         {
+            const auto attachment_index = static_cast<size_t>(storage_.data - storage_.character->attachment_datas.data());
+            for(auto& equipment_index : storage_.character->equipment_indices)
+            {
+                if(equipment_index == attachment_index)
+                {
+                    equipment_index = static_cast<size_t>(-1);
+                    break;
+                }
+            }
             storage_.data->definition_and_flags |= erased_mask;
         }
 

@@ -22,6 +22,7 @@ struct card_target_validation;
 | --- | --- | --- |
 | `card` | [`hand_card_view`](../../table/hand_card_view.md) | 准备打出的手牌。 |
 | `table` | `const givm::table&` | 当前行动发生的牌桌。 |
+| `library` | `const definition_library&` | 与牌桌配套的定义库，用于查询目标等实体的定义标签和其他定义信息。 |
 | `targets` | `std::array<card_target_id, 2>` | 两个目标位置；未提供的位置为 `std::monostate`。 |
 | `target_count` | `std::size_t` | 采用的目标数量：`0` 检查空选择，`1` 检查第一目标，`2` 检查第二目标。 |
 

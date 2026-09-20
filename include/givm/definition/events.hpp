@@ -377,6 +377,24 @@ namespace givm
     };
 
     // Entity events.
+    struct attachment_addition
+    {
+        character_id target;
+        definition_id<attachment_view> definition;
+        attachment_state state;
+    };
+
+    struct attachment_removal
+    {
+        attachment_id attachment;
+    };
+
+    struct attachment_added
+    {
+        const attachment_id attachment;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_added);
+    };
+
     using entity_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id,
                                    summon_id, combat_status_id, character_id, skill_id, attachment_id>;
 

@@ -23,6 +23,7 @@ class definition_view;
 | --- | --- |
 | [`id`](definition_view/id.md) | 取得定义 ID |
 | [`name`](definition_view/name.md) | 取得定义名称 |
+| [`equipment_type`](definition_view/equipment_type.md) | 取得附着实体定义的装备类别 |
 | [`has_tag`](definition_view/has_tag.md) | 检查一个标签 |
 | [`has_all_tags`](definition_view/has_all_tags.md) | 检查全部标签 |
 | [`has_any_tag`](definition_view/has_any_tag.md) | 检查任一标签 |

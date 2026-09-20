@@ -2,6 +2,7 @@
 #define GIVM_EXECUTOR_LIBRARY_HPP
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <ranges>
 #include <stdexcept>
@@ -16,6 +17,7 @@
 #include "instruction.hpp"
 #include "../definition/program_entry.hpp"
 #include "../definition.hpp"
+#include "../enums/equipment_type.hpp"
 #include "../utils/stack.hpp"
 
 #include "../macro_define.hpp"
@@ -163,7 +165,8 @@ namespace givm
 
     public:
         definition_library(const definition_library& other)
-        : program_{ other.program_ }, tag_names_{ other.tag_names_ }, buckets_{ other.buckets_ }
+        : program_{ other.program_ }, tag_names_{ other.tag_names_ },
+          equipment_tags_{ other.equipment_tags_ }, buckets_{ other.buckets_ }
         {
             detail::finalize_program(program_);
         }
@@ -197,6 +200,11 @@ namespace givm
             std::string_view name() const
             {
                 return library_->name(id_);
+            }
+
+            givm::equipment_type equipment_type() const noexcept requires std::same_as<TDefinitionType, attachment_view>
+            {
+                return library_->equipment_type(id_);
             }
 
             bool has_tag(tag_id tag) const
@@ -308,6 +316,18 @@ namespace givm
         std::string_view tag_name(tag_id id) const
         {
             return tag_names_[id.value()];
+        }
+
+        givm::equipment_type equipment_type(definition_id<attachment_view> id) const noexcept
+        {
+            for(size_t index = 0; index != equipment_tags_.size(); ++index)
+            {
+                if(equipment_tags_[index] && has_tag(id, equipment_tags_[index]))
+                {
+                    return static_cast<givm::equipment_type>(index);
+                }
+            }
+            return givm::equipment_type::none;
         }
 
         template<class TDefinitionType>
@@ -436,10 +456,19 @@ namespace givm
 
         using bucket_tuple = definition_type_list::apply<bucket_tuple_for>;
 
-        explicit definition_library(std::span<const std::string_view> tag_names)
-        : program_(sizeof(detail::execute_fn), 0), tag_names_(tag_names.begin(), tag_names.end())
+        explicit definition_library(const issued_id_map& id_map)
+        : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end())
         {
-
+            constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
+                "weapon", "artifact", "talent", "technique"
+            };
+            for(size_t index = 0; index != equipment_tags_.size(); ++index)
+            {
+                if(id_map.has_tag(equipment_tag_names[index]))
+                {
+                    equipment_tags_[index] = id_map.get_tag_id(equipment_tag_names[index]);
+                }
+            }
         }
 
         template<class TDefinitionType>
@@ -595,7 +624,7 @@ namespace givm
                 issued_id_map id_map;
             };
 
-            definition_library library{ id_map.tag_names() };
+            definition_library library{ id_map };
             detail::program_writer writer{ library.program_ };
             [[maybe_unused]] const auto initialization_inputs_size =
                 detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode);
@@ -629,6 +658,7 @@ namespace givm
     private:
         detail::program_bytes program_;
         std::vector<std::string_view> tag_names_;
+        std::array<tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
         bucket_tuple buckets_;
     };
 

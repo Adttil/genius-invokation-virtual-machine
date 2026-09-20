@@ -74,6 +74,9 @@
 | [`character_will_be_defeated`](events/character_will_be_defeated.md) | 角色被击倒前的事件 |
 | [`character_defeated`](events/character_defeated.md) | 角色被击倒后的通知 |
 | [`entity_will_leave`](events/entity_will_leave.md) | 实体离场前的事件 |
+| [`attachment_addition`](events/attachment_addition.md) | 添加附属实体或装备的初始输入 |
+| [`attachment_removal`](events/attachment_removal.md) | 移除附属实体或装备的初始输入 |
+| [`attachment_added`](events/attachment_added.md) | 附属实体或装备加入后的通知 |
 | [`entity_left`](events/entity_left.md) | 实体离场后的通知 |
 | [`combat_status_count_reduction`](events/combat_status_count_reduction.md) | 出战状态计数扣除的初始输入 |
 | [`entity_count_changed`](events/entity_count_changed.md) | 实体计数变化后的通知 |

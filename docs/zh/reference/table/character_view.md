@@ -25,6 +25,8 @@ class character_view;
 | [`state`](character_view/state.md) | 访问实体状态 |
 | [`skills`](character_view/skills.md) | 遍历角色的技能 |
 | [`attachments`](character_view/attachments.md) | 遍历角色的附属实体 |
+| [`has`](character_view/has.md) | 判断是否具有指定类别的装备 |
+| [`get`](character_view/get.md) | 取得指定类别的当前装备 |
 
 ## 注意
 
