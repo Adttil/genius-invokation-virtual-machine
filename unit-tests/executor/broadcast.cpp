@@ -126,7 +126,7 @@ namespace
         {
             return { handlers, nested_responses,
                 context.add_program(std::tuple{}),
-                context.add_program(std::tuple{ givm::set_active_character_from_input{} }),
+                context.add_program(std::tuple{ givm::set_active_character{} }),
                 context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view& self,

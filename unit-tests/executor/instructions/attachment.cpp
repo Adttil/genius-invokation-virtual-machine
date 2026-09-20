@@ -99,7 +99,7 @@ namespace
         {
             const auto add = [&](std::string_view name, std::uint32_t count)
             {
-                return givm::add_attachment_to_active_character{
+                return givm::add_attachment{
                     .definition = context.resolve_id<givm::attachment_view>(name), .state = { count }
                 };
             };
@@ -319,7 +319,7 @@ namespace
             return {
                 log, context.resolve_id<givm::attachment_view>("DynamicAttachment"),
                 context.add_program(std::tuple{
-                    givm::add_attachment_to_active_character{
+                    givm::add_attachment{
                         .definition = context.resolve_id<givm::attachment_view>("DynamicWeapon"),
                         .state = { 17 }
                     }, givm::add_attachment{}, givm::add_attachment{}

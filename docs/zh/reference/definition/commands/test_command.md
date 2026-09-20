@@ -10,12 +10,6 @@ struct test_command;
 
 事件响应的测试命令，用于检查实体定义中的事件响应是否能被调用。
 
-## 成员类型
-
-| | |
-| --- | --- |
-| `input_type` | `void`，表示不消费调用输入 |
-
 ## 注意
 
 发出 [`test_event`](../events/test_event.md) 并等待相应效果完成后继续。

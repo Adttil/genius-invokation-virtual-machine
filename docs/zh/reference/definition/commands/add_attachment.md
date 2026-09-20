@@ -4,18 +4,25 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-按响应提供的目标，为角色添加普通附属实体或装备。装备牌可以提交玩家选择的角色，其他效果也可以提交自行计算的角色。
+为角色添加普通附属实体或装备，并完成同类装备的替换。目标可以由响应提供，也可以是指定一方执行时的出战角色。
 
 ```cpp
 struct add_attachment
 {
-    using input_type = attachment_addition;
+    relative_player player = relative_player::current;
+    definition_id<attachment_view> definition{};
+    attachment_state state{};
 };
 ```
 
-## 输入与结算
+## 输入
 
-响应通过 `invoke` 提交一个 [attachment_addition](../events/attachment_addition.md)。
+通过构造命令选择参数的提供方式：
+
+- 默认构造 `add_attachment{}` 使用动态输入，消费响应通过 `invoke` 提交的一个 [attachment_addition](../events/attachment_addition.md)，由输入提供目标、定义和初始状态。
+- 显式指定 `definition` 时，使用命令中的固定 `definition`、`state`，为 `player` 指定一方的出战角色添加实体，不消费响应输入。`player` 相对于当前行动玩家，沿用 [relative_player](relative_player.md) 的含义；目标方必须有有效的出战角色。本命令开始执行时才确定目标，不自动使用响应者所属的一方。
+
+## 结算
 
 attachment 定义的 `weapon`、`artifact`、`talent`、`technique` 标签分别表示武器、圣遗物、天赋和特技；没有这些标签时为普通附属实体。四种类别标签互斥，由定义源保证，不进行冲突检查。
 
@@ -26,7 +33,7 @@ attachment 定义的 `weapon`、`artifact`、`talent`、`technique` 标签分别
 
 旧装备在移除前仍可参与广播，移除后不再参与通常的遍历和广播，其信息在 cleanup 前仍可按旧 ID 读取。
 
-命令消费自己的输入。目标、定义及装备条件由调用方保证合法；不会自动执行目标验证。武器类型由定义的 `sword`、`claymore`、`polearm`、`bow` 或 `catalyst` 标签表示，这五种类型标签互斥。角色状态提供允许的武器类型掩码，具体用牌条件仍由卡牌定义决定。
+目标、定义及装备条件由调用方保证合法；不会自动执行目标验证。武器类型由定义的 `sword`、`claymore`、`polearm`、`bow` 或 `catalyst` 标签表示，这五种类型标签互斥。角色状态提供允许的武器类型掩码，具体用牌条件仍由卡牌定义决定。
 
 同类装备至多保留一个。普通附属实体没有在本命令中附加叠层、刷新或归零移除规则。
 

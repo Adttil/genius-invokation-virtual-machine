@@ -10,12 +10,6 @@ struct select_active_character_both;
 
 双方开局出战角色的选择命令。双方提交后，同时设置两边的出战角色，再通知相关效果。
 
-## 成员类型
-
-| | |
-| --- | --- |
-| `input_type` | `void`，表示不消费调用输入 |
-
 ## 注意
 
 尚未接受任何一方的选择时，执行器返回 `execution_state::initial_active_character_selection`，通过相应的[现场视图](../../executor/execution_view/initial_active_character_selection.md)提交任意一方的有效角色。首次选择被接受后返回 `execution_state::remaining_active_character_selection`；此时相应[视图](../../executor/execution_view/remaining_active_character_selection.md)提供已接受的选择和待选玩家，第二次输入提交该玩家的有效角色 ID。两种视图都提供独立的 `selection_validate`，提交及继续推进不会自动检查。

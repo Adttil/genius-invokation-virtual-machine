@@ -38,22 +38,22 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto commands = std::tuple{
-                givm::set_active_character_from_input{},
+                givm::set_active_character{},
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
-                givm::set_active_character_from_input{},
+                givm::set_active_character{},
                 givm::draw_cards{ .count = 1 },
-                givm::set_active_character_from_input{}
+                givm::set_active_character{}
             };
             const auto main = runtime_commands
                 ? context.add_program(std::vector<givm::any_command>{
-                    givm::set_active_character_from_input{},
+                    givm::set_active_character{},
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
-                    givm::set_active_character_from_input{},
+                    givm::set_active_character{},
                     givm::draw_cards{ .count = 1 },
-                    givm::set_active_character_from_input{}
+                    givm::set_active_character{}
                 })
                 : context.add_program(commands);
-            return { log, main, context.add_program(std::tuple{ givm::set_active_character_from_input{} }) };
+            return { log, main, context.add_program(std::tuple{ givm::set_active_character{} }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -92,9 +92,9 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::vector<givm::any_command>{
-                givm::set_active_character_from_input{},
+                givm::set_active_character{},
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
-                givm::set_active_character_from_input{}
+                givm::set_active_character{}
             }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -257,7 +257,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto entry = error == input_size_mismatch::typed_missing or error == input_size_mismatch::raw_missing
-                ? context.add_program(std::tuple{ givm::set_active_character_from_input{} })
+                ? context.add_program(std::tuple{ givm::set_active_character{} })
                 : context.add_program(std::tuple{ givm::set_active_character{ { givm::player_id{ 0 }, 0 } } });
             return { error, entry };
         }

@@ -10,12 +10,6 @@ struct begin_action;
 
 行动阶段的处理命令，涵盖玩家选择行动至双方宣布结束的过程。
 
-## 成员类型
-
-| | |
-| --- | --- |
-| `input_type` | `void`，表示不消费调用输入 |
-
 ## 注意
 
 先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持使用技能、打出手牌、主动切换出战角色和宣布结束；当前行动方必须已有出战角色。双方均宣布结束后，本命令才结束行动阶段。

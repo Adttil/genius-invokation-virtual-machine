@@ -6,7 +6,9 @@
 
 规则流程与事件效果只能组合核心给定集合中的命令；公开接口不支持自行定义新的命令类型。
 
-每个命令通过 `input_type` 声明输入。固定参数命令使用 `void`；消费参数的命令要求响应通过 `invoke` 显式提交相应初始事件。命令不借用外层响应事件或响应者。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
+命令是否消费响应输入，由编译时给出的具体命令值决定。消费输入的命令要求响应通过 `invoke` 显式提交相应初始事件；使用固定参数的命令不占输入位置。每个已编译入口所需输入的数量、类型和顺序仍然固定，命令不借用外层响应事件或响应者。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
+
+`set_active_character{}` 和 `add_attachment{}` 默认构造时采用动态输入；显式指定固定目标或定义时使用固定参数，具体用法见各自页面。`remove_attachment` 和 `reduce_combat_status_count` 始终消费输入；其余命令不消费响应输入。
 
 ## 开局与牌堆
 
@@ -15,8 +17,7 @@
 | [`insert_deck_card`](commands/insert_deck_card.md) | 向牌堆插入指定牌的命令 |
 | [`enter_character`](commands/enter_character.md) | 角色入场命令 |
 | [`shuffle_deck`](commands/shuffle_deck.md) | 洗牌命令 |
-| [`set_active_character`](commands/set_active_character.md) | 直接设置出战角色的命令 |
-| [`set_active_character_from_input`](commands/set_active_character_from_input.md) | 按输入目标设置出战角色的命令 |
+| [`set_active_character`](commands/set_active_character.md) | 按固定目标或响应输入设置出战角色 |
 | [`select_active_character_both`](commands/select_active_character_both.md) | 双方开局出战角色的选择命令 |
 | [`draw_cards`](commands/draw_cards.md) | 抽牌命令 |
 | [`replace_cards`](commands/replace_cards.md) | 单方换牌命令 |
@@ -46,8 +47,7 @@
 
 | | |
 | --- | --- |
-| [`add_attachment`](commands/add_attachment.md) | 按输入的目标添加附属实体或替换装备 |
-| [`add_attachment_to_active_character`](commands/add_attachment_to_active_character.md) | 为指定一方的出战角色添加固定的附属实体或装备 |
+| [`add_attachment`](commands/add_attachment.md) | 按响应输入添加附属实体或替换装备，或为指定一方的出战角色添加固定定义的实体 |
 | [`remove_attachment`](commands/remove_attachment.md) | 按输入移除附属实体或装备 |
 
 ## 调试

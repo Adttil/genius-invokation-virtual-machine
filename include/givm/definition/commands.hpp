@@ -21,8 +21,6 @@ namespace givm
 {
     struct insert_deck_card
     {
-        using input_type = void;
-
         player_id player;
         definition_id<card_definition> definition;
         std::int32_t position = -1;
@@ -30,35 +28,22 @@ namespace givm
 
     struct enter_character
     {
-        using input_type = void;
-
         player_id player;
         definition_id<character_view> definition;
     };
 
     struct shuffle_deck
     {
-        using input_type = void;
-
         player_id player;
     };
 
     struct set_active_character
     {
-        using input_type = void;
-
-        character_id target;
-    };
-
-    struct set_active_character_from_input
-    {
-        using input_type = active_character_changed;
+        character_id target{ {}, std::numeric_limits<size_t>::max() };
     };
 
     struct select_active_character_both
     {
-        using input_type = void;
-
     };
 
     enum class relative_player : std::uint8_t
@@ -69,73 +54,50 @@ namespace givm
 
     struct draw_cards
     {
-        using input_type = void;
-
         std::uint32_t count;
         relative_player player = relative_player::current;
     };
 
     struct add_attachment
     {
-        using input_type = attachment_addition;
-    };
-
-    struct add_attachment_to_active_character
-    {
-        using input_type = void;
-
         relative_player player = relative_player::current;
-        definition_id<attachment_view> definition;
-        attachment_state state;
+        definition_id<attachment_view> definition{};
+        attachment_state state{};
     };
 
     struct remove_attachment
     {
-        using input_type = attachment_removal;
     };
 
     struct replace_cards
     {
-        using input_type = void;
-
         player_id player;
     };
 
     struct replace_cards_both
     {
-        using input_type = void;
-
     };
 
     struct start_round
     {
-        using input_type = void;
-
         std::uint32_t max_rounds = 14;
     };
 
     struct begin_action
     {
-        using input_type = void;
-
     };
 
     struct end_round
     {
-        using input_type = void;
     };
 
     struct end_game
     {
-        using input_type = void;
-
         game_result result;
     };
 
     struct start_dice_roll_phase
     {
-        using input_type = void;
-
         std::uint32_t count = 8;
         std::array<std::uint32_t, 2> reroll_count{ 1, 1 };
 
@@ -143,18 +105,14 @@ namespace givm
 
     struct start_battle
     {
-        using input_type = void;
     };
 
     struct reduce_combat_status_count
     {
-        using input_type = combat_status_count_reduction;
     };
 
     struct deal_damage
     {
-        using input_type = void;
-
         damage_source_id source;
         character_id target;
         std::uint32_t value;
@@ -166,8 +124,6 @@ namespace givm
 
     struct apply_element
     {
-        using input_type = void;
-
         element_application_source_id source;
         character_id target;
         element element;
@@ -176,15 +132,12 @@ namespace givm
 
     struct set_element_aura
     {
-        using input_type = void;
-
         character_id target;
         element_aura aura;
     };
 
     struct test_command
     {
-        using input_type = void;
     };
 }
 
@@ -195,11 +148,9 @@ namespace givm::detail
         enter_character,
         shuffle_deck,
         set_active_character,
-        set_active_character_from_input,
         select_active_character_both,
         draw_cards,
         add_attachment,
-        add_attachment_to_active_character,
         remove_attachment,
         replace_cards,
         replace_cards_both,
@@ -221,5 +172,42 @@ namespace givm
 {
     using any_command = detail::command_types::apply<std::variant>;
 }
+
+#ifndef NDEBUG
+namespace givm::detail
+{
+    constexpr size_t input_size(const insert_deck_card&) noexcept { return 0; }
+    constexpr size_t input_size(const enter_character&) noexcept { return 0; }
+    constexpr size_t input_size(const shuffle_deck&) noexcept { return 0; }
+
+    constexpr size_t input_size(const set_active_character& command) noexcept
+    {
+        return command.target.index == std::numeric_limits<size_t>::max() ? sizeof(active_character_changed) : 0;
+    }
+
+    constexpr size_t input_size(const select_active_character_both&) noexcept { return 0; }
+    constexpr size_t input_size(const draw_cards&) noexcept { return 0; }
+
+    constexpr size_t input_size(const add_attachment& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(attachment_addition);
+    }
+
+    constexpr size_t input_size(const remove_attachment&) noexcept { return sizeof(attachment_removal); }
+    constexpr size_t input_size(const replace_cards&) noexcept { return 0; }
+    constexpr size_t input_size(const replace_cards_both&) noexcept { return 0; }
+    constexpr size_t input_size(const start_round&) noexcept { return 0; }
+    constexpr size_t input_size(const begin_action&) noexcept { return 0; }
+    constexpr size_t input_size(const end_round&) noexcept { return 0; }
+    constexpr size_t input_size(const end_game&) noexcept { return 0; }
+    constexpr size_t input_size(const start_dice_roll_phase&) noexcept { return 0; }
+    constexpr size_t input_size(const start_battle&) noexcept { return 0; }
+    constexpr size_t input_size(const reduce_combat_status_count&) noexcept { return sizeof(combat_status_count_reduction); }
+    constexpr size_t input_size(const deal_damage&) noexcept { return 0; }
+    constexpr size_t input_size(const apply_element&) noexcept { return 0; }
+    constexpr size_t input_size(const set_element_aura&) noexcept { return 0; }
+    constexpr size_t input_size(const test_command&) noexcept { return 0; }
+}
+#endif
 
 #endif

@@ -6,7 +6,7 @@
 
 下文的“当前”“现已落地”均指当时设计稿的状态；旧接口名称、具体布局和“公共 ABI”的范围需要结合后来的调整阅读。其中，定义源和游戏流程只能使用核心给定公开指令的约定始终有效，模板未静态检查核心指令集合不改变这一约定。对照现有实现，应特别注意：
 
-- `root_context`、省略 `context_type` 表示自由指令的规则已经更改；当前固定参数命令显式使用 `input_type = void`，消费参数命令声明初始输入类型。
+- `root_context`、省略 `context_type` 表示自由指令的规则已经更改；当前命令按具体命令值确定是否消费响应输入，同一操作的固定参数和消费输入方式由同一命令类型表达；编译后入口的输入数量、类型和顺序固定。
 - `make_data`、`programs`、`program_item` 及 setter 补写属于旧定义源接口。当前定义源通过 `compile(definition_compile_context&)` 直接生成完整定义数据，见[定义编译记录](../definition_compilation.md)。
 - 独立 `fixed_program` 类型和 `table.instruction(...)` 等旧命名不能照抄；当前定义库拥有程序存储，执行器从每次推进时显式传入的定义库取指。内部跳转/返回由执行器收束，详见[固定程序记录](../fixed_program.md)。
 - 旧稿把完整帧作为跨入口 ABI 讨论；当前命令不依赖外层 Context，响应通过尾调用 invoke 提交入口和初始事件，费用预览缓存全部输入；旧 onpay_context 已移除。行动观察与输入由 execution_view 提供，executor 不公开原始栈。

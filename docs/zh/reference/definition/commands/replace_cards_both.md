@@ -10,12 +10,6 @@ struct replace_cards_both;
 
 双方开局换牌命令。每方提交后即可得到该方的替换结果；双方都提交后结束这项准备。
 
-## 成员类型
-
-| | |
-| --- | --- |
-| `input_type` | `void`，表示不消费调用输入 |
-
 ## 注意
 
 尚未接受任何一方的选择时，执行器返回 `execution_state::initial_card_selection`，通过相应的[现场视图](../../executor/execution_view/initial_card_selection.md)指定首先换牌的玩家及其选择。该方换牌完成后返回 `execution_state::card_selection`，由相应[视图](../../executor/execution_view/card_selection.md)读取剩余玩家并提交其选择。

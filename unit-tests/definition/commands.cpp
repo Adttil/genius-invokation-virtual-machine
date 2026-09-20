@@ -7,10 +7,8 @@
 
 #include <givm/definition.hpp>
 
-TEST_CASE("commands declare their inputs and share runtime sequences", "[definition][command]")
+TEST_CASE("commands share runtime sequences", "[definition][command]")
 {
-    STATIC_REQUIRE(std::same_as<givm::draw_cards::input_type, void>);
-    STATIC_REQUIRE(std::same_as<givm::reduce_combat_status_count::input_type, givm::combat_status_count_reduction>);
     STATIC_REQUIRE(std::constructible_from<givm::any_command, givm::draw_cards>);
     STATIC_REQUIRE(std::constructible_from<givm::any_command, givm::reduce_combat_status_count>);
     STATIC_REQUIRE(not std::constructible_from<givm::any_command, int>);

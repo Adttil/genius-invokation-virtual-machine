@@ -63,7 +63,7 @@ auto compile(
 
 ## 注意
 
-两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。命令的 `input_type` 须为 `void`，不消费响应输入。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
+两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
 
 `mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 `executor::step` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
 

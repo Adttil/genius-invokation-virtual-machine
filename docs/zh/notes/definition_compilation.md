@@ -236,7 +236,7 @@ template<class TCommands>
 program_entry add_program(TCommands&& commands);
 ```
 
-`commands` 可为异构 tuple-like、同构 input range，或者包含 `any_command` 的范围；编译时逐项消费，不保存调用方序列或元素引用。入口不绑定外层事件类型，所需输入由所有非 `void` 命令的 `input_type` 顺序确定。
+`commands` 可为异构 tuple-like、同构 input range，或者包含 `any_command` 的范围；编译时逐项消费，不保存调用方序列或元素引用。入口不绑定外层事件类型，所需输入由具体命令值按执行顺序确定；不消费响应输入的命令不占输入位置，编译后入口的输入数量、类型和顺序固定。
 
 响应源通过 `context.invoke` 准备一次调用的完整输入。命令正常完成时消费自己的输入并清理临时状态；固定命令不消费输入。程序末尾自动返回，定义源不手工加入返回操作。输入类型和顺序由定义源保证，不保存用于匹配的类型表。debug 编译累计程序所需输入的总字节数并随入口保存，调用时只比较总长，不要求源提供类型元信息；Release 移除这项数据和检查。
 
@@ -388,7 +388,7 @@ bool definition_source_library::add(const TSource& source);
 auto [library, id_map] = compile(source_library, initialization_program, round_program, givm::compile_mode::normal);
 ```
 
-`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都是`input_type = void` 的公开命令序列。`compile(...)` 不提供省略这两段程序的重载。
+`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都由不消费响应输入的公开命令值组成；支持固定参数和消费输入两种方式的命令须选择固定参数。`compile(...)` 不提供省略这两段程序的重载。
 
 ```cpp
 using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;

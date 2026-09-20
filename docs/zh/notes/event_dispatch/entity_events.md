@@ -24,7 +24,7 @@
 
 ## 添加、替换与移除附件
 
-`add_attachment` 消费响应明确提交的 `attachment_addition`。输入包含目标、定义和初始状态，不需要读取原响应事件。装备类别由 attachment 定义的 `weapon`、`artifact`、`talent`、`technique` 标签决定，这些类别标签互斥；没有类别标签时是普通附件。固定版本 `add_attachment_to_active_character` 在执行时定位指定一方的出战角色，再进入相同结算阶段。
+默认构造的 `add_attachment{}` 消费响应明确提交的 `attachment_addition`，由输入提供目标、定义和初始状态。显式提供 `definition`、`state` 时使用固定定义和初始状态，不消费输入，在执行时定位 `player` 指定一方的出战角色，再进入相同结算阶段。参数来源在编译时确定，两种方式都不读取原响应事件。装备类别由 attachment 定义的 `weapon`、`artifact`、`talent`、`technique` 标签决定，这些类别标签互斥；没有类别标签时是普通附件。
 
 普通附件独立追加。同类装备已有占用者时，先采样并完成旧实体的 `entity_will_leave`，再删除旧实体，随后采样并完成 `entity_left`；最后创建新装备并广播 `attachment_added`。删除只标记失效，保留旧信息，并清除仍指向自身的装备索引。
 

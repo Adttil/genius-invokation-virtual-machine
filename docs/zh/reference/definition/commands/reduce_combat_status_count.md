@@ -10,11 +10,9 @@ struct reduce_combat_status_count;
 
 按提交的数量扣除指定出战状态的计数。状态与数量在响应时确定，执行本命令时才修改牌桌。
 
-## 成员类型
+## 输入
 
-| | |
-| --- | --- |
-| `input_type` | [`combat_status_count_reduction`](../events/combat_status_count_reduction.md)，本命令消费的初始输入 |
+本命令始终消费响应通过 `invoke` 提交的一个 [`combat_status_count_reduction`](../events/combat_status_count_reduction.md)，由输入指定出战状态及扣除数量。
 
 ## 注意
 

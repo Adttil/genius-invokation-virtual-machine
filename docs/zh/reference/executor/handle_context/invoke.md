@@ -28,7 +28,7 @@ program_entry invoke(substack_t, program_entry entry, std::span<const unsigned c
 | --- | --- |
 | `substack_t{}` | 费用预览提交所用的标记 |
 | `entry` | 当前定义库中通过 `add_program` 登记的非空入口 |
-| `inputs` | 逐项传入时是按命令执行顺序排列的初始事件，跳过 `input_type = void` 的命令；字节 span 则是与入口匹配的完整不透明输入段 |
+| `inputs` | 逐项传入时是按命令执行顺序排列的初始事件，跳过不消费响应输入的命令；字节 span 则是与入口匹配的完整不透明输入段 |
 
 ## 返回值
 
@@ -42,7 +42,7 @@ program_entry invoke(substack_t, program_entry entry, std::span<const unsigned c
 
 `cost_of_switch`、`cost_of_card` 和 `cost_of_skill` 响应若提交后续效果，必须调用 `context.invoke(substack_t{}, entry, inputs...)`，没有输入时也须传这个标记；普通响应使用 `context.invoke(entry, inputs...)`。库不检查是否选对重载，违反此前提属于未定义行为。
 
-逐项传入的输入须平凡可复制。所选程序要求的输入数量、具体类型和顺序在编译时确定，调用时只提供相应的输入值。字节重载接收的是已经准备完成的一整段输入，不要求逐事件描述符或类型元信息。所有调用都由定义源保证输入与入口匹配。debug 构建只检查总字节长度，不要求源提供类型元信息，也不能识别同长度的错误类型或顺序；这些错误仍属于未定义行为。发布构建不校验输入，违反约定属于未定义行为。
+逐项传入的输入须平凡可复制。所选程序要求的输入数量、具体类型和顺序，由编译时给出的具体命令值确定，调用时只提供相应的输入值。字节重载接收的是已经准备完成的一整段输入，不要求逐事件描述符或类型元信息。所有调用都由定义源保证输入与入口匹配。debug 构建只检查总字节长度，不要求源提供类型元信息，也不能识别同长度的错误类型或顺序；这些错误仍属于未定义行为。发布构建不校验输入，违反约定属于未定义行为。
 
 入口必须非空，每次响应最多调用一次，且必须使用尾调用形式，例如 `return context.invoke(entry, initial_event);`。调用前完成对当前事件与现场的全部读取，调用后立即返回。上述约定不进行运行期检查，违反时行为未定义。逐项传入的初始事件会在提交前按值复制，供后续命令消费。
 
@@ -54,7 +54,7 @@ program_entry invoke(substack_t, program_entry entry, std::span<const unsigned c
 
 ## 示例
 
-下例在响应时根据当前实体选定角色。程序中的目标由输入提供，源无需为不同角色登记不同入口。
+下例在响应时根据当前实体选定角色。默认构造的 `set_active_character{}` 使用动态输入，响应通过 `active_character_changed` 提供目标；源无需为不同角色登记不同入口。
 
 ```cpp
 #include <cstdint>
@@ -71,7 +71,7 @@ struct character_source
 
     givm::program_entry compile(givm::definition_compile_context& context) const
     {
-        return context.add_program(std::tuple{ givm::set_active_character_from_input{} });
+        return context.add_program(std::tuple{ givm::set_active_character{} });
     }
 
     static givm::program_entry handle(

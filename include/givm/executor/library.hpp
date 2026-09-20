@@ -44,11 +44,8 @@ namespace givm::detail
         const auto append_command = [&](const auto& command)
         {
 #ifndef NDEBUG
-            using input_type = typename std::remove_cvref_t<decltype(command)>::input_type;
-            if constexpr(not std::is_void_v<input_type>)
-            {
-                inputs_size += (sizeof(input_type) + max_alignment - 1) / max_alignment * max_alignment;
-            }
+            const auto size = input_size(command);
+            inputs_size += (size + max_alignment - 1) / max_alignment * max_alignment;
 #endif
             compile(writer, command, mode);
         };

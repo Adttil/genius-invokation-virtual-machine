@@ -57,7 +57,7 @@ static givm::program_entry handle(
 
 响应函数可以读取实体，通过 `context.table()` 读取牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。返回类型须为 `program_entry`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，费用响应则以 `return context.invoke(givm::substack_t{}, entry, inputs...);` 提交延迟效果。
 
-[`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个输入须与相应命令的 `input_type` 完全匹配；`input_type = void` 的固定参数命令不占输入位置。输入一般是命令开始时所需的初始事件，所有值都在响应期间确定。每个已编译程序所需输入的数量、类型和顺序都是固定的；响应选择入口后，通过 `context.invoke(entry, events...)` 提供本次输入值。动态定义源适配器也可以传入 `std::span<const unsigned char>`，提交为该入口准备好的完整不透明输入字节段，无须提供逐事件描述符或类型元信息。
+[`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个输入须与相应命令要求的初始事件类型完全匹配；是否消费输入由编译时的具体命令值决定，使用固定参数的命令不占输入位置。输入一般是命令开始时所需的初始事件，所有值都在响应期间确定。每个已编译程序所需输入的数量、类型和顺序都是固定的；响应选择入口后，通过 `context.invoke(entry, events...)` 提供本次输入值。动态定义源适配器也可以传入 `std::span<const unsigned char>`，提交为该入口准备好的完整不透明输入字节段，无须提供逐事件描述符或类型元信息。
 
 一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算；输入中借用的对象也必须满足相应命令的生命周期要求。定义源须保证输入数量、类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时只检查输入总字节长度，不符则在写入前抛出 `std::invalid_argument`；不要求类型元信息，也不能识别同长度输入的错误类型或顺序。发布构建不检查，违反约定属于未定义行为。字节 span 的数据须在整个调用期间保持有效，不能依赖可能因本次调用而失效的执行现场存储。
 

@@ -79,29 +79,27 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&)
     {
-        const auto& command = context.instruction_data<1, add_attachment_to_active_character>(library);
+        const auto& command = context.instruction_data<1, add_attachment>(library);
         const auto player = command.player == relative_player::current
             ? table.state().active_player : other_player(table.state().active_player);
         context.stack().push(attachment_addition{
             .target = *table[player].state().active_character,
             .definition = command.definition, .state = command.state
         });
-        return context.advance(instruction_extent<1, add_attachment_to_active_character>);
+        return context.advance(instruction_extent<1, add_attachment>);
     }
 
-    inline void compile(program_writer& writer, const givm::add_attachment&, compile_mode)
+    inline void compile(program_writer& writer, const givm::add_attachment& command, compile_mode)
     {
+        if(command.definition)
+        {
+            writer.write(execute_fn{ prepare_active_character_attachment });
+            writer.write(command);
+        }
         writer.write(execute_fn{ apply_attachment_addition });
         writer.write(execute_fn{ remove_replaced_attachment });
         writer.write(execute_fn{ finish_replaced_attachment_removal });
         writer.write(execute_fn{ broadcast_attachment_addition });
-    }
-
-    inline void compile(program_writer& writer, const givm::add_attachment_to_active_character& command, compile_mode mode)
-    {
-        writer.write(execute_fn{ prepare_active_character_attachment });
-        writer.write(command);
-        compile(writer, givm::add_attachment{}, mode);
     }
 }
 

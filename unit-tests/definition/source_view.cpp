@@ -370,8 +370,8 @@ TEST_CASE("root programs reject commands that consume invocation inputs", "[sour
             REQUIRE_THROWS_AS(compile(sources, valid, invalid, mode), std::invalid_argument);
     };
     if(runtime_commands)
-        check(std::vector<givm::any_command>{ givm::set_active_character_from_input{} });
+        check(std::vector<givm::any_command>{ givm::set_active_character{} });
     else
-        check(std::tuple{ givm::set_active_character_from_input{} });
+        check(std::tuple{ givm::set_active_character{} });
 }
 #endif

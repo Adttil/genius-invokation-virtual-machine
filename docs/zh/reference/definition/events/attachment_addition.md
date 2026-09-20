@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-为一名角色添加附属实体或装备所需的初始信息。响应通过 `invoke` 提交它，由 [add_attachment](../commands/add_attachment.md) 消费；它本身不进行广播。
+为一名角色添加附属实体或装备所需的初始信息。响应通过 `invoke` 提交它，由默认构造的 [`add_attachment{}`](../commands/add_attachment.md) 消费；它本身不进行广播。
 
 ```cpp
 struct attachment_addition

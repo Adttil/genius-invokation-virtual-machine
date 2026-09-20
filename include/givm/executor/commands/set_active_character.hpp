@@ -68,19 +68,6 @@ namespace givm::detail
         return broadcast_active_character_change(library, table, context, random);
     }
 
-    inline void compile(program_writer& writer, const givm::set_active_character& command, compile_mode mode)
-    {
-        writer.write(mode == compile_mode::observed
-            ? execute_fn{ &prepare_active_character_change<true> }
-            : execute_fn{ &prepare_active_character_change<false> });
-        writer.write(command);
-        if(mode == compile_mode::observed)
-        {
-            writer.write(execute_fn{ &apply_active_character_change });
-        }
-        writer.write(execute_fn{ &broadcast_active_character_change });
-    }
-
     template<bool Observed>
     execution_state prepare_active_character_change_from_input(
         const definition_library& library, unrestricted_table& table,
@@ -107,11 +94,21 @@ namespace givm::detail
         return broadcast_active_character_change(library, table, context, random);
     }
 
-    inline void compile(program_writer& writer, const givm::set_active_character_from_input&, compile_mode mode)
+    inline void compile(program_writer& writer, const givm::set_active_character& command, compile_mode mode)
     {
-        writer.write(mode == compile_mode::observed
-            ? execute_fn{ &prepare_active_character_change_from_input<true> }
-            : execute_fn{ &prepare_active_character_change_from_input<false> });
+        if(command.target.index == std::numeric_limits<size_t>::max())
+        {
+            writer.write(mode == compile_mode::observed
+                ? execute_fn{ &prepare_active_character_change_from_input<true> }
+                : execute_fn{ &prepare_active_character_change_from_input<false> });
+        }
+        else
+        {
+            writer.write(mode == compile_mode::observed
+                ? execute_fn{ &prepare_active_character_change<true> }
+                : execute_fn{ &prepare_active_character_change<false> });
+            writer.write(command);
+        }
         if(mode == compile_mode::observed)
         {
             writer.write(execute_fn{ &apply_active_character_change });
