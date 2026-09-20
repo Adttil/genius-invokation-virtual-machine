@@ -7,7 +7,6 @@
 #include <optional>
 #include <variant>
 
-#include "program_entry.hpp"
 #include "../table.hpp"
 #include "../enums/action_speed.hpp"
 #include "../enums/damage_flags.hpp"
@@ -20,9 +19,6 @@
 
 namespace givm
 {
-    template<class TCostEvent>
-    struct onpay_context;
-
     // For bug in Clang22锛歨ttps://github.com/llvm/llvm-project/issues/59624
 #define GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(type) type& operator=(const type&) = delete
 
@@ -147,25 +143,10 @@ namespace givm
         tag_id energy_tag{};
     };
 
-    template<class TCostEvent>
-    struct cost_effect_argument
-    {
-        elemental_dice_requirement reduced_dice;
-        std::uint32_t reduced_energy = 0;
-    };
-
-    template<class TCostEvent>
-    struct onpay_item
-    {
-        program_entry<onpay_context<TCostEvent>> entry;
-        cost_effect_argument<TCostEvent> argument;
-    };
-
     struct cost_of_switch
     {
         const character_id target;
         action_cost_requirement requirement;
-        cost_effect_argument<cost_of_switch> effect_argument;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_switch);
     };
 
@@ -173,7 +154,6 @@ namespace givm
     {
         const hand_card_id card;
         action_cost_requirement requirement;
-        cost_effect_argument<cost_of_card> effect_argument;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_card);
     };
 
@@ -181,7 +161,6 @@ namespace givm
     {
         const skill_id skill;
         action_cost_requirement requirement;
-        cost_effect_argument<cost_of_skill> effect_argument;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_skill);
     };
 
@@ -415,6 +394,12 @@ namespace givm
 
     using counted_entity_id = std::variant<hand_card_status_id, deck_card_status_id, support_id, summon_id,
                                            combat_status_id, attachment_id>;
+
+    struct combat_status_count_reduction
+    {
+        combat_status_id status;
+        std::uint32_t count;
+    };
 
     struct entity_count_changed
     {

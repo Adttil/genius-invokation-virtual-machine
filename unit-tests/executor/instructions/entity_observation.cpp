@@ -44,7 +44,7 @@ namespace
     struct creation_program_source
     {
         using definition_category = givm::character_view;
-        struct definition_type { givm::program_entry<givm::test_event> entry; };
+        struct definition_type { givm::program_entry entry; };
 
         constexpr std::string_view name() const noexcept { return "CreationProgram"; }
         constexpr auto character_dependencies() const noexcept
@@ -61,18 +61,18 @@ namespace
             const auto character = context.resolve_id<givm::character_view>("ObservedCharacter");
             const auto card = context.resolve_id<givm::card_definition>("ObservedCard");
             const auto other_card = context.resolve_id<givm::card_definition>("OtherObservedCard");
-            return { context.add_program<givm::test_event>(std::tuple{
+            return { context.add_program(std::tuple{
                 givm::enter_character{ .player = givm::player_id{ 1 }, .definition = character },
                 givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = card },
                 givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = other_card, .position = 0 }
             }) };
         }
 
-        static givm::program_entry<givm::test_event> handle(
-            const definition_type& data, const givm::character_view&, givm::test_event&, const givm::table&, givm::random_fn&
-        )
+        static givm::program_entry handle(
+            const definition_type& data, const givm::character_view&, givm::test_event&, givm::handle_context& context)
         {
-            return data.entry;
+            if(data.entry) return context.invoke(data.entry);
+            return {};
         }
     };
 
@@ -88,7 +88,7 @@ namespace
         using definition_category = givm::character_view;
         struct definition_type
         {
-            givm::program_entry<givm::test_event> entry;
+            givm::program_entry entry;
             std::uint32_t* calls;
         };
         std::uint32_t* calls;
@@ -97,16 +97,16 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program<givm::test_event>(std::tuple{}), calls };
+            return { context.add_program(std::tuple{}), calls };
         }
 
-        static givm::program_entry<givm::test_event> handle(
-            const definition_type& data, const givm::character_view&, givm::test_event&, const givm::table&, givm::random_fn&
-        )
+        static givm::program_entry handle(
+            const definition_type& data, const givm::character_view&, givm::test_event&, givm::handle_context& context)
         {
             CHECK_FALSE(data.entry.is_null());
             ++*data.calls;
-            return data.entry;
+            if(data.entry) return context.invoke(data.entry);
+            return {};
         }
     };
 
@@ -116,7 +116,7 @@ namespace
         struct definition_type
         {
             entity_event_log* log;
-            givm::program_entry<givm::card_drawn> draw_response;
+            givm::program_entry draw_response;
         };
         entity_event_log* log;
         bool respond_to_draws = false;
@@ -127,30 +127,29 @@ namespace
             return {
                 log,
                 respond_to_draws
-                    ? context.add_program<givm::card_drawn>(std::tuple{ givm::start_round{ .max_rounds = 10 } })
-                    : givm::program_entry<givm::card_drawn>::null()
+                    ? context.add_program(std::tuple{ givm::start_round{ .max_rounds = 10 } })
+                    : givm::program_entry::null()
             };
         }
 
-        static givm::program_entry<givm::card_drawn> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::card_drawn& event,
-            const givm::table& table, givm::random_fn&
-        )
+            givm::handle_context& context)
         {
             data.log->drawn.push_back(event.card);
-            const auto player = table[event.card.player_id];
+            const auto player = context.table()[event.card.player_id];
             data.log->card_counts_at_drawn.push_back({ player.hand_card_count(), player.deck_card_count() });
-            return data.draw_response;
+            if(data.draw_response) return context.invoke(data.draw_response);
+            return {};
         }
 
-        static givm::program_entry<givm::active_character_changed> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            const givm::table& table, givm::random_fn&
-        )
+            givm::handle_context& context)
         {
-            CHECK(table[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            return givm::program_entry<givm::active_character_changed>::null();
+            return {};
         }
     };
 
@@ -160,7 +159,7 @@ namespace
         struct definition_type
         {
             entity_event_log* log;
-            givm::program_entry<givm::active_character_changed> entry;
+            givm::program_entry entry;
         };
         entity_event_log* log;
         int behavior;
@@ -169,26 +168,25 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             if(behavior == 1)
-                return { log, context.add_program<givm::active_character_changed>(std::tuple{
+                return { log, context.add_program(std::tuple{
                     givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
             if(behavior == 2)
-                return { log, context.add_program<givm::active_character_changed>(std::tuple{
+                return { log, context.add_program(std::tuple{
                     givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } },
                     givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
-            return { log, givm::program_entry<givm::active_character_changed>::null() };
+            return { log, givm::program_entry::null() };
         }
 
-        static givm::program_entry<givm::active_character_changed> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            const givm::table& table, givm::random_fn&
-        )
+            givm::handle_context& context)
         {
-            CHECK(table[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            return event.current.player_id == givm::player_id{ 0 }
-                ? data.entry : givm::program_entry<givm::active_character_changed>::null();
+            if(event.current.player_id == givm::player_id{ 0 } and data.entry) return context.invoke(data.entry);
+            return {};
         }
     };
 
@@ -198,25 +196,25 @@ namespace
         struct definition_type
         {
             entity_event_log* log;
-            givm::program_entry<givm::active_character_changed> entry;
+            givm::program_entry entry;
         };
         entity_event_log* log;
 
         constexpr std::string_view name() const noexcept { return "SwitchBack"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program<givm::active_character_changed>(std::tuple{
+            return { log, context.add_program(std::tuple{
                 givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } }
             }) };
         }
-        static givm::program_entry<givm::active_character_changed> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            const givm::table& table, givm::random_fn&
-        )
+            givm::handle_context& context)
         {
-            CHECK(table[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            return event.current.index == 1 ? data.entry : givm::program_entry<givm::active_character_changed>::null();
+            if(event.current.index == 1 and data.entry) return context.invoke(data.entry);
+            return {};
         }
     };
 

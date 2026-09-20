@@ -14,7 +14,7 @@ friend constexpr bool operator==(program_entry, program_entry) noexcept = defaul
 
 |  |  |
 | --- | --- |
-| 两个操作数 | context 相同、属于同一定义库的入口或空入口 |
+| 两个操作数 | 属于同一定义库的入口或空入口 |
 
 ## 返回值
 
@@ -32,24 +32,24 @@ friend constexpr bool operator==(program_entry, program_entry) noexcept = defaul
 struct result_source
 {
     using definition_category = givm::support_view;
-    using entry_type = givm::program_entry<givm::round_ended>;
+    using entry_type = givm::program_entry;
 
     std::string_view name() const { return "终局判定"; }
     entry_type compile(givm::definition_compile_context& context) const
     {
-        const auto first = context.add_program<givm::round_ended>(
+        const auto first = context.add_program(
             std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } });
-        const auto second = context.add_program<givm::round_ended>(
+        const auto second = context.add_program(
             std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } });
         std::println("选择同一效果: {}", first == second);
         std::println("默认入口为空: {}", entry_type{} == entry_type::null());
         return first;
     }
-    static entry_type handle(
+    static givm::program_entry handle(
         const entry_type& entry, const givm::support_view&, givm::round_ended&,
-        const givm::table&, givm::random_fn&)
+        givm::handle_context& context)
     {
-        return entry;
+        return context.invoke(entry);
     }
 };
 

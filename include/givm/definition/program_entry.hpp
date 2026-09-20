@@ -14,7 +14,6 @@ namespace givm
         inline constexpr std::size_t null_program_position = 0;
     }
 
-    template<class TContext>
     class program_entry
     {
     public:
@@ -43,9 +42,13 @@ namespace givm
         {}
 
         std::size_t position_ = detail::null_program_position;
+#ifndef NDEBUG
+        std::size_t inputs_size_ = 0;
+#endif
 
         friend class definition_compile_context;
         friend class detail::execution_context;
+        friend class program_invoker;
     };
 }
 

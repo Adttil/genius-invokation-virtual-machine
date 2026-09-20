@@ -30,9 +30,7 @@ namespace givm::detail
         execution_context& context, random_fn& random
     )
     {
-        const auto& [event, handler] = context.stack().top<
-            active_character_changed, handler_id<active_character_changed>
-        >();
+        const auto& event = get<0>(context.stack().top<active_character_changed, execution_position>());
         table[event.current.player_id].state().active_character = event.current;
         context.enter_next();
         return broadcast_active_character_change(library, table, context, random);
@@ -53,13 +51,16 @@ namespace givm::detail
         {
             if(state.active_character != command.target)
             {
-                prepare_broadcast(library, event, table, context.stack());
+                prepare_broadcast(library, event, table, context.stack(),
+                    context.position() + instruction_extent<1, givm::set_active_character> + sizeof(execute_fn));
                 context.advance(instruction_extent<1, givm::set_active_character>);
                 return context.yield(execution_state::active_character_changed);
             }
         }
         state.active_character = command.target;
-        prepare_broadcast(library, event, table, context.stack());
+        prepare_broadcast(library, event, table, context.stack(),
+            context.position() + instruction_extent<1, givm::set_active_character>
+                + (Observed ? sizeof(execute_fn) : 0));
         // The observation continuation applies the change after the pause.
         // Skip it when no pause was required.
         context.advance(instruction_extent<1, givm::set_active_character>
@@ -73,6 +74,44 @@ namespace givm::detail
             ? execute_fn{ &prepare_active_character_change<true> }
             : execute_fn{ &prepare_active_character_change<false> });
         writer.write(command);
+        if(mode == compile_mode::observed)
+        {
+            writer.write(execute_fn{ &apply_active_character_change });
+        }
+        writer.write(execute_fn{ &broadcast_active_character_change });
+    }
+
+    template<bool Observed>
+    execution_state prepare_active_character_change_from_input(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
+    {
+        const auto event = get<0>(context.stack().top<active_character_changed>());
+        context.stack().pop<active_character_changed>();
+        GIVM_ASSERT(static_cast<bool>(table[event.current]));
+        auto& state = table[event.current.player_id].state();
+        if constexpr(Observed)
+        {
+            if(state.active_character != event.current)
+            {
+                prepare_broadcast(library, event, table, context.stack(),
+                    context.position() + 2 * sizeof(execute_fn));
+                context.enter_next();
+                return context.yield(execution_state::active_character_changed);
+            }
+        }
+        state.active_character = event.current;
+        prepare_broadcast(library, event, table, context.stack(),
+            context.position() + (Observed ? 2 : 1) * sizeof(execute_fn));
+        context.advance((Observed ? 2 : 1) * sizeof(execute_fn));
+        return broadcast_active_character_change(library, table, context, random);
+    }
+
+    inline void compile(program_writer& writer, const givm::set_active_character_from_input&, compile_mode mode)
+    {
+        writer.write(mode == compile_mode::observed
+            ? execute_fn{ &prepare_active_character_change_from_input<true> }
+            : execute_fn{ &prepare_active_character_change_from_input<false> });
         if(mode == compile_mode::observed)
         {
             writer.write(execute_fn{ &apply_active_character_change });

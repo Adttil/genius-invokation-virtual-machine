@@ -16,6 +16,7 @@
 #include "instruction.hpp"
 #include "../definition/program_entry.hpp"
 #include "../definition.hpp"
+#include "../utils/stack.hpp"
 
 #include "../macro_define.hpp"
 
@@ -34,19 +35,30 @@ namespace givm::detail
         return context.jump(context.template instruction_data<1, execution_position>(library));
     }
 
-    template<class TContext, class TSequence>
-    void append_commands(program_writer& writer, TSequence&& commands, compile_mode mode)
+    template<class TSequence>
+    std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode)
     {
+        std::size_t inputs_size = 0;
+        const auto append_command = [&](const auto& command)
+        {
+#ifndef NDEBUG
+            using input_type = typename std::remove_cvref_t<decltype(command)>::input_type;
+            if constexpr(not std::is_void_v<input_type>)
+            {
+                inputs_size += (sizeof(input_type) + max_alignment - 1) / max_alignment * max_alignment;
+            }
+#endif
+            compile(writer, command, mode);
+        };
         const auto append = [&]<class TCommand>(TCommand&& command)
         {
-            static_assert(command_compatible_with<TCommand, TContext>, "incompatible command context");
             if constexpr(requires { std::variant_size<std::remove_cvref_t<TCommand>>::value; })
             {
-                std::visit([&](const auto& item) { compile(writer, item, mode); }, command);
+                std::visit(append_command, command);
             }
             else
             {
-                compile(writer, command, mode);
+                append_command(command);
             }
         };
 
@@ -65,6 +77,7 @@ namespace givm::detail
                 (append(get<I>(std::forward<TSequence>(commands))), ...);
             }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TSequence>>>{});
         }
+        return inputs_size;
     }
 }
 
@@ -105,12 +118,16 @@ namespace givm
             return id_map_.query_by_tag<TCategory>(filter);
         }
 
-        template<class TContext, class TCommands>
-        program_entry<TContext> add_program(TCommands&& commands)
+        template<class TCommands>
+        program_entry add_program(TCommands&& commands)
         {
-            const program_entry<TContext> result{ program_.size() };
+            program_entry result{ program_.size() };
             detail::program_writer writer{ program_ };
-            detail::append_commands<TContext>(writer, std::forward<TCommands>(commands), mode_);
+            [[maybe_unused]] const auto inputs_size =
+                detail::append_commands(writer, std::forward<TCommands>(commands), mode_);
+#ifndef NDEBUG
+            result.inputs_size_ = inputs_size;
+#endif
             writer.write(detail::execute_fn{ detail::execute_return });
             return result;
         }
@@ -218,15 +235,14 @@ namespace givm
             }
 
             template<class TEvent, class TView>
-            handler_program_entry_t<TEvent> handle(
+            program_entry handle(
                 const TView& entity,
                 TEvent& event,
-                const table& card_table,
-                random_fn& random
+                handle_context& context
             ) const
             {
                 return library_->template handle<TEvent>(
-                    id_, entity, event, card_table, random
+                    id_, entity, event, context
                 );
             }
 
@@ -345,18 +361,17 @@ namespace givm
         }
 
         template<class TEvent, class TDefinitionType, class TView>
-        handler_program_entry_t<TEvent> handle(
+        program_entry handle(
             definition_id<TDefinitionType> id,
             const TView& entity,
             TEvent& event,
-            const table& card_table,
-            random_fn& random
+            handle_context& context
         ) const
         {
             const auto& bucket = bucket_for<TDefinitionType>();
             const size_t index = id.value();
             const auto handle_fn = get_handle_fn<TEvent, TView>(id);
-            return handle_fn(bucket.data[index], entity, event, card_table, random);
+            return handle_fn(bucket.data[index], entity, event, context);
         }
 
     private:
@@ -582,9 +597,23 @@ namespace givm
 
             definition_library library{ id_map.tag_names() };
             detail::program_writer writer{ library.program_ };
-            detail::append_commands<void>(writer, std::forward<TInitializationSequence>(initialization_program), mode);
+            [[maybe_unused]] const auto initialization_inputs_size =
+                detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode);
+#ifndef NDEBUG
+            if(initialization_inputs_size != 0)
+            {
+                throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
+            }
+#endif
             const detail::execution_position round_entry = library.program_.size();
-            detail::append_commands<void>(writer, std::forward<TRoundSequence>(round_program), mode);
+            [[maybe_unused]] const auto round_inputs_size =
+                detail::append_commands(writer, std::forward<TRoundSequence>(round_program), mode);
+#ifndef NDEBUG
+            if(round_inputs_size != 0)
+            {
+                throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
+            }
+#endif
             writer.write(detail::execute_fn{ detail::execute_jump });
             writer.write(round_entry);
 

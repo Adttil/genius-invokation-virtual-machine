@@ -47,5 +47,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`absorb_damage_by_count`](../commands/absorb_damage_by_count.md) | 消耗实体计数以抵挡伤害的命令 |
+| [`reduce_combat_status_count`](../commands/reduce_combat_status_count.md) | 按提交的数量扣除出战状态计数的命令 |
 | [`deal_damage`](../commands/deal_damage.md) | 伤害结算命令 |

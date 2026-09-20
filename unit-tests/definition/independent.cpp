@@ -55,15 +55,11 @@ namespace
     }
 }
 
-TEST_CASE("payment responses can be constructed without executor headers", "[definition][program]")
+TEST_CASE("program entries can be constructed without executor headers", "[definition][program]")
 {
-    using entry_type = givm::handler_program_entry_t<givm::cost_of_switch>;
+    using entry_type = givm::program_entry;
     const entry_type entry{};
 
-    STATIC_REQUIRE(std::same_as<
-        entry_type,
-        givm::program_entry<givm::handler_program_context_t<givm::cost_of_switch>>
-    >);
     CHECK(entry.is_null());
 }
 

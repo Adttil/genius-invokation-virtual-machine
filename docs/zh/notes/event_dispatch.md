@@ -12,7 +12,7 @@
 | --- | --- |
 | [指令、重入与调用现场](event_dispatch/execution_protocol.md) | const 操作数、完整 command、干净退出、执行位置恢复、activation 和 view 生命周期 |
 | [默认广播与事件事务](event_dispatch/broadcast.md) | handler ID 类型、响应者快照、默认遍历顺序、游标、自身 ID、失效过滤及单目标初始化 |
-| [费用预览与提交](event_dispatch/payment_commit.md) | 候选与 handler 矩阵、每项参数、报价重算、延迟提交、取消与缓存生命周期 |
+| [费用预览与提交](event_dispatch/payment_commit.md) | 候选与 handler 矩阵、参数子栈、单次报价、延迟提交、取消与缓存生命周期 |
 
 ## 事件差异与历史要求
 

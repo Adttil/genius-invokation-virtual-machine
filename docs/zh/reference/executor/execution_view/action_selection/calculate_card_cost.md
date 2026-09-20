@@ -29,14 +29,16 @@ const cost_of_card& calculate_card_cost(
 
 ## 异常
 
-响应抛出的异常会传递给调用方。失败后该牌的费用及确认后效果可能只更新了一部分，须重新完整计算成功后再检查支付或采用；其他候选不受影响。
+费用响应抛出的异常会传递给调用方。失败后该候选可能只留下部分结果，不能读取、检查或采用，也不能在当前行动窗口重新计算。
 
 ## 注意
 
-每次报价先读取该牌定义已保存的 [`card_initial_cost`](../../../definition/queries/card_initial_cost.md) 结果作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。未提供初始费用查询时，默认需求为零骰子、零充能的快速行动。报价不沿用此前结果。
+同一行动窗口内，每个候选只允许计算一次；调用方自行保证，库不进行运行期检查，重复计算属于未定义行为。计算完成后可反复调用 `card_cost` 读取缓存结果。
+
+报价先读取该牌定义已保存的 [`card_initial_cost`](../../../definition/queries/card_initial_cost.md) 结果作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。未提供初始费用查询时，默认需求为零骰子、零充能的快速行动。
 
 报价无需先选择目标，目标及其他用牌条件通过 [`card_targets_validate`](card_targets_validate.md) 独立检查。可打出的牌提供原效果响应。
 
-费用响应不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不选择出牌、不执行费用响应返回的后续效果，也不修改牌桌或推进执行器。
+费用响应不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不选择出牌、不执行费用响应提交的后续效果，也不修改牌桌或推进执行器。
 
-返回引用不是快照；再次报价会更新其内容。下一次推进或重建现场后，先前引用失效。完整报价后可独立检查 [支付](card_payment_validate.md) 与 [目标及用牌条件](card_targets_validate.md)，再通过 [`play_card`](play_card.md) 选择出牌。
+报价其他候选可能使之前取得的费用引用失效，下一次推进或重建现场也会使引用失效。需要再次读取时，通过本 view 的费用读取接口重新取得引用。完整报价后可独立检查 [支付](card_payment_validate.md) 与 [目标及用牌条件](card_targets_validate.md)，再通过 [`play_card`](play_card.md) 选择出牌。

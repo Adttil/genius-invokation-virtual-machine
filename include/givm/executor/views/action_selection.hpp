@@ -51,9 +51,9 @@ namespace givm
         {
             return get<0>(std::as_const(*stack_).top<
                 cost_of_switch[],
-                onpay_item<cost_of_switch>[],
+                program_entry[], std::size_t[], std::size_t[],
                 stack_count_t,
-                detail::action_selection
+                detail::action_selection, substack_t
             >()).size();
         }
 
@@ -61,9 +61,9 @@ namespace givm
         {
             return get<0>(std::as_const(*stack_).top<
                 cost_of_switch[],
-                onpay_item<cost_of_switch>[],
+                program_entry[], std::size_t[], std::size_t[],
                 stack_count_t,
-                detail::action_selection
+                detail::action_selection, substack_t
             >())[target_index];
         }
 
@@ -112,7 +112,7 @@ namespace givm
         constexpr void switch_active_character(std::size_t target_index, const dice_counts& paid_dice) const noexcept
         {
             // Assign the complete variant through its trivial assignment operator.
-            get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
+            get<0>(stack_->top<detail::action_selection, substack_t>()) = detail::action_selection{
                 detail::switch_selection{ .switch_cost_index = target_index, .paid_dice = paid_dice }
             };
         }
@@ -124,7 +124,7 @@ namespace givm
         {
             detail::calculate_switch_cost(library, target_index, card_table, *stack_);
             // Assign the complete variant through its trivial assignment operator.
-            get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
+            get<0>(stack_->top<detail::action_selection, substack_t>()) = detail::action_selection{
                 detail::switch_selection{ .switch_cost_index = target_index, .paid_dice = paid_dice }
             };
         }
@@ -132,20 +132,20 @@ namespace givm
         constexpr std::size_t card_count() const noexcept
         {
             return get<0>(std::as_const(*stack_).top<
-                cost_of_card[], onpay_item<cost_of_card>[],
+                cost_of_card[], program_entry[], std::size_t[], std::size_t[],
                 detail::switch_handler_id[],
-                cost_of_switch[], onpay_item<cost_of_switch>[],
-                stack_count_t, detail::action_selection
+                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+                stack_count_t, detail::action_selection, substack_t
             >()).size();
         }
 
         constexpr const cost_of_card& card_cost(std::size_t card_index) const noexcept
         {
             return get<0>(std::as_const(*stack_).top<
-                cost_of_card[], onpay_item<cost_of_card>[],
+                cost_of_card[], program_entry[], std::size_t[], std::size_t[],
                 detail::switch_handler_id[],
-                cost_of_switch[], onpay_item<cost_of_switch>[],
-                stack_count_t, detail::action_selection
+                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+                stack_count_t, detail::action_selection, substack_t
             >())[card_index];
         }
 
@@ -216,7 +216,7 @@ namespace givm
             {
                 selected_targets[index] = targets[index];
             }
-            get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
+            get<0>(stack_->top<detail::action_selection, substack_t>()) = detail::action_selection{
                 detail::card_selection{
                     .card_cost_index = card_index, .targets = selected_targets, .paid_dice = paid_dice
                 }
@@ -235,22 +235,22 @@ namespace givm
         constexpr std::size_t skill_count() const noexcept
         {
             return get<0>(std::as_const(*stack_).top<
-                cost_of_skill[], onpay_item<cost_of_skill>[],
-                detail::card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+                cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
                 detail::switch_handler_id[],
-                cost_of_switch[], onpay_item<cost_of_switch>[],
-                stack_count_t, detail::action_selection
+                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+                stack_count_t, detail::action_selection, substack_t
             >()).size();
         }
 
         constexpr const cost_of_skill& skill_cost(std::size_t skill_index) const noexcept
         {
             return get<0>(std::as_const(*stack_).top<
-                cost_of_skill[], onpay_item<cost_of_skill>[],
-                detail::card_cost_handler_id[], cost_of_card[], onpay_item<cost_of_card>[],
+                cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
                 detail::switch_handler_id[],
-                cost_of_switch[], onpay_item<cost_of_switch>[],
-                stack_count_t, detail::action_selection
+                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+                stack_count_t, detail::action_selection, substack_t
             >())[skill_index];
         }
 
@@ -321,7 +321,7 @@ namespace givm
             {
                 selected_targets[index] = targets[index];
             }
-            get<0>(stack_->top<detail::action_selection>()) = detail::action_selection{
+            get<0>(stack_->top<detail::action_selection, substack_t>()) = detail::action_selection{
                 detail::skill_selection{
                     .skill_cost_index = skill_index, .targets = selected_targets, .paid_dice = paid_dice
                 }
@@ -339,7 +339,7 @@ namespace givm
 
         constexpr void declare_round_end() const noexcept
         {
-            get<0>(stack_->top<detail::action_selection>()).emplace<detail::round_end_selection>();
+            get<0>(stack_->top<detail::action_selection, substack_t>()).emplace<detail::round_end_selection>();
         }
 
     private:

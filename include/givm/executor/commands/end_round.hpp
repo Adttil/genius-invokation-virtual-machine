@@ -29,7 +29,7 @@ namespace givm::detail
         auto& state = table.state();
         state.active_player = other_player(state.active_player);
         state.first_ended = false;
-        prepare_broadcast(library, round_ended{}, table, context.stack());
+        prepare_broadcast(library, round_ended{}, table, context.stack(), context.position() + sizeof(execute_fn));
         context.enter_next();
         return broadcast_round_end(library, table, context, random);
     }

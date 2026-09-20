@@ -30,12 +30,12 @@ struct observer_source
     std::string_view name() const { return "observer"; }
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
 
-    static givm::program_entry<givm::test_event> handle(
+    static givm::program_entry handle(
         const definition_type& definition, const givm::character_view&,
-        givm::test_event&, const givm::table&, givm::random_fn&)
+        givm::test_event&, givm::handle_context& context)
     {
         ++*definition.count;
-        return givm::program_entry<givm::test_event>::null();
+        return {};
     }
 };
 
@@ -48,22 +48,13 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{}, givm::compile_mode::normal);
-    givm::table table{};
-    load_deck(table, library, givm::linked_deck{
-        .characters = { ids.get_id<givm::character_view>("observer") }
-    }, {});
-    const auto observer = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
-    auto random_source = []() -> std::uint32_t { return 0; };
-    givm::random_fn random{ random_source };
-    givm::test_event event{};
-    const auto view = std::as_const(table)[observer.id()];
-    library[view.definition_id()].handle<givm::test_event>(view, event, table, random);
-    std::println("响应次数: {}", count);
+    const auto id = ids.get_id<givm::character_view>("observer");
+    std::println("提供此事件的响应: {}", library.can_handle<givm::test_event, givm::character_view>(id));
 }
 ```
 
 输出
 
 ```text
-响应次数: 1
+提供此事件的响应: true
 ```

@@ -19,11 +19,9 @@
 
 namespace givm
 {
-    template<class TCostEvent> struct onpay_context {};
-
     struct insert_deck_card
     {
-        using context_type = void;
+        using input_type = void;
 
         player_id player;
         definition_id<card_definition> definition;
@@ -32,7 +30,7 @@ namespace givm
 
     struct enter_character
     {
-        using context_type = void;
+        using input_type = void;
 
         player_id player;
         definition_id<character_view> definition;
@@ -40,21 +38,26 @@ namespace givm
 
     struct shuffle_deck
     {
-        using context_type = void;
+        using input_type = void;
 
         player_id player;
     };
 
     struct set_active_character
     {
-        using context_type = void;
+        using input_type = void;
 
         character_id target;
     };
 
+    struct set_active_character_from_input
+    {
+        using input_type = active_character_changed;
+    };
+
     struct select_active_character_both
     {
-        using context_type = void;
+        using input_type = void;
 
     };
 
@@ -66,7 +69,7 @@ namespace givm
 
     struct draw_cards
     {
-        using context_type = void;
+        using input_type = void;
 
         std::uint32_t count;
         relative_player player = relative_player::current;
@@ -74,45 +77,45 @@ namespace givm
 
     struct replace_cards
     {
-        using context_type = void;
+        using input_type = void;
 
         player_id player;
     };
 
     struct replace_cards_both
     {
-        using context_type = void;
+        using input_type = void;
 
     };
 
     struct start_round
     {
-        using context_type = void;
+        using input_type = void;
 
         std::uint32_t max_rounds = 14;
     };
 
     struct begin_action
     {
-        using context_type = void;
+        using input_type = void;
 
     };
 
     struct end_round
     {
-        using context_type = void;
+        using input_type = void;
     };
 
     struct end_game
     {
-        using context_type = void;
+        using input_type = void;
 
         game_result result;
     };
 
     struct start_dice_roll_phase
     {
-        using context_type = void;
+        using input_type = void;
 
         std::uint32_t count = 8;
         std::array<std::uint32_t, 2> reroll_count{ 1, 1 };
@@ -121,19 +124,17 @@ namespace givm
 
     struct start_battle
     {
-        using context_type = void;
+        using input_type = void;
     };
 
-    struct absorb_damage_by_count
+    struct reduce_combat_status_count
     {
-        using context_type = damage_effect;
-
-        std::uint32_t maximum_count = std::numeric_limits<std::uint32_t>::max();
+        using input_type = combat_status_count_reduction;
     };
 
     struct deal_damage
     {
-        using context_type = void;
+        using input_type = void;
 
         damage_source_id source;
         character_id target;
@@ -146,7 +147,7 @@ namespace givm
 
     struct apply_element
     {
-        using context_type = void;
+        using input_type = void;
 
         element_application_source_id source;
         character_id target;
@@ -156,7 +157,7 @@ namespace givm
 
     struct set_element_aura
     {
-        using context_type = void;
+        using input_type = void;
 
         character_id target;
         element_aura aura;
@@ -164,7 +165,7 @@ namespace givm
 
     struct test_command
     {
-        using context_type = void;
+        using input_type = void;
     };
 }
 
@@ -175,6 +176,7 @@ namespace givm::detail
         enter_character,
         shuffle_deck,
         set_active_character,
+        set_active_character_from_input,
         select_active_character_both,
         draw_cards,
         replace_cards,
@@ -185,42 +187,17 @@ namespace givm::detail
         end_game,
         start_dice_roll_phase,
         start_battle,
-        absorb_damage_by_count,
+        reduce_combat_status_count,
         deal_damage,
         apply_element,
         set_element_aura,
         test_command>;
 
-    template<class T, class Context>
-    struct compatible_command : std::bool_constant<requires {
-        typename T::context_type;
-        requires (std::same_as<typename T::context_type, void>
-            || std::same_as<typename T::context_type, Context>);
-    }> {};
-
-    template<class... T, class Context>
-    struct compatible_command<std::variant<T...>, Context>
-        : std::bool_constant<(compatible_command<T, Context>::value && ...)> {};
-
-    template<class Context>
-    using contextual_commands = decltype([]<class... T>(type_list<T...>)
-    {
-        using types = type_list_cat<
-            std::conditional_t<compatible_command<T, Context>::value, type_list<T>, type_list<>>...
-        >;
-        return std::type_identity<typename types::template apply<std::variant>>{};
-    }(command_types{}));
 }
 
 namespace givm
 {
-    template<class TCommand, class TContext>
-    concept command_compatible_with = detail::compatible_command<
-        std::remove_cvref_t<TCommand>, std::remove_cvref_t<TContext>
-    >::value;
-
-    template<class TContext>
-    using any_command_for = typename detail::contextual_commands<TContext>::type;
+    using any_command = detail::command_types::apply<std::variant>;
 }
 
 #endif

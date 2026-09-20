@@ -20,50 +20,16 @@ namespace givm
 {
     class definition_compile_context;
     class definition_library;
-    class random_fn;
-
-    template<class TCostEvent>
-    struct onpay_context;
-
-    template<class TEvent>
-    struct handler_program_context
-    {
-        using type = TEvent;
-    };
-
-    template<>
-    struct handler_program_context<cost_of_switch>
-    {
-        using type = onpay_context<cost_of_switch>;
-    };
-
-    template<>
-    struct handler_program_context<cost_of_card>
-    {
-        using type = onpay_context<cost_of_card>;
-    };
-
-    template<>
-    struct handler_program_context<cost_of_skill>
-    {
-        using type = onpay_context<cost_of_skill>;
-    };
-
-    template<class TEvent>
-    using handler_program_context_t = typename handler_program_context<TEvent>::type;
-
-    template<class TEvent>
-    using handler_program_entry_t = program_entry<handler_program_context_t<TEvent>>;
+    class handle_context;
 
     using definition_data = std::any;
 
     template<class TEntity, class TEvent>
-    using handle_fn_t = handler_program_entry_t<TEvent> (*)(
+    using handle_fn_t = program_entry (*)(
         const definition_data&,
         const TEntity&,
         TEvent&,
-        const table&,
-        random_fn&
+        handle_context&
     );
 }
 
@@ -525,21 +491,19 @@ namespace givm
                 const definition_type& definition,
                 const TView& entity,
                 TEvent& event,
-                const table& table,
-                random_fn& random
+                handle_context& context
             )
             {
-                TSource::handle(definition, entity, event, table, random);
+                TSource::handle(definition, entity, event, context);
             })
             {
                 using result_type = decltype(TSource::handle(
                     std::declval<const definition_type&>(),
                     std::declval<const TView&>(),
                     std::declval<TEvent&>(),
-                    std::declval<const table&>(),
-                    std::declval<random_fn&>()
+                    std::declval<handle_context&>()
                 ));
-                static_assert(std::same_as<result_type, handler_program_entry_t<TEvent>>);
+                static_assert(std::same_as<result_type, program_entry>);
 
                 if constexpr(requires { source.template can_handle<TView, TEvent>(); })
                 {
@@ -557,16 +521,14 @@ namespace givm
                     const definition_data& data,
                     const TView& entity,
                     TEvent& event,
-                    const table& table,
-                    random_fn& random
+                    handle_context& context
                 )
                 {
                     return TSource::handle(
                         std::any_cast<const definition_type&>(data),
                         entity,
                         event,
-                        table,
-                        random
+                        context
                     );
                 };
             }

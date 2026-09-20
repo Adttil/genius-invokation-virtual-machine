@@ -117,7 +117,8 @@ namespace givm::detail
             library,
             dice_roll_preparation{ .count = command.count, .reroll_count = command.reroll_count },
             table,
-            context.stack()
+            context.stack(),
+            context.position() + instruction_extent<1, givm::start_dice_roll_phase>
         );
         return context.advance(instruction_extent<1, givm::start_dice_roll_phase>);
     }
@@ -132,14 +133,7 @@ namespace givm::detail
             return continue_execution;
         }
 
-        const auto event = get<2>(
-            context.stack().top<
-                handler_id<dice_roll_preparation>[],
-                stack_count_t,
-                dice_roll_preparation,
-                handler_id<dice_roll_preparation>
-            >()
-        );
+        const auto event = get<0>(context.stack().top<dice_roll_preparation, execution_position>());
         GIVM_ASSERT(event.count <= 64);
 
         for(size_t player_index = 0; player_index < 2; ++player_index)

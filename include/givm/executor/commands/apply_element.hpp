@@ -19,7 +19,8 @@ namespace givm::detail
         element incoming_element,
         element_application_cause cause,
         unrestricted_table& table,
-        execution_context& context
+        execution_context& context,
+        execution_position return_position
     )
     {
         auto target_entity = table[target];
@@ -45,7 +46,8 @@ namespace givm::detail
                 .already_handled = false
             },
             table,
-            context.stack()
+            context.stack(),
+            return_position
         );
         return true;
     }
@@ -55,16 +57,7 @@ namespace givm::detail
         execution_context& context
     )
     {
-        auto&& [targets, cursor, event, current_handler] =
-            context.stack().top<
-                handler_id<elemental_reaction_will_occur>[],
-                stack_count_t,
-                elemental_reaction_will_occur,
-                handler_id<elemental_reaction_will_occur>
-            >();
-        (void)targets;
-        (void)cursor;
-        (void)current_handler;
+        auto& event = get<0>(context.stack().top<elemental_reaction_will_occur, execution_position>());
 
         if(not event.already_handled)
         {
@@ -99,7 +92,8 @@ namespace givm::detail
         {
             return continue_execution;
         }
-        prepare_broadcast(library, finish_elemental_reaction(table, context), table, context.stack());
+        prepare_broadcast(library, finish_elemental_reaction(table, context), table,
+            context.stack(), context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
 
@@ -123,7 +117,8 @@ namespace givm::detail
     {
         const auto& command = context.instruction_data<1, givm::apply_element>(library);
         const bool reacting = begin_element_application(
-            library, command.source, command.target, command.element, command.cause, table, context
+            library, command.source, command.target, command.element, command.cause, table, context,
+            context.position() + instruction_extent<1, givm::apply_element>
         );
         return context.advance(instruction_extent<1, givm::apply_element>
             + (reacting ? 0 : 2 * sizeof(execute_fn)));

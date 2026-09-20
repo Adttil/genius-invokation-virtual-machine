@@ -30,18 +30,15 @@
 | [`views_of_definition`](definition/views_of_definition.md) | 定义对应的实体形态 |
 | [`subscribed_events`](definition/subscribed_events.md) | 实体形态可响应的事件 |
 | [`supported_queries`](definition/supported_queries.md) | 定义类别支持的查询 |
-| [`handler_program_context`](definition/handler_program_context.md) | 事件响应 context 的映射 |
 
 ## 类型别名
 
 |  |  |
 | --- | --- |
-| [`any_command_for`](definition/any_command_for.md) | 兼容给定 context 的命令 variant |
+| [`any_command`](definition/any_command.md) | 核心命令 variant |
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`support_subscribed_events`](definition/support_subscribed_events.md) | 场上实体共用的事件列表 |
-| [`handler_program_context_t`](definition/handler_program_context_t.md) | 事件响应所用的 context 类型 |
-| [`handler_program_entry_t`](definition/handler_program_entry_t.md) | 事件响应返回的效果入口类型 |
 | [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
 | [`handle_fn_t`](definition/handle_fn_t.md) | 统一的事件响应函数指针类型 |
 
@@ -51,12 +48,6 @@
 | --- | --- |
 | [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
 | [`query_default`](definition/query_default.md) | 定义源未提供查询时的默认结果 |
-
-## 概念
-
-|  |  |
-| --- | --- |
-| [`command_compatible_with`](definition/command_compatible_with.md) | 命令与 context 的兼容性 |
 
 ## [命令](definition/commands.md)
 

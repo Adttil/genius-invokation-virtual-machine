@@ -14,7 +14,7 @@ struct end_round;
 
 | | |
 | --- | --- |
-| `context_type` | `void`，表示不依赖特定事件语境 |
+| `input_type` | `void`，表示不消费调用输入 |
 
 ## 注意
 

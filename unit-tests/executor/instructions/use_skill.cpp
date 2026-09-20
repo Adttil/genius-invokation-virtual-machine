@@ -56,7 +56,7 @@ namespace
         {
             skill_log* log;
             givm::action_cost_requirement cost;
-            givm::program_entry<givm::skill_effect> effect;
+            givm::program_entry effect;
         };
         skill_log* log;
         std::uint8_t dice = 1;
@@ -70,7 +70,7 @@ namespace
         {
             return { log, { .dice_requirement = { .any = dice }, .energy = energy,
                 .energy_tag = energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag) },
-                context.add_program<givm::skill_effect>(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
         }
         static givm::action_cost_requirement query(const definition_type& data, const givm::skill_initial_cost&)
         {
@@ -89,16 +89,17 @@ namespace
             return query.target_count == 1 ? givm::target_validation::valid_incomplete
                 : givm::target_validation::valid_complete;
         }
-        static givm::program_entry<givm::skill_effect> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::skill_view& self,
-            givm::skill_effect& event, const givm::table& table, givm::random_fn&)
+            givm::skill_effect& event, givm::handle_context& context)
         {
             CHECK(event.skill == self.id());
-            CHECK(table[event.skill].is_valid());
+            CHECK(context.table()[event.skill].is_valid());
             data.log->effects.push_back(event.skill);
             data.log->effect_targets.push_back(event.targets);
             data.log->events.push_back("effect");
-            return data.log->nested ? data.effect : givm::program_entry<givm::skill_effect>::null();
+            if(data.log->nested) return context.invoke(data.effect);
+            return {};
         }
     };
 
@@ -109,14 +110,14 @@ namespace
         skill_log* log;
         std::string_view name() const noexcept { return "UntargetedSkill"; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry<givm::skill_effect> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::skill_view& self,
-            givm::skill_effect& event, const givm::table&, givm::random_fn&)
+            givm::skill_effect& event, givm::handle_context&)
         {
             CHECK(event.skill == self.id());
             data.log->effects.push_back(event.skill);
             data.log->effect_targets.push_back(event.targets);
-            return givm::program_entry<givm::skill_effect>::null();
+            return {};
         }
     };
 
@@ -127,11 +128,11 @@ namespace
         skill_log* log;
         std::string_view name() const noexcept { return "PassiveSkill"; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry<givm::before_action> handle(
-            const definition_type& data, const givm::skill_view&, givm::before_action&, const givm::table&, givm::random_fn&)
+        static givm::program_entry handle(
+            const definition_type& data, const givm::skill_view&, givm::before_action&, givm::handle_context&)
         {
             ++data.log->passive_responses;
-            return givm::program_entry<givm::before_action>::null();
+            return {};
         }
     };
 
@@ -144,12 +145,12 @@ namespace
             givm::definition_id<givm::skill_view> active;
             givm::definition_id<givm::skill_view> passive;
             givm::definition_id<givm::skill_view> untargeted;
-            givm::handler_program_entry_t<givm::cost_of_skill> payment;
-            givm::program_entry<givm::skill_will_be_used> before;
-            givm::program_entry<givm::skill_used> after;
-            givm::program_entry<givm::dice_removed> dice_removed;
-            givm::program_entry<givm::energy_changed> energy_changed;
-            givm::program_entry<givm::card_drawn> selection;
+            givm::program_entry payment;
+            givm::program_entry before;
+            givm::program_entry after;
+            givm::program_entry dice_removed;
+            givm::program_entry energy_changed;
+            givm::program_entry selection;
             givm::tag_id energy_tag;
         };
         skill_log* log;
@@ -168,13 +169,13 @@ namespace
                 context.resolve_id<givm::skill_view>("ActiveSkill"),
                 context.resolve_id<givm::skill_view>("PassiveSkill"),
                 context.resolve_id<givm::skill_view>("UntargetedSkill"),
-                context.add_program<givm::handler_program_context_t<givm::cost_of_skill>>(
+                context.add_program(
                     std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::skill_will_be_used>(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::skill_used>(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::dice_removed>(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::energy_changed>(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::card_drawn>(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
                 energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag)
             };
         }
@@ -193,70 +194,76 @@ namespace
             default: return {};
             }
         }
-        static givm::handler_program_entry_t<givm::cost_of_skill> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::cost_of_skill& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context& context)
         {
             ++data.log->cost_queries;
             event.requirement.dice_requirement.any += data.log->extra_dice;
             event.requirement.energy += data.log->extra_energy;
-            return data.log->nested ? data.payment : givm::handler_program_entry_t<givm::cost_of_skill>::null();
+            if(data.log->nested) return context.invoke(givm::substack_t{}, data.payment);
+            return {};
         }
-        static givm::handler_program_entry_t<givm::cost_of_switch> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::cost_of_switch& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context&)
         {
             event.requirement.dice_requirement.any = data.log->extra_dice;
             event.requirement.energy = data.log->extra_energy;
             event.requirement.energy_tag = data.log->switch_energy_tag;
-            return givm::handler_program_entry_t<givm::cost_of_switch>::null();
+            return {};
         }
-        static givm::program_entry<givm::dice_removed> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::dice_removed&,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
             data.log->events.push_back("dice");
-            data.log->resources_at_broadcast.push_back(resources(table));
-            return data.log->nested ? data.dice_removed : givm::program_entry<givm::dice_removed>::null();
+            data.log->resources_at_broadcast.push_back(resources(context.table()));
+            if(data.log->nested) return context.invoke(data.dice_removed);
+            return {};
         }
-        static givm::program_entry<givm::energy_changed> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::energy_changed& event,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
             CHECK(event.target == givm::character_id{ givm::player_id{ 0 }, 0 });
             CHECK(event.previous == 3);
-            CHECK(event.current == table[event.target].state().energy);
+            CHECK(event.current == context.table()[event.target].state().energy);
             data.log->events.push_back("energy");
-            data.log->resources_at_broadcast.push_back(resources(table));
-            return data.log->nested ? data.energy_changed : givm::program_entry<givm::energy_changed>::null();
+            data.log->resources_at_broadcast.push_back(resources(context.table()));
+            if(data.log->nested) return context.invoke(data.energy_changed);
+            return {};
         }
-        static givm::program_entry<givm::skill_will_be_used> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::skill_will_be_used& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context& context)
         {
             data.log->events.push_back("will");
             event.effect_cancelled = data.log->cancelled;
             if(data.log->fast) event.speed = givm::action_speed::fast;
-            return data.log->nested ? data.before : givm::program_entry<givm::skill_will_be_used>::null();
+            if(data.log->nested) return context.invoke(data.before);
+            return {};
         }
-        static givm::program_entry<givm::skill_used> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::skill_used& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context& context)
         {
             CHECK(event.effect_cancelled == data.log->cancelled);
             CHECK(event.speed == (data.log->fast ? givm::action_speed::fast : givm::action_speed::combat));
             data.log->used_targets.push_back(event.targets);
             data.log->events.push_back("used");
-            return data.log->nested ? data.after : givm::program_entry<givm::skill_used>::null();
+            if(data.log->nested) return context.invoke(data.after);
+            return {};
         }
-        static givm::program_entry<givm::card_drawn> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::card_drawn&,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            if(not data.log->record) return givm::program_entry<givm::card_drawn>::null();
+            if(not data.log->record) return {};
             data.log->events.push_back("draw");
-            data.log->resources_at_draw.push_back(resources(table));
-            return data.log->nested ? data.selection : givm::program_entry<givm::card_drawn>::null();
+            data.log->resources_at_draw.push_back(resources(context.table()));
+            if(data.log->nested) return context.invoke(data.selection);
+            return {};
         }
     };
 
@@ -279,31 +286,31 @@ namespace
             return { .dice_requirement = { .any = data.dice }, .speed = givm::action_speed::fast,
                 .energy = data.energy, .energy_tag = data.energy_tag };
         }
-        static givm::program_entry<givm::card_effect> handle(
-            const definition_type& data, const givm::hand_card_view&, givm::card_effect&, const givm::table&, givm::random_fn&)
+        static givm::program_entry handle(
+            const definition_type& data, const givm::hand_card_view&, givm::card_effect&, givm::handle_context&)
         {
             ++data.log->card_effects;
-            return givm::program_entry<givm::card_effect>::null();
+            return {};
         }
     };
 
     struct enter_skill_character_source
     {
         using definition_category = givm::character_view;
-        struct definition_type { givm::program_entry<givm::test_event> entry; };
+        struct definition_type { givm::program_entry entry; };
         std::string_view name() const noexcept { return "EnterSkillCharacter"; }
         auto character_dependencies() const { return std::array{ std::string_view{ "SkillCharacter" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program<givm::test_event>(std::tuple{
+            return { context.add_program(std::tuple{
                 givm::enter_character{ .player = givm::player_id{ 1 },
                     .definition = context.resolve_id<givm::character_view>("SkillCharacter") }
             }) };
         }
-        static givm::program_entry<givm::test_event> handle(
-            const definition_type& data, const givm::character_view&, givm::test_event&, const givm::table&, givm::random_fn&)
+        static givm::program_entry handle(
+            const definition_type& data, const givm::character_view&, givm::test_event&, givm::handle_context& context)
         {
-            return data.entry;
+            return context.invoke(data.entry);
         }
     };
 
@@ -495,17 +502,19 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
     const auto calls = random.calls;
+    auto unaffordable = target;
+    const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection>();
     log.extra_energy = 2;
-    CHECK(action.calculate_skill_cost(library, table, 0).requirement.energy == 4);
-    CHECK(action.skill_cost(0).requirement.energy_tag == ids.get_tag_id("Resolve"));
-    CHECK(action.skill_payment_validate(table, 0, pay(dice + 1)) == givm::skill_payment_validation::requirement_mismatch);
+    CHECK(unaffordable_action.calculate_skill_cost(library, table, 0).requirement.energy == 4);
+    CHECK(unaffordable_action.skill_cost(0).requirement.energy_tag == ids.get_tag_id("Resolve"));
+    CHECK(unaffordable_action.skill_payment_validate(table, 0, pay(dice + 1)) == givm::skill_payment_validation::requirement_mismatch);
     if(dice != 0)
-        CHECK(action.skill_payment_validate(table, 0, pay(dice, givm::elemental_dice::dendro))
+        CHECK(unaffordable_action.skill_payment_validate(table, 0, pay(dice, givm::elemental_dice::dendro))
             == givm::skill_payment_validation::insufficient_dice);
-    CHECK(action.skill_payment_validate(table, 0, pay(dice)) == givm::skill_payment_validation::insufficient_energy);
+    CHECK(unaffordable_action.skill_payment_validate(table, 0, pay(dice)) == givm::skill_payment_validation::insufficient_energy);
     log.extra_energy = 0;
     CHECK(action.calculate_skill_cost(library, table, 0).requirement.energy == 2);
-    CHECK(action.calculate_skill_cost(library, table, 0).requirement.energy == 2);
+    CHECK(action.skill_cost(0).requirement.energy == 2);
     CHECK(action.skill_payment_validate(table, 0, pay(dice)) == givm::skill_payment_validation::valid);
     CHECK(random.calls == calls);
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4, 3 });
@@ -518,7 +527,7 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     REQUIRE(log.resources_at_broadcast.size() == (dice == 0 ? 1 : 2));
     for(const auto snapshot : log.resources_at_broadcast)
         CHECK(snapshot == std::array<std::uint32_t, 2>{ 4u - dice, 1 });
-    CHECK(log.cost_queries == 3);
+    CHECK(log.cost_queries == 2);
     CHECK(log.target_counts.empty());
 }
 
@@ -612,9 +621,11 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     const auto action = target.view_in<givm::execution_state::action_selection>();
     if(switching)
     {
+        auto unaffordable = target;
+        const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection>();
         log.extra_energy = 4;
-        CHECK(action.calculate_switch_cost(library, table, 0).requirement.energy == 4);
-        CHECK(action.switch_payment_validate(table, 0, pay(dice)) == givm::switch_payment_validation::insufficient_energy);
+        CHECK(unaffordable_action.calculate_switch_cost(library, table, 0).requirement.energy == 4);
+        CHECK(unaffordable_action.switch_payment_validate(table, 0, pay(dice)) == givm::switch_payment_validation::insufficient_energy);
         log.extra_energy = 2;
         CHECK(action.calculate_switch_cost(library, table, 0).requirement.energy == 2);
         CHECK(action.switch_cost(0).requirement.energy_tag == log.switch_energy_tag);

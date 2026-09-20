@@ -65,7 +65,7 @@ namespace
             givm::action_speed speed;
             bool single_target;
             bool optional_targets;
-            givm::program_entry<givm::card_effect> effect;
+            givm::program_entry effect;
         };
         play_log* log;
         std::string_view source_name;
@@ -78,7 +78,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, cost, speed, single_target, optional_targets,
-                context.add_program<givm::card_effect>(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
         }
         static givm::action_cost_requirement query(const definition_type& data, const givm::card_initial_cost&)
         {
@@ -112,28 +112,29 @@ namespace
             return second != nullptr && second->player_id != first.player_id
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry<givm::card_effect> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::hand_card_view& self,
-            givm::card_effect& event, const givm::table& table, givm::random_fn&)
+            givm::card_effect& event, givm::handle_context& context)
         {
             CHECK(event.card == self.id());
-            check_removed_card(table, event.card, self.definition_id());
+            check_removed_card(context.table(), event.card, self.definition_id());
             (void)self.state();
             data.log->effects.push_back(event.card);
             data.log->effect_targets.push_back(event.targets);
             if(data.log->record) data.log->events.push_back("effect");
-            return data.log->nested ? data.effect : givm::program_entry<givm::card_effect>::null();
+            if(data.log->nested) return context.invoke(data.effect);
+            return {};
         }
         template<class TEvent>
             requires(std::same_as<TEvent, givm::card_drawn>
                 || std::same_as<TEvent, givm::card_will_be_played>
                 || std::same_as<TEvent, givm::card_played>)
-        static givm::program_entry<TEvent> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::hand_card_view& self,
-            TEvent&, const givm::table&, givm::random_fn&)
+            TEvent&, givm::handle_context&)
         {
             if(data.log->record && data.log->selected == self.id()) ++data.log->removed_card_broadcasts;
-            return givm::program_entry<TEvent>::null();
+            return {};
         }
     };
 
@@ -143,11 +144,11 @@ namespace
         struct definition_type
         {
             play_log* log;
-            givm::handler_program_entry_t<givm::cost_of_card> first_payment;
-            givm::handler_program_entry_t<givm::cost_of_card> second_payment;
-            givm::program_entry<givm::card_will_be_played> before;
-            givm::program_entry<givm::card_played> after;
-            givm::program_entry<givm::card_drawn> selection;
+            givm::program_entry first_payment;
+            givm::program_entry second_payment;
+            givm::program_entry before;
+            givm::program_entry after;
+            givm::program_entry selection;
         };
         play_log* log;
         std::string_view name() const noexcept { return "PlayObserver"; }
@@ -155,67 +156,70 @@ namespace
         {
             return {
                 log,
-                context.add_program<givm::handler_program_context_t<givm::cost_of_card>>(
+                context.add_program(
                     std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::handler_program_context_t<givm::cost_of_card>>(
+                context.add_program(
                     std::tuple{ givm::draw_cards{ .count = 2 } }),
-                context.add_program<givm::card_will_be_played>(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::card_played>(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program<givm::card_drawn>(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } })
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } })
             };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::handler_program_entry_t<givm::cost_of_card> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::cost_of_card& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context& context)
         {
             data.log->quoted.push_back(event.card);
             event.requirement.dice_requirement.any += data.log->extra_cost;
-            if(not data.log->enable_payment) return givm::handler_program_entry_t<givm::cost_of_card>::null();
-            return event.requirement.dice_requirement.any > 2 ? data.second_payment : data.first_payment;
+            if(not data.log->enable_payment) return {};
+            return context.invoke(givm::substack_t{}, event.requirement.dice_requirement.any > 2 ? data.second_payment : data.first_payment);
         }
-        static givm::program_entry<givm::dice_removed> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::dice_removed& event,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
             if(data.log->record)
             {
                 data.log->events.push_back("dice");
                 CHECK(event.player == givm::player_id{ 0 });
                 CHECK(event.dice.total() == 1);
-                CHECK(table[event.player].state().dice.total() == 3);
+                CHECK(context.table()[event.player].state().dice.total() == 3);
             }
-            return givm::program_entry<givm::dice_removed>::null();
+            return {};
         }
-        static givm::program_entry<givm::card_will_be_played> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::card_will_be_played& event,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            check_removed_card(table, event.card, event.definition_id);
+            check_removed_card(context.table(), event.card, event.definition_id);
             if(data.log->record) data.log->events.push_back("will");
             event.effect_cancelled = data.log->cancel_effect;
-            return data.log->nested ? data.before : givm::program_entry<givm::card_will_be_played>::null();
+            if(data.log->nested) return context.invoke(data.before);
+            return {};
         }
-        static givm::program_entry<givm::card_played> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::card_played& event,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            check_removed_card(table, event.card, event.definition_id);
+            check_removed_card(context.table(), event.card, event.definition_id);
             data.log->played_targets.push_back(event.targets);
             if(data.log->record) data.log->events.push_back("played");
-            return data.log->nested ? data.after : givm::program_entry<givm::card_played>::null();
+            if(data.log->nested) return context.invoke(data.after);
+            return {};
         }
-        static givm::program_entry<givm::card_drawn> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::card_drawn& event,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            if(not data.log->record) return givm::program_entry<givm::card_drawn>::null();
+            if(not data.log->record) return {};
             data.log->events.push_back("draw");
-            data.log->dice_at_draw.push_back(table[event.card.player_id].state().dice.total());
-            return data.log->nested ? data.selection : givm::program_entry<givm::card_drawn>::null();
+            data.log->dice_at_draw.push_back(context.table()[event.card.player_id].state().dice.total());
+            if(data.log->nested) return context.invoke(data.selection);
+            return {};
         }
     };
 
@@ -226,14 +230,14 @@ namespace
         play_log* log;
         std::string_view name() const noexcept { return "ZeroCostCard"; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry<givm::card_effect> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::hand_card_view& self,
-            givm::card_effect& event, const givm::table& table, givm::random_fn&)
+            givm::card_effect& event, givm::handle_context& context)
         {
-            check_removed_card(table, event.card, self.definition_id());
+            check_removed_card(context.table(), event.card, self.definition_id());
             data.log->effects.push_back(event.card);
             data.log->effect_targets.push_back(event.targets);
-            return givm::program_entry<givm::card_effect>::null();
+            return {};
         }
     };
 
@@ -306,8 +310,8 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
     const auto random_calls = random.calls;
     if(quote_both) CHECK(action.calculate_card_cost(library, table, 1).requirement.dice_requirement.any == 3);
     CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 2);
-    CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 2);
-    const auto expected_quotes = quote_both ? std::vector{ second, first, first } : std::vector{ first, first };
+    CHECK(action.card_cost(0).requirement.dice_requirement.any == 2);
+    const auto expected_quotes = quote_both ? std::vector{ second, first } : std::vector{ first };
     CHECK(log.initial_cost_queries == 2);
     CHECK(log.quoted == expected_quotes);
     CHECK(action.card_cost(1).requirement.dice_requirement.any == (quote_both ? 3 : 0));
@@ -422,15 +426,15 @@ TEST_CASE("card target queries advance one step at a time and default to no targ
     CHECK(action.card_payment_validate(table, 0, pay(1)) == givm::card_payment_validation::requirement_mismatch);
     const auto selected_targets = single_target ? first_target : std::span{ targets };
     const card_targets submitted_targets{ targets[0], single_target ? givm::card_target_id{} : targets[1] };
-    action.play_card(library, table, 0, {}, selected_targets);
-    CHECK(log.quoted == std::vector{ targeted, targeted });
+    action.play_card(0, {}, selected_targets);
+    CHECK(log.quoted == std::vector{ targeted });
     CHECK(log.target_validations == expected_steps.size());
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(log.effects == std::vector{ targeted });
     CHECK(log.effect_targets == std::vector{ submitted_targets });
     CHECK(log.played_targets == std::vector{ submitted_targets });
     CHECK(log.target_validations == expected_steps.size());
-    CHECK(log.quoted == std::vector{ targeted, targeted });
+    CHECK(log.quoted == std::vector{ targeted });
     CHECK(table.state().active_player == givm::player_id{ 0 });
     const auto next_action = target.view_in<givm::execution_state::action_selection>();
     REQUIRE(next_action.card_count() == 1);

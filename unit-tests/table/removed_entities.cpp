@@ -42,7 +42,7 @@ namespace
         struct definition_type
         {
             overflow_log* log;
-            givm::program_entry<givm::test_event> draw_entry;
+            givm::program_entry draw_entry;
         };
 
         std::string_view source_name;
@@ -56,23 +56,22 @@ namespace
             return {
                 log,
                 draws
-                    ? context.add_program<givm::test_event>(std::tuple{ givm::draw_cards{ .count = 1 } })
-                    : givm::program_entry<givm::test_event>::null()
+                    ? context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } })
+                    : givm::program_entry::null()
             };
         }
 
-        static givm::program_entry<givm::test_event> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::deck_card_view& self,
-            givm::test_event&, const givm::table& table, givm::random_fn&
-        )
+            givm::test_event&, givm::handle_context& context)
         {
             const bool first_response = data.log->handlers.empty();
             data.log->handlers.push_back(self.id());
-            if(first_response)
-                return data.draw_entry;
+            if(first_response and data.draw_entry)
+                return context.invoke(data.draw_entry);
 
-            check_removed_card(table, data.log->removed, data.log->removed_definition);
-            return givm::program_entry<givm::test_event>::null();
+            check_removed_card(context.table(), data.log->removed, data.log->removed_definition);
+            return {};
         }
     };
 

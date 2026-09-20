@@ -31,7 +31,7 @@ namespace
         struct definition_type
         {
             reaction_log* log;
-            givm::program_entry<givm::elemental_reaction_will_occur> replacement_entry;
+            givm::program_entry replacement_entry;
         };
 
         reaction_log* log;
@@ -45,19 +45,17 @@ namespace
         {
             return {
                 .log = log,
-                .replacement_entry = context.add_program<givm::elemental_reaction_will_occur>(
+                .replacement_entry = context.add_program(
                     std::tuple{ givm::set_element_aura{ .target = givm::character_id{ givm::player_id{ 1 }, 0 }, .aura = log->replacement_aura } }
                 )
             };
         }
 
-        static givm::program_entry<givm::elemental_reaction_will_occur> handle(
+        static givm::program_entry handle(
             const definition_type& data,
             const givm::character_view&,
             givm::elemental_reaction_will_occur& event,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context& context)
         {
             data.log->order.push_back(1);
             data.log->incoming = event.incoming_element;
@@ -67,21 +65,19 @@ namespace
             if(data.log->take_over)
             {
                 event.already_handled = true;
-                return data.replacement_entry;
+                return context.invoke(data.replacement_entry);
             }
-            return givm::program_entry<givm::elemental_reaction_will_occur>::null();
+            return {};
         }
 
-        static givm::program_entry<givm::after_elemental_reaction> handle(
+        static givm::program_entry handle(
             const definition_type& data,
             const givm::character_view&,
             givm::after_elemental_reaction&,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
             data.log->order.push_back(2);
-            return givm::program_entry<givm::after_elemental_reaction>::null();
+            return {};
         }
     };
 

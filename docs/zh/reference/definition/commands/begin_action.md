@@ -14,7 +14,7 @@ struct begin_action;
 
 | | |
 | --- | --- |
-| `context_type` | `void`，表示不依赖特定事件语境 |
+| `input_type` | `void`，表示不消费调用输入 |
 
 ## 注意
 
@@ -30,11 +30,11 @@ struct begin_action;
 
 通过 [`calculate_card_cost`](../../executor/execution_view/action_selection/calculate_card_cost.md) 同步计算出牌费用，通过 [`card_payment_validate`](../../executor/execution_view/action_selection/card_payment_validate.md) 与 [`card_targets_validate`](../../executor/execution_view/action_selection/card_targets_validate.md) 分别检查支付及用牌条件。目标检查按 span 中的目标数量分步进行，允许检查空选择，告知当前选择是否有效、能否完成或继续；检查第二目标时可假设第一目标合法。两项检查相互独立，由调用方按需使用。目标检查通过 [`card_target_validation`](../queries/card_target_validation.md) 返回结果，不接收随机源。费用响应不得使用随机数，调用随机函数属于未定义行为。
 
-[`play_card`](../../executor/execution_view/action_selection/play_card.md) 可采用已完整计算的费用，也可同步重新报价后选择出牌；不会自动检查支付或目标。下一次推进先让牌离手，再执行已确认的费用效果、扣除骰子与充能，再依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../events/card_will_be_played.md)。未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，之后均广播 [`card_played`](../events/card_played.md)。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
+[`play_card`](../../executor/execution_view/action_selection/play_card.md) 可采用已完整计算的费用，也可同步计算报价后选择出牌；不会自动检查支付或目标。下一次推进先让牌离手，再执行已确认的费用效果、扣除骰子与充能，再依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../events/card_will_be_played.md)。未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，之后均广播 [`card_played`](../events/card_played.md)。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
 
 通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`switch_payment_validate`](../../executor/execution_view/action_selection/switch_payment_validate.md)，依次检查骰子是否匹配费用、持有数量是否足够、非零充能费用的类型是否匹配及出战角色充能是否足够。
 
-通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 选择切换时，可采用已经计算的费用，也可传入定义库和牌桌，在本次调用中同步重新报价后提交。两种重载均由下一次推进执行已确认的费用效果、支付及切换，不自动检查支付是否合法。采用已计算费用时，由调用方保证该角色已经完整报价。
+通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 选择切换时，可采用已经计算的费用，也可传入定义库和牌桌，在本次调用中同步计算报价后提交。两种重载均由下一次推进执行已确认的费用效果、支付及切换，不自动检查支付是否合法。采用已计算费用时，由调用方保证该角色已经完整报价。同一行动窗口内每个候选只允许计算一次报价，可重复读取结果；带定义库与牌桌的提交重载仅用于尚未报价的候选，库不检查此约定。
 
 在 [`compile_mode::observed`](../../executor/compile_mode.md) 模式下推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)给出目标，牌桌仍可读取原出战角色；随后推进先完成设置，再处理变更响应。到达此现场前，已确认的费用响应、骰子与充能支付及相应变化响应均已完成。
 

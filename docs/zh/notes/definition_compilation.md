@@ -231,20 +231,16 @@ std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter
 
 ### 加入响应程序
 
-**旧称谓与当前理解：**原记录把 `TContext` 概括为“这段程序进入时采用的栈 ABI”。这里保留这个实现来源，但不能由此推出指令作者要在相邻指令之间配合完整帧布局。现在公开的约束是这段程序在哪种事件 context 下可执行；事件映射到内部栈形状是实现。比如 `absorb_damage_by_count` 在 `damage_effect` 广播触发的响应程序中工作，并非在结算伤害指令后直接拼接并接管它的局部帧。每次执行一条指令都是完整的一次执行；同一指令可能自重入或进入子程序，并在彻底退出时恢复进入前的栈形状。参阅 [add_program](../reference/executor/definition_compile_context/add_program.md) 和[固定程序模型](fixed_program.md)。
-
-原记录：
-
 ```cpp
-template<class TContext, class TCommands>
-program_entry<TContext> add_program(TCommands&& commands);
+template<class TCommands>
+program_entry add_program(TCommands&& commands);
 ```
 
-`TContext` 指定这段程序进入时采用的栈 ABI。`commands` 是一段公开命令序列：静态 C++ source 可以传入异构 tuple-like 对象或同构 input range；动态 adapter 可以传入 `any_command_for<TContext>` 的 input range。每条指令都必须与 `TContext` 兼容。
+`commands` 可为异构 tuple-like、同构 input range，或者包含 `any_command` 的范围；编译时逐项消费，不保存调用方序列或元素引用。入口不绑定外层事件类型，所需输入由所有非 `void` 命令的 `input_type` 顺序确定。
 
-该函数在返回前顺序消费完整序列，不保存序列或元素的引用。返回值是新程序的 `program_entry<TContext>`，可以直接保存在编译后的 definition 中。程序执行完最后一条公开命令后会返回触发它的结算过程，source 不需要加入返回指令。
+响应源通过 `context.invoke` 准备一次调用的完整输入。命令正常完成时消费自己的输入并清理临时状态；固定命令不消费输入。程序末尾自动返回，定义源不手工加入返回操作。输入类型和顺序由定义源保证，不保存用于匹配的类型表。debug 编译累计程序所需输入的总字节数并随入口保存，调用时只比较总长，不要求源提供类型元信息；Release 移除这项数据和检查。
 
-编译上下文不公开最终程序容器、入口的数值表示或核心用于连接程序的内部指令。固定程序与 Context 的通用语义见 [固定程序模型](fixed_program.md)。
+编译上下文不公开程序容器、入口数值或内部连接指令。详见[固定程序模型](fixed_program.md)。
 
 ### 编译示例
 
@@ -274,15 +270,15 @@ definition_type compile(definition_compile_context& context) const
 struct definition_type
 {
     std::uint32_t maximum_count;
-    program_entry<damage_effect> absorption;
+    program_entry absorption;
 };
 
 definition_type compile(definition_compile_context& context) const
 {
     return {
         .maximum_count = maximum_count,
-        .absorption = context.add_program<damage_effect>(std::tuple{
-            absorb_damage_by_count{ .maximum_count = maximum_count }
+        .absorption = context.add_program(std::tuple{
+            reduce_combat_status_count{}
         })
     };
 }
@@ -298,57 +294,41 @@ handler 在对局运行时响应事件。此时 source 对象不再参与；hand
 
 ### `handle`
 
-费用事件的 `onpay_context` 名称在下面只作为现有映射实现记录，不另立一种公开“on pay 事件”体系。面向定义源应使用 [handler_program_context_t](../reference/definition/handler_program_context_t.md) 和 [handler_program_entry_t](../reference/definition/handler_program_entry_t.md)；同一事件只有相应的响应 context。
+handler 的签名为：
 
 ```cpp
-static handler_program_entry_t<TEvent> handle(
-    const TDefinition& definition,
-    const TEntityView& self,
-    TEvent& event,
-    const table& table,
-    random_fn& random
-);
+static program_entry handle(
+    const TDefinition& definition, const TEntityView& self, TEvent& event,
+    handle_context& context);
 ```
 
-`handle` 是可选的静态函数。source 可以提供普通重载或函数模板；核心针对每个允许的实体 view 与事件组合使用普通重载解析检查这个调用是否存在。
+`TDefinition` 必须为本源 `compile` 的返回类型。`self` 是当前响应者，`event` 是本次事件，`context.table()` 只读，通过 `context.random()` 取得随机值，通过 `context.invoke(...)` 提交后续效果。返回类型必须为 `program_entry`；无后续效果时返回空入口，需要后续操作时一次性提交全部输入并立即返回 `invoke` 的结果。
 
-参数含义如下：
+没有匹配调用表示不支持这项响应；有调用而返回类型错误时不能静默退化为无响应。普通事件与费用事件使用相同签名。普通响应通过 `context.invoke(entry, ...)` 提交，费用响应通过 `context.invoke(substack_t{}, entry, ...)` 仅收集输入与入口。重载选择在编译期完成，不在上下文内保存运行期模式字段；费用响应误用普通重载属于未定义行为。
 
-- `definition` 的类型必须准确等于 `compile(...)` 的返回类型，用于读取该 definition 的固定配置、issued id 和程序入口。
-- `self` 是当前响应者的只读实体 view。其类型由 `definition_category` 和事件订阅关系决定。
-- `event` 是当前事件，可以读取和修改。
-- `table` 是只读牌桌，用于查询持久游戏状态。
-- `random` 是本次执行使用的随机函数。
-
-返回类型必须准确等于 `handler_program_entry_t<TEvent>`，即 `program_entry<handler_program_context_t<TEvent>>`。普通事件的 handler Context 通常就是事件类型；费用事件可以映射到 `onpay_context<TCostEvent>`。
-
-没有匹配调用时，该 definition 不响应这一 view 与事件组合。调用存在但返回类型错误时，source 不合法，不能静默退化为无 handler。
-
-handler 可以直接修改 event，但不能通过 const table 修改持久状态。需要修改 table 时，返回由 `compile(...)` 保存的程序入口；返回空入口只表示不进入响应程序，已经完成的 event 修改仍然保留。需要结束对局时，在 `compile(...)` 中把公开 `end_game` 指令编入相应 Context 的程序，由 handler 返回保存的入口。
-
-计数护盾可以根据当前事件和实体状态决定是否返回前面编译的吸收程序：
+计数护盾响应示例：
 
 ```cpp
-static program_entry<damage_effect> handle(
-    const definition_type& definition,
-    const combat_status_view& self,
-    damage_effect& event,
-    const table&,
-    random_fn&
-)
+static program_entry handle(
+    const definition_type& definition, const combat_status_view& self, damage_effect& event,
+    handle_context& context)
 {
-    if(
-        event.value == 0
-        || event.target.player_id != self.player().id()
-        || event.flags.contains(damage_flag_bits::ignore_shield)
-        || self.state().count == 0
-    )
+    if(event.target.player_id != self.player().id()
+        || event.flags.contains(damage_flag_bits::ignore_shield))
     {
-        return program_entry<damage_effect>::null();
+        return {};
     }
-    return definition.absorption;
+    const auto absorbed = std::min({ event.value, self.state().count, definition.maximum_count });
+    if(absorbed == 0)
+    {
+        return {};
+    }
+    event.value -= absorbed;
+    return context.invoke(definition.absorption, combat_status_count_reduction{ self.id(), absorbed });
 }
 ```
+
+伤害调整发生在响应内，扣层发生在所选程序中；两者之间不保留一个供命令任意读取的外层事件 Context。
 
 角色初始化现使用 [character_initial_state](../reference/definition/queries/character_initial_state.md)；卡牌初始费用与目标检查也改用查询，不再为只返回数据的操作制造事件及空入口。事件字段和响应时序由 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)。
 
@@ -367,7 +347,7 @@ bool can_handle() const;
 
 普通静态 source 通常只需省略不支持的 `handle`，无需提供 `can_handle`。动态 adapter 可能拥有覆盖全部事件的通用 handler 模板，此时可根据脚本实际注册的回调返回准确结果。该判断只在编译定义库时发生，不增加对局运行时的字符串查询或脚本能力检查。
 
-`can_handle` 表示“存在这一类响应”，不保证 handler 每次调用都会返回非空入口。card 和 card status 可能为不同区域 view 提供不同响应，所以接口同时区分 view 与 event。
+`can_handle` 表示“存在这一类响应”，不保证 handler 每次调用都会提交后续效果。card 和 card status 可能为不同区域 view 提供不同响应，所以接口同时区分 view 与 event。
 
 ## 查询与结果保存
 
@@ -383,7 +363,7 @@ bool can_handle() const;
 
 Lua 等动态来源通过 C++ adapter 实现与静态 source 相同的接口，不使用另一套定义协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
 
-脚本中的 Context 标识需要由 adapter 分派到具体 C++ Context，再将相应 `any_command_for<TContext>` range 传给 `add_program<TContext>`。这仍然使用同一套公开命令和强类型程序入口。
+adapter 把定义的固定命令序列交给 `add_program`。每个程序所需输入的数量、类型和顺序由命令序列确定；响应时计算输入值，再提交对应的完整参数段。C++ 调用可以逐项传初始事件，动态 adapter 可以用 `span<const unsigned char>` 提交已经按该入口准备好的输入字节，不需要逐项恢复 C++ 类型或附带类型元信息。命令实现不因外层事件和实体类别组合而复制。
 
 ## 注册与生命周期
 
@@ -408,7 +388,7 @@ bool definition_source_library::add(const TSource& source);
 auto [library, id_map] = compile(source_library, initialization_program, round_program, givm::compile_mode::normal);
 ```
 
-`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都是无 Context 依赖的公开命令序列。`compile(...)` 不提供省略这两段程序的重载。
+`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都是`input_type = void` 的公开命令序列。`compile(...)` 不提供省略这两段程序的重载。
 
 ```cpp
 using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
@@ -443,7 +423,7 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 1. 读取每个 source 的定义类别、名称、标签和依赖声明。
 2. 从 `definition_selection` 指定的定义求出依赖闭包，或选择全部定义。
 3. 为选中的定义和标签建立 issued id 映射。
-4. 为每个选中的 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应强类型入口。
+4. 为每个选中的 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应程序入口。
 5. 保存空查询的结果与非空查询的调用函数；根据有效 `handle` 调用和可选 `can_handle` 结果安装事件运行时分派。
 6. 将 definition 响应程序与调用方提供的初始化程序、回合程序共同组成游戏规则程序。
 7. 所有 definition 完整构造后，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`。

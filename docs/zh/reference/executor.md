@@ -20,6 +20,8 @@
 | [`executor`](executor/executor.md) | 游戏对局的执行器 |
 | [`execution_view`](executor/execution_view.md) | 一处对局执行现场的视图 |
 | [`random_fn`](executor/random_fn.md) | 随机函数视图 |
+| [`handle_context`](executor/handle_context.md) | 事件响应使用的牌桌、随机源及效果提交接口 |
+| [`program_invoker`](executor/program_invoker.md) | 响应提交后续效果的调用对象 |
 
 ### 行动输入
 

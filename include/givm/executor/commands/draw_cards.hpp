@@ -31,16 +31,16 @@ namespace givm::detail
                 context.stack().pop<hand_card_id[], stack_count_t>();
                 return context.enter_next();
             }
-            prepare_broadcast(library, card_drawn{ .card = cards[cursor++] }, table, context.stack());
+            prepare_broadcast(library, card_drawn{ .card = cards[cursor++] }, table, context.stack(), context.position());
         }
     }
 
     inline void prepare_drawn_cards(
         const definition_library& library, const unrestricted_table& table,
-        execution_context& context)
+        execution_context& context, execution_position return_position)
     {
         const auto first_card = get<0>(context.stack().top<hand_card_id[], stack_count_t>()).front();
-        prepare_broadcast(library, card_drawn{ .card = first_card }, table, context.stack());
+        prepare_broadcast(library, card_drawn{ .card = first_card }, table, context.stack(), return_position);
     }
 
     inline execution_state draw_cards_execute(
@@ -85,7 +85,7 @@ namespace givm::detail
             return context.advance(instruction_extent<1, givm::draw_cards> + sizeof(execute_fn));
         }
 
-        prepare_drawn_cards(library, table, context);
+        prepare_drawn_cards(library, table, context, context.position() + instruction_extent<1, givm::draw_cards>);
         return context.advance(instruction_extent<1, givm::draw_cards>);
     }
 

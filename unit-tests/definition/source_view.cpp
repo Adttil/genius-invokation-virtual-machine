@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <givm/definition.hpp>
 #include <givm/executor.hpp>
@@ -97,20 +98,18 @@ namespace
             };
         }
 
-        static givm::handler_program_entry_t<givm::test_event> handle(
+        static givm::program_entry handle(
             const definition_type& definition,
             const givm::hand_card_view&,
             givm::test_event&,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
             definition.observation->handled = true;
             definition.observation->alpha_support = definition.alpha_support;
             definition.observation->beta_support = definition.beta_support;
             definition.observation->chosen_tag = definition.chosen_tag;
             definition.observation->filtered_supports = definition.filtered_supports;
-            return givm::handler_program_entry_t<givm::test_event>::null();
+            return {};
         }
     };
 
@@ -132,8 +131,8 @@ namespace
         {
             program_observation* observation;
             givm::definition_id<givm::support_view> support;
-            givm::program_entry<givm::test_event> first_entry;
-            givm::program_entry<givm::test_event> second_entry;
+            givm::program_entry first_entry;
+            givm::program_entry second_entry;
         };
 
         program_observation* observation;
@@ -154,11 +153,11 @@ namespace
             const auto support = context.resolve_id<givm::support_view>("ProgrammedSupport");
             observation->resolved_support = support;
 
-            const auto first_entry = context.add_program<givm::test_event>(std::tuple{
+            const auto first_entry = context.add_program(std::tuple{
                 givm::draw_cards{ .count = 0 },
                 givm::shuffle_deck{ .player = givm::player_id{ 0 } }
             });
-            const auto second_entry = context.add_program<givm::test_event>(
+            const auto second_entry = context.add_program(
                 std::vector{ givm::draw_cards{ .count = 0 } }
             );
             observation->first_event_entry_set = bool{ first_entry };
@@ -179,7 +178,7 @@ namespace
         struct definition_type
         {
             program_observation* observation;
-            givm::handler_program_entry_t<givm::cost_of_switch> onpay_entry;
+            givm::program_entry onpay_entry;
         };
 
         program_observation* observation;
@@ -192,9 +191,8 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             observation->onpay_compiled = true;
-            using context_type = givm::handler_program_context_t<givm::cost_of_switch>;
-            using instruction_type = givm::any_command_for<context_type>;
-            const auto entry = context.add_program<context_type>(std::vector{
+            using instruction_type = givm::any_command;
+            const auto entry = context.add_program(std::vector{
                 instruction_type{ givm::draw_cards{ .count = 0 } },
                 instruction_type{ givm::draw_cards{ .count = 0 } }
             });
@@ -246,15 +244,13 @@ namespace
             return enabled;
         }
 
-        static givm::handler_program_entry_t<givm::test_event> handle(
+        static givm::program_entry handle(
             const definition_type&,
             const givm::support_view&,
             givm::test_event&,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
-            return givm::handler_program_entry_t<givm::test_event>::null();
+            return {};
         }
     };
 
@@ -284,7 +280,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
 
     givm::definition_source_library source_library;
     REQUIRE(source_library.add(card, alpha, beta));
-    const auto program = std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ givm::game_result::both_loss } };
+    const auto program = std::tuple{ givm::draw_cards{ .count = 1 }, givm::test_command{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 
@@ -295,11 +291,6 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     executor.enter_entry(library);
     REQUIRE(executor.step(library, table, random_source) == givm::execution_state::finished);
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == 1);
-    givm::random_fn random{ random_source };
-    givm::test_event event;
-    const auto card_view = *table[givm::player_id{ 0 }].hand_cards().begin();
-    CHECK_FALSE(library[card_view.definition_id()].handle<givm::test_event>(card_view, event, table, random));
-
     REQUIRE(observation.handled);
     CHECK(observation.alpha_support.value() == id_map.get_id<givm::support_view>("AlphaSupport").value());
     CHECK(observation.beta_support.value() == id_map.get_id<givm::support_view>("BetaSupport").value());
@@ -361,3 +352,26 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     CHECK(observation.second_event_entry_set);
     CHECK(observation.onpay_entry_set);
 }
+
+#ifndef NDEBUG
+TEST_CASE("root programs reject commands that consume invocation inputs", "[source_view][program-input][debug]")
+{
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    const bool runtime_commands = GENERATE(false, true);
+    const bool initialization = GENERATE(false, true);
+    CAPTURE(mode, runtime_commands, initialization);
+    const givm::definition_source_library sources;
+    const auto valid = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
+    const auto check = [&](const auto& invalid)
+    {
+        if(initialization)
+            REQUIRE_THROWS_AS(compile(sources, invalid, valid, mode), std::invalid_argument);
+        else
+            REQUIRE_THROWS_AS(compile(sources, valid, invalid, mode), std::invalid_argument);
+    };
+    if(runtime_commands)
+        check(std::vector<givm::any_command>{ givm::set_active_character_from_input{} });
+    else
+        check(std::tuple{ givm::set_active_character_from_input{} });
+}
+#endif

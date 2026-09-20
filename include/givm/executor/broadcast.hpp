@@ -105,7 +105,8 @@ namespace givm::detail
 
     template<class TEvent>
     void prepare_broadcast(
-        const definition_library& library, const TEvent& event, const unrestricted_table& table, frame_stack& stack
+        const definition_library& library, const TEvent& event, const unrestricted_table& table,
+        frame_stack& stack, execution_position return_position
     )
     {
         auto targets = collect_all_broadcast_targets<TEvent>(library, table);
@@ -113,25 +114,24 @@ namespace givm::detail
             dynamic_array<handler_id<TEvent>>(targets),
             stack_count_t{},
             event,
-            handler_id<TEvent>{}
+            return_position
         );
     }
 
     template<class TEntityView, class TEvent>
-    handler_program_entry_t<TEvent> try_handle(
+    program_entry try_handle(
         const definition_library& library,
         TEntityView entity,
         TEvent& event,
-        const unrestricted_table& table,
-        random_fn& random
+        handle_context& response
     )
     {
         if(not entity)
         {
-            return handler_program_entry_t<TEvent>::null();
+            return {};
         }
         return library[entity.definition_id()].template handle<TEvent>(
-            entity, event, table, random
+            entity, event, response
         );
     }
 
@@ -143,25 +143,25 @@ namespace givm::detail
         random_fn& random
     )
     {
-        auto&& [targets, cursor, event, current_handler] =
+        auto&& [targets, cursor, event, return_position] =
             context.stack().top<
                 handler_id<TEvent>[],
                 stack_count_t,
                 TEvent,
-                handler_id<TEvent>
+                execution_position
             >();
         const auto target_count = static_cast<stack_count_t>(targets.size());
         while(cursor < target_count)
         {
-            current_handler = targets[static_cast<size_t>(cursor++)];
+            const auto current_handler = targets[static_cast<size_t>(cursor++)];
+            auto response = context.make_handle_context(table, random);
             const auto entry = std::visit([&](auto id)
             {
                 return try_handle(
                     library,
                     std::as_const(table)[id],
                     event,
-                    table,
-                    random
+                    response
                 );
             }, current_handler);
             if(entry)
@@ -180,7 +180,7 @@ namespace givm::detail
             handler_id<TEvent>[],
             stack_count_t,
             TEvent,
-            handler_id<TEvent>
+            execution_position
         >();
     }
 

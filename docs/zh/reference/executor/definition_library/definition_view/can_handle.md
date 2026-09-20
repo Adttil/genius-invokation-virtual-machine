@@ -42,16 +42,14 @@ struct support_source
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
 
-    static givm::handler_program_entry_t<givm::dice_roll_preparation> handle(
+    static givm::program_entry handle(
         const int& extra_rerolls,
         const givm::support_view&,
         givm::dice_roll_preparation& event,
-        const givm::table&,
-        givm::random_fn&
-    )
+        givm::handle_context& context)
     {
         event.reroll_count[0] += extra_rerolls;
-        return givm::handler_program_entry_t<givm::dice_roll_preparation>::null();
+        return {};
     }
 };
 

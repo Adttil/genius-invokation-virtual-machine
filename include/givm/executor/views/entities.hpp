@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "../executor.hpp"
-#include "../broadcast.hpp"
 
 namespace givm
 {
@@ -18,9 +17,8 @@ namespace givm
     public:
         character_id character() const noexcept
         {
-            const auto [event, handler] = std::as_const(*stack_).top<
-                active_character_changed, detail::handler_id<active_character_changed>
-            >();
+            const auto& event = get<0>(std::as_const(*stack_).top<
+                active_character_changed, detail::execution_position>());
             return event.current;
         }
     };

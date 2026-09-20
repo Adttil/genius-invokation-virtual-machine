@@ -5,17 +5,10 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class TContext>
 class program_entry;
 ```
 
-一段效果的入口。事件响应可以用它选择接下来执行的效果，也可以表示没有后续效果。
-
-## 模板参数
-
-|  |  |
-| --- | --- |
-| `TContext` | 允许进入这段效果时的 context；通常使用 `handler_program_context_t<TEvent>` |
+一段效果的入口。事件响应通过 `invoke` 选择接下来执行的效果；默认构造的空入口表示尚未登记效果。
 
 ## 成员函数
 
@@ -28,7 +21,7 @@ class program_entry;
 
 ## 注意
 
-非空入口由 [`definition_compile_context::add_program`](../executor/definition_compile_context/add_program.md) 产生，不能跨定义库使用。context 不同的入口不能相互转换。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](commands/end_game.md) 编入其程序。
+非空入口由 [`definition_compile_context::add_program`](../executor/definition_compile_context/add_program.md) 产生，不能跨定义库使用。入口不绑定外层响应事件或实体类别；调用方须通过 [`handle_context::invoke`](../executor/handle_context/invoke.md) 提供完整匹配的输入。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](commands/end_game.md) 编入其程序。
 
 ## 非成员函数
 
@@ -51,24 +44,22 @@ struct support_source
 
     std::string_view name() const { return "洗牌助手"; }
 
-    givm::handler_program_entry_t<givm::round_ended> compile(givm::definition_compile_context& context) const
+    givm::program_entry compile(givm::definition_compile_context& context) const
     {
-        auto entry = context.add_program<givm::handler_program_context_t<givm::round_ended>>(
+        auto entry = context.add_program(
             std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } }
         );
         std::println("已登记回合结束效果: {}", static_cast<bool>(entry));
         return entry;
     }
 
-    static givm::handler_program_entry_t<givm::round_ended> handle(
-        const givm::handler_program_entry_t<givm::round_ended>& entry,
+    static givm::program_entry handle(
+        const givm::program_entry& entry,
         const givm::support_view&,
         givm::round_ended&,
-        const givm::table&,
-        givm::random_fn&
-    )
+        givm::handle_context& context)
     {
-        return entry;
+        return context.invoke(entry);
     }
 };
 

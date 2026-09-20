@@ -6,7 +6,7 @@
 
 规则流程与事件效果只能组合核心给定集合中的命令；公开接口不支持自行定义新的命令类型。
 
-具有 `context_type = void` 的命令可用于一般操作；具有事件类型的命令只能放入对应事件的响应。例如 [`absorb_damage_by_count`](commands/absorb_damage_by_count.md) 用于伤害结算时的抵挡效果。命令用于描述规则，其内部执行函数不属于公开接口；对局通过 [`executor`](../executor/executor.md) 推进，并通过执行现场观察结果和提交输入。
+每个命令通过 `input_type` 声明输入。固定参数命令使用 `void`；消费参数的命令要求响应通过 `invoke` 显式提交相应初始事件。命令不借用外层响应事件或响应者。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
 
 ## 开局与牌堆
 
@@ -16,6 +16,7 @@
 | [`enter_character`](commands/enter_character.md) | 角色入场命令 |
 | [`shuffle_deck`](commands/shuffle_deck.md) | 洗牌命令 |
 | [`set_active_character`](commands/set_active_character.md) | 直接设置出战角色的命令 |
+| [`set_active_character_from_input`](commands/set_active_character_from_input.md) | 按输入目标设置出战角色的命令 |
 | [`select_active_character_both`](commands/select_active_character_both.md) | 双方开局出战角色的选择命令 |
 | [`draw_cards`](commands/draw_cards.md) | 抽牌命令 |
 | [`replace_cards`](commands/replace_cards.md) | 单方换牌命令 |
@@ -37,7 +38,7 @@
 | | |
 | --- | --- |
 | [`deal_damage`](commands/deal_damage.md) | 伤害结算命令 |
-| [`absorb_damage_by_count`](commands/absorb_damage_by_count.md) | 消耗实体计数以抵挡伤害的命令 |
+| [`reduce_combat_status_count`](commands/reduce_combat_status_count.md) | 按提交的数量扣除出战状态计数的命令 |
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
 | [`set_element_aura`](commands/set_element_aura.md) | 直接设置元素附着的命令 |
 
@@ -51,7 +52,6 @@
 
 | | |
 | --- | --- |
-| [`any_command_for`](any_command_for.md) | 命令 variant |
-| [`command_compatible_with`](command_compatible_with.md) | context 兼容性 |
+| [`any_command`](any_command.md) | 命令 variant |
 | [`relative_player`](commands/relative_player.md) | 相对于当前行动玩家的一方 |
 | [`action_argument`](../executor/action_argument.md) | 行动输入参数 |

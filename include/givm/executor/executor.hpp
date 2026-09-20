@@ -10,6 +10,7 @@
 #include "random_fn.hpp"
 #include "../definition/events.hpp"
 #include "library.hpp"
+#include "handle_context.hpp"
 #include "../table.hpp"
 #include "../utils/debug.hpp"
 #include "../utils/stack.hpp"
@@ -81,7 +82,6 @@ namespace givm::detail
     class execution_context
     {
     public:
-        struct return_info { execution_position return_position; };
         constexpr execution_context(const execution_context&) = default;
         constexpr execution_context(execution_context&&) noexcept = default;
         constexpr execution_context& operator=(const execution_context&) = default;
@@ -128,13 +128,26 @@ namespace givm::detail
 
         constexpr execution_state yield(execution_state state) const noexcept { return state; }
 
-        template<class TContext>
-        constexpr execution_state enter(program_entry<TContext> entry)
+        program_invoker make_program_invoker()
         {
-            GIVM_ASSERT(not entry.is_null());
-            stack_.push(return_info{ position_ });
-            position_ = entry.position_;
-            return continue_execution;
+            return program_invoker{ stack_ };
+        }
+
+        handle_context make_handle_context(const table& table, random_fn& random)
+        {
+            return handle_context{ table, random, make_program_invoker() };
+        }
+
+        static handle_context make_handle_context(
+            frame_stack& stack, const table& table, random_fn& random)
+        {
+            return handle_context{ table, random, program_invoker{ stack } };
+        }
+
+        constexpr execution_state enter(program_entry entry)
+        {
+            GIVM_ASSERT(static_cast<bool>(entry));
+            return jump(entry.position_);
         }
 
         constexpr execution_state end_game(game_result result)
@@ -146,10 +159,9 @@ namespace givm::detail
 
         constexpr execution_state return_from_subroutine()
         {
-            const auto [info] = stack_.top<return_info>();
-            const auto target = info.return_position;
-            stack_.pop<return_info>();
-            return jump(target);
+            // The caller keeps this position until its sequence of calls finishes.
+            const auto [position] = stack_.top<execution_position>();
+            return jump(position);
         }
 
     private:

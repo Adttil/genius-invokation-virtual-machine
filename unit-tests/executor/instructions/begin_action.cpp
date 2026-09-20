@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -33,7 +34,7 @@ namespace
         {
             action_log* log;
             givm::action_speed speed;
-            givm::handler_program_entry_t<givm::cost_of_switch> payment;
+            givm::program_entry payment;
             bool free_switch;
         };
         action_log* log;
@@ -45,13 +46,13 @@ namespace
         std::string_view name() const noexcept { return "ActionObserver"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            givm::handler_program_entry_t<givm::cost_of_switch> payment;
+            givm::program_entry payment;
             if(terminal_payment)
-                payment = context.add_program<givm::handler_program_context_t<givm::cost_of_switch>>(std::tuple{
+                payment = context.add_program(std::tuple{
                     givm::end_game{ .result = givm::game_result::player_1_win }
                 });
             else if(draw_payment)
-                payment = context.add_program<givm::handler_program_context_t<givm::cost_of_switch>>(std::tuple{
+                payment = context.add_program(std::tuple{
                     givm::draw_cards{ .count = 1 }
                 });
             return { log, speed, payment, free_switch };
@@ -60,43 +61,44 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry<givm::before_action> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::before_action&,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            data.log->opportunities.push_back(table.state().active_player);
-            return givm::program_entry<givm::before_action>::null();
+            data.log->opportunities.push_back(context.table().state().active_player);
+            return {};
         }
-        static givm::handler_program_entry_t<givm::cost_of_switch> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::cost_of_switch& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context& context)
         {
             ++data.log->previews;
             event.requirement.speed = data.speed;
             if(data.free_switch) event.requirement.dice_requirement.any = 0;
-            return data.payment;
+            if(data.payment) return context.invoke(givm::substack_t{}, data.payment);
+            return {};
         }
-        static givm::program_entry<givm::active_character_changed> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            CHECK(table[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->switches.push_back(event.current);
-            return givm::program_entry<givm::active_character_changed>::null();
+            return {};
         }
-        static givm::program_entry<givm::round_end_declared> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::round_end_declared&,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            data.log->declarations.push_back(table.state().active_player);
-            return givm::program_entry<givm::round_end_declared>::null();
+            data.log->declarations.push_back(context.table().state().active_player);
+            return {};
         }
-        static givm::program_entry<givm::round_ended> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::round_ended&,
-            const givm::table& table, givm::random_fn&)
+            givm::handle_context& context)
         {
-            data.log->endings.push_back(table.state().active_player);
-            return givm::program_entry<givm::round_ended>::null();
+            data.log->endings.push_back(context.table().state().active_player);
+            return {};
         }
     };
     struct zero_random { std::uint32_t operator()() const noexcept { return 0; } };
@@ -117,8 +119,8 @@ namespace
         {
             quote_control* control;
             givm::dice_counts initial_dice;
-            givm::handler_program_entry_t<givm::cost_of_switch> first_payment;
-            givm::handler_program_entry_t<givm::cost_of_switch> second_payment;
+            givm::program_entry first_payment;
+            givm::program_entry second_payment;
         };
         quote_control* control;
         std::string_view source_name = "Quote";
@@ -130,10 +132,10 @@ namespace
             return {
                 control,
                 initial_dice,
-                context.add_program<givm::handler_program_context_t<givm::cost_of_switch>>(std::tuple{
+                context.add_program(std::tuple{
                     givm::draw_cards{ .count = 1 }
                 }),
-                context.add_program<givm::handler_program_context_t<givm::cost_of_switch>>(std::tuple{
+                context.add_program(std::tuple{
                     givm::draw_cards{ .count = 2 }
                 })
             };
@@ -142,19 +144,19 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::handler_program_entry_t<givm::dice_roll_preparation> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::dice_roll_preparation& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context&)
         {
             if(data.initial_dice.total() != 0)
             {
                 event.fixed_dice[0] = data.initial_dice;
             }
-            return givm::handler_program_entry_t<givm::dice_roll_preparation>::null();
+            return {};
         }
-        static givm::handler_program_entry_t<givm::cost_of_switch> handle(
+        static givm::program_entry handle(
             const definition_type& data, const givm::character_view&, givm::cost_of_switch& event,
-            const givm::table&, givm::random_fn&)
+            givm::handle_context& context)
         {
             auto& control = *data.control;
             control.quoted.push_back(event.target);
@@ -168,9 +170,9 @@ namespace
             }
             if(not control.enable_payment)
             {
-                return givm::handler_program_entry_t<givm::cost_of_switch>::null();
+                return {};
             }
-            return event.target.index == 1 ? data.first_payment : data.second_payment;
+            return context.invoke(givm::substack_t{}, event.target.index == 1 ? data.first_payment : data.second_payment, std::span<const unsigned char>{});
         }
     };
 
@@ -313,13 +315,13 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     for(std::uint32_t count = 1; count <= 2; ++count)
     {
         const auto action = target.view_in<givm::execution_state::action_selection>();
-        const auto& cost = action.calculate_switch_cost(library, table, 0);
-        CHECK(log.previews == count);
+        const auto& cost = count == 1 ? action.calculate_switch_cost(library, table, 0) : action.switch_cost(0);
+        CHECK(log.previews == 1);
         CHECK(cost.target == givm::character_id{ givm::player_id{ 0 }, 1 });
         CHECK(cost.requirement.dice_requirement.any == 1);
         CHECK(action.switch_payment_validate(table, 0, dice({ { givm::elemental_dice::omni, 1 } })) == givm::switch_payment_validation::valid);
         CHECK(action.switch_payment_validate(table, 0, {}) == givm::switch_payment_validation::requirement_mismatch);
-        CHECK(log.previews == count);
+        CHECK(log.previews == 1);
         CHECK(log.opportunities == opportunities);
         REQUIRE(action.switch_target_count() == 1);
         const auto& cached_cost = action.switch_cost(0);
@@ -328,14 +330,14 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
         CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 0 });
         CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
     }
-    CHECK(log.previews == 2);
+    CHECK(log.previews == 1);
     CHECK(log.opportunities == opportunities);
     givm::dice_counts paid;
     paid[givm::elemental_dice::omni] = 1;
     target.view_in<givm::execution_state::action_selection>().switch_active_character(0, paid);
     REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
-    CHECK(log.previews == 2);
+    CHECK(log.previews == 1);
     CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 0 });
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
 }
@@ -473,7 +475,7 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
     CHECK(log.switches == std::vector{ givm::character_id{ givm::player_id{ 0 }, 1 } });
 }
 
-TEST_CASE("synchronous quotes are independent and copied executions commit only their chosen candidate", "[begin_action][onpay][compile-mode]")
+TEST_CASE("synchronous quotes are independent and copied executions commit only their chosen candidate", "[begin_action][onpay][compile-mode][raw-input]")
 {
     const bool observed = GENERATE(false, true);
     const bool quote_both = GENERATE(false, true);
@@ -517,12 +519,12 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     CHECK(first_cost.requirement.dice_requirement.any == 2);
     if(quote_both)
     {
-        CHECK(action.calculate_switch_cost(library, table, 1).requirement.dice_requirement.any == 3);
+        CHECK(action.switch_cost(1).requirement.dice_requirement.any == 3);
     }
-    CHECK(action.calculate_switch_cost(library, table, 0).requirement.dice_requirement.any == 2);
+    CHECK(action.switch_cost(0).requirement.dice_requirement.any == 2);
     CHECK(action.switch_cost(1).target == second);
     CHECK(action.switch_cost(1).requirement.dice_requirement.any == (quote_both ? 3 : 1));
-    const auto expected_quotes = quote_both ? std::vector{ second, first, second, first } : std::vector{ first, first };
+    const auto expected_quotes = quote_both ? std::vector{ second, first } : std::vector{ first };
     CHECK(control.quoted == expected_quotes);
     CHECK(empty_control.quoted == expected_quotes);
     CHECK(random.calls == calls_before_queries);
@@ -633,9 +635,10 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
         { "omni satisfies its explicit requirement and substitutes", { .fixed = dice({ { omni, 1 }, { pyro, 1 } }) }, dice({ { omni, 2 } }), valid },
         { "payment totals do not wrap at 255", { .same = 1, .any = 255 }, dice({ { omni, 255 }, { pyro, 1 } }), insufficient_dice }
     };
-    const auto action = target.view_in<givm::execution_state::action_selection>();
     for(const auto& example : examples)
     {
+        auto branch = target;
+        const auto action = branch.view_in<givm::execution_state::action_selection>();
         CAPTURE(example.description);
         control.requirement = example.requirement;
         action.calculate_switch_cost(library, table, 0);
@@ -653,10 +656,9 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
     CHECK(random.calls == random_calls);
 }
 
-TEST_CASE("recalculating a candidate replaces a previously nonempty payment response", "[begin_action][onpay][compile-mode]")
+TEST_CASE("repeated quote reads retain the cached payment response", "[begin_action][onpay][compile-mode]")
 {
     const bool observed = GENERATE(false, true);
-    const bool automatic_quote = GENERATE(false, true);
     quote_control control{ .enable_payment = true };
     const quote_source source{ &control };
     const givm::test::initialized_character_source character;
@@ -686,18 +688,11 @@ TEST_CASE("recalculating a candidate replaces a previously nonempty payment resp
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
     CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 0 });
 
-    control.enable_payment = false;
-    if(automatic_quote)
-    {
-        action.switch_active_character(library, table, 0, paid);
-    }
-    else
-    {
-        CHECK(action.calculate_switch_cost(library, table, 0).requirement.dice_requirement.any == 1);
-        CHECK(action.switch_payment_validate(table, 0, paid) == givm::switch_payment_validation::valid);
-        action.switch_active_character(0, paid);
-    }
-    REQUIRE(control.quoted.size() == 2);
+    CHECK(action.switch_cost(0).requirement.dice_requirement.any == 1);
+    CHECK(action.switch_cost(0).requirement.dice_requirement.any == 1);
+    CHECK(action.switch_payment_validate(table, 0, paid) == givm::switch_payment_validation::valid);
+    action.switch_active_character(0, paid);
+    REQUIRE(control.quoted.size() == 1);
     auto state = target.step(library, table, random);
     if(observed)
     {
@@ -706,10 +701,10 @@ TEST_CASE("recalculating a candidate replaces a previously nonempty payment resp
         state = target.step(library, table, random);
     }
     REQUIRE(state == givm::execution_state::action_selection);
-    CHECK(control.quoted.size() == 2);
+    CHECK(control.quoted.size() == 1);
     CHECK(random.calls == random_calls);
-    CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
-    CHECK(table[givm::player_id{ 0 }].deck_card_count() == 1);
+    CHECK(table[givm::player_id{ 0 }].hand_card_count() == 1);
+    CHECK(table[givm::player_id{ 0 }].deck_card_count() == 0);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 3);
     CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 1 });
     CHECK(table.state().active_player == givm::player_id{ 1 });

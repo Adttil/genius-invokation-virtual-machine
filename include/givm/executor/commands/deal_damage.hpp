@@ -82,13 +82,14 @@ namespace givm::detail
     }
 
     inline void prepare_after_damage_broadcast(
-        const definition_library& library, const unrestricted_table& table, execution_context& context
+        const definition_library& library, const unrestricted_table& table,
+        execution_context& context, execution_position return_position
     )
     {
         const auto [event] = context.stack().top<after_damage>();
         const auto next_event = event;
         context.stack().pop<after_damage>();
-        prepare_broadcast(library, next_event, table, context.stack());
+        prepare_broadcast(library, next_event, table, context.stack(), return_position);
     }
 
     // ReactionOffset counts continuation opcodes from the current position. The
@@ -102,12 +103,14 @@ namespace givm::detail
         const auto incoming_element = element_from_damage_type(event.type);
         if(incoming_element != element::none && begin_element_application(
             library, event.source, event.target, incoming_element,
-            element_application_cause::damage, table, context
+            element_application_cause::damage, table, context,
+            context.position() + ReactionOffset * sizeof(execute_fn)
         ))
         {
             return context.advance(ReactionOffset * sizeof(execute_fn));
         }
-        prepare_after_damage_broadcast(library, table, context);
+        prepare_after_damage_broadcast(library, table, context,
+            context.position() + (ReactionOffset + 2) * sizeof(execute_fn));
         return context.advance((ReactionOffset + 2) * sizeof(execute_fn));
     }
 
@@ -147,7 +150,7 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<after_elemental_reaction>(context);
-        prepare_after_damage_broadcast(library, table, context);
+        prepare_after_damage_broadcast(library, table, context, context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
 
@@ -162,9 +165,7 @@ namespace givm::detail
             return continue_execution;
         }
 
-        auto&& [targets, cursor, event, current_handler] = context.stack().top<
-            handler_id<damage_effect>[], stack_count_t, damage_effect, handler_id<damage_effect>
-        >();
+        auto& event = get<0>(context.stack().top<damage_effect, execution_position>());
         auto& target_state = table[event.target].state();
         target_state.health = event.value >= target_state.health ? 0 : target_state.health - event.value;
         const after_damage next_event{
@@ -196,9 +197,7 @@ namespace givm::detail
             return continue_execution;
         }
 
-        auto&& [targets, cursor, event, current_handler] = context.stack().top<
-            handler_id<damage_calculation>[], stack_count_t, damage_calculation, handler_id<damage_calculation>
-        >();
+        auto& event = get<0>(context.stack().top<damage_calculation, execution_position>());
         const auto incoming_element = element_from_damage_type(event.type);
         if(not event.already_handled_reaction && incoming_element != element::none)
         {
@@ -216,7 +215,7 @@ namespace givm::detail
             .flags = event.flags
         };
         pop_broadcast<damage_calculation>(context);
-        prepare_broadcast(library, next_event, table, context.stack());
+        prepare_broadcast(library, next_event, table, context.stack(), context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
 
@@ -238,7 +237,8 @@ namespace givm::detail
                 .flags = command.flags
             },
             table,
-            context.stack()
+            context.stack(),
+            context.position() + instruction_extent<1, givm::deal_damage>
         );
         return context.advance(instruction_extent<1, givm::deal_damage>);
     }

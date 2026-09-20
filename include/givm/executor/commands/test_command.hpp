@@ -17,7 +17,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&)
     {
-        prepare_broadcast(library, test_event{}, table, context.stack());
+        prepare_broadcast(library, test_event{}, table, context.stack(), context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
     inline void compile(program_writer& writer, const test_command&, compile_mode)

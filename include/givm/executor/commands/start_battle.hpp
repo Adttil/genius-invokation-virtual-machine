@@ -30,7 +30,7 @@ namespace givm::detail
         {
             return context.advance(2 * sizeof(execute_fn));
         }
-        prepare_broadcast(library, battle_started{}, table, context.stack());
+        prepare_broadcast(library, battle_started{}, table, context.stack(), context.position() + sizeof(execute_fn));
         context.enter_next();
         return broadcast_battle_start(library, table, context, random);
     }

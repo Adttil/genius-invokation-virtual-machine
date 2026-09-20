@@ -17,7 +17,7 @@
 | [`definition_source_library`](reference/definition/definition_source_library.md) | 定义源库 |
 | [`definition_source_library::make_issued_id_map`](reference/definition/definition_source_library/make_issued_id_map.md) | 为选定定义建立 ID 映射 |
 | [命令](reference/definition/commands.md) | 游戏规则的操作描述 |
-| [`any_command_for`](reference/definition/any_command_for.md) | 兼容给定 context 的命令 variant |
+| [`any_command`](reference/definition/any_command.md) | 核心命令 variant |
 | [事件](reference/definition/events.md) | 可响应的游戏事件 |
 | [查询](reference/definition/queries.md) | 定义提供的规则信息与检查结果 |
 
@@ -44,6 +44,8 @@
 | [`execution_state`](reference/executor/execution_state.md) | 对局执行现场的种类 |
 | [`execution_view`](reference/executor/execution_view.md) | 对局执行现场的视图 |
 | [`random_fn`](reference/executor/random_fn.md) | 随机函数视图 |
+| [`handle_context`](reference/executor/handle_context.md) | 事件响应使用的牌桌、随机源及效果提交接口 |
+| [`program_invoker`](reference/executor/program_invoker.md) | 响应提交后续效果的调用对象 |
 
 ## [通用工具](reference/utils.md)
 

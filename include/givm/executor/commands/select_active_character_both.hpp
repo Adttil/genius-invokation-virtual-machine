@@ -42,8 +42,10 @@ namespace givm::detail
         const auto player1 = first.player_id == player_id{ 0 } ? second : first;
         context.stack().pop<std::size_t, character_id>();
 
-        prepare_broadcast(library, active_character_changed{ .current = player1 }, table, context.stack());
-        prepare_broadcast(library, active_character_changed{ .current = player0 }, table, context.stack());
+        prepare_broadcast(library, active_character_changed{ .current = player1 }, table,
+            context.stack(), context.position() + 2 * sizeof(execute_fn));
+        prepare_broadcast(library, active_character_changed{ .current = player0 }, table,
+            context.stack(), context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
 

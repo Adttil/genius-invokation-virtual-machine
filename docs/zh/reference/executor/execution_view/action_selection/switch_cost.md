@@ -19,10 +19,10 @@ constexpr const cost_of_switch& switch_cost(std::size_t target_index) const noex
 
 ## 返回值
 
-借用指定切换候选的只读费用引用。尚未计算时为默认费用，已经计算后为当前结果。对应角色的 ID 也可通过 [`switch_target`](switch_target.md) 查询。
+指定候选已经完整计算的只读费用引用。
 
 ## 注意
 
-本操作只读取费用。通过 [`calculate_switch_cost`](calculate_switch_cost.md) 重新计算该角色的费用后，引用所见的结果随之更新；引用不保存独立快照。下一次推进或重建现场后，先前取得的引用失效。
+调用方须先为该候选完成一次 [`calculate_switch_cost`](calculate_switch_cost.md)。本操作可反复调用，只读取已计算结果，不触发费用响应。
 
-候选计算抛出异常后，对应费用可能只更新了一部分；须完整重算成功后才能检查或采用。
+报价其他候选可能使之前取得的费用引用失效；下一次推进或重建现场也会使引用失效。需要再次读取时，通过本 view 重新取得引用。报价失败的候选不能读取、检查或采用。

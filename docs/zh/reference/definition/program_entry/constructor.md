@@ -26,23 +26,23 @@ constexpr program_entry() noexcept = default;
 struct result_source
 {
     using definition_category = givm::support_view;
-    using entry_type = givm::program_entry<givm::round_ended>;
+    using entry_type = givm::program_entry;
 
     std::string_view name() const { return "终局判定"; }
     entry_type compile(givm::definition_compile_context& context) const
     {
         entry_type effect{};
         std::println("尚无后续效果: {}", effect.is_null());
-        effect = context.add_program<givm::round_ended>(
+        effect = context.add_program(
             std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } });
         std::println("已选择终局效果: {}", static_cast<bool>(effect));
         return effect;
     }
-    static entry_type handle(
+    static givm::program_entry handle(
         const entry_type& entry, const givm::support_view&, givm::round_ended&,
-        const givm::table&, givm::random_fn&)
+        givm::handle_context& context)
     {
-        return entry;
+        return context.invoke(entry);
     }
 };
 

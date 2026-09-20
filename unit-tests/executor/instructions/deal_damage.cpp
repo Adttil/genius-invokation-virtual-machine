@@ -61,73 +61,63 @@ namespace
             return { .max_health = 10, .health = 10 };
         }
 
-        static givm::program_entry<givm::damage_calculation> handle(
+        static givm::program_entry handle(
             const definition_type& data,
             const givm::character_view&,
             givm::damage_calculation& event,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
             data.log->order.push_back(observed_event::calculation);
             event.value += data.log->calculation_bonus;
             event.multiplier_numerator = data.log->multiplier_numerator;
             event.multiplier_denominator = data.log->multiplier_denominator;
-            return givm::program_entry<givm::damage_calculation>::null();
+            return {};
         }
 
-        static givm::program_entry<givm::damage_effect> handle(
+        static givm::program_entry handle(
             const definition_type& data,
             const givm::character_view&,
             givm::damage_effect& event,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
             data.log->order.push_back(observed_event::effect);
             event.value = event.value < data.log->effect_reduction
                 ? 0
                 : event.value - data.log->effect_reduction;
-            return givm::program_entry<givm::damage_effect>::null();
+            return {};
         }
 
-        static givm::program_entry<givm::elemental_reaction_will_occur> handle(
+        static givm::program_entry handle(
             const definition_type& data,
             const givm::character_view&,
             givm::elemental_reaction_will_occur& event,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
             data.log->order.push_back(observed_event::reaction_will_occur);
             data.log->reaction = event.reaction;
             data.log->reaction_cause = event.cause;
-            return givm::program_entry<givm::elemental_reaction_will_occur>::null();
+            return {};
         }
 
-        static givm::program_entry<givm::after_elemental_reaction> handle(
+        static givm::program_entry handle(
             const definition_type& data,
             const givm::character_view&,
             givm::after_elemental_reaction&,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
             data.log->order.push_back(observed_event::after_reaction);
-            return givm::program_entry<givm::after_elemental_reaction>::null();
+            return {};
         }
 
-        static givm::program_entry<givm::after_damage> handle(
+        static givm::program_entry handle(
             const definition_type& data,
             const givm::character_view&,
             givm::after_damage& event,
-            const givm::table&,
-            givm::random_fn&
-        )
+            givm::handle_context&)
         {
             data.log->order.push_back(observed_event::after_damage);
             data.log->after_damage_value = event.value;
-            return givm::program_entry<givm::after_damage>::null();
+            return {};
         }
     };
 

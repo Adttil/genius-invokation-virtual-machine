@@ -14,7 +14,7 @@ struct test_command;
 
 | | |
 | --- | --- |
-| `context_type` | `void`，表示不依赖特定事件语境 |
+| `input_type` | `void`，表示不消费调用输入 |
 
 ## 注意
 
@@ -37,12 +37,12 @@ struct observer_source
     int* count;
     std::string_view name() const { return "observer"; }
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
-    static givm::program_entry<givm::test_event> handle(
+    static givm::program_entry handle(
         const definition_type& data, const givm::character_view&,
-        givm::test_event&, const givm::table&, givm::random_fn&)
+        givm::test_event&, givm::handle_context& context)
     {
         ++*data.count;
-        return givm::program_entry<givm::test_event>::null();
+        return {};
     }
 };
 

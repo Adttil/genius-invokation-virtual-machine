@@ -34,7 +34,7 @@ class execution_view<execution_state::action_selection>;
 | [`switch_cost`](action_selection/switch_cost.md) | 取得指定角色的当前切换费用。 |
 | [`calculate_switch_cost`](action_selection/calculate_switch_cost.md) | 计算切换至指定角色的费用并立即返回结果。 |
 | [`switch_payment_validate`](action_selection/switch_payment_validate.md) | 检查支付骰子的费用匹配、持有数量及出战角色充能。 |
-| [`switch_active_character`](action_selection/switch_active_character.md) | 选择切换角色及支付骰子，可采用已计算费用或同步重新报价。 |
+| [`switch_active_character`](action_selection/switch_active_character.md) | 选择切换角色及支付骰子，可采用已计算费用或同步计算报价。 |
 | [`declare_round_end`](action_selection/declare_round_end.md) | 填写当前玩家宣布结束回合的请求。 |
 
 ## 注意
@@ -47,7 +47,7 @@ class execution_view<execution_state::action_selection>;
 
 出牌候选只包含当前行动玩家仍在手中的有效手牌。牌的效果目标仍使用 ID，检查与出牌接口接收目标 span，默认空 span 表示不选目标，只采用前两个元素。目标检查可以从空选择开始，并区分无效、必须继续选择、可以完成也可以继续，以及已完成且不能继续。支付与目标检查相互独立，由调用方按需使用，提交时不会自动执行检查。
 
-切换候选只包含当前行动玩家存活、非出战的角色；费用响应不能改变目标。刚建立现场时费用为默认值；费用预览同步更新指定候选的报价。支付检查及采用已计算费用的选择操作要求该候选已经完整报价，由调用方保证；提交行动时不会自动检查支付是否合法。
+切换候选只包含当前行动玩家存活、非出战的角色；费用响应不能改变目标。费用预览同步计算指定候选的报价。每个候选在当前行动窗口只能计算一次，之后可反复读取；调用方自行保证，库不进行运行期检查。支付检查及采用已计算费用的选择操作要求该候选已经完整报价，由调用方保证；提交行动时不会自动检查支付是否合法。
 
 充能属于统一费用，直接从支付阶段的出战角色扣除；行动输入只选择骰子，不单独选择充能。
 

@@ -4,7 +4,7 @@
 
 事件描述对局中正在发生或已经完成的事情。实体定义可以响应相关事件，读取通知的数据，或在允许修改的时机调整即将生效的效果。
 
-事件类型也限定其响应中能够使用的[命令](commands.md)。这种限制表达响应发生的语境，例如抵挡伤害只能用于伤害结算的响应。每次触发可以选择响应实体的范围与顺序，不要求所有事件使用统一的广播顺序。
+事件也可用作命令的初始输入，但是否广播由具体命令决定。每次触发可以选择响应实体的范围与顺序，不要求所有事件使用统一的广播顺序。
 
 ## 回合与投骰
 
@@ -36,7 +36,6 @@
 | [`cost_of_card`](events/cost_of_card.md) | 出牌的费用计算事件 |
 | [`elemental_dice_requirement`](events/elemental_dice_requirement.md) | 一项行动对元素骰的需求 |
 | [`action_cost_requirement`](events/action_cost_requirement.md) | 一项行动的骰子、充能费用与行动速度 |
-| [`cost_effect_argument`](events/cost_effect_argument.md) | 费用调整效果的减费记录 |
 
 ## 卡牌与技能
 
@@ -76,6 +75,7 @@
 | [`character_defeated`](events/character_defeated.md) | 角色被击倒后的通知 |
 | [`entity_will_leave`](events/entity_will_leave.md) | 实体离场前的事件 |
 | [`entity_left`](events/entity_left.md) | 实体离场后的通知 |
+| [`combat_status_count_reduction`](events/combat_status_count_reduction.md) | 出战状态计数扣除的初始输入 |
 | [`entity_count_changed`](events/entity_count_changed.md) | 实体计数变化后的通知 |
 
 ## 标识类型别名

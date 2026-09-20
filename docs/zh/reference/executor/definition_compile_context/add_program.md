@@ -5,32 +5,31 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-template<class TContext, class TCommands>
-program_entry<TContext> add_program(TCommands&& commands);
+template<class TCommands>
+program_entry add_program(TCommands&& commands);
 ```
 
-登记响应事件时需要依次执行的一段效果，并取得可在以后响应时返回的入口。
+登记响应事件时需要依次执行的一段效果，并取得可在以后响应时提交的入口。
 
 ## 模板参数
 
 |  |  |
 | --- | --- |
-| `TContext` | 这段效果适用的 context；事件处理通常使用 `handler_program_context_t<TEvent>` |
 | `TCommands` | 命令序列，可为 tuple-like 对象或可遍历范围 |
 
 ## 参数
 
 |  |  |
 | --- | --- |
-| `commands` | 按顺序执行的[核心命令](../../definition/commands.md)，也可用 [`any_command_for`](../../definition/any_command_for.md) 保存；每项须与 `TContext` 兼容 |
+| `commands` | 按顺序执行的[核心命令](../../definition/commands.md)，也可用 [`any_command`](../../definition/any_command.md) 保存 |
 
 ## 返回值
 
-登记效果的非空 [`program_entry<TContext>`](../../definition/program_entry.md)。
+登记效果的非空 [`program_entry`](../../definition/program_entry.md)。
 
 ## 注意
 
-返回入口只用于本次编译产生的定义库。效果正常完成后回到发起它的结算；若执行期间结束对局，则不再返回原结算。本函数只登记效果，不立即执行；所登记效果沿用最终 `compile` 调用选择的编译模式。
+返回入口只用于本次编译产生的定义库。效果正常完成后回到发起它的结算；若执行期间结束对局，则不再返回原结算。本函数只登记效果，不立即执行。命令的 `input_type` 按顺序确定所需输入，`void` 不占输入位置；响应提交入口时须同时提供匹配输入。所登记效果沿用最终 `compile` 调用选择的编译模式。
 
 ## 示例
 
@@ -47,24 +46,22 @@ struct support_source
 
     std::string_view name() const { return "洗牌助手"; }
 
-    givm::handler_program_entry_t<givm::round_ended> compile(givm::definition_compile_context& context) const
+    givm::program_entry compile(givm::definition_compile_context& context) const
     {
-        auto entry = context.add_program<givm::handler_program_context_t<givm::round_ended>>(
+        auto entry = context.add_program(
             std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } }
         );
         std::println("已登记回合结束效果: {}", static_cast<bool>(entry));
         return entry;
     }
 
-    static givm::handler_program_entry_t<givm::round_ended> handle(
-        const givm::handler_program_entry_t<givm::round_ended>& entry,
+    static givm::program_entry handle(
+        const givm::program_entry& entry,
         const givm::support_view&,
         givm::round_ended&,
-        const givm::table&,
-        givm::random_fn&
-    )
+        givm::handle_context& context)
     {
-        return entry;
+        return context.invoke(entry);
     }
 };
 

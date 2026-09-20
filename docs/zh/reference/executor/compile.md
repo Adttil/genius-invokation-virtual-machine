@@ -59,11 +59,11 @@ auto compile(
 
 |  |  |
 | --- | --- |
-| `std::invalid_argument` | 选择了未知定义，或定义源编译时查询了未声明的依赖 |
+| `std::invalid_argument` | 选择了未知定义，或定义源编译时查询了未声明的依赖；未定义 `NDEBUG` 时，初始化或回合流程需要响应输入也会抛出 |
 
 ## 注意
 
-两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command_for`](../definition/any_command_for.md) 保存。命令须与 `void` context 兼容。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
+两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。命令的 `input_type` 须为 `void`，不消费响应输入。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
 
 `mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 `executor::step` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
 

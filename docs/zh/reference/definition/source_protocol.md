@@ -46,24 +46,22 @@
 源可以为所属类别的只读实体 view 和可订阅事件提供以下静态函数，其中 `definition_type` 代表本源 `compile` 的实际返回类型：
 
 ```cpp
-static givm::handler_program_entry_t<TEvent> handle(
-    const definition_type& definition,
-    const TView& entity,
-    TEvent& event,
-    const givm::table& card_table,
-    givm::random_fn& random
-);
+static givm::program_entry handle(
+    const definition_type& definition, const TView& entity, TEvent& event,
+    givm::handle_context& context);
 ```
 
 `TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。没有匹配的函数就表示不响应。
 
-响应函数可以读取实体与牌桌，修改事件允许调整的成员，然后返回后续效果的入口；不需要执行额外效果时返回空入口。若需执行后续操作，先在 `compile` 中组合[核心给定的命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记，并把取得的入口保存在定义数据中。返回入口的类型必须正好是 `handler_program_entry_t<TEvent>`。
+响应函数可以读取实体，通过 `context.table()` 读取牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。返回类型须为 `program_entry`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，费用响应则以 `return context.invoke(givm::substack_t{}, entry, inputs...);` 提交延迟效果。
 
-入口是否执行以及何时执行由触发该事件的操作决定。
+[`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个输入须与相应命令的 `input_type` 完全匹配；`input_type = void` 的固定参数命令不占输入位置。输入一般是命令开始时所需的初始事件，所有值都在响应期间确定。每个已编译程序所需输入的数量、类型和顺序都是固定的；响应选择入口后，通过 `context.invoke(entry, events...)` 提供本次输入值。动态定义源适配器也可以传入 `std::span<const unsigned char>`，提交为该入口准备好的完整不透明输入字节段，无须提供逐事件描述符或类型元信息。
 
-切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md) 与技能的 [`cost_of_skill`](events/cost_of_skill.md) 费用响应可以反复用于预览，不得使用随机数；调用随机函数属于未定义行为。费用响应仍采用上述统一签名，确认行动后才执行其返回的程序入口。
+一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算；输入中借用的对象也必须满足相应命令的生命周期要求。定义源须保证输入数量、类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时只检查输入总字节长度，不符则在写入前抛出 `std::invalid_argument`；不要求类型元信息，也不能识别同长度输入的错误类型或顺序。发布构建不检查，违反约定属于未定义行为。字节 span 的数据须在整个调用期间保持有效，不能依赖可能因本次调用而失效的执行现场存储。
 
-可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可直接返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。卡牌与技能的初始费用和目标检查采用下述查询接口。
+入口是否执行以及何时执行由触发事件的操作决定。切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md) 与技能的 [`cost_of_skill`](events/cost_of_skill.md) 响应在报价时准备后续效果，确认行动后才执行。这三类响应提交时必须使用首参数为 `givm::substack_t{}` 的 `invoke` 重载，没有输入的程序也不例外；使用普通重载属于未定义行为，不进行运行期检查。报价期间牌桌不变，先前响应只通过费用事件影响后续响应；费用响应不得使用随机数，违反此前提属于未定义行为。当前行动窗口内每个候选只允许计算一次报价，已计算结果可以反复读取；不进行运行期检查。
+
+可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。卡牌与技能的初始费用和目标检查采用下述查询接口。
 
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
 
@@ -104,16 +102,14 @@ struct character_source
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
 
-    static givm::handler_program_entry_t<givm::dice_roll_preparation> handle(
+    static givm::program_entry handle(
         const int& extra_rerolls,
         const givm::character_view&,
         givm::dice_roll_preparation& event,
-        const givm::table&,
-        givm::random_fn&
-    )
+        givm::handle_context& context)
     {
         event.reroll_count[0] += extra_rerolls;
-        return givm::handler_program_entry_t<givm::dice_roll_preparation>::null();
+        return {};
     }
 };
 
@@ -128,21 +124,12 @@ int main()
     );
     const auto id = ids.get_id<givm::character_view>("重投助手");
 
-    givm::table table{};
-    load_deck(table, library, givm::linked_deck{ .characters = { id } }, {});
-    const auto entity = table[givm::character_id{ givm::player_id{ 0 }, 0 }];
-    auto random_source = []() -> std::uint32_t { return 0; };
-    givm::random_fn random{ random_source };
-    givm::dice_roll_preparation event{ .count = 8 };
-    const auto entry = library.handle<givm::dice_roll_preparation>(id, entity, event, table, random);
-    std::println("玩家 0 重投次数: {}", event.reroll_count[0]);
-    std::println("无需额外结算: {}", entry.is_null());
+    std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::character_view>(id));
 }
 ```
 
 输出
 
 ```text
-玩家 0 重投次数: 2
-无需额外结算: true
+响应掷骰准备: true
 ```

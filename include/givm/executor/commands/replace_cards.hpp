@@ -149,7 +149,7 @@ namespace givm::detail
         };
         detail::replace_cards(table, player, selected, next_random, on_drawn);
 
-        prepare_drawn_cards(library, table, context);
+        prepare_drawn_cards(library, table, context, context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
 

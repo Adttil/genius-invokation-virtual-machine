@@ -2,7 +2,7 @@
 
 本页保留指令设计中的理由、反例和待处理问题。接口见[命令 reference](../reference/definition/commands.md)，各命令的编译与执行函数见[命令实现](../../../include/givm/executor/commands)。多个命令复用的基础执行指令随其所属命令放置，由使用方直接包含。文件组织详见[固定程序记录](fixed_program.md#编译模式与文件组织)。
 
-核心给定指令集合的限制、一次执行与完整结算的区别，以及 `deal_damage` 后不能直接接 `absorb_damage_by_count` 取得伤害事件 context 的反例，集中在[固定程序设计](fixed_program.md)。这些约定不取决于模板是否已经提供相应静态检查。
+核心给定指令集合的限制、一次执行与完整结算的区别，以及命令只消费明确输入、不借用外层事件的约束，集中在[固定程序设计](fixed_program.md)。这些约定不取决于模板是否已经提供相应静态检查。
 
 ## 结算边界
 
@@ -27,10 +27,10 @@
 
 ## 遗留选择协议
 
-旧 `push_selector`、`roll_dice` 通过相邻指令生产和消费栈对象，不符合 command 整体干净退出的约定，已连同旧 `process_dice_roll_phase` 别名移除。换牌和重投 command 各自完成输入与结算。一个 command 内部可以有多条协作的执行指令，但不能把这项协议扩展到公开序列中相邻的 command。
+旧 `push_selector`、`roll_dice` 通过相邻指令生产和消费栈对象，不符合相邻 command 只使用声明输入的约定，已连同旧 `process_dice_roll_phase` 别名移除。换牌和重投 command 各自完成输入与结算。一个 command 内部可以有多条协作的执行指令，但不能把这项协议扩展到公开序列中相邻的 command。
 
 ## 待处理问题
 
-[`begin_action`](../../../include/givm/executor/commands/begin_action.hpp) 的输入由上层先行提供，再继续推进。内部只保存出牌、切换或结束声明三种最终选择，不保留空请求，也不检查未输入就推进的非法调用；具体取舍见[费用预览与提交](event_dispatch/payment_commit.md#支付检查与提交)。
+[`begin_action`](../../../include/givm/executor/commands/begin_action.hpp) 的输入由上层先行提供，再继续推进。内部保存出牌、技能、切换或结束声明的最终选择，不保留空请求，也不检查未输入就推进的非法调用；具体取舍见[费用预览与提交](event_dispatch/payment_commit.md#支付检查与提交)。
 
 计算后候选费用曾缺少独立读取入口，旧测试因此直接访问缓存；如今由 execution_view<action_selection> 的 switch_cost(target_index) 与 card_cost(card_index) 提供指定候选的只读费用引用，完整缓存布局仍不属于公开接口。默认元素反应尚未完成的部分集中记录在[源码问题清单](reference_scope.md)。

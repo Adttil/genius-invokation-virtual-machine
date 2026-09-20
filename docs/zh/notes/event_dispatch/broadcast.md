@@ -10,25 +10,9 @@
 
 下文及具体指令页面使用的响应者 ID 类型为 `givm::detail::handler_id<E>`，定义在 `<givm/executor/broadcast.hpp>`。它按事件 `E` 的订阅关系组合相应实体 ID；读取广播 frame 时必须使用这一类型。示例中的其他未限定名称位于 `givm` 命名空间。
 
-默认广播在准备 frame 时立即采样本次响应者，并压入完整广播 frame：
+默认广播在准备时采样响应者，保存事件与下一个响应者游标，并在帧尾保存返回位置。响应者 ID 只用于发起对应的 handler 调用，不作为后续程序隐含可读取的 Context。需要后续命令使用的身份必须由 handler 放入明确输入。
 
-```cpp
-stack.top<
-    detail::handler_id<E>[],
-    stack_count_t,
-    E,
-    detail::handler_id<E>
->();
-```
-
-各槽位语义为：
-
-- `detail::handler_id<E>[]`：frame 准备时的响应者快照；
-- `stack_count_t`：下一个待调用响应者的游标；
-- `E`：可由 handler 修改的事件对象；
-- 第二个 `detail::handler_id<E>`：当前正在调用的响应者。
-
-恢复时，执行位置指向广播推进入口，广播 frame 不再保存 stage。
+响应程序末尾只读取帧尾返回位置，不弹出它；同一次广播的所有响应程序共用此位置，广播结束时随广播帧一并清理。恢复时，执行位置指向广播推进入口，广播现场不保存 stage。
 
 辅助工具目前采样时先遍历玩家 0，再遍历玩家 1，不根据 `active_player` 调换顺序。对每名玩家，依次遍历：
 
@@ -39,35 +23,35 @@ stack.top<
 
 各区域及子实体使用对应遍历接口的顺序，执行侧根据实体定义 ID 查询显式传入的定义库，只加入具有对应响应的有效实体。frame 准备后新建的实体不加入其快照；已经进入快照但随后失效的实体在轮到时跳过。每个广播 frame 分别保存准备时的快照；前一次响应新建的实体只可能被尚未准备的后续广播采样，不会加入已经预备好的快照。领域指令采用非默认采样范围或顺序时，以其自身文档为准。
 
-推进器在调用 handler 前写入当前响应者，并先推进游标。这样 handler 返回的固定程序完成后，产生事件的指令可以从下一响应者继续，而不会重复调用当前项。
+推进器在调用 handler 前确定当前响应者，并先推进游标。这样 handler 提交的固定程序完成后，产生事件的指令可以从下一响应者继续，而不会重复调用当前项。
 
 ## Handler 与事件修改
 
-默认 handler 接口接收 definition data、自身 entity view、可修改 event、只读 table 和随机函数，并返回 `handler_program_entry_t<E>`。handler 可以执行普通 C++ 计算，因此按层数、生命、费用结果或其他运行期状态修改事件不需要额外表达式语言。
+handler 接收 definition data、自身 entity view、可修改 event 和 `handle_context&`。context 提供只读 `table()`、取随机值的 `random()` 与提交入口和输入的 `invoke(...)`。handler 可以直接修改事件、计算后续效果所需输入，再以 `return context.invoke(...)` 尾调用提交一次并返回入口。
 
-- 返回空入口：不进入响应程序，保留 handler 对 event 的修改。
-- 返回普通入口：进入固定响应程序，程序返回后继续广播。
-- 响应程序执行 `end_game` 时，栈顶保存结果，旧广播和 activation 被逻辑废弃，不再继续广播；入口本身不再有独立的终局种类。
+- 返回空入口：不进入响应程序，保留对事件的修改。
+- 调用 `invoke`：执行固定响应程序，程序消费输入并返回后继续广播。
+- 程序执行 `end_game`：旧广播与调用现场被逻辑废弃，不再继续广播。
 
-handler 不能通过收到的 `const table&` 直接修改持久状态。需要产生副作用时，由返回的固定程序执行相应指令。
+handler 不能通过 `context.table()` 修改持久状态，持久副作用由提交的命令程序执行。调用 `invoke` 后必须立即返回；推进器也不能继续访问调用前借出的事件或游标引用。
 
 产生事件的领域指令拥有整个事件事务：它准备 frame、推进响应者、读取最终 event、执行必要后处理并弹出 frame。例如 `deal_damage` 自己组织伤害计算、伤害效果、扣血、元素附着、伤害后广播和胜负检查。通用广播工具不额外猜测事件完成后的领域行为。
 
 ## 非默认事件协议
 
-领域指令可以准备自己的响应者集合，或直接调用单个 definition handler。具体指令和事件的公开约定说明响应范围、调用顺序及返回入口的处理；完整内部帧由源码维护。采用辅助工具的默认遍历不构成所有广播都必须遵循的规则。
+领域指令可以准备自己的响应者集合，或直接调用单个 definition handler。具体指令和事件的公开约定说明响应范围、调用顺序及提交效果的处理；完整内部帧由源码维护。采用辅助工具的默认遍历不构成所有广播都必须遵循的规则。
 
-`card_effect` 与 `skill_effect` 分别是直接调用本牌、本技能定义的事件；费用预览也有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `load_deck` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
+`card_effect` 与 `skill_effect` 分别是直接调用本牌、本技能定义的事件，各自流程负责准备和清理返回位置；费用预览也有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `load_deck` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
 
 ## 与当前实现逐项核对
 
 源码为 [`broadcast.hpp`](../../../../include/givm/executor/broadcast.hpp)。`handler_id<E>` 的 variant 不是手写通用实体引用：它依次展开 `definition_types`、`views_of_definition`，仅纳入 `subscribed_events<View>` 包含事件 `E` 的 view 所对应的实体 ID。实体身份为何区分区域，见[实体身份与区域](../entity_identity.md)。
 
-`prepare_broadcast` 在调用时完成整个目标列表采样；`continue_broadcast` 不重新采样。后者读取 `targets/cursor/event/current_handler`，在调用前执行等价于 `current_handler = targets[cursor++]` 的操作。快照阶段先根据定义 ID 筛选定义库中的响应能力，调用阶段的 `try_handle` 只检查实体是否仍有效，不重新做一次全体订阅扫描。
+`prepare_broadcast` 在调用时完成目标列表采样；`continue_broadcast` 不重新采样。调用前推进游标，调用阶段检查实体是否仍有效，不重新扫描全体订阅关系。
 
-`current_handler` 保存当前响应者自身（self）的身份，不是事件的 `target`。事件指向的受伤角色可以与响应的护盾、支援或卡牌不同；`absorb_damage_by_count` 正是从这一槽取得应扣计数的实体。进入响应子程序后它留在下方广播 frame 中，activation 上的指令不需要把 self 复制进自身固定操作数。初始压帧时该槽只是默认构造，推进器写入当前项之后才具有这个“当前响应者”的意义。
+响应者 self 与事件 target 可以不同。出战状态护盾的 handler 自行把 self ID 写入 `combat_status_count_reduction`，后续扣层命令不再读取广播保存的响应者。
 
-`continue_broadcast` 的结果区分“本轮广播已走完”与“刚进入响应程序”。快照中的全部响应者走完后，领域指令才继续事件后处理和 `pop_broadcast`；取得非空入口时直接进入响应。该辅助函数的返回不代表一条指令只执行了一部分。
+`continue_broadcast` 区分广播结束与已经提交响应程序。全部响应者走完后，领域命令继续事件后处理并清理广播；进入响应程序时立即交还调度。每次恢复重新取得所需引用。
 
 广播辅助工具不负责外部观察停点，也不在 activation 上方另压实体身份或专用观察阶段。当前观察范围与撤回通用效果入口通知的理由见[执行观察与输入](../execution_observation.md)。
 

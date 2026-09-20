@@ -14,7 +14,7 @@ struct start_battle;
 
 | | |
 | --- | --- |
-| `context_type` | `void`，表示不依赖特定事件语境 |
+| `input_type` | `void`，表示不消费调用输入 |
 
 ## 注意
 
@@ -37,12 +37,12 @@ struct observer_source
     int* count;
     std::string_view name() const { return "observer"; }
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
-    static givm::program_entry<givm::battle_started> handle(
+    static givm::program_entry handle(
         const definition_type& data, const givm::character_view&,
-        givm::battle_started&, const givm::table&, givm::random_fn&)
+        givm::battle_started&, givm::handle_context& context)
     {
         ++*data.count;
-        return givm::program_entry<givm::battle_started>::null();
+        return {};
     }
 };
 
