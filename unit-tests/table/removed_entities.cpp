@@ -25,7 +25,7 @@ namespace
         CHECK(card.definition_id() == definition);
         CHECK(card.player().id() == card_id.player_id);
         CHECK(card.statuses().begin() == card.statuses().end());
-        // card_state currently has no fields, but reading it must remain supported.
+        // Historical card state remains readable after removal.
         (void)card.state();
     }
 

@@ -43,6 +43,15 @@ namespace givm
         insufficient_energy
     };
 
+    enum class elemental_tuning_dice_validation : std::uint8_t
+    {
+        valid,
+        omni_not_allowed,
+        missing_character_element,
+        same_element,
+        insufficient_dice
+    };
+
     template<>
     class execution_view<execution_state::action_selection>
     {
@@ -231,6 +240,43 @@ namespace givm
         {
             detail::calculate_card_cost(library, card_index, card_table, *stack_);
             play_card(card_index, paid_dice, targets);
+        }
+
+        constexpr bool elemental_tuning_card_validate(const table& card_table, std::size_t card_index) const noexcept
+        {
+            return card_table[card_id(card_index)].state().elemental_tuning_allowed;
+        }
+
+        constexpr elemental_tuning_dice_validation elemental_tuning_dice_validate(
+            const table& card_table, elemental_dice from
+        ) const noexcept
+        {
+            if(from == elemental_dice::omni)
+            {
+                return elemental_tuning_dice_validation::omni_not_allowed;
+            }
+            const auto& player = card_table[card_table.state().active_player].state();
+            const auto active_element = card_table[*player.active_character].state().element;
+            if(active_element == element::none)
+            {
+                return elemental_tuning_dice_validation::missing_character_element;
+            }
+            if(from == static_cast<elemental_dice>(active_element))
+            {
+                return elemental_tuning_dice_validation::same_element;
+            }
+            if(player.dice[from] == 0)
+            {
+                return elemental_tuning_dice_validation::insufficient_dice;
+            }
+            return elemental_tuning_dice_validation::valid;
+        }
+
+        constexpr void elemental_tuning(std::size_t card_index, elemental_dice from) const noexcept
+        {
+            get<0>(stack_->top<detail::action_selection, substack_t>()) = detail::action_selection{
+                detail::elemental_tuning_selection{ .card_index = card_index, .from = from }
+            };
         }
 
         constexpr std::size_t skill_count() const noexcept

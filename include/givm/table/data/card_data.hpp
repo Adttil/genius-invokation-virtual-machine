@@ -3,12 +3,16 @@
 
 #include <cstddef>
 
+#include "../action_cost_requirement.hpp"
 #include "status_data.hpp"
 
 namespace givm
 {
     struct card_state
-    {};
+    {
+        action_cost_requirement cost{ .dice_requirement = {}, .speed = action_speed::fast };
+        bool elemental_tuning_allowed = true;
+    };
 }
 
 namespace givm::detail

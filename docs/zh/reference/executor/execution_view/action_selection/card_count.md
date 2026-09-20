@@ -8,7 +8,7 @@
 constexpr std::size_t card_count() const noexcept;
 ```
 
-取得当前可选手牌的数量，供上层列出出牌候选。
+取得当前可选手牌的数量，供上层列出出牌和元素调和共用的手牌候选。
 
 ## 返回值
 

@@ -35,7 +35,7 @@ const cost_of_card& calculate_card_cost(
 
 同一行动窗口内，每个候选只允许计算一次；调用方自行保证，库不进行运行期检查，重复计算属于未定义行为。计算完成后可反复调用 `card_cost` 读取缓存结果。
 
-报价先读取该牌定义已保存的 [`card_initial_cost`](../../../definition/queries/card_initial_cost.md) 结果作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。未提供初始费用查询时，默认需求为零骰子、零充能的快速行动。
+报价先复制该牌当前 [`card_state::cost`](../../../table/card_state.md) 作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。报价不会写回卡牌自身的费用；卡牌初始费用默认是零骰子、零充能的快速行动。
 
 报价无需先选择目标，目标及其他用牌条件通过 [`card_targets_validate`](card_targets_validate.md) 独立检查。可打出的牌提供原效果响应。
 

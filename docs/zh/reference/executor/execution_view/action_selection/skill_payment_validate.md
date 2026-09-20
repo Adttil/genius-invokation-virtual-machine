@@ -34,6 +34,6 @@ constexpr skill_payment_validation skill_payment_validate(
 
 ## 注意
 
-费用匹配规则见 [`elemental_dice_requirement`](../../../definition/events/elemental_dice_requirement.md)。本操作读取已计算费用和牌桌，不重新报价、不检查目标、不提交行动或修改牌桌。
+费用匹配规则见 [`elemental_dice_requirement`](../../../enums/elemental_dice_requirement.md)。本操作读取已计算费用和牌桌，不重新报价、不检查目标、不提交行动或修改牌桌。
 
 支付检查与 [`skill_targets_validate`](skill_targets_validate.md) 相互独立，由调用方按需使用；[`use_skill`](use_skill.md) 不会自动调用它们。即使检查通过，也须显式提供行动输入后才能继续推进。

@@ -15,7 +15,7 @@ struct cost_of_switch;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `target` | `const character_id` | 这次切换的目标角色；只读 |
-| `requirement` | [`action_cost_requirement`](action_cost_requirement.md) | 切换的骰子、充能费用和行动速度 |
+| `requirement` | [`action_cost_requirement`](../../table/action_cost_requirement.md) | 切换的骰子、充能费用和行动速度 |
 
 ## 注意
 

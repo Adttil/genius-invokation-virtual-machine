@@ -9,7 +9,8 @@ constexpr character_state query_default(const character_initial_state&) noexcept
 constexpr definition_id<skill_view> query_default(const character_initial_skill&) noexcept;
 constexpr action_cost_requirement query_default(const skill_initial_cost&) noexcept;
 constexpr target_validation query_default(const skill_target_validation& query) noexcept;
-constexpr action_cost_requirement query_default(const card_initial_cost&) noexcept;
+constexpr card_state query_default(const card_initial_state&) noexcept;
+constexpr void query_default(const card_state_modification&) noexcept;
 constexpr target_validation query_default(const card_target_validation& query) noexcept;
 ```
 
@@ -23,7 +24,8 @@ constexpr target_validation query_default(const card_target_validation& query) n
 | [`character_initial_skill`](queries/character_initial_skill.md) | 无效 ID，表示没有初始技能。 |
 | [`skill_initial_cost`](queries/skill_initial_cost.md) | 零骰子、零充能费用，行动速度为 `action_speed::combat`。 |
 | [`skill_target_validation`](queries/skill_target_validation.md) | `target_count == 0` 时为 `valid_complete`，否则为 `invalid`。 |
-| [`card_initial_cost`](queries/card_initial_cost.md) | 零骰子、零充能费用，行动速度为 `action_speed::fast`。 |
+| [`card_initial_state`](queries/card_initial_state.md) | `card_state{}`：零骰子、零充能费用，行动速度为 `action_speed::fast`，允许元素调和。 |
+| [`card_state_modification`](queries/card_state_modification.md) | 不修改传入状态。 |
 | [`card_target_validation`](queries/card_target_validation.md) | `target_count == 0` 时为 `valid_complete`，否则为 `invalid`。 |
 
 ## 注意
@@ -40,9 +42,9 @@ constexpr target_validation query_default(const card_target_validation& query) n
 int main()
 {
     const auto state = givm::query_default(givm::character_initial_state{});
-    const auto cost = givm::query_default(givm::card_initial_cost{});
+    const auto card = givm::query_default(givm::card_initial_state{});
     std::println("默认初始生命: {}", state.health);
-    std::println("默认快速行动: {}", cost.speed == givm::action_speed::fast);
+    std::println("默认快速行动: {}", card.cost.speed == givm::action_speed::fast);
 }
 ```
 

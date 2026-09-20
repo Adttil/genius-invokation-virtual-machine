@@ -8,7 +8,7 @@
 struct character_state;
 ```
 
-角色在对局中的生命值、充能、元素附着和可装备的武器类别。
+角色在对局中的生命值、充能、自身元素、元素附着和可装备的武器类别。
 
 ## 成员对象
 
@@ -18,11 +18,14 @@ struct character_state;
 | `max_energy` | `std::uint32_t` | 充能上限 |
 | `health` | `std::uint32_t` | 当前生命值 |
 | `energy` | `std::uint32_t` | 当前充能 |
+| `element` | [`element`](../enums/element.md) | 角色自身的元素，默认 `element::none` |
 | `aura` | [`element_aura`](../enums/element_aura.md) | 当前元素附着，默认 none |
 | `allowed_weapon_types` | [`weapon_type_mask`](../enums/weapon_type_mask.md) | 允许装备的武器类别，默认全部为 false，表示不能装备武器 |
 | `energy_tag` | [`tag_id`](tag_id.md) | 充能类型；默认无效 ID 表示普通充能，有效 ID 表示对应标签的替代充能 |
 
 ## 注意
+
+`element` 表示角色自身的元素，`aura` 表示角色当前受到的元素附着，两者互相独立。角色元素通过 [`character_initial_state`](../definition/queries/character_initial_state.md) 初始化；正常定义应保证它与角色定义的元素标签一致，库不自动同步。元素调和以当前出战角色的 `element` 作为默认转换结果。
 
 普通充能和替代充能共用 `energy` 与 `max_energy`，分别表示当前点数与上限。角色在同一时刻只持有 `energy_tag` 指定的一种充能。
 

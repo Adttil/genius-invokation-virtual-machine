@@ -1,8 +1,8 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **elemental_dice_requirement**
+[givm](../../reference.md) / [枚举值](../enums.md) / **elemental_dice_requirement**
 
 # givm::elemental_dice_requirement
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/enums/elemental_dice.hpp>`
 
 ```cpp
 struct elemental_dice_requirement;
@@ -14,7 +14,7 @@ struct elemental_dice_requirement;
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `fixed` | [`dice_counts`](../../enums/dice_counts.md) | 指定骰子种类的需求 |
+| `fixed` | [`dice_counts`](dice_counts.md) | 指定骰子种类的需求 |
 | `same` | `std::uint8_t` | 还需支付的同一种类骰子数量，初始为 0 |
 | `any` | `std::uint8_t` | 还需支付的任意种类骰子数量，初始为 0 |
 
@@ -26,7 +26,7 @@ struct elemental_dice_requirement;
 - `same` 是额外的一组同色骰子，可以混入万能骰，也可以全部使用万能骰；所选颜色不必与 `fixed` 相同。
 - `any` 可以使用剩余的任意种类骰子，包括万能骰。
 
-总数必须恰好为 `fixed.total() + same + any`，不能少付或多付。只要存在满足三部分的分配就符合费用要求；是否持有这些骰子另行检查。行动现场的 [`switch_payment_validate`](../../executor/execution_view/action_selection/switch_payment_validate.md) 会依次检查这两项。
+总数必须恰好为 `fixed.total() + same + any`，不能少付或多付。只要存在满足三部分的分配就符合费用要求；是否持有这些骰子另行检查。行动现场的 [`switch_payment_validate`](../executor/execution_view/action_selection/switch_payment_validate.md) 会依次检查这两项。
 
 ## 示例
 

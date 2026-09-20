@@ -23,9 +23,17 @@ namespace givm
         std::size_t skill_index;
     };
 
-    struct card_initial_cost
+    struct card_initial_state
     {
-        using result_t = action_cost_requirement;
+        using result_t = card_state;
+    };
+
+    struct card_state_modification
+    {
+        using result_t = void;
+
+        card_state& state;
+        const status_state& status;
     };
 
     struct skill_initial_cost
@@ -73,10 +81,13 @@ namespace givm
         return {};
     }
 
-    constexpr action_cost_requirement query_default(const card_initial_cost&) noexcept
+    constexpr card_state query_default(const card_initial_state&) noexcept
     {
-        return { .dice_requirement = {}, .speed = action_speed::fast };
+        return {};
     }
+
+    constexpr void query_default(const card_state_modification&) noexcept
+    {}
 
     constexpr action_cost_requirement query_default(const skill_initial_cost&) noexcept
     {

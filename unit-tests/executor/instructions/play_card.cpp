@@ -80,10 +80,10 @@ namespace
             return { log, cost, speed, single_target, optional_targets,
                 context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
         }
-        static givm::action_cost_requirement query(const definition_type& data, const givm::card_initial_cost&)
+        static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {
             ++data.log->initial_cost_queries;
-            return { .dice_requirement = { .any = data.cost }, .speed = data.speed };
+            return { .cost = { .dice_requirement = { .any = data.cost }, .speed = data.speed } };
         }
         static givm::target_validation query(const definition_type& data, const givm::card_target_validation& parameters)
         {

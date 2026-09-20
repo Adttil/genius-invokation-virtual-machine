@@ -65,7 +65,7 @@ void load_deck(table& table, const definition_library& library, const linked_dec
 
 `deck1` 和 `deck2` 分别装入玩家 0 和玩家 1。双方的牌堆和角色区必须为空。
 
-函数按双方牌组各自的顺序创建使用默认 `card_state{}` 的牌堆实体，并为每个角色查询初始状态和技能。它不使用随机数、不广播事件、不调用 definition handler，也不进入 executor 程序或选择出战角色。
+函数按双方牌组各自的顺序创建牌堆实体，采用定义库保存的 `card_initial_state` 初始化卡牌，并为每个角色查询初始状态和技能。它不使用随机数、不广播事件、不调用 definition handler，也不进入 executor 程序或选择出战角色。
 
 装载完成后的 table 是一份尚未开始执行游戏流程的初始状态。它可以在进入游戏主入口前复制，用于从同一未经随机化的牌组状态开始多场独立对局。
 

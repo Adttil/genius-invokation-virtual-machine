@@ -34,8 +34,8 @@
 | [`cost_of_switch`](events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
 | [`cost_of_skill`](events/cost_of_skill.md) | 技能使用的费用计算事件 |
 | [`cost_of_card`](events/cost_of_card.md) | 出牌的费用计算事件 |
-| [`elemental_dice_requirement`](events/elemental_dice_requirement.md) | 一项行动对元素骰的需求 |
-| [`action_cost_requirement`](events/action_cost_requirement.md) | 一项行动的骰子、充能费用与行动速度 |
+| [`elemental_dice_requirement`](../enums/elemental_dice_requirement.md) | 一项行动对元素骰的需求 |
+| [`action_cost_requirement`](../table/action_cost_requirement.md) | 一项行动的骰子、充能费用与行动速度 |
 
 ## 卡牌与技能
 
@@ -45,8 +45,8 @@
 | [`card_drawn`](events/card_drawn.md) | 一张牌抽取完成后的通知 |
 | [`card_discarded`](events/card_discarded.md) | 手牌或牌堆中的牌被弃置后的通知 |
 | [`card_candidate_chosen`](events/card_candidate_chosen.md) | 候选牌定义选定后的通知 |
-| [`elemental_tuning_will_apply`](events/elemental_tuning_will_apply.md) | 元素调和生效前的事件 |
-| [`elemental_tuning_applied`](events/elemental_tuning_applied.md) | 元素调和完成后的通知 |
+| [`elemental_tuning_modification`](events/elemental_tuning_modification.md) | 修饰元素调和的转换结果 |
+| [`elemental_tuning_completed`](events/elemental_tuning_completed.md) | 元素调和完成后的通知 |
 | [`card_will_be_played`](events/card_will_be_played.md) | 手牌效果生效前的事件 |
 | [`card_effect`](events/card_effect.md) | 执行打出的牌自身效果 |
 | [`card_played`](events/card_played.md) | 打出手牌完成后的通知 |

@@ -282,6 +282,10 @@ namespace givm
         {
             auto& writable_table = static_cast<detail::unrestricted_table&>(card_table);
             writable_table.load_deck(player, deck);
+            for(const auto card : writable_table[player].deck_cards())
+            {
+                card.state() = (*this)[card.definition_id()].query(card_initial_state{});
+            }
             for(const auto character : writable_table[player].characters())
             {
                 const auto definition = (*this)[character.definition_id()];

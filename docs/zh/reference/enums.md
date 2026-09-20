@@ -26,6 +26,7 @@
 | --- | --- |
 | [`dice_counts`](enums/dice_counts.md) | 各种元素骰的持有数量 |
 | [`elemental_dice_cost`](enums/elemental_dice_cost.md) | 各种元素骰的费用数量 |
+| [`elemental_dice_requirement`](enums/elemental_dice_requirement.md) | 指定、同色和任意元素骰的费用需求 |
 | [`damage_flags`](enums/damage_flags.md) | 一次伤害的性质组合 |
 | [`weapon_type_mask`](enums/weapon_type_mask.md) | 允许装备的武器类别集合 |
 

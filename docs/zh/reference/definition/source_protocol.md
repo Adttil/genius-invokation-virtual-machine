@@ -63,23 +63,25 @@ static givm::program_entry handle(
 
 入口是否执行以及何时执行由触发事件的操作决定。切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md) 与技能的 [`cost_of_skill`](events/cost_of_skill.md) 响应在报价时准备后续效果，确认行动后才执行。这三类响应提交时必须使用首参数为 `givm::substack_t{}` 的 `invoke` 重载，没有输入的程序也不例外；使用普通重载属于未定义行为，不进行运行期检查。报价期间牌桌不变，先前响应只通过费用事件影响后续响应；费用响应不得使用随机数，违反此前提属于未定义行为。当前行动窗口内每个候选只允许计算一次报价，已计算结果可以反复读取；不进行运行期检查。
 
-可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。卡牌与技能的初始费用和目标检查采用下述查询接口。
+可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。卡牌初始状态、技能初始费用和目标检查采用下述查询接口。
 
 还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
 
 ## 查询
 
-查询直接返回规则信息或检查结果，不返回效果入口，也不接收随机源。源可为所属类别的 [`supported_queries`](supported_queries.md) 提供以下静态函数；`definition_type` 仍是本源 `compile` 的实际返回类型，`Q` 是具体查询类型：
+查询取得规则信息、检查结果，或修改参数中明确允许写入的状态；不返回效果入口，也不接收随机源。源可为所属类别的 [`supported_queries`](supported_queries.md) 提供以下静态函数；`definition_type` 仍是本源 `compile` 的实际返回类型，`Q` 是具体查询类型：
 
 ```cpp
 static Q::result_t query(const definition_type& definition, const Q& parameters);
 ```
 
-可按查询类型编写重载或受约束的函数模板，返回类型必须正好是 `Q::result_t`。查询类型除了嵌套的结果类型，还携带所需的全部参数；需要当前实体、牌桌或目标时，都通过参数对象提供。查询不修改对局状态。
+可按查询类型编写重载或受约束的函数模板，返回类型必须正好是 `Q::result_t`。查询类型除了嵌套的结果类型，还携带所需的全部参数；需要当前实体、牌桌或目标时，都通过参数对象提供。通常查询只读取参数；[`card_state_modification`](queries/card_state_modification.md) 返回 `void`，只修改显式传入的卡牌 state。
 
 当 `std::is_empty_v<Q>` 为 `true` 时，查询结果只由编译后的定义决定。每次编译定义库时，在该项定义的 `compile` 完成后查询一次并保存结果；游戏运行期间读取已保存的结果，不再调用定义源的 `query`。查询类型须能以 `Q{}` 构造；结果不要求是 C++ 常量表达式。非空查询按每次提供的参数求值。
 
 缺少对应 `query` 时，使用通过参数相关查找（ADL）找到的 [`query_default(parameters)`](query_default.md)，返回类型同样必须是 `Q::result_t`。既没有源查询也没有默认方法时，定义源不满足协议。当前[查询列表](queries.md)中的每种查询均有默认方法；其中卡牌与技能的目标检查仅在目标数量为零时默认返回 `valid_complete`，非零数量返回 `invalid`。
+
+卡牌初始属性由 [`card_initial_state`](queries/card_initial_state.md) 给出，牌自身的费用与是否允许调和保存在 `card_state`。卡牌附属状态通过 [`card_state_modification`](queries/card_state_modification.md) 修改这些属性；此查询接收卡牌 state 的可变引用与该附属状态的只读 state，不读取牌外的动态状态。
 
 角色初始技能通过有参查询 [`character_initial_skill`](queries/character_initial_skill.md) 按索引逐个取得，首次返回无效 ID 时结束。定义源自行决定如何产生和保存这些结果，不要求使用特定容器。
 

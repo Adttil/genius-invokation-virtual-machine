@@ -44,7 +44,15 @@ namespace givm
             dice_counts paid_dice;
         };
 
-        using action_selection = std::variant<round_end_selection, switch_selection, card_selection, skill_selection>;
+        struct elemental_tuning_selection
+        {
+            stack_count_t card_index = 0;
+            elemental_dice from;
+        };
+
+        using action_selection = std::variant<
+            round_end_selection, switch_selection, card_selection, skill_selection, elemental_tuning_selection
+        >;
     }
 
     enum class action_target_kind : std::uint8_t
@@ -125,9 +133,13 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t skill_used_broadcast_offset = 27 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t first_round_end_broadcast_offset = 28 + Observed;
+    inline constexpr std::size_t elemental_tuning_modification_broadcast_offset = 28 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t second_round_end_broadcast_offset = 29 + Observed;
+    inline constexpr std::size_t elemental_tuning_completed_broadcast_offset = 29 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t first_round_end_broadcast_offset = 30 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t second_round_end_broadcast_offset = 31 + Observed;
 
     template<std::size_t From, std::size_t To>
     execution_state jump_to_action_instruction(execution_context& context) noexcept
@@ -213,7 +225,7 @@ namespace givm::detail
         const auto card = card_table[initial_cost.card];
         auto zero_random = []() -> std::uint32_t { return 0; };
         random_fn random{ zero_random };
-        initial_cost.requirement = library[card.definition_id()].query(card_initial_cost{});
+        initial_cost.requirement = card.state().cost;
 
         const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
         const auto row_begin = cost_index * handler_count;
@@ -502,6 +514,25 @@ namespace givm::detail
             {
                 return context.yield(execution_state::round_end_declared);
             }
+            return continue_execution;
+        }
+
+        if(const auto* selected = std::get_if<elemental_tuning_selection>(&selection))
+        {
+            const auto card = get<0>(context.stack().top<
+                cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+                switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+                stack_count_t, action_selection, substack_t
+            >())[selected->card_index].card;
+            const auto active = *table[card.player_id].state().active_character;
+            const elemental_tuning_modification event{
+                .card = card, .from = selected->from,
+                .to = static_cast<elemental_dice>(table[active].state().element)
+            };
+            jump_to_action_instruction<
+                execute_action_selection_offset, elemental_tuning_modification_broadcast_offset<Observed>
+            >(context);
+            prepare_broadcast(library, event, table, context.stack(), context.position());
             return continue_execution;
         }
 
@@ -1017,6 +1048,47 @@ namespace givm::detail
         return jump_to_action_instruction<skill_used_broadcast_offset<Observed>, before_action_offset>(context);
     }
 
+    inline execution_state broadcast_elemental_tuning_modification(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<elemental_tuning_modification>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        const auto event = get<0>(context.stack().top<elemental_tuning_modification, execution_position>());
+        pop_broadcast<elemental_tuning_modification>(context);
+        table[event.card].erase();
+        auto& dice = table[event.card.player_id].state().dice;
+        --dice[event.from];
+        ++dice[event.to];
+        prepare_broadcast(library, elemental_tuning_completed{
+            .card = event.card, .from = event.from, .to = event.to
+        }, table, context.stack(), context.position() + sizeof(execute_fn));
+        return context.enter_next();
+    }
+
+    template<bool Observed>
+    execution_state broadcast_elemental_tuning_completed(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<elemental_tuning_completed>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        pop_broadcast<elemental_tuning_completed>(context);
+        context.stack().pop<
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        return jump_to_action_instruction<elemental_tuning_completed_broadcast_offset<Observed>, before_action_offset>(context);
+    }
+
     template<bool Observed>
     execution_state broadcast_first_round_end(
         const definition_library& library, unrestricted_table& table,
@@ -1085,6 +1157,8 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_skill_will_be_used);
         writer.write<execute_fn>(&finish_skill_effect);
         writer.write<execute_fn>(&broadcast_skill_used<Observed>);
+        writer.write<execute_fn>(&broadcast_elemental_tuning_modification);
+        writer.write<execute_fn>(&broadcast_elemental_tuning_completed<Observed>);
         writer.write<execute_fn>(&broadcast_first_round_end<Observed>);
         writer.write<execute_fn>(&broadcast_second_round_end);
     }

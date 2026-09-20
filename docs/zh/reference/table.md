@@ -69,7 +69,8 @@
 | [`attachment_state`](table/attachment_state.md) | 角色附属实体在对局中使用的计数状态 |
 | [`skill_state`](table/skill_state.md) | 技能在对局中使用的计数状态 |
 | [`status_state`](table/status_state.md) | 卡牌状态在对局中使用的计数状态 |
-| [`card_state`](table/card_state.md) | 卡牌自身的状态 |
+| [`card_state`](table/card_state.md) | 卡牌自身的费用及是否允许元素调和 |
+| [`action_cost_requirement`](table/action_cost_requirement.md) | 行动的骰子、充能费用与速度 |
 
 ## 类型别名
 

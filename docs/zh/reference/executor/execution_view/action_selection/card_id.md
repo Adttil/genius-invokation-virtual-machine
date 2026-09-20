@@ -9,17 +9,17 @@ constexpr hand_card_id card_id(std::size_t card_index) const noexcept;
 ```
 [`hand_card_id`](../../../table/hand_card_id.md)
 
-按出牌候选索引取得对应的手牌 ID，供上层查询牌桌并显示这张牌的信息。
+按出牌与元素调和共用的手牌候选索引取得对应的手牌 ID，供上层查询牌桌并显示这张牌的信息。
 
 ## 参数
 
 | | |
 | --- | --- |
-| `card_index` | 从零开始的出牌候选索引，须小于 [`card_count()`](card_count.md)。 |
+| `card_index` | 从零开始的手牌候选索引，须小于 [`card_count()`](card_count.md)。 |
 
 ## 返回值
 
-指定出牌候选的手牌 ID。
+指定手牌候选的手牌 ID。
 
 ## 注意
 

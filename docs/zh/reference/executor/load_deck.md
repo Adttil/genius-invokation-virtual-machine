@@ -8,7 +8,7 @@
 void load_deck(table& table, const definition_library& library, const linked_deck& deck1, const linked_deck& deck2);
 ```
 
-将双方已确定定义 ID 的牌组装入各自的牌库和角色区，并根据定义初始化角色状态和初始技能。返回后即可读取完整的初始角色信息，无须推进执行器。
+将双方已确定定义 ID 的牌组装入各自的牌库和角色区，并根据定义初始化卡牌状态、角色状态和初始技能。返回后即可读取完整的初始角色信息，无须推进执行器。
 
 ## 参数
 
@@ -27,7 +27,7 @@ void load_deck(table& table, const definition_library& library, const linked_dec
 
 双方的牌库和角色区必须尚未装载实体。每方卡牌按其牌组中 `cards` 的顺序装入，最后一张位于牌库顶；角色按 `characters` 的顺序装入。
 
-角色状态采用 [`character_initial_state`](../definition/queries/character_initial_state.md) 的查询结果，初始技能通过 [`character_initial_skill`](../definition/queries/character_initial_skill.md) 从索引零开始逐项查询，首次返回无效 ID 即结束。卡牌与技能采用默认状态。
+角色状态采用 [`character_initial_state`](../definition/queries/character_initial_state.md) 的查询结果，初始技能通过 [`character_initial_skill`](../definition/queries/character_initial_skill.md) 从索引零开始逐项查询，首次返回无效 ID 即结束。卡牌状态采用 [`card_initial_state`](../definition/queries/card_initial_state.md) 的查询结果，技能采用默认状态。
 
 使用非限定调用 `load_deck(table, library, deck1, deck2)`。不需要装载实体的一方可传入空牌组 `{}`。
 

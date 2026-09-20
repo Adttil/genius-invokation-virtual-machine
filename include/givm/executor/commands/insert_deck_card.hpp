@@ -30,7 +30,8 @@ namespace givm::detail
             GIVM_ASSERT(offset_from_top <= size);
             index = size - offset_from_top;
         }
-        player_entity.insert_deck_card(index, instruction.definition, card_state{});
+        const auto state = library[instruction.definition].query(card_initial_state{});
+        player_entity.insert_deck_card(index, instruction.definition, state);
 
         return context.advance(instruction_extent<1, givm::insert_deck_card>);
     }

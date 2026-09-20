@@ -79,6 +79,13 @@ namespace givm
         std::array<std::uint8_t, 8> values_{};
     };
 
+    struct elemental_dice_requirement
+    {
+        dice_counts fixed;
+        std::uint8_t same = 0;
+        std::uint8_t any = 0;
+    };
+
     class elemental_dice_cost
     {
     public:

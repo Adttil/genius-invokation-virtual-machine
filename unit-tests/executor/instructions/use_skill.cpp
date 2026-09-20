@@ -281,10 +281,10 @@ namespace
         {
             return { log, dice, energy, energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag) };
         }
-        static givm::action_cost_requirement query(const definition_type& data, const givm::card_initial_cost&)
+        static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {
-            return { .dice_requirement = { .any = data.dice }, .speed = givm::action_speed::fast,
-                .energy = data.energy, .energy_tag = data.energy_tag };
+            return { .cost = { .dice_requirement = { .any = data.dice }, .speed = givm::action_speed::fast,
+                .energy = data.energy, .energy_tag = data.energy_tag } };
         }
         static givm::program_entry handle(
             const definition_type& data, const givm::hand_card_view&, givm::card_effect&, givm::handle_context&)
@@ -607,7 +607,7 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(1), std::tuple{}, active, passive, untargeted, owner, plain, card);
     log.switch_energy_tag = ids.get_tag_id("Resolve");
-    CHECK(library[ids.get_id<givm::card_definition>(card.name())].query(givm::card_initial_cost{}).energy_tag
+    CHECK(library[ids.get_id<givm::card_definition>(card.name())].query(givm::card_initial_state{}).cost.energy_tag
         == log.switch_energy_tag);
     givm::table table;
     load_deck(table, library, {

@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "../../enums/element.hpp"
 #include "../../enums/element_aura.hpp"
 #include "../../enums/equipment_type.hpp"
 #include "../../enums/weapon_type.hpp"
@@ -27,6 +28,7 @@ namespace givm
         element_aura aura = element_aura::none;
         weapon_type_mask allowed_weapon_types;
         tag_id energy_tag{};
+        givm::element element = givm::element::none;
     };
 }
 

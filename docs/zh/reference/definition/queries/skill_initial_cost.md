@@ -17,7 +17,7 @@ struct skill_initial_cost
 
 | | |
 | --- | --- |
-| `result_t` | [`action_cost_requirement`](../events/action_cost_requirement.md) |
+| `result_t` | [`action_cost_requirement`](../../table/action_cost_requirement.md) |
 
 ## 注意
 

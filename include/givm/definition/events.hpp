@@ -128,21 +128,6 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(calculating_switch_payment);
     };
 
-    struct elemental_dice_requirement
-    {
-        dice_counts fixed;
-        std::uint8_t same = 0;
-        std::uint8_t any = 0;
-    };
-
-    struct action_cost_requirement
-    {
-        elemental_dice_requirement dice_requirement;
-        action_speed speed = action_speed::combat;
-        std::uint32_t energy = 0;
-        tag_id energy_tag{};
-    };
-
     struct cost_of_switch
     {
         const character_id target;
@@ -193,21 +178,20 @@ namespace givm
     };
 
     // Elemental tuning events.
-    struct elemental_tuning_will_apply
+    struct elemental_tuning_modification
     {
         const hand_card_id card;
         const elemental_dice from;
-        const elemental_dice to;
-        bool cancelled = false;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(elemental_tuning_will_apply);
+        elemental_dice to;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(elemental_tuning_modification);
     };
 
-    struct elemental_tuning_applied
+    struct elemental_tuning_completed
     {
         const hand_card_id card;
         const elemental_dice from;
         const elemental_dice to;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(elemental_tuning_applied);
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(elemental_tuning_completed);
     };
 
     // Playing-card events.

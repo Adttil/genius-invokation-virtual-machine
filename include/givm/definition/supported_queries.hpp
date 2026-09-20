@@ -11,8 +11,13 @@ namespace givm
 
     template<>
     struct supported_queries<card_definition> : type_list<
-        card_initial_cost,
+        card_initial_state,
         card_target_validation
+    >{};
+
+    template<>
+    struct supported_queries<status_definition> : type_list<
+        card_state_modification
     >{};
 
     template<>

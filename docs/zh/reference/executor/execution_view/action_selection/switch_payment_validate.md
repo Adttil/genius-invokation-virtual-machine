@@ -41,6 +41,6 @@ constexpr switch_payment_validation switch_payment_validate(
 
 先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 完整计算该角色的切换费用，由调用方保证报价可用。本操作只读取已计算费用和牌桌，不计算费用、提交行动、执行费用响应的后续效果或修改牌桌；提交接口也不会自动调用它。
 
-所选骰子须恰好支付 [`elemental_dice_requirement`](../../../definition/events/elemental_dice_requirement.md) 的 `fixed`、`same` 和 `any` 三部分，具体匹配规则见该类型。
+所选骰子须恰好支付 [`elemental_dice_requirement`](../../../enums/elemental_dice_requirement.md) 的 `fixed`、`same` 和 `any` 三部分，具体匹配规则见该类型。
 
 支付检查涉及费用、所选骰子和出战角色充能；传入当前现场内有效的候选索引仍是调用前提。
