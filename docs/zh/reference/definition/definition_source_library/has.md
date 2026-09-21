@@ -48,7 +48,11 @@ struct card_source
 int main()
 {
     const card_source potion{ "恢复药剂" };
-    givm::definition_source_library sources{};
+    givm::definition_source_library sources{
+        givm::genshin_impact::dendro_core_3_3_0,
+        givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0
+    };
     sources.add(potion);
     std::println("包含恢复药剂: {}", sources.has<givm::card_definition>("恢复药剂"));
     std::println("包含恢复料理: {}", sources.has<givm::card_definition>("恢复料理"));

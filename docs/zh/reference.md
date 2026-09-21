@@ -49,6 +49,10 @@
 | [`handle_context`](reference/executor/handle_context.md) | 事件响应使用的牌桌、随机源及效果提交接口 |
 | [`program_invoker`](reference/executor/program_invoker.md) | 响应提交后续效果的调用对象 |
 
+## [基础定义源](reference/basic_definitions.md)
+
+随库提供的、按版本区分的原神七圣召唤定义源。目前提供默认元素反应关联实体的占位源。
+
 ## [通用工具](reference/utils.md)
 
 | | |

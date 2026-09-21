@@ -1,3 +1,5 @@
+#include "test_source_library.hpp"
+
 #include <array>
 #include <bitset>
 #include <cstddef>
@@ -148,7 +150,7 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const test_card_definition_source card_source;
     const test_character_definition_source character_source;
 
-    givm::definition_source_library source_library;
+    auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card_source, character_source));
 
     constexpr std::uint32_t max_rounds = 2;
@@ -277,7 +279,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
 {
     const test_card_definition_source card_source;
     const test_character_definition_source character_source;
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(card_source, character_source));
     const auto [library, id_map] = compile(sources,
         std::tuple{

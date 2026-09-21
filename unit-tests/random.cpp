@@ -1,3 +1,5 @@
+#include "test_source_library.hpp"
+
 #include <array>
 #include <bitset>
 #include <cstddef>
@@ -184,7 +186,7 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
 
 TEST_CASE("rerolls continue each player's random dice sequence across partial selections", "[random][dice]")
 {
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     const auto [library, ids] = compile(sources,
         std::tuple{ givm::start_dice_roll_phase{ .count = 6, .reroll_count = { 3, 1 } },
                     givm::end_game{ givm::game_result::both_loss } },

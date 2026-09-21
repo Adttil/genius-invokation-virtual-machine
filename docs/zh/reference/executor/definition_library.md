@@ -37,6 +37,9 @@ class definition_library;
 | [`can_handle`](definition_library/can_handle.md) | 检查定义能否响应事件 |
 | [`handle`](definition_library/handle.md) | 请求定义响应事件 |
 | [`query`](definition_library/query.md) | 取得定义的规则信息或检查结果 |
+| [`dendro_core_id`](definition_library/dendro_core_id.md) | 取得默认草原核定义 ID |
+| [`catalyzing_field_id`](definition_library/catalyzing_field_id.md) | 取得默认激化领域定义 ID |
+| [`burning_flame_id`](definition_library/burning_flame_id.md) | 取得默认燃烧烈焰定义 ID |
 
 ## 注意
 
@@ -64,7 +67,11 @@ struct card_source
 int main()
 {
     const card_source source{};
-    givm::definition_source_library sources{};
+    givm::definition_source_library sources{
+        givm::genshin_impact::dendro_core_3_3_0,
+        givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0
+    };
     sources.add(source);
     const auto [library, ids] = compile(
         sources,

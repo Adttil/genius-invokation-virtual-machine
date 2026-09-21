@@ -1,3 +1,5 @@
+#include "../test_source_library.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -328,7 +330,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
         .tag_count = 2
     };
 
-    givm::definition_source_library source_library;
+    auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, alpha, beta));
     const auto program = std::tuple{ givm::draw_cards{ .count = 1 }, givm::test_command{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
@@ -356,7 +358,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
 TEST_CASE("definition compile context rejects undeclared dependency queries", "[source_view]")
 {
     const undeclared_dependency_source source;
-    givm::definition_source_library source_library;
+    auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(source));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     REQUIRE_THROWS_AS(compile(source_library, program, program, givm::compile_mode::normal), std::invalid_argument);
@@ -367,7 +369,7 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     const selectable_handler_source enabled{ "Enabled", true };
     const selectable_handler_source disabled{ "Disabled", false };
 
-    givm::definition_source_library source_library;
+    auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(enabled, disabled));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
@@ -386,7 +388,7 @@ TEST_CASE("static handler availability depends on the implementation alone", "[s
     std::uint32_t capability_checks = 0;
     const static_handler_source implicit_source{ "ImplicitStatic", &capability_checks };
     const explicitly_static_handler_source explicit_source{ { "ExplicitStatic", &capability_checks } };
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(implicit_source, explicit_source));
     const auto [library, ids] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
 
@@ -402,7 +404,7 @@ TEST_CASE("static handler availability depends on the implementation alone", "[s
 TEST_CASE("dynamic sources cannot enable a missing handler implementation", "[source_view]")
 {
     const missing_dynamic_handler_source source{ { "MissingDynamicHandler", true } };
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
     REQUIRE_THROWS_AS(compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
         std::invalid_argument);
@@ -414,7 +416,7 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     const programmed_card_source card{ &observation };
     const programmed_support_source support{ &observation };
 
-    givm::definition_source_library source_library;
+    auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, support));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
@@ -437,7 +439,7 @@ TEST_CASE("root programs reject commands that consume invocation inputs", "[sour
     const bool runtime_commands = GENERATE(false, true);
     const bool initialization = GENERATE(false, true);
     CAPTURE(mode, runtime_commands, initialization);
-    const givm::definition_source_library sources;
+    const auto sources = givm_test::make_source_library();
     const auto valid = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     const auto check = [&](const auto& invalid)
     {

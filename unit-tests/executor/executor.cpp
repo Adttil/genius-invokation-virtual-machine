@@ -1,3 +1,5 @@
+#include "../test_source_library.hpp"
+
 #include <cstdint>
 #include <tuple>
 
@@ -15,7 +17,7 @@ namespace
 
 TEST_CASE("executor repeats the round program and reports round boundaries", "[executor]")
 {
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     const auto [library, ids] = compile(sources,
         std::tuple{ givm::start_round{ .max_rounds = 2 } },
         std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::observed
@@ -38,7 +40,7 @@ TEST_CASE("terminal results survive copies and entering another game replaces th
 {
     const bool observed = GENERATE(false, true);
     const auto result = GENERATE(givm::game_result::player_0_win, givm::game_result::player_1_win, givm::game_result::both_loss);
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     const auto [library, ids] = compile(sources,
         std::tuple{
             givm::end_game{ .result = result },
@@ -70,7 +72,7 @@ TEST_CASE("terminal results survive copies and entering another game replaces th
 TEST_CASE("executor uses the explicitly supplied library with an independent table", "[executor][definition-library]")
 {
     const bool observed = GENERATE(false, true);
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     const auto first = compile(sources,
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );

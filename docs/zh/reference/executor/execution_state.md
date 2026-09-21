@@ -70,7 +70,11 @@ enum class execution_state : std::uint8_t
 
 int main()
 {
-    givm::definition_source_library sources{};
+    givm::definition_source_library sources{
+        givm::genshin_impact::dendro_core_3_3_0,
+        givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0
+    };
     const auto [library, ids] = compile(
         sources,
         std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::observed);

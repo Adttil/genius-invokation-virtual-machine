@@ -1,3 +1,5 @@
+#include "../test_source_library.hpp"
+
 #include <cstdint>
 #include <tuple>
 #include <vector>
@@ -16,7 +18,7 @@ TEST_CASE("initialization and round programs accept tuple-like and range forms",
     };
     const std::vector round{ givm::end_game{ givm::game_result::player_0_win } };
 
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     const auto [library, id_map] = compile(sources, initialization, round, givm::compile_mode::normal);
     auto random = []() -> std::uint32_t { return 0; };
     givm::table table;

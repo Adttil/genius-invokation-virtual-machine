@@ -1,3 +1,5 @@
+#include "../test_source_library.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -174,7 +176,7 @@ TEST_CASE("empty queries cache each compiled definition and survive library copi
     query_counts counts;
     const queried_card_source first{ "FirstQueriedCard", &counts, 1, 0 };
     const explicitly_static_card_source second{ { "SecondQueriedCard", &counts, 3, 0 } };
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second));
     CHECK(counts.initial_cost == 0);
     const auto [library, ids] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
@@ -269,7 +271,7 @@ TEST_CASE("dynamic queries only require an implementation when enabled", "[defin
 {
     const bool enabled = GENERATE(false, true);
     const missing_dynamic_query_source source{ { "MissingDynamicQuery" }, enabled };
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
     if(enabled)
     {
@@ -328,7 +330,7 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
     query_counts counts;
     const queried_card_source first{ "UntunableCard", &counts, 1, 0, false };
     const queried_card_source second{ "TunableCard", &counts, 3, 0 };
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second));
     const auto prepared_ids = sources.make_issued_id_map();
     const auto first_id = prepared_ids.get_id<givm::card_definition>(first.name());

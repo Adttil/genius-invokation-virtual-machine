@@ -1,3 +1,5 @@
+#include "../test_source_library.hpp"
+
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
@@ -217,7 +219,7 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
 {
     using check_result = givm::dice_selection_validation;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
-    givm::definition_source_library sources;
+    auto sources = givm_test::make_source_library();
     const auto [library, ids] = compile(sources,
         std::tuple{
             givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 1, 2 } },

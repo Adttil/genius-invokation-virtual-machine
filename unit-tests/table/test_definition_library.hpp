@@ -1,6 +1,8 @@
 #ifndef GIVM_UNIT_TESTS_TABLE_TEST_DEFINITION_LIBRARY_HPP
 #define GIVM_UNIT_TESTS_TABLE_TEST_DEFINITION_LIBRARY_HPP
 
+#include "../test_source_library.hpp"
+
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
@@ -34,7 +36,7 @@ namespace givm::test
     template<class... TSources>
     auto compile_definitions(const TSources&... sources)
     {
-        givm::definition_source_library source_library;
+        auto source_library = givm_test::make_source_library();
         if(not source_library.add(sources...))
         {
             throw std::logic_error{ "invalid unit-test definition sources" };
@@ -52,7 +54,7 @@ namespace givm::test
         const TSources&... sources
     )
     {
-        givm::definition_source_library source_library;
+        auto source_library = givm_test::make_source_library();
         if(not source_library.add(sources...))
         {
             throw std::logic_error{ "invalid unit-test definition sources" };

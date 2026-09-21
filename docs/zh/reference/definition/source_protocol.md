@@ -41,7 +41,7 @@
 
 attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 标签，分别表示武器、圣遗物、天赋、特技；没有这些标签时为普通附属实体。编译后的定义库通过 [`equipment_type`](../executor/definition_library/equipment_type.md) 提供这一分类。武器类型使用 `sword`、`claymore`、`polearm`、`bow`、`catalyst` 标签。同一组内的标签互斥，由定义源保证，不进行冲突检查。装备添加与替换行为见 [`add_attachment`](commands/add_attachment.md)。
 
-当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会自动加入所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
+当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会保留源库构造时选定的三个默认反应定义，并自动加入这些定义和所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
 
 ## 事件响应
 
@@ -147,7 +147,11 @@ struct character_source
 int main()
 {
     const character_source source{};
-    givm::definition_source_library sources{};
+    givm::definition_source_library sources{
+        givm::genshin_impact::dendro_core_3_3_0,
+        givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0
+    };
     sources.add(source);
     const auto [library, ids] = compile(
         sources,

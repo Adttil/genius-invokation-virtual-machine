@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <ranges>
 #include <span>
@@ -28,6 +29,21 @@ namespace givm
     {
     public:
         static constexpr size_t definition_count = definition_types::size();
+
+        template<class TDendroCore, class TCatalyzingField, class TBurningFlame, class... TOtherSources>
+            requires std::same_as<typename TDendroCore::definition_category, combat_status_view>
+                && std::same_as<typename TCatalyzingField::definition_category, combat_status_view>
+                && std::same_as<typename TBurningFlame::definition_category, summon_view>
+        definition_source_library(const TDendroCore& dendro_core, const TCatalyzingField& catalyzing_field,
+            const TBurningFlame& burning_flame, const TOtherSources&... other_sources)
+        : dendro_core_name_{ dendro_core.name() }, catalyzing_field_name_{ catalyzing_field.name() },
+          burning_flame_name_{ burning_flame.name() }
+        {
+            if(not add(dendro_core, catalyzing_field, burning_flame, other_sources...))
+            {
+                throw std::invalid_argument{ "invalid reaction definition sources or dependencies" };
+            }
+        }
 
         bool add()
         {
@@ -195,12 +211,30 @@ namespace givm
             const auto& bucket = std::get<I>(buckets_);
             for(const auto& entry : std::get<I>(library.buckets_).entries)
             {
-                if(bucket.name_to_index.contains(entry.name))
+                if(const auto found = bucket.name_to_index.find(entry.name); found != bucket.name_to_index.end())
                 {
+                    const auto& existing = bucket.entries[found->second];
+                    if((is_reaction_source<I>(entry.name) || library.is_reaction_source<I>(entry.name))
+                        && existing.source.source_ == entry.source.source_
+                        && existing.source.rtti_ == entry.source.rtti_)
+                    {
+                        continue;
+                    }
                     return true;
                 }
             }
             return false;
+        }
+
+        template<size_t I>
+        bool is_reaction_source(std::string_view name) const noexcept
+        {
+            if constexpr(I == index_of<combat_status_view>())
+                return name == dendro_core_name_ || name == catalyzing_field_name_;
+            else if constexpr(I == index_of<summon_view>())
+                return name == burning_flame_name_;
+            else
+                return false;
         }
 
         bool has_name_conflict(const definition_source_library& library) const
@@ -223,6 +257,7 @@ namespace givm
 
             for(const auto& entry : other_entries)
             {
+                if(bucket.name_to_index.contains(entry.name)) continue;
                 bucket.name_to_index.emplace(entry.name, bucket.entries.size());
                 bucket.entries.push_back(entry);
             }
@@ -413,6 +448,10 @@ namespace givm
         {
             auto selected = make_empty_selection();
             std::vector<queue_item> queue;
+
+            enqueue_name<index_of<combat_status_view>()>(dendro_core_name_, selected, queue);
+            enqueue_name<index_of<combat_status_view>()>(catalyzing_field_name_, selected, queue);
+            enqueue_name<index_of<summon_view>()>(burning_flame_name_, selected, queue);
 
             [&]<size_t...I>(std::index_sequence<I...>)
             {
@@ -697,7 +736,12 @@ namespace givm
             return indices;
         }
 
+        std::string_view dendro_core_name_;
+        std::string_view catalyzing_field_name_;
+        std::string_view burning_flame_name_;
         bucket_tuple buckets_;
+
+        friend class definition_library;
     };
 }
 

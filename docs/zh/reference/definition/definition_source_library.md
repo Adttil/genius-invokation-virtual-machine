@@ -8,7 +8,7 @@
 class definition_source_library;
 ```
 
-卡牌、角色和其他实体的定义源集合，供对局选择所需内容。它把分散编写的定义组织在一起，提供按类别和名称访问定义源的能力。
+卡牌、角色和其他实体的定义源集合，供对局选择所需内容。它把分散编写的定义组织在一起，提供按类别和名称访问定义源的能力，并确定元素反应采用哪些草原核、激化领域和燃烧烈焰定义。
 
 ## 成员常量
 
@@ -20,7 +20,7 @@ class definition_source_library;
 
 |  |  |
 | --- | --- |
-| [(构造函数)](definition_source_library/constructor.md) | 构造一个空源库 |
+| [(构造函数)](definition_source_library/constructor.md) | 指定并登记默认反应定义源 |
 | [`add`](definition_source_library/add.md) | 登记定义源或合并源库 |
 | [`has`](definition_source_library/has.md) | 检查定义源是否存在 |
 | [`get`](definition_source_library/get.md) | 按名称查看定义源 |
@@ -61,7 +61,11 @@ struct card_source
 int main()
 {
     const card_source potion{ "恢复药剂" };
-    givm::definition_source_library sources{};
+    givm::definition_source_library sources{
+        givm::genshin_impact::dendro_core_3_3_0,
+        givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0
+    };
     std::println("登记成功: {}", sources.add(potion));
     const auto [library, ids] = compile(
         sources,

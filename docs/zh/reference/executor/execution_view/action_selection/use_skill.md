@@ -103,7 +103,11 @@ int main()
 {
     skill_source skill{};
     character_source character{};
-    givm::definition_source_library sources{};
+    givm::definition_source_library sources{
+        givm::genshin_impact::dendro_core_3_3_0,
+        givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0
+    };
     sources.add(skill);
     sources.add(character);
     const auto [library, ids] = compile(sources,

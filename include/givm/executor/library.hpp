@@ -163,7 +163,9 @@ namespace givm
     public:
         definition_library(const definition_library& other)
         : program_{ other.program_ }, tag_names_{ other.tag_names_ },
-          equipment_tags_{ other.equipment_tags_ }, buckets_{ other.buckets_ }
+          equipment_tags_{ other.equipment_tags_ }, dendro_core_id_{ other.dendro_core_id_ },
+          catalyzing_field_id_{ other.catalyzing_field_id_ }, burning_flame_id_{ other.burning_flame_id_ },
+          buckets_{ other.buckets_ }
         {
             detail::finalize_program(program_);
         }
@@ -184,6 +186,21 @@ namespace givm
         ~definition_library() = default;
 
         static constexpr size_t definition_count = definition_types::size();
+
+        definition_id<combat_status_view> dendro_core_id() const noexcept
+        {
+            return dendro_core_id_;
+        }
+
+        definition_id<combat_status_view> catalyzing_field_id() const noexcept
+        {
+            return catalyzing_field_id_;
+        }
+
+        definition_id<summon_view> burning_flame_id() const noexcept
+        {
+            return burning_flame_id_;
+        }
 
         template<class TDefinitionType>
         class definition_view
@@ -457,8 +474,11 @@ namespace givm
 
         using bucket_tuple = definition_type_list::apply<bucket_tuple_for>;
 
-        explicit definition_library(const issued_id_map& id_map)
-        : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end())
+        definition_library(const issued_id_map& id_map, const definition_source_library& sources)
+        : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end()),
+          dendro_core_id_{ id_map.get_id<combat_status_view>(sources.dendro_core_name_) },
+          catalyzing_field_id_{ id_map.get_id<combat_status_view>(sources.catalyzing_field_name_) },
+          burning_flame_id_{ id_map.get_id<summon_view>(sources.burning_flame_name_) }
         {
             constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
                 "weapon", "artifact", "talent", "technique"
@@ -625,7 +645,7 @@ namespace givm
                 issued_id_map id_map;
             };
 
-            definition_library library{ id_map };
+            definition_library library{ id_map, sources };
             detail::program_writer writer{ library.program_ };
             [[maybe_unused]] const auto initialization_inputs_size =
                 detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode);
@@ -660,6 +680,9 @@ namespace givm
         detail::program_bytes program_;
         std::vector<std::string_view> tag_names_;
         std::array<tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
+        definition_id<combat_status_view> dendro_core_id_;
+        definition_id<combat_status_view> catalyzing_field_id_;
+        definition_id<summon_view> burning_flame_id_;
         bucket_tuple buckets_;
     };
 
