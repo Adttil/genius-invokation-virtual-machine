@@ -23,6 +23,12 @@ struct damage_calculation;
 | `flags` | [`damage_flags`](../../enums/damage_flags.md) | 伤害附加属性 |
 | `already_handled_reaction` | `bool` | 是否已经处理伤害计算中的元素反应加成，初始为 false |
 
+## 注意
+
+本事件结束后，才按最终 `target`、`type` 和目标当前附着确定元素反应，并应用未被接管的反应加伤。因此修改伤害元素可以改变反应种类。后续扣血与反应处理沿用这次反应判定，不再根据扣血后的牌桌重新判断。
+
+同组各次伤害分别广播本事件；此前伤害的扣血和附着已经生效，但本组的伤害后响应尚未调用。
+
 ## 示例
 
 ```cpp

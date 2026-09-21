@@ -8,7 +8,7 @@
 
 命令是否消费响应输入，由编译时给出的具体命令值决定。消费输入的命令要求响应通过 `invoke` 显式提交相应初始事件；使用固定参数的命令不占输入位置。每个已编译入口所需输入的数量、类型和顺序仍然固定，命令不借用外层响应事件或响应者。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
 
-`set_active_character{}` 和 `add_attachment{}` 默认构造时采用动态输入；显式指定固定目标或定义时使用固定参数，具体用法见各自页面。`remove_attachment` 和 `reduce_combat_status_count` 始终消费输入；其余命令不消费响应输入。
+`set_active_character{}`、`add_attachment{}` 和 `deal_damage{}` 默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。`remove_attachment` 和 `reduce_combat_status_count` 始终消费输入；其余命令不消费响应输入。
 
 ## 开局与牌堆
 
@@ -38,7 +38,7 @@
 
 | | |
 | --- | --- |
-| [`deal_damage`](commands/deal_damage.md) | 伤害结算命令 |
+| [`deal_damage`](commands/deal_damage.md) | 完成一组可由范围和元素反应展开的伤害 |
 | [`reduce_combat_status_count`](commands/reduce_combat_status_count.md) | 按提交的数量扣除出战状态计数的命令 |
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
 | [`set_element_aura`](commands/set_element_aura.md) | 直接设置元素附着的命令 |

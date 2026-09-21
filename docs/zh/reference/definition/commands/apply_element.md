@@ -21,7 +21,13 @@ struct apply_element;
 
 ## 注意
 
-反应时先发出 [`elemental_reaction_will_occur`](../events/elemental_reaction_will_occur.md)，随后完成默认或由响应接管的附着处理，最后发出 [`after_elemental_reaction`](../events/after_elemental_reaction.md)。
+反应时先发出 [`elemental_reaction_will_occur`](../events/elemental_reaction_will_occur.md)，随后完成默认或由响应接管的反应处理。
+
+超导、感电会对目标以外的同方存活角色分别造成 1 点穿透伤害；扩散会分别造成 1 点所扩散元素的伤害。这些伤害及其继续引发的反应先完成扣血与元素附着，然后才进行 [`after_elemental_reaction`](../events/after_elemental_reaction.md) 和派生伤害的完成通知。独立附着没有主目标伤害，不额外对原目标扣除反应加伤。
+
+派生伤害同样在每次扣血后立即处理击倒并判定终局；若对局已结束，剩余伤害及完成通知不再进行。
+
+生成反应实体等其他默认反应后果尚未全部实现。
 
 ## 示例
 

@@ -58,6 +58,9 @@
 
 | | |
 | --- | --- |
+| [`damage`](events/damage.md) | 单体或范围伤害的初始描述 |
+| [`relative_character_target`](events/relative_character_target.md) | 相对于出战位置的伤害目标 |
+| [`other_characters_target`](events/other_characters_target.md) | 指定角色以外的同方存活角色 |
 | [`damage_calculation`](events/damage_calculation.md) | 伤害计算事件 |
 | [`damage_effect`](events/damage_effect.md) | 扣除生命前的伤害结算事件 |
 | [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
@@ -89,6 +92,7 @@
 | [`skill_target_id`](events/skill_target_id.md) | 技能效果的目标标识 |
 | [`card_target_id`](events/card_target_id.md) | 卡牌效果的目标标识 |
 | [`damage_source_id`](events/damage_source_id.md) | 伤害的来源标识 |
+| [`damage_target`](events/damage_target.md) | 伤害的具体、相对或范围目标 |
 | [`effect_source_id`](events/effect_source_id.md) | 治疗等效果的来源标识 |
 | [`element_application_source_id`](events/element_application_source_id.md) | 元素附着的来源标识 |
 | [`entity_id`](events/entity_id.md) | 各类牌桌实体的标识 |

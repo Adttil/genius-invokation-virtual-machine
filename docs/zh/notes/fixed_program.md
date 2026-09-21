@@ -39,11 +39,11 @@ handler 读取编译后的 definition、自身实体 view、事件、只读 tabl
 
 ## 表达能力与效率
 
-固定程序约束的是步骤，不约束输入值。后续接入抽牌与伤害的消费参数版本后，一次响应可以捕获当前生命值 X，同时准备抽 X 张和造成 X 点伤害的初始事件；前一操作的嵌套响应不会重新计算后一操作的输入。本轮尚未加入这两个消费参数版本。
+固定程序约束的是步骤，不约束输入值。一次响应可以捕获当前生命值 X，为一组伤害提交多个数值相同的 `damage`；前一次伤害的计算响应改变生命值，也不会重新计算后续初始输入。`deal_damage` 已支持消费输入，抽牌的消费参数版本仍未加入。
 
 出战状态护盾直接在 `damage_effect` 响应中减少伤害，并提交 `combat_status_count_reduction` 交给 `reduce_combat_status_count` 扣除指定出战状态计数。命令不再借用外层伤害事件或隐含响应者。
 
-默认构造的 `set_active_character{}` 消费 `active_character_changed`，显式提供 `target` 时使用固定目标；默认构造的 `add_attachment{}` 消费 `attachment_addition`，显式提供 `definition`、`state` 时使用固定定义和初始状态，为指定一方执行时的出战角色添加附件。两个选择都在编译时完成。`remove_attachment` 与 `reduce_combat_status_count` 仍只支持消费输入，其他命令仍只支持固定参数。
+默认构造的 `set_active_character{}` 消费 `active_character_changed`，显式提供 `target` 时使用固定目标；默认构造的 `add_attachment{}` 消费 `attachment_addition`，显式提供 `definition`、`state` 时使用固定定义和初始状态，为指定一方执行时的出战角色添加附件。`deal_damage` 使用非空 `damages` 作为固定输入；否则消费 `input_count` 个 `damage`，默认为一个。以上选择均在编译时完成。`remove_attachment` 与 `reduce_combat_status_count` 仍只支持消费输入，其他命令仍只支持固定参数。
 
 固定版本不能机械地编译成“压入输入的 opcode，再跳到消费版本”。通常固定版与消费版各有开头执行函数，将初始化和首个连续不可中断步骤一起完成，后续恢复点才复用；避免固定版增加一次调度。
 

@@ -262,6 +262,30 @@ namespace givm
         std::variant<hand_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
                      combat_status_id, character_id, skill_id, attachment_id>;
 
+    struct relative_character_target
+    {
+        player_id player;
+        std::int32_t offset = 0;
+    };
+
+    struct other_characters_target
+    {
+        character_id excluded;
+    };
+
+    using damage_target = std::variant<character_id, relative_character_target, other_characters_target>;
+
+    struct damage
+    {
+        damage_source_id source;
+        damage_target target;
+        std::uint32_t value;
+        std::uint16_t multiplier_numerator = 1;
+        std::uint16_t multiplier_denominator = 1;
+        damage_type type;
+        damage_flags flags;
+    };
+
     struct damage_calculation
     {
         damage_source_id source;

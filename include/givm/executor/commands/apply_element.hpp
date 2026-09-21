@@ -1,135 +1,42 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_APPLY_ELEMENT_HPP
 #define GIVM_EXECUTOR_COMMANDS_APPLY_ELEMENT_HPP
 
-#include "../executor.hpp"
-
-#include <cstdint>
-
-#include "../broadcast.hpp"
-#include "../../definition/events.hpp"
-#include "../instruction.hpp"
-#include "../../definition/commands.hpp"
+#include "deal_damage.hpp"
 
 namespace givm::detail
 {
-    inline bool begin_element_application(
-        const definition_library& library,
-        element_application_source_id source,
-        character_id target,
-        element incoming_element,
-        element_application_cause cause,
-        unrestricted_table& table,
-        execution_context& context,
-        execution_position return_position
-    )
+    template<bool Observed>
+    execution_state prepare_element_application(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        auto target_entity = table[target];
-        auto& target_state = target_entity.state();
-        const auto reacted_aura = target_state.aura;
-        const auto reaction = reaction_from_aura(reacted_aura, incoming_element);
-
-        if(reaction == elemental_reaction::none)
-        {
-            target_state.aura = aura_without_reaction(reacted_aura, incoming_element);
-            return false;
-        }
-
-        prepare_broadcast(
-            library,
-            elemental_reaction_will_occur{
-                .source = source,
-                .target = target,
-                .incoming_element = incoming_element,
-                .reacted_aura = reacted_aura,
-                .reaction = reaction,
-                .cause = cause,
-                .already_handled = false
-            },
-            table,
-            context.stack(),
-            return_position
-        );
-        return true;
+        const auto command = context.instruction_data<1, givm::apply_element>(library);
+        const auto position = context.position() + instruction_extent<1, givm::apply_element>;
+        const auto target = table[command.target];
+        if(not target) return context.jump(position + damage_end_offset<Observed> * sizeof(execute_fn));
+        context.stack().push(damage_group{ .instructions = position }, substack());
+        prepend_damage(context.stack(), damage_node{
+            .event = { .source = command.source, .target = command.target,
+                .value = 0, .type = damage_type_from_element(command.element) },
+            .reacted_aura = target.state().aura,
+            .reaction = reaction_from_aura(target.state().aura, command.element),
+            .cause = command.cause, .deals_damage = false
+        });
+        if(const auto state = apply_group_damage_element<Observed>(library, table, context, random)) return *state;
+        return continue_damage_group<false, Observed>(library, table, context, random);
     }
 
-    inline after_elemental_reaction finish_elemental_reaction(
-        unrestricted_table& table,
-        execution_context& context
-    )
+    template<bool Observed>
+    void compile_element_application(program_writer& writer, const givm::apply_element& command)
     {
-        auto& event = get<0>(context.stack().top<elemental_reaction_will_occur, execution_position>());
-
-        if(not event.already_handled)
-        {
-            table[event.target].state().aura = aura_after_reaction(
-                event.reacted_aura,
-                event.incoming_element,
-                event.reaction
-            );
-        }
-
-        const after_elemental_reaction result{
-            .source = event.source,
-            .target = event.target,
-            .incoming_element = event.incoming_element,
-            .reacted_aura = event.reacted_aura,
-            .reaction = event.reaction,
-            .cause = event.cause
-        };
-        pop_broadcast<elemental_reaction_will_occur>(context);
-        // TODO: apply the remaining default reaction effects here.
-        return result;
-    }
-
-    // This continuation only uses the broadcast frame, so damage and
-    // direct element application can share the same reaction instruction.
-    inline execution_state continue_elemental_reaction(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random))
-        {
-            return continue_execution;
-        }
-        prepare_broadcast(library, finish_elemental_reaction(table, context), table,
-            context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
-    }
-
-    inline execution_state finish_element_application(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<after_elemental_reaction>(library, table, context, random))
-        {
-            return continue_execution;
-        }
-        pop_broadcast<after_elemental_reaction>(context);
-        return context.enter_next();
-    }
-
-    inline execution_state apply_element_execute(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
-    )
-    {
-        const auto& command = context.instruction_data<1, givm::apply_element>(library);
-        const bool reacting = begin_element_application(
-            library, command.source, command.target, command.element, command.cause, table, context,
-            context.position() + instruction_extent<1, givm::apply_element>
-        );
-        return context.advance(instruction_extent<1, givm::apply_element>
-            + (reacting ? 0 : 2 * sizeof(execute_fn)));
-    }
-
-    inline void compile(program_writer& writer, const givm::apply_element& command, compile_mode)
-    {
-        writer.write(execute_fn{ &apply_element_execute });
+        writer.write(execute_fn{ prepare_element_application<Observed> });
         writer.write(command);
-        writer.write(execute_fn{ &continue_elemental_reaction });
-        writer.write(execute_fn{ &finish_element_application });
+        compile_damage_resolution<false, Observed>(writer);
+    }
+
+    inline void compile(program_writer& writer, const givm::apply_element& command, compile_mode mode)
+    {
+        if(mode == compile_mode::observed) compile_element_application<true>(writer, command);
+        else compile_element_application<false>(writer, command);
     }
 }
 

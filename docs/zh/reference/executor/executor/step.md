@@ -52,6 +52,7 @@ execution_state step(
 ## 示例
 
 ```cpp
+#include <array>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -77,15 +78,18 @@ int main()
     character_source source{};
     givm::definition_source_library sources{};
     sources.add(source);
+    const std::array damages{
+        givm::damage{
+            .source = givm::character_id{ givm::player_id{ 0 }, 1 },
+            .target = givm::character_id{ givm::player_id{ 1 }, 0 },
+            .value = 999, .type = givm::damage_type::physical, .flags = {} }
+    };
     const auto [library, ids] = compile(
         sources,
         std::tuple{
             givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } },
             givm::set_active_character{ .target = { .player_id = givm::player_id{ 0 }, .index = 1 } },
-            givm::deal_damage{
-                .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 1 },
-                .target = { .player_id = givm::player_id{ 1 }, .index = 0 },
-                .value = 999, .type = givm::damage_type::physical, .flags = {} } },
+            givm::deal_damage{ .damages = damages } },
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::observed);
     givm::table table{};
     const auto definition = ids.get_id<givm::character_view>("character");

@@ -1,3 +1,4 @@
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <string_view>
@@ -170,10 +171,11 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     const givm::test::initialized_character_source victim{ "Victim", initial };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
+    const std::array damages{ givm::damage{ .source = source, .target = damaged, .value = value, .type = type } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
-            givm::deal_damage{ .source = source, .target = damaged, .value = value, .type = type },
+            givm::deal_damage{ .damages = damages },
             givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, observer, victim
     );
@@ -215,11 +217,12 @@ TEST_CASE("damage observation precedes elemental settlement and copies resume in
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
     const auto compile_program = [&](givm::compile_mode mode)
     {
+        const std::array damages{ givm::damage{ .source = source, .target = damaged, .value = 3,
+            .type = givm::damage_type::pyro, .flags = givm::damage_flag_bits::skill_damage } };
         return givm::test::compile_definitions_with_program(
             mode,
             std::tuple{
-                givm::deal_damage{ .source = source, .target = damaged, .value = 3, .type = givm::damage_type::pyro,
-                    .flags = givm::damage_flag_bits::skill_damage },
+                givm::deal_damage{ .damages = damages },
                 givm::end_game{ .result = givm::game_result::both_loss }
             }, std::tuple{}, observer, victim
         );
@@ -275,10 +278,12 @@ TEST_CASE("lethal damage reports overkill and ends the game before later instruc
     const givm::test::initialized_character_source victim{ "Victim", { .max_health = 10, .health = 1 } };
     const givm::character_id source{ other_player(damaged_player), 0 };
     const givm::character_id damaged{ damaged_player, 0 };
+    const std::array damages{ givm::damage{ .source = source, .target = damaged, .value = 999,
+        .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
-            givm::deal_damage{ .source = source, .target = damaged, .value = 999, .type = givm::damage_type::physical },
+            givm::deal_damage{ .damages = damages },
             givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, attacker, victim
     );
@@ -318,10 +323,11 @@ TEST_CASE("zero damage skips health observation and preserves element applicatio
     const givm::test::initialized_character_source victim{ "Victim" };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
+    const std::array damages{ givm::damage{ .source = source, .target = damaged, .value = value, .type = type } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
         std::tuple{
-            givm::deal_damage{ .source = source, .target = damaged, .value = value, .type = type },
+            givm::deal_damage{ .damages = damages },
             givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, observer, victim
     );

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <span>
 #include <type_traits>
 #include <variant>
 
@@ -113,13 +114,8 @@ namespace givm
 
     struct deal_damage
     {
-        damage_source_id source;
-        character_id target;
-        std::uint32_t value;
-        std::uint16_t multiplier_numerator = 1;
-        std::uint16_t multiplier_denominator = 1;
-        damage_type type;
-        damage_flags flags;
+        std::span<const damage> damages{};
+        std::size_t input_count = 1;
     };
 
     struct apply_element
@@ -203,7 +199,12 @@ namespace givm::detail
     constexpr size_t input_size(const start_dice_roll_phase&) noexcept { return 0; }
     constexpr size_t input_size(const start_battle&) noexcept { return 0; }
     constexpr size_t input_size(const reduce_combat_status_count&) noexcept { return sizeof(combat_status_count_reduction); }
-    constexpr size_t input_size(const deal_damage&) noexcept { return 0; }
+    constexpr size_t input_size(const deal_damage& command) noexcept
+    {
+        constexpr auto alignment = alignof(std::max_align_t);
+        return command.damages.empty()
+            ? command.input_count * ((sizeof(damage) + alignment - 1) / alignment * alignment) : 0;
+    }
     constexpr size_t input_size(const apply_element&) noexcept { return 0; }
     constexpr size_t input_size(const set_element_aura&) noexcept { return 0; }
     constexpr size_t input_size(const test_command&) noexcept { return 0; }

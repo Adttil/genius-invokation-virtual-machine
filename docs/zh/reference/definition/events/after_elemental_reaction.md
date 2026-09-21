@@ -21,6 +21,12 @@ struct after_elemental_reaction;
 | `reaction` | `const elemental_reaction` | 本次元素反应的种类；只读 |
 | `cause` | `const element_application_cause` | 由伤害还是独立效果引发，初始为 effect；只读 |
 
+## 时机
+
+由伤害触发时，须等待所属伤害组内全部伤害完成扣血、击倒处理与元素附着，随后在引发该反应的伤害后通知之前广播。反应派生伤害也在这些完成通知之前结算；反应信息仍记录引发反应时的元素与附着。若此前已判定终局，则不再进行剩余完成通知。
+
+独立 [`apply_element`](../commands/apply_element.md) 引发的反应也先完成其派生伤害的扣血与附着，再进行完成通知。没有发生反应时不广播本事件。
+
 ## 示例
 
 ```cpp
