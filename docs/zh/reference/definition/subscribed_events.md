@@ -9,7 +9,7 @@ template<class EntityView>
 struct subscribed_events;
 ```
 
-一种实体形态可以响应的事件集合。它确定定义源可为这一 view 提供哪些事件处理；具体某项定义是否提供处理，还需通过定义的 `can_handle` 查询。
+一种实体形态可以响应的事件集合。它确定定义源可为这一 view 提供哪些事件处理；具体定义是否提供处理由[定义源协议](source_protocol.md)决定，编译后可通过定义库的 [`can_handle`](../executor/definition_library/can_handle.md) 查询。
 
 ## 模板参数
 

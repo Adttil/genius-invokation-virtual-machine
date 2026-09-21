@@ -14,7 +14,7 @@ constexpr void query_default(const card_state_modification&) noexcept;
 constexpr target_validation query_default(const card_target_validation& query) noexcept;
 ```
 
-定义源没有提供某项查询时，给出该查询的默认结果。定义源协议通过未限定名称的 `query_default(parameters)` 调用，以参数相关查找（ADL）选择匹配方法。
+定义源没有提供某项查询，或[动态定义源](source_protocol.md#动态定义源)的 `can_query<Q>()` 返回 `false` 时，给出该查询的默认结果。定义源协议通过未限定名称的 `query_default(parameters)` 调用，以参数相关查找（ADL）选择匹配方法。
 
 ## 返回值
 

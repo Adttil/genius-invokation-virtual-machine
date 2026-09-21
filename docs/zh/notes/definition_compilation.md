@@ -334,18 +334,20 @@ static program_entry handle(
 
 handler 使用静态函数，是因为运行时持有编译后的 definition，而不保留原 source。动态 adapter 需要的 Lua 状态引用、回调索引或其他稳定句柄应由 `compile(...)` 放进 definition，再由静态 handler 读取。
 
-### `can_handle`
+### 动态源的 `can_handle`
 
 ```cpp
+static constexpr bool is_dynamic = true;
+
 template<class TEntityView, class TEvent>
 bool can_handle() const;
 ```
 
-`can_handle` 是可选的 const 成员函数，没有运行时参数。`TEntityView` 和 `TEvent` 指定要判断的实体 view 与事件组合，返回值表示这个具体 source 是否实际提供该响应。
+未声明 `is_dynamic` 或其值为 `false` 时，source 为静态源，只按静态 `handle` 是否存在判断响应能力，不调用源的 `can_handle`。这样普通 C++ 定义可以直接写自己需要的响应重载。
 
-最终只有同时满足以下条件时，编译库才为该组合安装 handler：存在返回类型正确的静态 `handle` 调用，并且 `can_handle<TEntityView, TEvent>()` 未提供或返回 `true`。
+`is_dynamic` 为 `true` 的源必须为所属类别的各个实体 view 与可订阅事件组合提供返回 `bool` 的 const 成员 `can_handle`。返回 `false` 时不安装 handler，返回 `true` 时安装对应的静态 `handle`；返回 `true` 却没有匹配实现时，编译定义库抛出 `std::invalid_argument`。已存在的 `handle` 返回类型错误仍在 C++ 编译时诊断，不能靠能力判断静默忽略。
 
-普通静态 source 通常只需省略不支持的 `handle`，无需提供 `can_handle`。动态 adapter 可能拥有覆盖全部事件的通用 handler 模板，此时可根据脚本实际注册的回调返回准确结果。该判断只在编译定义库时发生，不增加对局运行时的字符串查询或脚本能力检查。
+动态 adapter 可以提供覆盖全部事件的通用 handler 模板，并根据脚本实际注册的回调返回能力判断结果。该判断只在编译定义库时发生，最终仍保存事件对应的擦除函数指针，不增加对局运行时的字符串查询、事件类型分支或脚本能力检查。定义库公开的 `can_handle` 仍检查已保存的入口是否为空。
 
 `can_handle` 表示“存在这一类响应”，不保证 handler 每次调用都会提交后续效果。card 和 card status 可能为不同区域 view 提供不同响应，所以接口同时区分 view 与 event。
 
@@ -355,13 +357,15 @@ bool can_handle() const;
 
 空查询在具体 definition 编译完成后调用一次，保存结果；非空查询保存对应的擦除函数，在收到参数时以 `std::any_cast` 取得 definition 后调用源的静态 query。运行期不需要查询种类的枚举或字符串查找。空查询按具体定义条目保存，不能按 C++ 源类型共享，因为同一源类型的不同实例可以有不同配置。
 
-没有匹配的源 query 时使用未限定的 `query_default(parameters)`，由 ADL 找到默认方法。源函数和默认方法都检查准确返回类型；存在源函数但返回错误类型不能静默退化为默认查询。各类别只保存自己支持的查询内容，没有另设查询能力标志。
+静态源没有匹配的 query 时使用未限定的 `query_default(parameters)`，由 ADL 找到默认方法；静态源不调用 `can_query`。动态源还须为所属类别的各查询提供 `template<class Q> bool can_query() const`：返回 `true` 时使用源查询，返回 `false` 时使用默认查询。返回 `true` 却缺少对应实现时，编译定义库抛出 `std::invalid_argument`。源函数和默认方法都检查准确返回类型；存在源函数但返回错误类型不能静默退化为默认查询。
+
+动态能力由具体源对象决定，不能写进按 C++ 源类型共享的 RTTI 结果。source view 在建库期间选择源查询或默认查询，再把选定的函数交给后续编译流程；空参数查询执行一次并保存结果，非空参数查询直接保存选定的函数。各类别只保存自己支持的查询内容，不增加对局运行期查询能力标志，也不在每次查询中判断是否走默认实现。
 
 角色初始状态、初始费用采用值结果。若以后增加包含指针或视图的结果，缓存只保存该对象本身，不自动拥有目标数据；库复制后仍需遵守其借用关系。查询结果不在 source view 的按源类型共享 RTTI 中保存，源编译上下文解析出的 ID 可正常参与结果计算。
 
 ## 动态定义源
 
-Lua 等动态来源通过 C++ adapter 实现与静态 source 相同的接口，不使用另一套定义协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
+Lua 等动态来源通过声明 `is_dynamic = true` 的 C++ adapter 接入。adapter 保留与静态 source 相同的 `handle`、`query`、名称、标签、依赖和编译接口，并提供按源对象判断的 `can_handle`、`can_query`；脚本侧可以直接提供回调集合，不必复制 C++ 模板协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
 
 adapter 把定义的固定命令序列交给 `add_program`。每个程序所需输入的数量、类型和顺序由命令序列确定；响应时计算输入值，再提交对应的完整参数段。C++ 调用可以逐项传初始事件，动态 adapter 可以用 `span<const unsigned char>` 提交已经按该入口准备好的输入字节，不需要逐项恢复 C++ 类型或附带类型元信息。命令实现不因外层事件和实体类别组合而复制。
 
@@ -424,7 +428,7 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 2. 从 `definition_selection` 指定的定义求出依赖闭包，或选择全部定义。
 3. 为选中的定义和标签建立 issued id 映射。
 4. 为每个选中的 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应程序入口。
-5. 保存空查询的结果与非空查询的调用函数；根据有效 `handle` 调用和可选 `can_handle` 结果安装事件运行时分派。
+5. 根据静态实现和动态源的 `can_handle`、`can_query` 结果选择响应与查询；保存空查询的结果与非空查询的调用函数，安装事件运行时分派。
 6. 将 definition 响应程序与调用方提供的初始化程序、回合程序共同组成游戏规则程序。
 7. 所有 definition 完整构造后，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`。
 

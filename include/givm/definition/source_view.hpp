@@ -5,6 +5,7 @@
 #include <array>
 #include <concepts>
 #include <cstddef>
+#include <stdexcept>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -192,6 +193,20 @@ namespace givm::detail
     using definition_for_source_t = std::remove_cvref_t<decltype(
         std::declval<const TSource&>().compile(std::declval<definition_compile_context&>())
     )>;
+
+    template<class TSource>
+    inline constexpr bool is_dynamic_source = []
+    {
+        if constexpr(requires { TSource::is_dynamic; })
+        {
+            static_assert(std::same_as<std::remove_cv_t<decltype(TSource::is_dynamic)>, bool>);
+            return TSource::is_dynamic;
+        }
+        else
+        {
+            return false;
+        }
+    }();
 }
 
 namespace givm
@@ -268,10 +283,13 @@ namespace givm
             std::make_index_sequence<views_of_definition<TCategory>::size()>
         >::type;
 
-        template<class... TQueries>
-        using query_fn_tuple_for = std::tuple<detail::query_fn_t<TQueries>...>;
+        template<class TQuery>
+        using query_fn_getter_t = detail::query_fn_t<TQuery> (*)(const void*);
 
-        using query_fn_tuple_t = supported_queries<TCategory>::template apply<query_fn_tuple_for>;
+        template<class... TQueries>
+        using query_fn_getter_tuple_for = std::tuple<query_fn_getter_t<TQueries>...>;
+
+        using query_fn_getter_tuple_t = supported_queries<TCategory>::template apply<query_fn_getter_tuple_for>;
 
         struct rtti_t
         {
@@ -288,7 +306,7 @@ namespace givm
 #else
             [[no_unique_address]]
 #endif
-            query_fn_tuple_t query_fns;
+            query_fn_getter_tuple_t query_fn_getters;
         };
 
         definition_data compile(definition_compile_context& context) const
@@ -359,7 +377,7 @@ namespace givm
                 .handle_fn_getters = make_handle_fn_getters<TSource>(
                     std::make_index_sequence<views_of_definition<TCategory>::size()>{}
                 ),
-                .query_fns = make_query_fns<TSource>(
+                .query_fn_getters = make_query_fn_getters<TSource>(
                     std::make_index_sequence<supported_queries<TCategory>::size()>{}
                 )
             };
@@ -371,18 +389,48 @@ namespace givm
         template<class TQuery>
         detail::query_fn_t<TQuery> get_query_fn() const
         {
-            return std::get<supported_queries<TCategory>::template index_of<TQuery>()>(rtti_->query_fns);
+            const auto getter = std::get<supported_queries<TCategory>::template index_of<TQuery>()>(
+                rtti_->query_fn_getters
+            );
+            return getter(source_);
         }
 
         template<class TSource, std::size_t... I>
-        static constexpr query_fn_tuple_t make_query_fns(std::index_sequence<I...>)
+        static constexpr query_fn_getter_tuple_t make_query_fn_getters(std::index_sequence<I...>)
         {
-            return { make_query_fn<TSource, typename supported_queries<TCategory>::template type_at<I>>()... };
+            return {
+                (+[](const void* source)
+                {
+                    using query_type = typename supported_queries<TCategory>::template type_at<I>;
+                    return make_query_fn<TSource, query_type>(*static_cast<const TSource*>(source));
+                })...
+            };
+        }
+
+        template<class TQuery>
+        static constexpr detail::query_fn_t<TQuery> make_default_query_fn()
+        {
+            static_assert(std::same_as<
+                decltype(query_default(std::declval<const TQuery&>())), typename TQuery::result_t
+            >);
+            return +[](const definition_data&, const TQuery& query) -> TQuery::result_t
+            {
+                return query_default(query);
+            };
         }
 
         template<class TSource, class TQuery>
-        static constexpr detail::query_fn_t<TQuery> make_query_fn()
+        static detail::query_fn_t<TQuery> make_query_fn(const TSource& source)
         {
+            if constexpr(detail::is_dynamic_source<TSource>)
+            {
+                static_assert(std::same_as<decltype(source.template can_query<TQuery>()), bool>);
+                if(not source.template can_query<TQuery>())
+                {
+                    return make_default_query_fn<TQuery>();
+                }
+            }
+
             using definition_type = detail::definition_for_source_t<TSource>;
             if constexpr(requires(const definition_type& definition, const TQuery& query)
             {
@@ -397,15 +445,13 @@ namespace givm
                     return TSource::query(std::any_cast<const definition_type&>(data), query);
                 };
             }
+            else if constexpr(detail::is_dynamic_source<TSource>)
+            {
+                throw std::invalid_argument{ "dynamic source enables an unavailable query" };
+            }
             else
             {
-                static_assert(std::same_as<
-                    decltype(query_default(std::declval<const TQuery&>())), typename TQuery::result_t
-                >);
-                return +[](const definition_data&, const TQuery& query) -> TQuery::result_t
-                {
-                    return query_default(query);
-                };
+                return make_default_query_fn<TQuery>();
             }
         }
 
@@ -486,6 +532,15 @@ namespace givm
         template<class TSource, class TView, class TEvent>
         static handle_fn_t<TView, TEvent> make_handle_fn(const TSource& source)
         {
+            if constexpr(detail::is_dynamic_source<TSource>)
+            {
+                static_assert(std::same_as<decltype(source.template can_handle<TView, TEvent>()), bool>);
+                if(not source.template can_handle<TView, TEvent>())
+                {
+                    return nullptr;
+                }
+            }
+
             using definition_type = detail::definition_for_source_t<TSource>;
             if constexpr(requires(
                 const definition_type& definition,
@@ -505,18 +560,6 @@ namespace givm
                 ));
                 static_assert(std::same_as<result_type, program_entry>);
 
-                if constexpr(requires { source.template can_handle<TView, TEvent>(); })
-                {
-                    static_assert(std::same_as<
-                        decltype(source.template can_handle<TView, TEvent>()),
-                        bool
-                    >);
-                    if(not source.template can_handle<TView, TEvent>())
-                    {
-                        return nullptr;
-                    }
-                }
-
                 return +[](
                     const definition_data& data,
                     const TView& entity,
@@ -531,6 +574,10 @@ namespace givm
                         context
                     );
                 };
+            }
+            else if constexpr(detail::is_dynamic_source<TSource>)
+            {
+                throw std::invalid_argument{ "dynamic source enables an unavailable event handler" };
             }
             else
             {

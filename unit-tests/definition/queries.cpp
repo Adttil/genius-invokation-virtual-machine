@@ -1,11 +1,13 @@
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <givm/executor.hpp>
 
 #include "../table/test_definition_library.hpp"
@@ -16,6 +18,7 @@ namespace
     {
         std::uint32_t initial_cost = 0;
         std::uint32_t target_validation = 0;
+        std::uint32_t capability_checks = 0;
     };
 
     struct queried_card_source
@@ -38,6 +41,13 @@ namespace
 
         std::string_view name() const noexcept { return source_name; }
 
+        template<class TQuery>
+        bool can_query() const noexcept
+        {
+            ++counts->capability_checks;
+            return false;
+        }
+
         definition_type compile(givm::definition_compile_context&) const
         {
             return { counts, static_cast<std::uint8_t>(base_cost + 1), minimum_remaining_cards,
@@ -59,6 +69,32 @@ namespace
             const auto player = parameters.table[parameters.card.id().player_id];
             return parameters.target_count == 0 && player.deck_card_count() >= definition.minimum_remaining_cards
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
+        }
+    };
+
+    struct explicitly_static_card_source : queried_card_source
+    {
+        static constexpr bool is_dynamic = false;
+    };
+
+    struct dynamic_card_source : queried_card_source
+    {
+        static constexpr bool is_dynamic = true;
+
+        bool initial_state_enabled;
+        bool target_validation_enabled;
+
+        template<class TView, class TEvent>
+        bool can_handle() const noexcept { return false; }
+
+        template<class TQuery>
+        bool can_query() const noexcept
+        {
+            ++counts->capability_checks;
+            if constexpr(std::is_same_v<TQuery, givm::card_initial_state>)
+                return initial_state_enabled;
+            else
+                return target_validation_enabled;
         }
     };
 
@@ -90,6 +126,43 @@ namespace
             parameters.state.elemental_tuning_allowed = parameters.status.count == 0;
         }
     };
+
+    struct dynamic_status_source : modifying_status_source
+    {
+        static constexpr bool is_dynamic = true;
+
+        std::string_view source_name;
+        bool enabled;
+        std::uint32_t* capability_checks;
+
+        std::string_view name() const noexcept { return source_name; }
+
+        template<class TView, class TEvent>
+        bool can_handle() const noexcept { return false; }
+
+        template<class TQuery>
+        bool can_query() const noexcept
+        {
+            ++*capability_checks;
+            return enabled;
+        }
+    };
+
+    struct missing_dynamic_query_source : givm::test::named_definition_source<givm::card_definition>
+    {
+        static constexpr bool is_dynamic = true;
+
+        bool enabled;
+
+        template<class TView, class TEvent>
+        bool can_handle() const noexcept { return false; }
+
+        template<class TQuery>
+        bool can_query() const noexcept
+        {
+            return enabled && std::is_same_v<TQuery, givm::card_initial_state>;
+        }
+    };
 }
 
 TEST_CASE("empty queries cache each compiled definition and survive library copies and moves", "[definition][query]")
@@ -100,7 +173,7 @@ TEST_CASE("empty queries cache each compiled definition and survive library copi
 
     query_counts counts;
     const queried_card_source first{ "FirstQueriedCard", &counts, 1, 0 };
-    const queried_card_source second{ "SecondQueriedCard", &counts, 3, 0 };
+    const explicitly_static_card_source second{ { "SecondQueriedCard", &counts, 3, 0 } };
     givm::definition_source_library sources;
     REQUIRE(sources.add(first, second));
     CHECK(counts.initial_cost == 0);
@@ -125,6 +198,90 @@ TEST_CASE("empty queries cache each compiled definition and survive library copi
     CHECK(assigned[second_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 4);
     CHECK(counts.initial_cost == 2);
     CHECK(counts.target_validation == 0);
+    CHECK(counts.capability_checks == 0);
+}
+
+TEST_CASE("dynamic card query availability is selected per source before runtime", "[definition][query]")
+{
+    query_counts counts;
+    const dynamic_card_source initial_source{ { "CustomInitialState", &counts, 3, 10 }, true, false };
+    const dynamic_card_source validation_source{ { "CustomValidation", &counts, 7, 10 }, false, true };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        givm::compile_mode::normal,
+        std::tuple{ givm::draw_cards{ .count = 2 }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, initial_source, validation_source);
+    const auto initial_id = ids.get_id<givm::card_definition>(initial_source.name());
+    const auto validation_id = ids.get_id<givm::card_definition>(validation_source.name());
+    REQUIRE(counts.initial_cost == 1);
+    REQUIRE(counts.target_validation == 0);
+    REQUIRE(counts.capability_checks > 0);
+    const auto capability_checks = counts.capability_checks;
+
+    CHECK(library[initial_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 4);
+    CHECK(library[validation_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
+    givm::table table;
+    load_deck(table, library, { .cards = { initial_id, validation_id } }, {});
+    givm::executor executor;
+    executor.enter_entry(library);
+    auto random = []() -> std::uint32_t { return 0; };
+    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == 2);
+    const auto copied = library;
+    for(const auto card : table[givm::player_id{ 0 }].hand_cards())
+    {
+        const auto result = copied[card.definition_id()].query(
+            givm::card_target_validation{ card, table, copied, {}, 0 });
+        CHECK(result == (card.definition_id() == initial_id
+            ? givm::target_validation::valid_complete : givm::target_validation::invalid));
+    }
+    CHECK(copied[initial_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 4);
+    CHECK(copied[validation_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
+    CHECK(counts.initial_cost == 1);
+    CHECK(counts.target_validation == 1);
+    CHECK(counts.capability_checks == capability_checks);
+}
+
+TEST_CASE("dynamic void queries select a source implementation or the no-op default", "[definition][query]")
+{
+    std::uint32_t calls = 0;
+    std::uint32_t capability_checks = 0;
+    const dynamic_status_source enabled{ { &calls, 2 }, "EnabledStatus", true, &capability_checks };
+    const dynamic_status_source disabled{ { &calls, 2 }, "DisabledStatus", false, &capability_checks };
+    const auto [library, ids] = givm::test::compile_definitions(enabled, disabled);
+    const auto enabled_id = ids.get_id<givm::status_definition>(enabled.name());
+    const auto disabled_id = ids.get_id<givm::status_definition>(disabled.name());
+    REQUIRE(capability_checks > 0);
+    const auto build_capability_checks = capability_checks;
+    CHECK(calls == 0);
+    givm::card_state state{ .cost = { .dice_requirement = { .any = 3 } } };
+    const givm::status_state status{ .count = 2 };
+    library[disabled_id].query(givm::card_state_modification{ state, status });
+    CHECK(state.cost.dice_requirement.any == 3);
+    CHECK(state.elemental_tuning_allowed);
+    library[enabled_id].query(givm::card_state_modification{ state, status });
+    CHECK(state.cost.dice_requirement.any == 7);
+    CHECK_FALSE(state.elemental_tuning_allowed);
+    CHECK(calls == 1);
+    CHECK(capability_checks == build_capability_checks);
+}
+
+TEST_CASE("dynamic queries only require an implementation when enabled", "[definition][query]")
+{
+    const bool enabled = GENERATE(false, true);
+    const missing_dynamic_query_source source{ { "MissingDynamicQuery" }, enabled };
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(source));
+    if(enabled)
+    {
+        REQUIRE_THROWS_AS(compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
+            std::invalid_argument);
+    }
+    else
+    {
+        const auto [library, ids] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+        const auto id = ids.get_id<givm::card_definition>(source.name());
+        CHECK(library[id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
+    }
 }
 
 TEST_CASE("card state modifications use status state and survive library copies", "[definition][query]")

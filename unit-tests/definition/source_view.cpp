@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -222,6 +223,7 @@ namespace
     struct selectable_handler_source
     {
         using definition_category = givm::support_view;
+        static constexpr bool is_dynamic = true;
 
         struct definition_type{};
 
@@ -241,7 +243,14 @@ namespace
         template<class TView, class TEvent>
         constexpr bool can_handle() const noexcept
         {
-            return enabled;
+            return enabled && std::is_same_v<TView, givm::support_view>
+                && std::is_same_v<TEvent, givm::test_event>;
+        }
+
+        template<class TQuery>
+        constexpr bool can_query() const noexcept
+        {
+            return false;
         }
 
         static givm::program_entry handle(
@@ -251,6 +260,47 @@ namespace
             givm::handle_context&)
         {
             return {};
+        }
+    };
+
+    struct static_handler_source
+    {
+        using definition_category = givm::support_view;
+
+        struct definition_type{};
+
+        std::string_view source_name;
+        std::uint32_t* capability_checks;
+
+        std::string_view name() const noexcept { return source_name; }
+
+        definition_type compile(givm::definition_compile_context&) const noexcept { return {}; }
+
+        template<class TView, class TEvent>
+        bool can_handle() const noexcept
+        {
+            ++*capability_checks;
+            return false;
+        }
+
+        static givm::program_entry handle(const definition_type&, const givm::support_view&,
+            givm::test_event&, givm::handle_context&)
+        {
+            return {};
+        }
+    };
+
+    struct explicitly_static_handler_source : static_handler_source
+    {
+        static constexpr bool is_dynamic = false;
+    };
+
+    struct missing_dynamic_handler_source : selectable_handler_source
+    {
+        template<class TView, class TEvent>
+        constexpr bool can_handle() const noexcept
+        {
+            return std::is_same_v<TEvent, givm::damage_effect>;
         }
     };
 
@@ -329,6 +379,33 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     CHECK_FALSE(
         library[id_map.get_id<givm::support_view>(disabled.name())].can_handle<givm::test_event, givm::support_view>()
     );
+}
+
+TEST_CASE("static handler availability depends on the implementation alone", "[source_view]")
+{
+    std::uint32_t capability_checks = 0;
+    const static_handler_source implicit_source{ "ImplicitStatic", &capability_checks };
+    const explicitly_static_handler_source explicit_source{ { "ExplicitStatic", &capability_checks } };
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(implicit_source, explicit_source));
+    const auto [library, ids] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+
+    CHECK(library[ids.get_id<givm::support_view>(implicit_source.name())]
+        .can_handle<givm::test_event, givm::support_view>());
+    CHECK(library[ids.get_id<givm::support_view>(explicit_source.name())]
+        .can_handle<givm::test_event, givm::support_view>());
+    CHECK_FALSE(library[ids.get_id<givm::support_view>(implicit_source.name())]
+        .can_handle<givm::damage_effect, givm::support_view>());
+    CHECK(capability_checks == 0);
+}
+
+TEST_CASE("dynamic sources cannot enable a missing handler implementation", "[source_view]")
+{
+    const missing_dynamic_handler_source source{ { "MissingDynamicHandler", true } };
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(source));
+    REQUIRE_THROWS_AS(compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
+        std::invalid_argument);
 }
 
 TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneous ranges", "[source_view]")

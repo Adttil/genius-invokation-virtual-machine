@@ -53,7 +53,7 @@ static givm::program_entry handle(
     givm::handle_context& context);
 ```
 
-`TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。没有匹配的函数就表示不响应。
+`TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。普通静态源只按匹配的函数判断是否响应，没有匹配函数就不响应；已有函数的返回类型必须正确。
 
 响应函数可以读取实体，通过 `context.table()` 读取牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。返回类型须为 `program_entry`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，费用响应则以 `return context.invoke(givm::substack_t{}, entry, inputs...);` 提交延迟效果。
 
@@ -65,7 +65,7 @@ static givm::program_entry handle(
 
 可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。卡牌初始状态、技能初始费用和目标检查采用下述查询接口。
 
-还可以提供 `template<class TView, class TEvent> bool can_handle() const`，按源对象配置禁用某个已经存在的响应函数。返回 `false` 时该响应不进入编译后的定义。这个选择在编译时确定；每次事件是否实际生效，由响应函数根据事件和对局状态判断。
+每次事件是否实际生效，由响应函数根据事件和对局状态判断。需要按源对象配置选择响应能力时，使用下述[动态定义源](#动态定义源)协议。
 
 ## 查询
 
@@ -88,6 +88,33 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 查询结果若包含引用、指针或视图，所引用的数据必须在结果使用期间保持有效。空查询的结果会随定义库保存与复制，定义源须相应保证其所借用数据的生命周期。
 
 `name`、`tags` 及其他各类别共用的分类与依赖接口仍采用各自的具名形式。
+
+## 动态定义源
+
+未声明 `is_dynamic` 或声明为 `static constexpr bool is_dynamic = false;` 时，定义源按上述静态规则提供响应与查询，不调用 `can_handle` 或 `can_query`。Lua 等动态来源的适配器可以声明以下成员，按每个源对象实际提供的能力选择响应与查询：
+
+```cpp
+static constexpr bool is_dynamic = true;
+
+template<class TView, class TEvent>
+bool can_handle() const;
+
+template<class Q>
+bool can_query() const;
+```
+
+动态源须为所属类别支持的每个实体 view 与事件组合提供 `can_handle`，并为每种支持的查询提供 `can_query`；两者的返回类型都必须为 `bool`。实际调用仍由前述静态 `handle`、`query` 函数实现，适配器所需的脚本状态、回调引用等数据由 `compile` 返回的配置保存。
+
+| 判断结果 | 编译定义库时的行为 |
+| --- | --- |
+| `can_handle<TView, TEvent>()` 为 `true` | 启用对应 `handle` |
+| `can_handle<TView, TEvent>()` 为 `false` | 不提供该响应 |
+| `can_query<Q>()` 为 `true` | 使用对应 `query` |
+| `can_query<Q>()` 为 `false` | 使用 `query_default` |
+
+能力判断在编译定义库时对具体源对象进行。若返回 `true` 却没有匹配的实现，编译定义库抛出 `std::invalid_argument`；已有实现返回类型错误则属于 C++ 编译错误。能力判断须与源实际提供的实现一致。查询选定后仍遵守空参数查询求值一次、非空参数查询按本次参数求值的规则。
+
+游戏运行期间不再调用源对象的能力判断。定义库公开的 [`can_handle`](../executor/definition_library/can_handle.md) 查询返回本次编译确定的响应能力。
 
 ## 示例
 
