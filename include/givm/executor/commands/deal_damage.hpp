@@ -10,6 +10,8 @@
 #include <variant>
 
 #include "../broadcast.hpp"
+#include "generate_combat_status.hpp"
+#include "summon.hpp"
 #include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
@@ -46,11 +48,13 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t damage_reaction_offset = 3 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_reaction_offset = 4 + Observed;
+    inline constexpr std::size_t damage_entity_resume_offset = 4 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_damage_offset = 5 + Observed;
+    inline constexpr std::size_t damage_after_reaction_offset = 5 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_end_offset = 6 + Observed;
+    inline constexpr std::size_t damage_after_damage_offset = 6 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t damage_end_offset = 7 + Observed;
 
     inline damage_node& damage_node_at(frame_stack& stack, std::size_t offset) noexcept
     {
@@ -155,6 +159,9 @@ namespace givm::detail
             break;
         case elemental_reaction::superconduct:
         case elemental_reaction::electro_charged:
+        case elemental_reaction::quicken:
+        case elemental_reaction::burning:
+        case elemental_reaction::bloom:
             add_reaction_damage_bonus(event, 1);
             break;
         default:
@@ -211,7 +218,8 @@ namespace givm::detail
 
     // Empty means this local stage finished. A value means execution left the
     // local loop: a response program, an observation pause, or game termination.
-    inline std::optional<execution_state> continue_damage_reaction(
+    template<bool Observed>
+    std::optional<execution_state> continue_damage_reaction(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
         if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random)) return continue_execution;
@@ -234,7 +242,27 @@ namespace givm::detail
                     .value = 1, .type = type, .flags = damage_flag_bits::reaction_damage
                 });
             }
-            // Remaining reaction effects that create entities are filled separately.
+            else if(event.reaction == elemental_reaction::quicken || event.reaction == elemental_reaction::burning
+                || event.reaction == elemental_reaction::bloom)
+            {
+                const auto player = other_player(event.target.player_id);
+                const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+                const auto resume = group.instructions + damage_entity_resume_offset<Observed> * sizeof(execute_fn);
+                program_entry entry;
+                if(event.reaction == elemental_reaction::burning)
+                {
+                    entry = prepare_summoning(library, table, context, random,
+                        { .player = player, .definition = library.burning_flame_id(), .state = { 1, 1 } }, resume);
+                }
+                else
+                {
+                    const auto definition = event.reaction == elemental_reaction::quicken
+                        ? library.catalyzing_field_id() : library.dendro_core_id();
+                    entry = prepare_combat_status_generation(library, table, context, random,
+                        { .player = player, .definition = definition }, resume);
+                }
+                if(entry) return context.enter(entry);
+            }
         }
         return std::nullopt;
     }
@@ -259,7 +287,7 @@ namespace givm::detail
             .incoming_element = incoming, .reacted_aura = node.event.reacted_aura,
             .reaction = node.event.reaction, .cause = node.cause
         }, table, context.stack(), position);
-        return continue_damage_reaction(library, table, context, random);
+        return continue_damage_reaction<Observed>(library, table, context, random);
     }
 
     template<bool Observed>
@@ -503,6 +531,14 @@ namespace givm::detail
     }
 
     template<bool Inputs, bool Observed>
+    execution_state resume_damage_entity_generation(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        context.stack().pop<execution_position>();
+        return continue_damage_group<Inputs, Observed>(library, table, context, random);
+    }
+
+    template<bool Inputs, bool Observed>
     execution_state prepare_damage_group(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
@@ -520,7 +556,8 @@ namespace givm::detail
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_calculation<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_effect<Observed>> });
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_health_observation<Inputs> });
-        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_reaction> });
+        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_reaction<Observed>> });
+        writer.write(execute_fn{ resume_damage_entity_generation<Inputs, Observed> });
         writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_reaction<Observed>> });
         writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_damage> });
     }

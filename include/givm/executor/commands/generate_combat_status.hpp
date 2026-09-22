@@ -5,6 +5,30 @@
 
 namespace givm::detail
 {
+    inline program_entry prepare_combat_status_generation(
+        const definition_library& library, unrestricted_table& table, execution_context& context,
+        random_fn& random, combat_status_generation input, execution_position resume)
+    {
+        const auto definition = library[input.definition];
+        input.state = clamp_combat_status_state(input.state, definition.query(combat_status_state_limit{}));
+        for(const auto existing : std::as_const(table)[input.player].combat_statuses())
+        {
+            if(existing.definition_id() != input.definition)
+                continue;
+            if(not definition.can_handle<combat_status_regeneration, combat_status_view>())
+                return {};
+            combat_status_regeneration event{ input.state };
+            context.stack().push(resume);
+            auto response = context.make_handle_context(table, random);
+            const auto entry = definition.handle<combat_status_regeneration>(existing, event, response);
+            if(not entry) context.stack().pop<execution_position>();
+            return entry;
+        }
+
+        table[input.player].add(input.definition, input.state);
+        return {};
+    }
+
     inline execution_state finish_combat_status_regeneration(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
@@ -35,24 +59,8 @@ namespace givm::detail
             context.enter_next();
         }
 
-        const auto definition = library[input.definition];
-        input.state = clamp_combat_status_state(input.state, definition.query(combat_status_state_limit{}));
-        for(const auto existing : std::as_const(table)[input.player].combat_statuses())
-        {
-            if(existing.definition_id() != input.definition)
-                continue;
-            if(not definition.can_handle<combat_status_regeneration, combat_status_view>())
-                return context.enter_next();
-            combat_status_regeneration event{ input.state };
-            context.stack().push(context.position());
-            auto response = context.make_handle_context(table, random);
-            const auto entry = definition.handle<combat_status_regeneration>(existing, event, response);
-            if(entry)
-                return context.enter(entry);
-            return finish_combat_status_regeneration(library, table, context, random);
-        }
-
-        table[input.player].add(input.definition, input.state);
+        if(const auto entry = prepare_combat_status_generation(library, table, context, random, input, context.position()))
+            return context.enter(entry);
         return context.enter_next();
     }
 

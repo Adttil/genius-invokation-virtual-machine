@@ -6,6 +6,37 @@
 
 namespace givm::detail
 {
+    inline program_entry prepare_summoning(
+        const definition_library& library, unrestricted_table& table, execution_context& context,
+        random_fn& random, summoning input, execution_position resume)
+    {
+        const auto definition = library[input.definition];
+        input.state = clamp_summon_state(input.state, definition.query(summon_state_limit{}));
+        const auto player = std::as_const(table)[input.player];
+        size_t summon_count = 0;
+        for(const auto existing : player.summons())
+        {
+            ++summon_count;
+            if(existing.definition_id() != input.definition)
+                continue;
+            if(not definition.can_handle<resummoning, summon_view>())
+                return {};
+            resummoning event{ input.state };
+            context.stack().push(resume);
+            auto response = context.make_handle_context(table, random);
+            const auto entry = definition.handle<resummoning>(existing, event, response);
+            if(not entry) context.stack().pop<execution_position>();
+            return entry;
+        }
+
+        if(summon_count >= player.state().summon_limit)
+            return {};
+        GIVM_ASSERT(input.state.usages != 0);
+        [[assume(input.state.usages != 0)]];
+        table[input.player].add(input.definition, input.state);
+        return {};
+    }
+
     inline execution_state finish_resummoning(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
@@ -36,31 +67,8 @@ namespace givm::detail
             context.enter_next();
         }
 
-        const auto definition = library[input.definition];
-        input.state = clamp_summon_state(input.state, definition.query(summon_state_limit{}));
-        const auto player = std::as_const(table)[input.player];
-        size_t summon_count = 0;
-        for(const auto existing : player.summons())
-        {
-            ++summon_count;
-            if(existing.definition_id() != input.definition)
-                continue;
-            if(not definition.can_handle<resummoning, summon_view>())
-                return context.enter_next();
-            resummoning event{ input.state };
-            context.stack().push(context.position());
-            auto response = context.make_handle_context(table, random);
-            const auto entry = definition.handle<resummoning>(existing, event, response);
-            if(entry)
-                return context.enter(entry);
-            return finish_resummoning(library, table, context, random);
-        }
-
-        if(summon_count >= player.state().summon_limit)
-            return context.enter_next();
-        GIVM_ASSERT(input.state.usages != 0);
-        [[assume(input.state.usages != 0)]];
-        table[input.player].add(input.definition, input.state);
+        if(const auto entry = prepare_summoning(library, table, context, random, input, context.position()))
+            return context.enter(entry);
         return context.enter_next();
     }
 
