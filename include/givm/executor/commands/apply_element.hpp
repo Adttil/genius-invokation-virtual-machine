@@ -21,7 +21,7 @@ namespace givm::detail
                 .reacted_aura = target.state().aura },
             .cause = command.cause, .deals_damage = false
         });
-        if(const auto state = apply_group_damage_element<Observed>(library, table, context, random)) return *state;
+        if(const auto state = prepare_damage_reaction<Observed>(library, table, context, random)) return *state;
         return continue_damage_group<false, Observed>(library, table, context, random);
     }
 

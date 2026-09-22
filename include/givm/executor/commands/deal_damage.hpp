@@ -18,6 +18,7 @@
 namespace givm::detail
 {
     inline constexpr std::size_t no_damage_node = std::numeric_limits<std::size_t>::max();
+    inline constexpr std::uint8_t no_overloaded_player = 2;
 
     // A pending node becomes a completion record; its link is reused. All
     // references between nodes are offsets, so growing/copying the stack is safe.
@@ -38,23 +39,27 @@ namespace givm::detail
         std::size_t input_count = 0;
         std::size_t input_cursor = 0;
         execution_position instructions = 0;
+        std::uint8_t overloaded_player = no_overloaded_player;
         bool first_used = false;
     };
 
     inline constexpr std::size_t damage_preparation_offset = 0;
-    inline constexpr std::size_t damage_calculation_offset = 1;
-    inline constexpr std::size_t damage_effect_offset = 2;
-    inline constexpr std::size_t damage_health_resume_offset = 3;
-    template<bool Observed>
-    inline constexpr std::size_t damage_reaction_offset = 3 + Observed;
+    inline constexpr std::size_t damage_reaction_offset = 1;
+    inline constexpr std::size_t damage_calculation_offset = 2;
+    inline constexpr std::size_t damage_effect_offset = 3;
+    inline constexpr std::size_t damage_health_resume_offset = 4;
     template<bool Observed>
     inline constexpr std::size_t damage_entity_resume_offset = 4 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_reaction_offset = 5 + Observed;
+    inline constexpr std::size_t damage_overloaded_observation_offset = 5 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_damage_offset = 6 + Observed;
+    inline constexpr std::size_t damage_overloaded_broadcast_offset = 5 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_end_offset = 7 + Observed;
+    inline constexpr std::size_t damage_after_reaction_offset = 6 + 2 * Observed;
+    template<bool Observed>
+    inline constexpr std::size_t damage_after_damage_offset = 7 + 2 * Observed;
+    template<bool Observed>
+    inline constexpr std::size_t damage_end_offset = 8 + 2 * Observed;
 
     inline damage_node& damage_node_at(frame_stack& stack, std::size_t offset) noexcept
     {
@@ -155,6 +160,7 @@ namespace givm::detail
         {
         case elemental_reaction::melt:
         case elemental_reaction::vaporize:
+        case elemental_reaction::overloaded:
             add_reaction_damage_bonus(event, 2);
             break;
         case elemental_reaction::superconduct:
@@ -219,22 +225,31 @@ namespace givm::detail
     // Empty means this local stage finished. A value means execution left the
     // local loop: a response program, an observation pause, or game termination.
     template<bool Observed>
-    std::optional<execution_state> continue_damage_reaction(
+    std::optional<execution_state> apply_group_damage_element(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random)) return continue_execution;
-        const auto event = get<0>(context.stack().top<elemental_reaction_will_occur, execution_position>());
-        pop_broadcast<elemental_reaction_will_occur>(context);
+        const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+        const auto node = damage_node_at(context.stack(), group.pending);
+        const auto& event = node.event;
+        const auto incoming = element_from_damage_type(event.type);
+        if(event.reaction == elemental_reaction::none)
+        {
+            if(incoming != element::none || not node.deals_damage)
+                table[event.target].state().aura = aura_without_reaction(event.reacted_aura, incoming);
+            complete_damage(context);
+            return std::nullopt;
+        }
+        // Replacement changes the reaction's effects, never its aura consumption.
+        table[event.target].state().aura = aura_after_reaction(event.reacted_aura, incoming, event.reaction);
         // Retire the active head before prepending its reaction children.
         complete_damage(context);
-        if(not event.already_handled)
+        if(not event.replacement_reaction)
         {
-            table[event.target].state().aura = aura_after_reaction(event.reacted_aura, event.incoming_element, event.reaction);
             if(event.reaction == elemental_reaction::superconduct || event.reaction == elemental_reaction::electro_charged
                 || event.reaction == elemental_reaction::swirl)
             {
                 const auto aura_element = primary_element_from_aura(event.reacted_aura);
-                const auto swirled_element = aura_element == element::anemo ? event.incoming_element : aura_element;
+                const auto swirled_element = aura_element == element::anemo ? incoming : aura_element;
                 const auto type = event.reaction == elemental_reaction::swirl
                     ? damage_type_from_element(swirled_element) : damage_type::piercing;
                 expand_damage(context.stack(), table, damage{
@@ -246,7 +261,6 @@ namespace givm::detail
                 || event.reaction == elemental_reaction::bloom)
             {
                 const auto player = other_player(event.target.player_id);
-                const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
                 const auto resume = group.instructions + damage_entity_resume_offset<Observed> * sizeof(execute_fn);
                 program_entry entry;
                 if(event.reaction == elemental_reaction::burning)
@@ -265,29 +279,6 @@ namespace givm::detail
             }
         }
         return std::nullopt;
-    }
-
-    template<bool Observed>
-    std::optional<execution_state> apply_group_damage_element(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
-        const auto node = damage_node_at(context.stack(), group.pending);
-        const auto incoming = element_from_damage_type(node.event.type);
-        if(node.event.reaction == elemental_reaction::none)
-        {
-            if(incoming != element::none || not node.deals_damage)
-                table[node.event.target].state().aura = aura_without_reaction(node.event.reacted_aura, incoming);
-            complete_damage(context);
-            return std::nullopt;
-        }
-        const auto position = group.instructions + damage_reaction_offset<Observed> * sizeof(execute_fn);
-        prepare_broadcast(library, elemental_reaction_will_occur{
-            .source = node.event.source, .target = node.event.target,
-            .incoming_element = incoming, .reacted_aura = node.event.reacted_aura,
-            .reaction = node.event.reaction, .cause = node.cause
-        }, table, context.stack(), position);
-        return continue_damage_reaction<Observed>(library, table, context, random);
     }
 
     template<bool Observed>
@@ -329,7 +320,8 @@ namespace givm::detail
             if(event.value != 0)
             {
                 const auto position = group.instructions + damage_health_resume_offset * sizeof(execute_fn);
-                context.stack().push(after_damage{ event.source, event.target, event.value, event.type, event.flags, event.reaction });
+                context.stack().push(after_damage{
+                    event.source, event.target, event.value, event.type, event.flags, event.reaction, event.replacement_reaction });
                 context.jump(position);
                 return context.yield(execution_state::health_reduced);
             }
@@ -346,15 +338,71 @@ namespace givm::detail
         pop_broadcast<damage_calculation>(context);
         auto& group = get<0>(context.stack().top<damage_group, substack_t>());
         auto& node = damage_node_at(context.stack(), group.pending);
-        if(not event.already_handled_reaction) apply_default_damage_reaction_effect(event, event.reaction);
+        if(not event.replacement_reaction) apply_default_damage_reaction_effect(event, event.reaction);
         event.value = calculate_damage_value(event.value, event.multiplier_numerator, event.multiplier_denominator);
         std::construct_at(&node.event, event);
         const auto position = group.instructions + damage_effect_offset * sizeof(execute_fn);
         prepare_broadcast(library, damage_effect{
             .source = event.source, .target = event.target, .value = event.value,
-            .type = event.type, .flags = event.flags, .reaction = event.reaction
+            .type = event.type, .flags = event.flags, .reaction = event.reaction, .replacement_reaction = event.replacement_reaction
         }, table, context.stack(), position);
         return continue_damage_effect<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
+    std::optional<execution_state> prepare_damage_calculation(
+        const definition_library& library, unrestricted_table& table, execution_context& context,
+        random_fn& random, tag_id replacement_reaction = {})
+    {
+        const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+        auto& node = damage_node_at(context.stack(), group.pending);
+        const damage_calculation event{
+            .source = node.event.source, .target = node.event.target, .value = node.event.value,
+            .multiplier_numerator = node.event.multiplier_numerator,
+            .multiplier_denominator = node.event.multiplier_denominator,
+            .type = node.event.type, .flags = node.event.flags,
+            .reaction = node.event.reaction, .reacted_aura = node.event.reacted_aura, .replacement_reaction = replacement_reaction
+        };
+        if(not node.deals_damage)
+        {
+            std::construct_at(&node.event, event);
+            return apply_group_damage_element<Observed>(library, table, context, random);
+        }
+        const auto position = group.instructions + damage_calculation_offset * sizeof(execute_fn);
+        prepare_broadcast(library, event, table, context.stack(), position);
+        return continue_damage_calculation<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
+    std::optional<execution_state> continue_damage_reaction(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random)) return continue_execution;
+        const auto event = get<0>(context.stack().top<elemental_reaction_will_occur, execution_position>());
+        pop_broadcast<elemental_reaction_will_occur>(context);
+        auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+        if(not event.replacement_reaction && event.reaction == elemental_reaction::overloaded
+            && group.overloaded_player == no_overloaded_player
+            && table[event.target.player_id].state().active_character == event.target)
+            group.overloaded_player = static_cast<std::uint8_t>(event.target.player_id.index);
+        return prepare_damage_calculation<Observed>(library, table, context, random, event.replacement_reaction);
+    }
+
+    template<bool Observed>
+    std::optional<execution_state> prepare_damage_reaction(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+        const auto node = damage_node_at(context.stack(), group.pending);
+        if(node.event.reaction == elemental_reaction::none)
+            return prepare_damage_calculation<Observed>(library, table, context, random);
+        const auto position = group.instructions + damage_reaction_offset * sizeof(execute_fn);
+        prepare_broadcast(library, elemental_reaction_will_occur{
+            .source = node.event.source, .target = node.event.target,
+            .incoming_element = element_from_damage_type(node.event.type), .reacted_aura = node.event.reacted_aura,
+            .reaction = node.event.reaction, .cause = node.cause
+        }, table, context.stack(), position);
+        return continue_damage_reaction<Observed>(library, table, context, random);
     }
 
     template<bool Observed>
@@ -366,15 +414,15 @@ namespace givm::detail
         pop_broadcast<damage_preparation>(context);
         const auto aura = table[event.target].state().aura;
         const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
-        const auto position = group.instructions + damage_calculation_offset * sizeof(execute_fn);
-        prepare_broadcast(library, damage_calculation{
+        auto& node = damage_node_at(context.stack(), group.pending);
+        std::construct_at(&node.event, damage_calculation{
             .source = event.source, .target = event.target, .value = event.value,
             .multiplier_numerator = event.multiplier_numerator,
             .multiplier_denominator = event.multiplier_denominator,
             .type = event.type, .flags = event.flags,
             .reaction = reaction_from_aura(aura, element_from_damage_type(event.type)), .reacted_aura = aura
-        }, table, context.stack(), position);
-        return continue_damage_calculation<Observed>(library, table, context, random);
+        });
+        return prepare_damage_reaction<Observed>(library, table, context, random);
     }
 
     inline std::optional<execution_state> continue_damage_after_damage(
@@ -394,7 +442,8 @@ namespace givm::detail
         const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
         const auto event = damage_node_at(context.stack(), group.completed).event;
         const auto position = group.instructions + damage_after_damage_offset<Observed> * sizeof(execute_fn);
-        prepare_broadcast(library, after_damage{ event.source, event.target, event.value, event.type, event.flags, event.reaction },
+        prepare_broadcast(library, after_damage{
+            event.source, event.target, event.value, event.type, event.flags, event.reaction, event.replacement_reaction },
             table, context.stack(), position);
     }
 
@@ -430,7 +479,7 @@ namespace givm::detail
                 prepare_broadcast(library, after_elemental_reaction{
                     .source = node.event.source, .target = node.event.target,
                     .incoming_element = element_from_damage_type(node.event.type), .reacted_aura = node.event.reacted_aura,
-                    .reaction = node.event.reaction, .cause = node.cause
+                    .reaction = node.event.reaction, .cause = node.cause, .replacement_reaction = node.event.replacement_reaction
                 }, table, context.stack(), position);
                 if(const auto state = continue_damage_after_reaction<Observed>(library, table, context, random)) return *state;
             }
@@ -449,6 +498,68 @@ namespace givm::detail
     }
 
     template<bool Inputs, bool Observed>
+    execution_state continue_damage_overloaded_switch(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        if(not continue_broadcast<active_character_changed>(library, table, context, random)) return continue_execution;
+        pop_broadcast<active_character_changed>(context);
+        return continue_damage_completion<Inputs, Observed>(library, table, context, random);
+    }
+
+    template<bool Inputs>
+    execution_state resume_damage_overloaded_observation(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        const auto frame = context.stack().top<active_character_changed, execution_position>();
+        const auto event = get<0>(frame);
+        const auto position = get<1>(frame);
+        context.stack().pop<active_character_changed, execution_position>();
+        table[event.current.player_id].state().active_character = event.current;
+        prepare_broadcast(library, event, table, context.stack(), position);
+        return continue_damage_overloaded_switch<Inputs, true>(library, table, context, random);
+    }
+
+    template<bool Inputs, bool Observed>
+    execution_state finish_damage_group(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+        if(group.overloaded_player == no_overloaded_player)
+            return continue_damage_completion<Inputs, Observed>(library, table, context, random);
+        const auto player = table[player_id{ group.overloaded_player }];
+        group.overloaded_player = no_overloaded_player;
+        const auto characters = player.template characters<false>();
+        GIVM_ASSERT(player.state().active_character.has_value());
+        const auto current = *player.state().active_character;
+        auto index = current.index;
+        for(std::size_t remaining = characters.size(); remaining != 0; --remaining)
+        {
+            if(++index == characters.size()) index = 0;
+            const auto target = characters[index];
+            if(not target || target.state().health == 0) continue;
+            if(target.id() == current) break;
+
+            const active_character_changed event{ .current = target.id() };
+            const auto position = group.instructions + damage_overloaded_broadcast_offset<Observed> * sizeof(execute_fn);
+            if constexpr(Observed)
+            {
+                const auto observation = group.instructions + damage_overloaded_observation_offset<Observed> * sizeof(execute_fn);
+                // Collect responders after applying the change, in both modes.
+                context.stack().push(event, position);
+                context.jump(observation);
+                return context.yield(execution_state::active_character_changed);
+            }
+            else
+            {
+                player.state().active_character = event.current;
+                prepare_broadcast(library, event, table, context.stack(), position);
+                return continue_damage_overloaded_switch<Inputs, Observed>(library, table, context, random);
+            }
+        }
+        return continue_damage_completion<Inputs, Observed>(library, table, context, random);
+    }
+
+    template<bool Inputs, bool Observed>
     execution_state continue_damage_group(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
@@ -458,7 +569,7 @@ namespace givm::detail
             if(get<0>(frame).pending == no_damage_node)
             {
                 if(get<0>(frame).input_cursor == get<0>(frame).input_count)
-                    return continue_damage_completion<Inputs, Observed>(library, table, context, random);
+                    return finish_damage_group<Inputs, Observed>(library, table, context, random);
 
                 const auto index = get<0>(frame).input_cursor++;
                 damage input;
@@ -553,11 +664,13 @@ namespace givm::detail
     void compile_damage_resolution(program_writer& writer)
     {
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_preparation<Observed>> });
+        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_reaction<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_calculation<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_effect<Observed>> });
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_health_observation<Inputs> });
-        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_reaction<Observed>> });
         writer.write(execute_fn{ resume_damage_entity_generation<Inputs, Observed> });
+        if constexpr(Observed) writer.write(execute_fn{ resume_damage_overloaded_observation<Inputs> });
+        writer.write(execute_fn{ continue_damage_overloaded_switch<Inputs, Observed> });
         writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_reaction<Observed>> });
         writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_damage> });
     }

@@ -1,3 +1,4 @@
+#include <array>
 #include <cstdint>
 #include <string_view>
 #include <tuple>
@@ -32,9 +33,13 @@ namespace
         {
             reaction_log* log;
             givm::program_entry replacement_entry;
+            givm::tag_id replacement;
         };
 
         reaction_log* log;
+
+        auto tags() const { return std::array{ std::string_view{ "TestReactionReplacement" } }; }
+        auto tag_dependencies() const { return tags(); }
 
         constexpr std::string_view name() const noexcept
         {
@@ -47,7 +52,8 @@ namespace
                 .log = log,
                 .replacement_entry = context.add_program(
                     std::tuple{ givm::set_element_aura{ .target = givm::character_id{ givm::player_id{ 1 }, 0 }, .aura = log->replacement_aura } }
-                )
+                ),
+                .replacement = context.resolve_tag("TestReactionReplacement")
             };
         }
 
@@ -64,7 +70,7 @@ namespace
             data.log->cause = event.cause;
             if(data.log->take_over)
             {
-                event.already_handled = true;
+                event.replacement_reaction = data.replacement;
                 return context.invoke(data.replacement_entry);
             }
             return {};
@@ -105,13 +111,13 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         incoming = givm::element::pyro;
         expected_aura = givm::element_aura::none;
     }
-    SECTION("response replaces the default reaction result")
+    SECTION("reaction replacement preserves default aura consumption")
     {
         initial_aura = givm::element_aura::hydro;
         incoming = givm::element::pyro;
         log.take_over = true;
         log.replacement_aura = givm::element_aura::dendro;
-        expected_aura = givm::element_aura::dendro;
+        expected_aura = givm::element_aura::none;
     }
     const auto observer = givm::test::with_passive_skill(reaction_observer_source{ &log });
     const givm::test::initialized_character_source victim{ "Victim" };

@@ -29,6 +29,7 @@ namespace givm
         damage_type type() const noexcept { return event().type; }
         damage_flags flags() const noexcept { return event().flags; }
         elemental_reaction reaction() const noexcept { return event().reaction; }
+        tag_id replacement_reaction() const noexcept { return event().replacement_reaction; }
     };
 }
 

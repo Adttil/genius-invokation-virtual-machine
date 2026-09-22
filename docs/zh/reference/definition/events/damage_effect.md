@@ -20,12 +20,13 @@ struct damage_effect;
 | `type` | `const damage_type` | 伤害种类；只读 |
 | `flags` | `const damage_flags` | 伤害附加属性；只读 |
 | `reaction` | `const elemental_reaction` | 属性修饰后已判定的反应，默认为 none；只读 |
+| `replacement_reaction` | `const tag_id` | 已确定的替代反应标签，空值表示使用默认反应效果；只读 |
 
 ## 时机
 
 本事件发生在 [`damage_calculation`](damage_calculation.md) 的加伤、默认反应加成及倍率计算之后，扣除生命之前。`value` 已经包含这些数值计算的结果；护盾与减伤在此调整最终用于扣血的数额。
 
-`reaction` 沿用属性修饰结束时的判定，便于响应判断本次伤害是否引起某种反应。此后目标的附着即使发生变化，也不重新判定本次反应。
+`reaction` 沿用属性修饰结束时的判定，便于响应判断本次伤害是否引起某种反应；`replacement_reaction` 沿用数值计算前确定的标签。替代反应仍保留原始反应种类，此后目标的附着即使发生变化，也不重新判定本次反应。
 
 ## 示例
 

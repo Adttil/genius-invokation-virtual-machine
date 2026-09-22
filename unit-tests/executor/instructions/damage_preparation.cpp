@@ -35,14 +35,16 @@ namespace
     struct damage_bonus_source
     {
         using definition_category = givm::combat_status_view;
-        struct definition_type { preparation_log* log; givm::program_entry change_aura; };
+        struct definition_type { preparation_log* log; givm::program_entry change_aura; givm::tag_id replacement; };
         preparation_log* log;
         std::string_view name() const { return "DamageBonus"; }
+        auto tags() const { return std::array{ std::string_view{ "PreparedReactionReplacement" } }; }
+        auto tag_dependencies() const { return tags(); }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::tuple{
                 givm::set_element_aura{ .target = front, .aura = givm::element_aura::pyro }
-            }) };
+            }), context.resolve_tag("PreparedReactionReplacement") };
         }
         static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
             givm::damage_calculation& event, givm::handle_context& context)
@@ -60,10 +62,9 @@ namespace
                 event.value += 3;
                 ++data.log->burst_bonuses;
             }
-            if(data.log->replace_reaction_bonus && event.reaction != givm::elemental_reaction::none)
+            if(event.replacement_reaction == data.replacement)
             {
                 event.value += 5;
-                event.already_handled_reaction = true;
             }
             if(data.log->change_aura_in_calculation && event.target == front)
                 return context.invoke(data.change_aura);
@@ -79,7 +80,8 @@ namespace
             givm::elemental_reaction_will_occur& event, givm::handle_context&)
         {
             data.log->side_effects.push_back(event.reaction);
-            CHECK_FALSE(event.already_handled);
+            CHECK_FALSE(event.replacement_reaction.is_valid());
+            if(data.log->replace_reaction_bonus) event.replacement_reaction = data.replacement;
             return {};
         }
         static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
@@ -230,7 +232,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
         CHECK(health == std::array<std::uint32_t, 2>{ 10, grouped ? 16u : 20u });
 }
 
-TEST_CASE("taking over reaction numerical damage preserves its default secondary damage", "[deal_damage][preparation][reaction]")
+TEST_CASE("replacement reaction numbers are applied without default secondary damage", "[deal_damage][preparation][reaction]")
 {
     preparation_log log{ .replace_reaction_bonus = true };
     const std::array damages{ givm::damage{ .source = source, .target = front, .value = 2,
@@ -253,11 +255,12 @@ TEST_CASE("taking over reaction numerical damage preserves its default secondary
     zero_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(table[front].state().health == 13);
-    CHECK(table[back].state().health == 19);
+    CHECK(table[back].state().health == 20);
+    CHECK(table[front].state().aura == givm::element_aura::none);
     CHECK(log.side_effects == std::vector{ givm::elemental_reaction::superconduct });
-    const std::vector expected{ givm::elemental_reaction::superconduct, givm::elemental_reaction::none };
+    const std::vector expected{ givm::elemental_reaction::superconduct };
     CHECK(log.calculated == expected);
     CHECK(log.applied == expected);
     CHECK(log.completed == expected);
-    for(const auto health : log.health_at_completion) CHECK(health == std::array<std::uint32_t, 2>{ 13, 19 });
+    for(const auto health : log.health_at_completion) CHECK(health == std::array<std::uint32_t, 2>{ 13, 20 });
 }

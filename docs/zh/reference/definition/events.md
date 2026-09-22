@@ -82,7 +82,7 @@
 | [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
 | [`healing`](events/healing.md) | 角色恢复生命前的治疗调整事件 |
 | [`healed`](events/healed.md) | 角色治疗完成后的通知 |
-| [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 元素反应生效前的事件 |
+| [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 反应判定后选择替代效果的事件 |
 | [`after_elemental_reaction`](events/after_elemental_reaction.md) | 元素反应处理完成后的通知 |
 
 ## 角色与实体

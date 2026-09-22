@@ -8,7 +8,7 @@
 struct elemental_reaction_will_occur;
 ```
 
-元素反应生效前的事件。响应者可以识别反应种类，并接管这次反应的附着变化与派生效果。
+元素反应判定后的效果选择事件。响应者可以为已确定的反应指定替代标签，供后续的伤害计算和完成响应执行替代效果。
 
 ## 成员对象
 
@@ -20,15 +20,17 @@ struct elemental_reaction_will_occur;
 | `reacted_aura` | `const element_aura` | 发生反应前的元素附着；只读 |
 | `reaction` | `const elemental_reaction` | 本次元素反应的种类；只读 |
 | `cause` | `const element_application_cause` | 由伤害还是独立效果引发，初始为 effect；只读 |
-| `already_handled` | `bool` | 是否由响应者接管反应；设为 `true` 时跳过默认附着变化、默认派生伤害及默认反应实体生成 |
+| `replacement_reaction` | `tag_id` | 替代反应的标签，可修改；初始为空，表示使用默认反应效果 |
 
 ## 注意
 
-伤害中的反应加成与本事件分别处理，由 [`damage_calculation`](damage_calculation.md) 的 `already_handled_reaction` 控制。修改本事件的 `already_handled` 不会撤销此前计算的伤害加成。
+由伤害引发时，本事件在 [`damage_preparation`](damage_preparation.md) 结束、反应判定完成后广播，先于 [`damage_calculation`](damage_calculation.md)。`reaction`、`reacted_aura` 和 `incoming_element` 均已固定；之后即使响应效果改变附着，也不重新判定本次反应。独立 [`apply_element`](../commands/apply_element.md) 也在反应判定后广播本事件。没有发生反应时不广播。
 
-由伤害引发时，本事件在该次扣血及击倒处理后广播；若已判定终局则不广播。反应种类及 `reacted_aura` 已在 [`damage_preparation`](damage_preparation.md) 结束后、数值计算前确定，之后的附着变化不会重新决定本次反应。响应接管后须自行完成替代处理；仅返回程序而不设置 `already_handled` 不会跳过默认效果。
+响应者按[全场广播顺序](../events.md#全场广播)读取和修改 `replacement_reaction`。后一次写入无条件覆盖前一次，写回空标签会恢复默认效果；没有额外的标签优先级。本事件结束后，后续事件中的标签只读。
 
-未接管时，本事件结束后处理默认附着变化、派生伤害或反应实体生成。实体生成及其重复生成响应完成后，才继续下一段伤害；反应后和伤害后的通知仍等整组结算结束再广播。
+最终标签非空时，取消本次反应的默认数值加成、派生伤害、实体生成和超载切人。默认附着消耗始终按原始反应处理；`reaction` 仍保留原值，后续按反应种类判断的效果和 [`after_elemental_reaction`](after_elemental_reaction.md) 通知仍认可该反应发生。
+
+标签本身不执行效果。响应者在已有的数值、反应后或伤害后事件中读取它并完成替代效果；其中另行调用的 `deal_damage` 独立结算。仅返回响应程序而不修改标签，不会取消默认反应效果。
 
 ## 示例
 
@@ -40,17 +42,20 @@ struct elemental_reaction_will_occur;
 
 int main()
 {
+    givm::issued_id_map ids{ "替代甲", "替代乙" };
     givm::elemental_reaction_will_occur event{ .source = givm::character_id{}, .target = {}, .incoming_element = givm::element::pyro, .reacted_aura = givm::element_aura::hydro, .reaction = givm::elemental_reaction::vaporize };
-    std::println("发生蒸发: {}", event.reaction == givm::elemental_reaction::vaporize);
-    std::println("由独立效果附着: {}", event.cause == givm::element_application_cause::effect);
+    event.replacement_reaction = ids.get_tag_id("替代甲");
+    event.replacement_reaction = ids.get_tag_id("替代乙");
+    std::println("最终替代标签: {}", ids.tag_name(event.replacement_reaction));
+    std::println("仍认可蒸发: {}", event.reaction == givm::elemental_reaction::vaporize);
 }
 ```
 
 输出
 
 ```text
-发生蒸发: true
-由独立效果附着: true
+最终替代标签: 替代乙
+仍认可蒸发: true
 ```
 
 ## 参阅

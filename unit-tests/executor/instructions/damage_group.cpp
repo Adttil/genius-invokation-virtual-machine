@@ -51,10 +51,13 @@ namespace
             givm::program_entry change_aura;
             givm::program_entry change_target_aura;
             givm::program_entry count_response;
+            givm::tag_id replacement;
         };
         group_log* log;
 
         std::string_view name() const noexcept { return "GroupObserver"; }
+        auto tags() const { return std::array{ std::string_view{ "GroupReactionReplacement" } }; }
+        auto tag_dependencies() const { return tags(); }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log,
@@ -66,7 +69,7 @@ namespace
                 context.add_program(std::tuple{
                     givm::set_element_aura{ .target = victim(0), .aura = givm::element_aura::pyro }
                 }),
-                context.add_program(std::tuple{ givm::start_round{} }) };
+                context.add_program(std::tuple{ givm::start_round{} }), context.resolve_tag("GroupReactionReplacement") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -112,7 +115,7 @@ namespace
         {
             data.log->order.emplace_back(phase::reaction, event.target.index);
             data.log->reactions.push_back(event.reaction);
-            if(data.log->take_over) event.already_handled = true;
+            if(data.log->take_over) event.replacement_reaction = data.replacement;
             return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
         }
         static void record_health(group_log& log, const givm::table& table)
@@ -312,7 +315,7 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
         }
     }
     CHECK(log.order == std::vector<std::pair<phase, std::size_t>>{
-        { phase::calculation, 0 }, { phase::effect, 0 }, { phase::reaction, 0 },
+        { phase::reaction, 0 }, { phase::calculation, 0 }, { phase::effect, 0 },
         { phase::calculation, 1 }, { phase::effect, 1 }, { phase::calculation, 1 }, { phase::effect, 1 },
         { phase::after_reaction, 0 }, { phase::after_damage, 0 }, { phase::after_damage, 1 }, { phase::after_damage, 1 }
     });
@@ -484,7 +487,7 @@ TEST_CASE("swirled damage can expand another reaction inside the same group", "[
     CHECK(table[victim(2)].state().aura == givm::element_aura::cryo);
 }
 
-TEST_CASE("taking over a reaction suppresses its default aura change and extra damage", "[deal_damage][group][reaction]")
+TEST_CASE("replacing a reaction suppresses its extra damage while consuming the aura", "[deal_damage][group][reaction]")
 {
     group_log log{ .take_over = true };
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
@@ -504,8 +507,8 @@ TEST_CASE("taking over a reaction suppresses its default aura change and extra d
     zero_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0 });
-    CHECK(table[victim(0)].state().aura == givm::element_aura::cryo);
-    for(const auto& health : log.after_health) CHECK(health == std::vector<std::uint32_t>{ 8, 10, 10 });
+    CHECK(table[victim(0)].state().aura == givm::element_aura::none);
+    for(const auto& health : log.after_health) CHECK(health == std::vector<std::uint32_t>{ 9, 10, 10 });
 }
 
 TEST_CASE("relative and other-character damage targets skip defeated characters and wrap", "[deal_damage][group][target]")

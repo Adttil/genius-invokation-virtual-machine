@@ -18,7 +18,6 @@ namespace
     struct reaction_log
     {
         givm::player_id source_player{ 0 };
-        bool take_over_numbers = false;
         bool take_over_effects = false;
         bool nested_after_first = false;
         bool nested_invoked = false;
@@ -34,25 +33,26 @@ namespace
     struct reaction_observer
     {
         using definition_category = givm::skill_view;
-        struct definition_type { reaction_log* log; givm::program_entry nested; };
+        struct definition_type { reaction_log* log; givm::program_entry nested; givm::tag_id replacement; };
         reaction_log* log;
         std::string_view name() const { return "ReactionObserver"; }
+        auto tags() const { return std::array{ std::string_view{ "EntityReactionReplacement" } }; }
+        auto tag_dependencies() const { return tags(); }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::deal_damage{} }) };
+            return { log, context.add_program(std::tuple{ givm::deal_damage{} }), context.resolve_tag("EntityReactionReplacement") };
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
             givm::damage_calculation& event, givm::handle_context& context)
         {
             data.log->statuses_at_calculation.push_back(std::ranges::distance(
                 context.table()[data.log->source_player].combat_statuses()));
-            if(data.log->take_over_numbers) event.already_handled_reaction = true;
             return {};
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
             givm::elemental_reaction_will_occur& event, givm::handle_context&)
         {
-            if(data.log->take_over_effects) event.already_handled = true;
+            if(data.log->take_over_effects) event.replacement_reaction = data.replacement;
             return {};
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
@@ -293,13 +293,12 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
     CHECK(log.values.size() == (application_only ? 0 : 3));
 }
 
-TEST_CASE("reaction numerical takeover and default entity takeover are independent", "[reaction-entities][takeover]")
+TEST_CASE("reaction replacement suppresses default numbers and entities while consuming aura", "[reaction-entities][takeover]")
 {
     const auto reaction = GENERATE(givm::elemental_reaction::quicken,
         givm::elemental_reaction::bloom, givm::elemental_reaction::burning);
-    const bool take_over_numbers = GENERATE(false, true);
     const bool take_over_effects = GENERATE(false, true);
-    reaction_log log{ .take_over_numbers = take_over_numbers, .take_over_effects = take_over_effects };
+    reaction_log log{ .take_over_effects = take_over_effects };
     const source_character source_definition;
     const reaction_observer observer{ &log };
     const givm::test::initialized_character_source victim{ "ReactionTarget",
@@ -321,8 +320,8 @@ TEST_CASE("reaction numerical takeover and default entity takeover are independe
     executor.enter_entry(library);
     zero_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
-    CHECK(table[target].state().health == (take_over_numbers ? 29 : 28));
-    CHECK(table[target].state().aura == (take_over_effects ? reaction_aura(reaction) : givm::element_aura::none));
+    CHECK(table[target].state().health == (take_over_effects ? 29 : 28));
+    CHECK(table[target].state().aura == givm::element_aura::none);
     const auto entity_count = std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses())
         + std::ranges::distance(table[givm::player_id{ 0 }].summons());
     CHECK(entity_count == (take_over_effects ? 0 : 1));

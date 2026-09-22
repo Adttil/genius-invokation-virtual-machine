@@ -24,7 +24,7 @@ struct damage_preparation;
 
 ## 时机
 
-[`deal_damage`](../commands/deal_damage.md) 为每个具体目标先广播本事件，再按修饰后的目标、元素和目标此时的附着判定一次元素反应，随后进入 [`damage_calculation`](damage_calculation.md)。数值加成与倍率在后者处理；减伤和护盾在 [`damage_effect`](damage_effect.md) 处理。
+[`deal_damage`](../commands/deal_damage.md) 为每个具体目标先广播本事件，再按修饰后的目标、元素和目标此时的附着判定一次元素反应。有反应时先通过 [`elemental_reaction_will_occur`](elemental_reaction_will_occur.md) 确定替代标签，随后进入 [`damage_calculation`](damage_calculation.md)。数值加成与倍率在后者处理；减伤和护盾在 [`damage_effect`](damage_effect.md) 处理。
 
 本事件中的多个属性修饰仍按[全场广播顺序](../events.md#全场广播)依次执行，后面的响应读取前面已经修改的属性。各阶段分别确定响应者；某阶段开始后新建的实体不会加入该阶段，可能参与尚未开始的后续阶段。
 

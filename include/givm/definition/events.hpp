@@ -310,7 +310,7 @@ namespace givm
         const damage_flags flags;
         const elemental_reaction reaction = elemental_reaction::none;
         const element_aura reacted_aura = element_aura::none;
-        bool already_handled_reaction = false;
+        const tag_id replacement_reaction{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_calculation);
     };
 
@@ -322,6 +322,7 @@ namespace givm
         const damage_type type;
         const damage_flags flags;
         const elemental_reaction reaction = elemental_reaction::none;
+        const tag_id replacement_reaction{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_effect);
     };
 
@@ -333,6 +334,7 @@ namespace givm
         const damage_type type;
         const damage_flags flags;
         const elemental_reaction reaction = elemental_reaction::none;
+        const tag_id replacement_reaction{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(after_damage);
     };
 
@@ -370,7 +372,7 @@ namespace givm
         const element_aura reacted_aura;
         const elemental_reaction reaction;
         const element_application_cause cause = element_application_cause::effect;
-        bool already_handled = false;
+        tag_id replacement_reaction{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(elemental_reaction_will_occur);
     };
 
@@ -382,6 +384,7 @@ namespace givm
         const element_aura reacted_aura;
         const elemental_reaction reaction;
         const element_application_cause cause = element_application_cause::effect;
+        const tag_id replacement_reaction{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(after_elemental_reaction);
     };
 

@@ -196,8 +196,8 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     {
         CHECK(log.reaction == givm::elemental_reaction::melt);
         CHECK(log.reaction_cause == givm::element_application_cause::damage);
-        CHECK(log.order == std::vector{ observed_event::calculation, observed_event::effect,
-            observed_event::reaction_will_occur, observed_event::after_reaction, observed_event::after_damage });
+        CHECK(log.order == std::vector{ observed_event::reaction_will_occur, observed_event::calculation,
+            observed_event::effect, observed_event::after_reaction, observed_event::after_damage });
     }
     else
     {
@@ -253,7 +253,10 @@ TEST_CASE("damage observation precedes elemental settlement and copies resume in
     CHECK(health.flags().contains(givm::damage_flag_bits::skill_damage));
     CHECK(table[damaged].state().health == 10 - expected_damage);
     CHECK(table[damaged].state().aura == initial_aura);
-    CHECK(log.order == std::vector{ observed_event::calculation, observed_event::effect });
+    const auto order_before_aura = initial_aura == givm::element_aura::cryo
+        ? std::vector{ observed_event::reaction_will_occur, observed_event::calculation, observed_event::effect }
+        : std::vector{ observed_event::calculation, observed_event::effect };
+    CHECK(log.order == order_before_aura);
     auto copy = observed;
     auto copied_table = table;
 
@@ -262,7 +265,7 @@ TEST_CASE("damage observation precedes elemental settlement and copies resume in
     CHECK(table[damaged].state().health == normal_table[damaged].state().health);
     CHECK(table[damaged].state().aura == normal_table[damaged].state().aura);
     CHECK(copied_table[damaged].state().aura == initial_aura);
-    log.order = { observed_event::calculation, observed_event::effect };
+    log.order = order_before_aura;
     REQUIRE(copy.step(library, copied_table, random) == givm::execution_state::finished);
     CHECK(log.order == normal_order);
     CHECK(copied_table[damaged].state().health == table[damaged].state().health);

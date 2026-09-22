@@ -54,7 +54,7 @@ namespace givm
             return elemental_reaction::superconduct;
         if(detail::is_element_pair(aura, incoming, element::hydro, element::electro))
         {
-            // TODO: distinguish Electro-Charged and Lunar-Charged when table stores the required lunar state.
+            // Definitions select replacement effects after this base reaction is determined.
             return elemental_reaction::electro_charged;
         }
         if(detail::is_element_pair(aura, incoming, element::cryo, element::hydro))
