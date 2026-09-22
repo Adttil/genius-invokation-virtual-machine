@@ -659,14 +659,18 @@ TEST_CASE("queued damage skips a target defeated by an earlier response and cont
     CHECK(observed_targets == (observed ? std::vector<std::size_t>{ 2, 0, 1, 3 } : std::vector<std::size_t>{}));
 }
 
-TEST_CASE("standalone element application settles reaction damage before its completion", "[apply_element][group][reaction]")
+TEST_CASE("standalone element application has reaction effects without damage", "[apply_element][group][reaction]")
 {
+    const bool observed = GENERATE(false, true);
+    const auto incoming = GENERATE(givm::element::electro, givm::element::anemo, givm::element::pyro);
+    const auto aura = GENERATE(givm::element_aura::cryo, givm::element_aura::hydro);
     group_log log;
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim",
-        { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
-    const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::apply_element{ .source = attacker, .target = victim(0), .element = givm::element::electro },
+        { .max_health = 10, .health = 10, .aura = aura } };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal,
+        std::tuple{ givm::apply_element{ .source = attacker, .target = victim(0), .element = incoming },
             givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, character);
     const auto id = ids.get_id<givm::character_view>(character.name());
     givm::table table;
@@ -676,11 +680,15 @@ TEST_CASE("standalone element application settles reaction damage before its com
     executor.enter_entry(library);
     zero_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
-    CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 1, 2 });
-    CHECK(targets_at(log, phase::after_damage) == std::vector<std::size_t>{ 1, 2 });
+    CHECK(targets_at(log, phase::calculation).empty());
+    CHECK(targets_at(log, phase::effect).empty());
+    CHECK(targets_at(log, phase::after_damage).empty());
+    CHECK(targets_at(log, phase::reaction) == std::vector<std::size_t>{ 0 });
     CHECK(targets_at(log, phase::after_reaction) == std::vector<std::size_t>{ 0 });
-    REQUIRE(log.after_health.size() == 3);
-    for(const auto& health : log.after_health) CHECK(health == std::vector<std::uint32_t>{ 10, 9, 9 });
+    CHECK(log.after_health == std::vector<std::vector<std::uint32_t>>{ { 10, 10, 10 } });
+    CHECK(table[victim(0)].state().aura == givm::element_aura::none);
+    CHECK(table[victim(1)].state().aura == aura);
+    CHECK(table[victim(2)].state().aura == aura);
 }
 
 TEST_CASE("a damage group stops before completion responses when the last character is defeated", "[deal_damage][group][game-result]")

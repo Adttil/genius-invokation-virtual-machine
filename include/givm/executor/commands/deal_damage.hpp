@@ -249,8 +249,8 @@ namespace givm::detail
         complete_damage(context);
         if(not event.replacement_reaction)
         {
-            if(event.reaction == elemental_reaction::superconduct || event.reaction == elemental_reaction::electro_charged
-                || event.reaction == elemental_reaction::swirl)
+            if(node.deals_damage && (event.reaction == elemental_reaction::superconduct
+                || event.reaction == elemental_reaction::electro_charged || event.reaction == elemental_reaction::swirl))
             {
                 const auto aura_element = primary_element_from_aura(event.reacted_aura);
                 const auto swirled_element = aura_element == element::anemo ? incoming : aura_element;
