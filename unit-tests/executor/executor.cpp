@@ -26,7 +26,7 @@ TEST_CASE("executor repeats the round program and reports round boundaries", "[e
             : std::vector<givm::any_command>{ givm::start_round{} },
         observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
-    givm::table table{ givm::game_parameters{ .max_rounds = 2 } };
+    givm::table table{ givm::table_state{ .max_rounds = 2 } };
     givm::executor target;
     target.enter_entry(library);
     zero_random random;

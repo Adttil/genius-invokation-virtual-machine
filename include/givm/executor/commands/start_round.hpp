@@ -12,7 +12,7 @@ namespace givm::detail
     inline execution_state finish_round_advance(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn&)
     {
-        if(table.state().round_number > table.parameters().max_rounds) [[unlikely]]
+        if(table.state().round_number > table.state().max_rounds) [[unlikely]]
             return context.end_game(game_result::both_loss);
         for(auto player : table.players())
             player.state().dice = {};

@@ -14,14 +14,9 @@ namespace givm
     public:
         using game_state = table_state;
 
-        constexpr table(game_parameters parameters = {})
-        : detail::unrestricted_table{ parameters }
+        constexpr table(table_state state = {}, player_state player0 = {}, player_state player1 = {})
+        : detail::unrestricted_table{ state, player0, player1 }
         {}
-
-        constexpr const game_parameters& parameters() const noexcept
-        {
-            return static_cast<const detail::unrestricted_table&>(*this).parameters();
-        }
 
         constexpr const table_state& state() const noexcept
         {

@@ -14,7 +14,7 @@ struct start_round;
 
 本命令广播 [`round_started`](../events/round_started.md)，各响应及其返回程序完整结算后继续下一条命令。命令没有参数；不更新回合数、不清空骰子，也不自行处理投骰。
 
-[根回合流程](../../executor/compile.md) 每次开始时自动增加回合数、检查 [`game_parameters::max_rounds`](../../table/game_parameters.md) 并清空旧骰子。调用方在回合命令序列中依次安排 [`start_dice_roll_phase`](start_dice_roll_phase.md)、`start_round{}`，即可让规则通知在双方投骰及全部重投后发生。冻结到本通知时才解除，投骰阶段仍保留。
+[根回合流程](../../executor/compile.md) 每次开始时自动增加回合数、检查 [`table_state::max_rounds`](../../table/table_state.md) 并清空旧骰子。调用方在回合命令序列中依次安排 [`start_dice_roll_phase`](start_dice_roll_phase.md)、`start_round{}`，即可让规则通知在双方投骰及全部重投后发生。冻结到本通知时才解除，投骰阶段仍保留。
 
 观察模式的 `execution_state::round_started` 由根回合推进产生，位于回合数增加之后、上限检查之前。本命令只发送规则通知，不额外返回同名观察现场。
 

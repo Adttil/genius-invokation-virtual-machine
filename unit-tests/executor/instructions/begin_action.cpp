@@ -393,7 +393,7 @@ TEST_CASE("automatic round advancement is observed before its limit check and di
             givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } }
         }, std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } }
     );
-    givm::table table{ givm::game_parameters{ .max_rounds = exceeds_limit ? 0u : 1u } };
+    givm::table table{ givm::table_state{ .max_rounds = exceeds_limit ? 0u : 1u } };
     givm::executor target;
     target.enter_entry(library);
     zero_random random;

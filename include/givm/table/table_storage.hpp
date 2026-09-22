@@ -11,15 +11,10 @@
 
 namespace givm
 {
-    struct game_parameters
-    {
-        std::uint32_t hand_limit = 10;
-        std::uint32_t max_rounds = 14;
-    };
-
     struct table_state
     {
         std::uint32_t round_number = 0;
+        std::uint32_t max_rounds = 14;
         player_id active_player{ 0 };
         bool first_ended = false;
     };
@@ -28,7 +23,6 @@ namespace givm
     {
         struct table_storage
         {
-            game_parameters parameters;
             table_state state;
             player_data player_datas[2]{};
             std::vector<status_slot> status_slots;

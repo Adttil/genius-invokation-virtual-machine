@@ -49,15 +49,9 @@ namespace givm::detail
             return static_cast<const T&>(*this);
         }
 
-        constexpr unrestricted_table(game_parameters parameters = {})
-        : storage_{ .parameters = parameters }
+        constexpr unrestricted_table(table_state state = {}, player_state player0 = {}, player_state player1 = {})
+        : storage_{ .state = state, .player_datas = { { .state = player0 }, { .state = player1 } } }
         {}
-
-        template<class Self>
-        constexpr auto& parameters(this Self& self) noexcept
-        {
-            return detail::table_accessor::storage_of(self).parameters;
-        }
 
         template<class Self>
         constexpr auto& state(this Self& self) noexcept

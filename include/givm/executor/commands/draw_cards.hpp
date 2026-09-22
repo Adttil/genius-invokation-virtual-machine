@@ -60,7 +60,7 @@ namespace givm::detail
         }
 
         const auto hand_count = player_entity.hand_card_count();
-        const auto hand_limit = table.parameters().hand_limit;
+        const auto hand_limit = player_entity.state().hand_limit;
         const auto drawn_count = hand_count < hand_limit
             ? std::min<size_t>(count, hand_limit - hand_count) : size_t{ 0 };
 

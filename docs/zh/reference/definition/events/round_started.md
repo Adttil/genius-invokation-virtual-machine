@@ -12,7 +12,7 @@ struct round_started;
 
 ## 注意
 
-根回合流程先自动增加回合数、检查 [`game_parameters::max_rounds`](../../table/game_parameters.md) 并清空旧骰子。调用方应在回合程序中依次安排 [`start_dice_roll_phase`](../commands/start_dice_roll_phase.md) 和 [`start_round`](../commands/start_round.md)：前者完成双方投骰和全部重投，后者广播本事件。若回合数超限，对局在执行回合程序前结束。
+根回合流程先自动增加回合数、检查 [`table_state::max_rounds`](../../table/table_state.md) 并清空旧骰子。调用方应在回合程序中依次安排 [`start_dice_roll_phase`](../commands/start_dice_roll_phase.md) 和 [`start_round`](../commands/start_round.md)：前者完成双方投骰和全部重投，后者广播本事件。若回合数超限，对局在执行回合程序前结束。
 
 本事件采用[全场广播](../events.md#全场广播)，候选响应者在广播开始时确定。各响应及其返回程序依次完成后，`start_round` 才结束。结束阶段产生且此时仍在场的冻结附属在本通知中解除，因此投骰阶段仍保持冻结。由本通知产生的额外骰子不参与已经完成的重投。
 

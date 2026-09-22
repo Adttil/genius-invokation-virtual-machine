@@ -537,7 +537,7 @@ TEST_CASE("card payment and broadcasts resume in order after removal even when i
         mode, setup(1), std::tuple{}, source, observer, character, filler);
     const auto card_definition = ids.get_id<givm::card_definition>(source.name());
     const auto filler_definition = ids.get_id<givm::card_definition>(filler.name());
-    givm::table table{ givm::game_parameters{ .hand_limit = 4 } };
+    givm::table table{ {}, { .hand_limit = 4 }, { .hand_limit = 4 } };
     load_deck(table, library, {
         .cards = { filler_definition, filler_definition, filler_definition, filler_definition, card_definition },
         .characters = { ids.get_id<givm::character_view>(observer.name()) }

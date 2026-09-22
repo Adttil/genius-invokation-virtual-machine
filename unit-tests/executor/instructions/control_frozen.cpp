@@ -536,7 +536,7 @@ TEST_CASE("exceeding the round limit prevents rolling and round start responses"
             .definition = ids.get_id<givm::attachment_view>("frozen-3.3.0-genshin_impact") });
         return commands;
     }, false, {}, false, round);
-    givm::table table{ givm::game_parameters{ .max_rounds = 0 } };
+    givm::table table{ givm::table_state{ .max_rounds = 0 } };
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;

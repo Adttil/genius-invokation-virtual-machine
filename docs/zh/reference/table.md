@@ -59,7 +59,6 @@
 
 |  |  |
 | --- | --- |
-| [`game_parameters`](table/game_parameters.md) | 对局采用的容量限制 |
 | [`table_state`](table/table_state.md) | 双方共享的对局状态，用于记录当前回合和行动归属 |
 | [`player_state`](table/player_state.md) | 一位玩家的骰子和出战角色状态 |
 | [`character_state`](table/character_state.md) | 角色在对局中的生命值、充能和元素附着 |

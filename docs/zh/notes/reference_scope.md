@@ -20,7 +20,7 @@
 
 - `aura_after_reaction` 恒返回无附着，源码保留了附着消耗规则的 TODO；`aura_without_reaction` 也有非反应附着保留规则的 TODO。不能据此宣称完整实现了全部元素附着规则。
 - 超导、感电和扩散的默认派生伤害，以及激化、燃烧、绽放、冻结的默认实体生成已进入逐段反应处理；超载默认加伤为 2，并在整组结束后处理首次登记的强制切人及其通知，再执行反应后与伤害后通知。冻结默认加伤为 1，控制附属在本段扣血后向存活目标施加，遵守免控规则；结晶等其他默认反应后果尚未全部实现。
-- 根流程自动在初始化完成后和每轮回合程序完成后递增回合数、检查 `game_parameters::max_rounds` 并清空骰子。回合程序依次显式安排 `start_dice_roll_phase` 和 `start_round`，后者仅广播 `round_started`，供冻结等定义响应。同名观察现场由自动推进产生，仍在回合数递增后、检查上限前。时序见[执行观察与输入](execution_observation.md#本次确定的观察边界)。
+- 根流程自动在初始化完成后和每轮回合程序完成后递增回合数、检查 `table_state::max_rounds` 并清空骰子。回合程序依次显式安排 `start_dice_roll_phase` 和 `start_round`，后者仅广播 `round_started`，供冻结等定义响应。同名观察现场由自动推进产生，仍在回合数递增后、检查上限前。时序见[执行观察与输入](execution_observation.md#本次确定的观察边界)。
 - `reaction_between` 对水雷组合返回感电；特定定义可通过 `elemental_reaction_will_occur::replacement_reaction` 选择替代效果，后续事件仍保留原始感电身份。核心不自行根据角色状态改判月感电。
 - `player_data::clean_up()` 压缩角色数据后，没有同步重映射 `player_state::active_character`。这是源码阅读发现的风险，需要结合角色移除和清理场景另行验证。
 - 从非 const 的 `random_fn` 左值构造另一个 `random_fn` 时，模板构造可能优先于隐式复制构造；此时经模板构造的新包装会引用前一个包装对象。已经用独立小程序验证：重新给原包装赋值后，新包装也改用新的来源。后续若修改构造约束，需要同时检视生命周期说明。

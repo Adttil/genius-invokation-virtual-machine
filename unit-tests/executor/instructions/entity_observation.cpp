@@ -319,7 +319,7 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     };
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
-    givm::table table{ { .hand_limit = 2 } };
+    givm::table table{ {}, { .hand_limit = 2 }, { .hand_limit = 2 } };
     const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
     givm::linked_deck deck;
     deck.cards.assign(initial_hand_count + 3, card_definition);

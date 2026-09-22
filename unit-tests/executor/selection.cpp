@@ -123,7 +123,7 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     givm::linked_deck deck;
     deck.cards.assign(hand_count + 1, a);
     deck.cards.front() = b;
-    givm::table table{ givm::game_parameters{ .hand_limit = static_cast<std::uint32_t>(hand_count) } };
+    givm::table table{ {}, { .hand_limit = static_cast<std::uint32_t>(hand_count) }, { .hand_limit = static_cast<std::uint32_t>(hand_count) } };
     load_deck(table, library, deck, {});
     givm::executor execution;
     execution.enter_entry(library);

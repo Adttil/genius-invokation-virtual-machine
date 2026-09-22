@@ -40,15 +40,20 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
     const auto [library, id_map] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
-        std::tuple{ givm::draw_cards{ .count = 2 }, givm::start_round{} },
+        std::tuple{
+            givm::draw_cards{ .count = 2 },
+            givm::draw_cards{ .count = 2, .player = givm::relative_player::other },
+            givm::start_round{}
+        },
         std::tuple{ givm::end_game{ givm::game_result::both_loss } },
         alpha, beta, gamma
     );
     const auto alpha_id = id_map.get_id<givm::card_definition>(alpha.name());
     const auto beta_id = id_map.get_id<givm::card_definition>(beta.name());
     const auto gamma_id = id_map.get_id<givm::card_definition>(gamma.name());
-    givm::table table{ givm::game_parameters{ .hand_limit = 2 } };
-    load_deck(table, library, givm::linked_deck{ .cards = { alpha_id, beta_id, gamma_id } }, {});
+    givm::table table{ { .max_rounds = 3 }, { .hand_limit = 2 }, { .hand_limit = 1 } };
+    const givm::linked_deck deck{ .cards = { alpha_id, beta_id, gamma_id } };
+    load_deck(table, library, deck, deck);
     const auto player = table[givm::player_id{ 0 }];
     auto copy = table;
 
@@ -64,7 +69,11 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     CHECK(copy[givm::player_id{ 0 }].hand_card_count() == 0);
     CHECK(deck_definitions(copy[givm::player_id{ 0 }]) == std::vector{ alpha_id, beta_id, gamma_id });
     CHECK(copy.state().round_number == 0);
-    CHECK(copy.parameters().hand_limit == 2);
+    CHECK(copy[givm::player_id{ 0 }].state().hand_limit == 2);
+    CHECK(copy[givm::player_id{ 1 }].state().hand_limit == 1);
+    CHECK(table[givm::player_id{ 1 }].hand_card_count() == 1);
+    CHECK(table[givm::player_id{ 1 }].deck_card_count() == 1);
+    CHECK(table.state().max_rounds == 3);
 
     table.clean_up();
     CHECK(hand_definitions(table[givm::player_id{ 0 }]) == std::vector{ gamma_id, beta_id });

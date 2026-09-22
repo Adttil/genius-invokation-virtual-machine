@@ -23,7 +23,6 @@ class table;
 |  |  |
 | --- | --- |
 | [`(构造函数)`](table/constructor.md) | 构造一个 `table` |
-| [`parameters`](table/parameters.md) | 访问对局参数 |
 | [`state`](table/state.md) | 访问对局的共同状态 |
 | [`players`](table/players.md) | 遍历双方玩家 |
 | [`operator[]`](table/operator_subscript.md) | 通过实体 ID 访问实体 |

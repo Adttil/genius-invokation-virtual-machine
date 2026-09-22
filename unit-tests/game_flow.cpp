@@ -179,10 +179,7 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const auto deck = link_deck(id_map, card_names, character_names);
 
     givm::table table{
-        givm::game_parameters{
-            .hand_limit = 10,
-            .max_rounds = max_rounds
-        }
+        givm::table_state{ .max_rounds = max_rounds }
     };
     load_deck(table, library, deck, deck);
     givm::executor target;
@@ -297,7 +294,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     std::array<std::string_view, 3> characters;
     characters.fill(character_source.name());
     const auto deck = link_deck(id_map, cards, characters);
-    givm::table table{ givm::game_parameters{ .hand_limit = 10 } };
+    givm::table table{ {}, { .hand_limit = 10 }, { .hand_limit = 10 } };
     load_deck(table, library, deck, deck);
     givm::executor target;
     target.enter_entry(library);

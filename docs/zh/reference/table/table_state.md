@@ -14,9 +14,12 @@ struct table_state;
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
+| `max_rounds` | `std::uint32_t` | 最大回合数，默认 14；应小于 `UINT32_MAX` |
 | `round_number` | `std::uint32_t` | 当前回合数，初始为 0 |
 | `active_player` | [`player_id`](player_id.md) | 当前行动玩家，初始为玩家 0 |
 | `first_ended` | `bool` | 本回合是否已经有玩家率先宣布结束，初始为 false |
+
+进入根回合流程前自动增加回合数，超过 `max_rounds` 时双方失败；初始化流程不受此项限制。详见 [`compile`](../executor/compile.md#自动回合推进)。
 
 ## 示例
 

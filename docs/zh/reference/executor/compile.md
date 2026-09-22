@@ -61,7 +61,7 @@ auto compile(
 
 1. 增加 `table.state().round_number`。
 2. 观察模式先返回 `execution_state::round_started`；再次推进后继续以下步骤。
-3. 若回合数超过 [`game_parameters::max_rounds`](../table/game_parameters.md)，以 `both_loss` 结束，不清空骰子，也不执行本回合程序。
+3. 若回合数超过 [`table_state::max_rounds`](../table/table_state.md)，以 `both_loss` 结束，不清空骰子，也不执行本回合程序。
 4. 未超限则清空双方骰子，再从 `round_program` 的第一个命令开始执行。
 
 回合数超限时通常为 `max_rounds + 1`。配置 `max_rounds = 0` 时，仍完整执行初始化，但不进入任何回合程序。初始化或回合流程中的命令若已结束对局，不再继续推进。响应产生的普通子程序执行完毕只回到原流程，不增加回合数。
