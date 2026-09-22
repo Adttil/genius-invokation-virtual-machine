@@ -6,6 +6,21 @@
 
 事件也可用作命令的初始输入，但是否广播由具体命令决定。每次触发可以选择响应实体的范围与顺序，不要求所有事件使用统一的广播顺序。
 
+## 全场广播
+
+核心命令采用全场广播时，先处理牌桌 `active_player` 指定的当前行动玩家，再处理对方。每方依次处理：
+
+1. 出战角色的技能与附属实体。
+2. 出战状态。
+3. 从出战角色的下一位置开始，按循环顺序处理其余角色的技能与附属实体。
+4. 召唤物、支援、手牌及其附着状态、牌堆中的牌及其附着状态。
+
+每名角色先处理技能，再依次处理武器、圣遗物、天赋、特技，最后处理普通附属实体。角色不订阅事件；被动能力通过角色持有的技能参与。没有出战角色时，先处理出战状态，再按角色位置处理各角色的技能与附属实体。召唤物、支援、出战状态与普通附属实体按加入顺序处理；手牌和牌堆使用各自公开遍历顺序，每张牌后紧接其附着状态。
+
+一次广播开始时确定候选响应者及顺序。之后新建的实体不加入本次广播；已在候选中但随后失效的实体在轮到时跳过。各响应在轮到时读取当前牌桌与事件，前面的响应及其效果可能影响后面的判断。后续广播重新确定自己的候选响应者。
+
+具体命令可以规定单实体响应或其他范围，例如 `skill_effect` 只交给所用技能。订阅能力见 [`subscribed_events`](subscribed_events.md)；具有响应能力不表示一定会参与每次广播。
+
 ## 回合与投骰
 
 | | |
@@ -61,6 +76,7 @@
 | [`damage`](events/damage.md) | 单体或范围伤害的初始描述 |
 | [`relative_character_target`](events/relative_character_target.md) | 相对于出战位置的伤害目标 |
 | [`other_characters_target`](events/other_characters_target.md) | 指定角色以外的同方存活角色 |
+| [`damage_preparation`](events/damage_preparation.md) | 伤害来源、目标、元素与标志的属性修饰 |
 | [`damage_calculation`](events/damage_calculation.md) | 伤害计算事件 |
 | [`damage_effect`](events/damage_effect.md) | 扣除生命前的伤害结算事件 |
 | [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |

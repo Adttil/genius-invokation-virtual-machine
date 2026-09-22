@@ -54,10 +54,66 @@ namespace givm::detail
     {
         std::vector<handler_id<TEvent>> targets;
 
-        // This table order is only the default broadcast tool. Instructions may instead select
-        // entities in a rule-defined order by preparing their own frame.
-        for(auto player : table.players())
+        const auto append_character = [&](auto character)
         {
+            if(not character) return;
+            for(auto skill : character.skills())
+            {
+                append_broadcast_target<TEvent>(library, skill, targets);
+            }
+            std::array<std::size_t, static_cast<std::size_t>(equipment_type::none)> equipment{};
+            std::size_t equipment_count = 0;
+            for(std::size_t index = 0; index != equipment.size(); ++index)
+            {
+                const auto type = static_cast<equipment_type>(index);
+                if(character.has(type))
+                {
+                    const auto attachment = character.get(type);
+                    equipment[equipment_count++] = attachment.id().index;
+                    append_broadcast_target<TEvent>(library, attachment, targets);
+                }
+            }
+            for(auto attachment : character.attachments())
+            {
+                const auto end = equipment.begin() + equipment_count;
+                if(std::find(equipment.begin(), end, attachment.id().index) == end)
+                    append_broadcast_target<TEvent>(library, attachment, targets);
+            }
+        };
+
+        // Each broadcast snapshots the acting player and relative character order here.
+        const auto active_player = table.state().active_player;
+        for(const auto player_id : { active_player, other_player(active_player) })
+        {
+            const auto player = table[player_id];
+            const auto characters = player.template characters<false>();
+            const auto active_character = player.state().active_character;
+            if(active_character) append_character(characters[active_character->index]);
+            for(auto combat_status : player.combat_statuses())
+            {
+                append_broadcast_target<TEvent>(library, combat_status, targets);
+            }
+            if(active_character)
+            {
+                auto index = active_character->index;
+                for(std::size_t offset = 1; offset < characters.size(); ++offset)
+                {
+                    if(++index == characters.size()) index = 0;
+                    append_character(characters[index]);
+                }
+            }
+            else
+            {
+                for(auto character : characters) append_character(character);
+            }
+            for(auto summon : player.summons())
+            {
+                append_broadcast_target<TEvent>(library, summon, targets);
+            }
+            for(auto support : player.supports())
+            {
+                append_broadcast_target<TEvent>(library, support, targets);
+            }
             for(auto card : player.hand_cards())
             {
                 append_broadcast_target<TEvent>(library, card, targets);
@@ -66,52 +122,12 @@ namespace givm::detail
                     append_broadcast_target<TEvent>(library, status, targets);
                 }
             }
-
             for(auto card : player.deck_cards())
             {
                 append_broadcast_target<TEvent>(library, card, targets);
                 for(auto status : card.statuses())
                 {
                     append_broadcast_target<TEvent>(library, status, targets);
-                }
-            }
-
-            for(auto support : player.supports())
-            {
-                append_broadcast_target<TEvent>(library, support, targets);
-            }
-            for(auto summon : player.summons())
-            {
-                append_broadcast_target<TEvent>(library, summon, targets);
-            }
-            for(auto combat_status : player.combat_statuses())
-            {
-                append_broadcast_target<TEvent>(library, combat_status, targets);
-            }
-            for(auto character : player.characters())
-            {
-                append_broadcast_target<TEvent>(library, character, targets);
-                for(auto skill : character.skills())
-                {
-                    append_broadcast_target<TEvent>(library, skill, targets);
-                }
-                std::array<std::size_t, static_cast<std::size_t>(equipment_type::none)> equipment{};
-                std::size_t equipment_count = 0;
-                for(std::size_t index = 0; index != equipment.size(); ++index)
-                {
-                    const auto type = static_cast<equipment_type>(index);
-                    if(character.has(type))
-                    {
-                        const auto attachment = character.get(type);
-                        equipment[equipment_count++] = attachment.id().index;
-                        append_broadcast_target<TEvent>(library, attachment, targets);
-                    }
-                }
-                for(auto attachment : character.attachments())
-                {
-                    const auto end = equipment.begin() + equipment_count;
-                    if(std::find(equipment.begin(), end, attachment.id().index) == end)
-                        append_broadcast_target<TEvent>(library, attachment, targets);
                 }
             }
         }

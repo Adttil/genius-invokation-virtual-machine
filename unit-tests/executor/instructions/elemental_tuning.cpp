@@ -157,7 +157,7 @@ TEST_CASE("elemental tuning shares card candidates and validates card attributes
 {
     const auto element = GENERATE(givm::element::pyro, givm::element::none);
     tuning_log log;
-    const tuning_character_source character{ &log, element };
+    const auto character = givm::test::with_passive_skill(tuning_character_source{ &log, element });
     const tuning_card_source allowed{ &log, "TunableCard", true, true };
     const tuning_card_source blocked{ &log, "UntunableCard", false };
     const givm::test::named_definition_source<givm::character_view> opponent{ "TuningOpponent" };
@@ -198,7 +198,7 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
     const bool nested = GENERATE(false, true);
     const bool quoted = GENERATE(false, true);
     tuning_log log{ .nested = nested };
-    const tuning_character_source character{ &log };
+    const auto character = givm::test::with_passive_skill(tuning_character_source{ &log });
     const tuning_card_source card{ &log, "SelectedTuningCard", true, empowered };
     const givm::test::named_definition_source<givm::card_definition> filler{ "TuningFiller" };
     const givm::test::named_definition_source<givm::character_view> opponent{ "TuningOpponent" };

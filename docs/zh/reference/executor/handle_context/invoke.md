@@ -54,18 +54,19 @@ program_entry invoke(substack_t, program_entry entry, std::span<const unsigned c
 
 ## 示例
 
-下例在响应时根据当前实体选定角色。默认构造的 `set_active_character{}` 使用动态输入，响应通过 `active_character_changed` 提供目标；源无需为不同角色登记不同入口。
+下例由角色的被动技能响应事件，选定其所属角色。默认构造的 `set_active_character{}` 使用动态输入，响应通过 `active_character_changed` 提供目标；源无需为不同角色登记不同入口。
 
 ```cpp
+#include <array>
 #include <cstdint>
 #include <print>
 #include <string_view>
 #include <tuple>
 #include <givm/givm.hpp>
 
-struct character_source
+struct passive_skill_source
 {
-    using definition_category = givm::character_view;
+    using definition_category = givm::skill_view;
 
     std::string_view name() const { return "响应选择出战"; }
 
@@ -75,28 +76,50 @@ struct character_source
     }
 
     static givm::program_entry handle(
-        const givm::program_entry& entry, const givm::character_view& self,
+        const givm::program_entry& entry, const givm::skill_view& self,
         givm::test_event&, givm::handle_context& context)
     {
-        return context.invoke(entry, givm::active_character_changed{ .current = self.id() });
+        return context.invoke(entry, givm::active_character_changed{ .current = self.character().id() });
+    }
+};
+
+struct character_source
+{
+    using definition_category = givm::character_view;
+    using definition_type = givm::definition_id<givm::skill_view>;
+    std::string_view name() const { return "角色"; }
+    auto skill_dependencies() const { return std::array<std::string_view, 1>{ "响应选择出战" }; }
+    definition_type compile(givm::definition_compile_context& context) const
+    {
+        return context.resolve_id<givm::skill_view>("响应选择出战");
+    }
+    static givm::character_state query(const definition_type&, const givm::character_initial_state&)
+    {
+        return { .max_health = 10, .health = 10 };
+    }
+    static definition_type query(const definition_type& skill, const givm::character_initial_skill& query)
+    {
+        return query.skill_index == 0 ? skill : definition_type{};
     }
 };
 
 int main()
 {
-    const character_source source{};
+    const passive_skill_source source{};
+    const character_source character{};
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0
     };
     sources.add(source);
+    sources.add(character);
     const auto [library, ids] = compile(sources,
         std::tuple{ givm::test_command{}, givm::end_game{ .result = givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
     load_deck(table, library, givm::linked_deck{
-        .characters = { ids.get_id<givm::character_view>("响应选择出战") }
+        .characters = { ids.get_id<givm::character_view>("角色") }
     }, {});
 
     givm::executor execution{};

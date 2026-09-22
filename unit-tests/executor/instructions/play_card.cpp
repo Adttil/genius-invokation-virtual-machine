@@ -282,7 +282,7 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
     play_log log{ .extra_cost = 1 };
     const playable_card_source first_source{ &log, "FirstPlayedCard", 1 };
     const playable_card_source second_source{ &log, "SecondPlayedCard", 2, givm::action_speed::combat };
-    const play_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(play_observer_source{ &log });
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> filler{ "PlayFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -360,7 +360,7 @@ TEST_CASE("card target queries advance one step at a time and default to no targ
     const bool single_target = GENERATE(false, true);
     play_log log{ .enable_payment = false };
     const playable_card_source source{ &log, "TargetedCard", 0, givm::action_speed::fast, single_target };
-    const play_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(play_observer_source{ &log });
     const givm::test::initialized_character_source character;
     const untargeted_card_source plain{ &log };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -465,7 +465,7 @@ TEST_CASE("optional targets may finish or continue and target spans ignore entri
     const bool automatic_quote = GENERATE(false, true);
     play_log log{ .enable_payment = false };
     const playable_card_source source{ &log, "OptionalTargetsCard", 0, givm::action_speed::fast, false, true };
-    const play_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(play_observer_source{ &log });
     const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(1), std::tuple{}, source, observer, character);
@@ -530,7 +530,7 @@ TEST_CASE("card payment and broadcasts resume in order after removal even when i
     const bool automatic_quote = GENERATE(false, true);
     play_log log{ .nested = true, .cancel_effect = countered };
     const playable_card_source source{ &log, "NestedPlayedCard", 1, givm::action_speed::combat };
-    const play_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(play_observer_source{ &log });
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> filler{ "NestedFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(

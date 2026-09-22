@@ -20,7 +20,7 @@
 | --- | --- |
 | [卡牌、技能与调和](event_dispatch/card_events.md) | 批次抽牌、逐张快照、历史 ID、效果取消与支付不回滚 |
 | [资源与旧 payment](event_dispatch/resource_events.md) | 正负增量、限幅、支付后事件以及尚未接入的槽位设计 |
-| [伤害、元素与治疗](event_dispatch/damage_and_element_events.md) | 伤害阶段、护盾、自身计数、反应接管、伤害后判胜和默认反应 TODO |
+| [伤害、元素与治疗](event_dispatch/damage_and_element_events.md) | 属性与数值阶段、护盾、反应接管、扣血后判胜和默认反应 TODO |
 | [初始化、击倒与离场](event_dispatch/entity_events.md) | 局部初始化工作区、延迟出战选择意图、历史身份与完整计数器 |
 
 ## const 成员的编译器适配

@@ -167,7 +167,7 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
         log.multiplier_numerator = 2;
         expected_damage = std::numeric_limits<std::uint32_t>::max();
     }
-    const damage_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(damage_observer_source{ &log });
     const givm::test::initialized_character_source victim{ "Victim", initial };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
@@ -209,7 +209,7 @@ TEST_CASE("damage observation precedes elemental settlement and copies resume in
 {
     const auto initial_aura = GENERATE(givm::element_aura::none, givm::element_aura::cryo);
     damage_log log{ .effect_reduction = 1 };
-    const damage_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(damage_observer_source{ &log });
     const givm::test::initialized_character_source victim{
         "Victim", { .max_health = 10, .health = 10, .aura = initial_aura }
     };
@@ -319,7 +319,7 @@ TEST_CASE("zero damage skips health observation and preserves element applicatio
     SECTION("physical damage") {}
     SECTION("elemental damage") { type = givm::damage_type::pyro; }
     SECTION("effect reduces damage to zero") { value = 3; log.effect_reduction = 3; }
-    const damage_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(damage_observer_source{ &log });
     const givm::test::initialized_character_source victim{ "Victim" };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };

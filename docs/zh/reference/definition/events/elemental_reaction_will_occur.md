@@ -26,7 +26,7 @@ struct elemental_reaction_will_occur;
 
 伤害中的反应加成与本事件分别处理，由 [`damage_calculation`](damage_calculation.md) 的 `already_handled_reaction` 控制。修改本事件的 `already_handled` 不会撤销此前计算的伤害加成。
 
-由伤害引发时，本事件在该次扣血及击倒处理后广播；若已判定终局则不广播。反应种类及 `reacted_aura` 已在伤害计算响应结束时确定。响应接管后须自行完成替代处理；仅返回程序而不设置 `already_handled` 不会跳过默认效果。
+由伤害引发时，本事件在该次扣血及击倒处理后广播；若已判定终局则不广播。反应种类及 `reacted_aura` 已在 [`damage_preparation`](damage_preparation.md) 结束后、数值计算前确定，之后的附着变化不会重新决定本次反应。响应接管后须自行完成替代处理；仅返回程序而不设置 `already_handled` 不会跳过默认效果。
 
 ## 示例
 

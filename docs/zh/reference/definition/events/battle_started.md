@@ -23,7 +23,7 @@ struct battle_started;
 
 struct observer_source
 {
-    using definition_category = givm::character_view;
+    using definition_category = givm::skill_view;
     struct definition_type { int* count; };
     int* count;
 
@@ -31,7 +31,7 @@ struct observer_source
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
 
     static givm::program_entry handle(
-        const definition_type& definition, const givm::character_view&,
+        const definition_type& definition, const givm::skill_view&,
         givm::battle_started&, givm::handle_context& context)
     {
         ++*definition.count;
@@ -52,8 +52,8 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{}, givm::compile_mode::normal);
-    const auto id = ids.get_id<givm::character_view>("observer");
-    std::println("提供此事件的响应: {}", library.can_handle<givm::battle_started, givm::character_view>(id));
+    const auto id = ids.get_id<givm::skill_view>("observer");
+    std::println("提供此事件的响应: {}", library.can_handle<givm::battle_started, givm::skill_view>(id));
 }
 ```
 

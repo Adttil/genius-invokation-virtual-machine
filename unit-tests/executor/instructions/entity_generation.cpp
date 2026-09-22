@@ -355,7 +355,7 @@ namespace
     givm::table run_lifecycle(lifecycle_log<T>& log, givm::compile_mode mode)
     {
         const lifecycle_source<T> entity{ &log };
-        const lifecycle_driver<T> driver{ &log };
+        const auto driver = givm::test::with_passive_skill(lifecycle_driver<T>{ &log });
         const givm::test::named_definition_source<givm::character_view> character{ "LifecycleTarget" };
         const givm::test::named_definition_source<givm::summon_view> other_summon{ "OtherSummon" };
         std::vector<givm::any_command> program{

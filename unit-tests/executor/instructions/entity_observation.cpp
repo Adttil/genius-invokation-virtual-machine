@@ -225,7 +225,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     const initialized_character_source character_source;
     const givm::test::named_definition_source<givm::card_definition> card_source{ "ObservedCard" };
     const givm::test::named_definition_source<givm::card_definition> other_card_source{ "OtherObservedCard" };
-    const creation_program_source program_source;
+    const auto program_source = givm::test::with_passive_skill(creation_program_source{});
     const auto compile_program = [&](givm::compile_mode mode)
     {
         return givm::test::compile_definitions_with_program(
@@ -268,7 +268,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
 TEST_CASE("step passes through an empty response without an observation", "[entity-observation]")
 {
     std::uint32_t handler_calls = 0;
-    const empty_program_source source{ &handler_calls };
+    const auto source = givm::test::with_passive_skill(empty_program_source{ &handler_calls });
     const auto compile_program = [&](givm::compile_mode mode)
     {
         return givm::test::compile_definitions_with_program(
@@ -302,7 +302,7 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     SECTION("all cards are discarded") { initial_hand_count = 2; }
 
     entity_event_log log;
-    const entity_observer_source observer_source{ &log };
+    const auto observer_source = givm::test::with_passive_skill(entity_observer_source{ &log });
     const givm::test::named_definition_source<givm::card_definition> card_source{ "ObservedCard" };
     const auto compile_program = [&](givm::compile_mode mode)
     {
@@ -354,7 +354,7 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
 TEST_CASE("single-player active-character observation precedes the table update and skips no-op logs", "[entity-observation][set_active_character]")
 {
     entity_event_log log;
-    const entity_observer_source observer_source{ &log };
+    const auto observer_source = givm::test::with_passive_skill(entity_observer_source{ &log });
     const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
     constexpr givm::character_id previous{ .player_id = givm::player_id{ 0 }, .index = 0 };
     constexpr givm::character_id current{ .player_id = givm::player_id{ 0 }, .index = 1 };
@@ -402,7 +402,7 @@ TEST_CASE("initial active choices update both players before either response", "
     const auto first_player = GENERATE(givm::player_id{ 0 }, givm::player_id{ 1 });
     const auto behavior = GENERATE(0, 1, 2);
     entity_event_log log;
-    const initial_switch_response_source observer{ &log, behavior };
+    const auto observer = givm::test::with_passive_skill(initial_switch_response_source{ &log, behavior });
     const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
@@ -476,7 +476,7 @@ TEST_CASE("initial active choices update both players before either response", "
 TEST_CASE("resuming a switch applies it once before a nested switch response", "[entity-observation][set_active_character]")
 {
     entity_event_log log;
-    const switch_back_source response{ &log };
+    const auto response = givm::test::with_passive_skill(switch_back_source{ &log });
     const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
     constexpr givm::character_id previous{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id next{ givm::player_id{ 0 }, 1 };
@@ -534,7 +534,7 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const bool respond_to_draws = GENERATE(false, true);
     entity_event_log log;
-    const entity_observer_source observer{ &log, respond_to_draws };
+    const auto observer = givm::test::with_passive_skill(entity_observer_source{ &log, respond_to_draws });
     const givm::test::named_definition_source<givm::card_definition> first{ "FirstCard" };
     const givm::test::named_definition_source<givm::card_definition> second{ "SecondCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(

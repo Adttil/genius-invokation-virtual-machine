@@ -10,7 +10,10 @@ namespace givm
         combat_damage = 1u << 0,
         skill_damage = 1u << 1,
         reaction_damage = 1u << 2,
-        ignore_shield = 1u << 3
+        ignore_shield = 1u << 3,
+        normal_attack = 1u << 4,
+        elemental_skill = 1u << 5,
+        elemental_burst = 1u << 6
     };
 
     class damage_flags

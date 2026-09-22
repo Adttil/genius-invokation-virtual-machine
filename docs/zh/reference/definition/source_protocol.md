@@ -65,6 +65,8 @@ static givm::program_entry handle(
 
 可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。卡牌初始状态、技能初始费用和目标检查采用下述查询接口。
 
+角色定义不订阅事件，负责提供初始状态、初始技能组和分类标签。角色被动能力定义为角色持有的技能，通过相应事件响应参与[全场广播](events.md#全场广播)，不提供 `skill_effect` 时不会成为主动技能候选。
+
 每次事件是否实际生效，由响应函数根据事件和对局状态判断。需要按源对象配置选择响应能力时，使用下述[动态定义源](#动态定义源)协议。
 
 ## 查询
@@ -128,16 +130,16 @@ bool can_query() const;
 
 #include <givm/givm.hpp>
 
-struct character_source
+struct passive_skill_source
 {
-    using definition_category = givm::character_view;
+    using definition_category = givm::skill_view;
 
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
 
     static givm::program_entry handle(
         const int& extra_rerolls,
-        const givm::character_view&,
+        const givm::skill_view&,
         givm::dice_roll_preparation& event,
         givm::handle_context& context)
     {
@@ -148,7 +150,7 @@ struct character_source
 
 int main()
 {
-    const character_source source{};
+    const passive_skill_source source{};
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
@@ -159,9 +161,9 @@ int main()
         sources,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
-    const auto id = ids.get_id<givm::character_view>("重投助手");
+    const auto id = ids.get_id<givm::skill_view>("重投助手");
 
-    std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::character_view>(id));
+    std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::skill_view>(id));
 }
 ```
 

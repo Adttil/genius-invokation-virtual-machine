@@ -355,7 +355,7 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     const active_skill_source active{ &log, 1, 2, "Resolve" };
     const passive_skill_source passive{ &log };
     const untargeted_skill_source untargeted{ &log };
-    const skill_character_source owner{ &log, "Resolve" };
+    const auto owner = givm::test::with_passive_skill(skill_character_source{ &log, "Resolve" });
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         setup(),
@@ -385,10 +385,11 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
         CHECK(skill.character().id() == character.id());
         CHECK(skill.state().count == 0);
     }
-    REQUIRE(skills.size() == 3);
-    CHECK(table[skills[0]].definition_id() == ids.get_id<givm::skill_view>(active.name()));
-    CHECK(table[skills[1]].definition_id() == ids.get_id<givm::skill_view>(passive.name()));
-    CHECK(table[skills[2]].definition_id() == ids.get_id<givm::skill_view>(untargeted.name()));
+    REQUIRE(skills.size() == 4);
+    CHECK(table[skills[0]].definition_id() == ids.get_id<givm::skill_view>(owner.passive.name()));
+    CHECK(table[skills[1]].definition_id() == ids.get_id<givm::skill_view>(active.name()));
+    CHECK(table[skills[2]].definition_id() == ids.get_id<givm::skill_view>(passive.name()));
+    CHECK(table[skills[3]].definition_id() == ids.get_id<givm::skill_view>(untargeted.name()));
     CHECK(log.passive_responses == 0);
     givm::executor target;
     target.enter_entry(library);
@@ -398,10 +399,10 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     CHECK(log.passive_responses == 1);
     const auto action = target.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.skill_count() == 2);
-    CHECK(action.skill_id(0) == skills[0]);
-    CHECK(action.skill_id(1) == skills[2]);
-    CHECK(action.skill_cost(0).skill == skills[0]);
-    CHECK(action.skill_cost(1).skill == skills[2]);
+    CHECK(action.skill_id(0) == skills[1]);
+    CHECK(action.skill_id(1) == skills[3]);
+    CHECK(action.skill_cost(0).skill == skills[1]);
+    CHECK(action.skill_cost(1).skill == skills[3]);
     CHECK(log.cost_queries == 0);
     const auto& cost = action.calculate_skill_cost(library, table, 1);
     CHECK(cost.requirement.dice_requirement.fixed.total() == 0);
@@ -414,9 +415,9 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     CHECK(action.skill_targets_validate(library, table, 1, invalid_targets) == givm::target_validation::invalid);
     action.use_skill(1, {});
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
-    CHECK(log.effects == std::vector{ skills[2] });
+    CHECK(log.effects == std::vector{ skills[3] });
     CHECK(log.effect_targets == std::vector{ skill_targets{} });
-    CHECK(table[skills[2]].is_valid());
+    CHECK(table[skills[3]].is_valid());
     CHECK(table.state().active_player == givm::player_id{ 1 });
     CHECK(target.view_in<givm::execution_state::action_selection>().skill_count() == 0);
     CHECK(log.initial_cost_queries == 1);
@@ -432,7 +433,7 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
     const active_skill_source active{ &log, 0, 0 };
     const passive_skill_source passive{ &log };
     const untargeted_skill_source untargeted{ &log };
-    const skill_character_source owner{ &log };
+    const auto owner = givm::test::with_passive_skill(skill_character_source{ &log });
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain);
@@ -488,7 +489,7 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     const active_skill_source active{ &log, dice, 2, "Resolve" };
     const passive_skill_source passive{ &log };
     const untargeted_skill_source untargeted{ &log };
-    const skill_character_source owner{ &log, "Resolve" };
+    const auto owner = givm::test::with_passive_skill(skill_character_source{ &log, "Resolve" });
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain);
@@ -539,7 +540,7 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
     const active_skill_source active{ &log };
     const passive_skill_source passive{ &log };
     const untargeted_skill_source untargeted{ &log };
-    const skill_character_source owner{ &log };
+    const auto owner = givm::test::with_passive_skill(skill_character_source{ &log });
     const givm::test::initialized_character_source plain;
     const givm::test::named_definition_source<givm::card_definition> filler{ "SkillDrawFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -601,7 +602,7 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     const active_skill_source active{ &log };
     const passive_skill_source passive{ &log };
     const untargeted_skill_source untargeted{ &log };
-    const skill_character_source owner{ &log, "Resolve" };
+    const auto owner = givm::test::with_passive_skill(skill_character_source{ &log, "Resolve" });
     const givm::test::initialized_character_source plain;
     const energy_card_source card{ &log, dice, 2, "Resolve" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -682,7 +683,7 @@ TEST_CASE("action payments distinguish energy tags without consuming resources",
     const active_skill_source active{ &log, 1, energy, cost_tag };
     const passive_skill_source passive{ &log };
     const untargeted_skill_source untargeted{ &log };
-    const skill_character_source owner{ &log, character_tag };
+    const auto owner = givm::test::with_passive_skill(skill_character_source{ &log, character_tag });
     const givm::test::initialized_character_source plain;
     const energy_card_source card{ &log, 1, energy, cost_tag };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -731,8 +732,8 @@ TEST_CASE("entering a character loads its indexed initial skills without deck in
     const active_skill_source active{ &log };
     const passive_skill_source passive{ &log };
     const untargeted_skill_source untargeted{ &log };
-    const skill_character_source owner{ &log };
-    const enter_skill_character_source enter;
+    const auto owner = givm::test::with_passive_skill(skill_character_source{ &log });
+    const auto enter = givm::test::with_passive_skill(enter_skill_character_source{});
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, active, passive, untargeted, owner, enter);
@@ -753,7 +754,7 @@ TEST_CASE("entering a character loads its indexed initial skills without deck in
         CHECK(skill.character().id() == character.id());
         CHECK(skill.state().count == 0);
     }
-    CHECK(skills == std::vector{ ids.get_id<givm::skill_view>(active.name()),
+    CHECK(skills == std::vector{ ids.get_id<givm::skill_view>(owner.passive.name()), ids.get_id<givm::skill_view>(active.name()),
         ids.get_id<givm::skill_view>(passive.name()), ids.get_id<givm::skill_view>(untargeted.name()) });
     CHECK(log.initial_skill_indices == std::vector<std::size_t>{ 0, 1, 2, 3 });
     CHECK(random.calls == 0);

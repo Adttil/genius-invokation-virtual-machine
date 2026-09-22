@@ -28,6 +28,7 @@ namespace givm
         std::uint32_t value() const noexcept { return event().value; }
         damage_type type() const noexcept { return event().type; }
         damage_flags flags() const noexcept { return event().flags; }
+        elemental_reaction reaction() const noexcept { return event().reaction; }
     };
 }
 

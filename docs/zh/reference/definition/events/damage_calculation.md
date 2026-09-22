@@ -8,24 +8,28 @@
 struct damage_calculation;
 ```
 
-伤害计算事件。响应者可以调整来源、目标、基础伤害、倍率和伤害种类，决定接下来怎样结算这次伤害。
+伤害的数值计算事件。附魔和伤害归属已经确定，响应者可以据此调整基础伤害与倍率，并读取本次已判定的元素反应。
 
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `source` | [`damage_source_id`](damage_source_id.md) | 本次伤害的来源 |
-| `target` | [`character_id`](../../table/character_id.md) | 受到本次伤害的角色，可由响应者调整 |
+| `source` | `const damage_source_id` | 属性修饰后的伤害来源；只读 |
+| `target` | `const character_id` | 属性修饰后的伤害目标；只读 |
 | `value` | `std::uint32_t` | 应用伤害倍率前的伤害值 |
 | `multiplier_numerator` | `std::uint16_t` | 伤害倍率的分子，初始为 1 |
 | `multiplier_denominator` | `std::uint16_t` | 伤害倍率的非零分母，初始为 1 |
-| `type` | [`damage_type`](../../enums/damage_type.md) | 伤害种类 |
-| `flags` | [`damage_flags`](../../enums/damage_flags.md) | 伤害附加属性 |
+| `type` | `const damage_type` | 属性修饰后的伤害种类；只读 |
+| `flags` | `const damage_flags` | 属性修饰后的伤害附加属性；只读 |
+| `reaction` | `const elemental_reaction` | 属性修饰结束后判定的反应，默认为 none；只读 |
+| `reacted_aura` | `const element_aura` | 判定本次反应时目标的完整附着，默认为 none；只读 |
 | `already_handled_reaction` | `bool` | 是否已经处理伤害计算中的元素反应加成，初始为 false |
 
 ## 注意
 
-本事件结束后，才按最终 `target`、`type` 和目标当前附着确定元素反应，并应用未被接管的反应加伤。因此修改伤害元素可以改变反应种类。后续扣血与反应处理沿用这次反应判定，不再根据扣血后的牌桌重新判断。
+[`damage_preparation`](damage_preparation.md) 结束后，按最终 `target`、`type` 和目标当时的附着判定反应，再开始本事件。之后即使响应效果改变目标的附着，本次伤害的 `reaction` 与 `reacted_aura` 也保持不变；后续伤害效果、扣血及元素反应处理沿用这次判定。
+
+本事件结束后，先加入未被接管的默认反应加伤，再统一应用倍率。`already_handled_reaction` 只接管数值加成，不取消反应，不跳过扣血后的附着变化或反应派生效果；后者由 [`elemental_reaction_will_occur`](elemental_reaction_will_occur.md) 的 `already_handled` 控制。
 
 同组各次伤害分别广播本事件；此前伤害的扣血和附着已经生效，但本组的伤害后响应尚未调用。
 
@@ -59,4 +63,6 @@ int main()
 
 | | |
 | --- | --- |
+| [`damage_preparation`](damage_preparation.md) | 伤害属性修饰 |
+| [`damage_effect`](damage_effect.md) | 最终数值的减伤与护盾处理 |
 | [`deal_damage`](../commands/deal_damage.md) | 伤害结算命令 |

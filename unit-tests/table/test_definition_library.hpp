@@ -2,6 +2,7 @@
 #define GIVM_UNIT_TESTS_TABLE_TEST_DEFINITION_LIBRARY_HPP
 
 #include "../test_source_library.hpp"
+#include "test_passive_skill.hpp"
 
 #include <stdexcept>
 #include <string_view>
@@ -37,7 +38,8 @@ namespace givm::test
     auto compile_definitions(const TSources&... sources)
     {
         auto source_library = givm_test::make_source_library();
-        if(not source_library.add(sources...))
+        if(not std::apply([&](const auto&... source) { return source_library.add(source...); },
+            std::tuple_cat(test_definition_sources(sources)...)))
         {
             throw std::logic_error{ "invalid unit-test definition sources" };
         }
@@ -55,7 +57,8 @@ namespace givm::test
     )
     {
         auto source_library = givm_test::make_source_library();
-        if(not source_library.add(sources...))
+        if(not std::apply([&](const auto&... source) { return source_library.add(source...); },
+            std::tuple_cat(test_definition_sources(sources)...)))
         {
             throw std::logic_error{ "invalid unit-test definition sources" };
         }

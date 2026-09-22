@@ -287,16 +287,31 @@ namespace givm
         damage_flags flags;
     };
 
-    struct damage_calculation
+    struct damage_preparation
     {
         damage_source_id source;
         character_id target;
+        const std::uint32_t value;
+        const std::uint16_t multiplier_numerator = 1;
+        const std::uint16_t multiplier_denominator = 1;
+        damage_type type;
+        damage_flags flags;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_preparation);
+    };
+
+    struct damage_calculation
+    {
+        const damage_source_id source;
+        const character_id target;
         std::uint32_t value;
         std::uint16_t multiplier_numerator = 1;
         std::uint16_t multiplier_denominator = 1;
-        damage_type type;
-        damage_flags flags;
+        const damage_type type;
+        const damage_flags flags;
+        const elemental_reaction reaction = elemental_reaction::none;
+        const element_aura reacted_aura = element_aura::none;
         bool already_handled_reaction = false;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_calculation);
     };
 
     struct damage_effect
@@ -306,6 +321,7 @@ namespace givm
         std::uint32_t value;
         const damage_type type;
         const damage_flags flags;
+        const elemental_reaction reaction = elemental_reaction::none;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_effect);
     };
 
@@ -316,6 +332,7 @@ namespace givm
         const std::uint32_t value;
         const damage_type type;
         const damage_flags flags;
+        const elemental_reaction reaction = elemental_reaction::none;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(after_damage);
     };
 

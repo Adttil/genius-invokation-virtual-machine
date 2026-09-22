@@ -80,11 +80,16 @@ namespace
                 givm::damage{ .source = attacker, .target = victim(1), .value = 3, .type = givm::damage_type::physical });
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
+            givm::damage_preparation& event, givm::handle_context&)
+        {
+            if(data.log->enchant && event.target == victim(0) && event.type == givm::damage_type::physical)
+                event.type = givm::damage_type::electro;
+            return {};
+        }
+        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             givm::damage_calculation& event, givm::handle_context& context)
         {
             data.log->order.emplace_back(phase::calculation, event.target.index);
-            if(data.log->enchant && event.target == victim(0) && event.type == givm::damage_type::physical)
-                event.type = givm::damage_type::electro;
             if(data.log->nested && !data.log->nested_invoked && event.target == victim(0))
             {
                 data.log->nested_invoked = true;
@@ -215,7 +220,7 @@ namespace
             CHECK(self.state().energy == 0);
             CHECK(std::ranges::empty(self.attachments()));
             CHECK_FALSE(self.has(givm::equipment_type::artifact));
-            CHECK(std::ranges::distance(self.skills()) == 1);
+            CHECK(std::ranges::distance(self.skills()) == 2);
             data.log->completed.push_back(event.target);
             return {};
         }
@@ -234,7 +239,7 @@ TEST_CASE("damage groups finish all health changes before invoking completion re
 {
     const bool dynamic = GENERATE(false, true);
     group_log log{ .change_aura_after_first = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim" };
     std::array damages{
         givm::damage{ .source = attacker, .target = victim(0), .value = 2, .type = givm::damage_type::physical },
@@ -271,7 +276,7 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
     const bool dynamic = GENERATE(false, true);
     const bool observed = GENERATE(false, true);
     group_log log{ .enchant = true, .invoke_each_phase = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source front{ "Front",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const givm::test::initialized_character_source back{ "Back" };
@@ -323,7 +328,7 @@ TEST_CASE("defeat checks game end before clearing attachments and energy", "[dea
     const bool observed = GENERATE(false, true);
     const bool terminal = GENERATE(false, true);
     death_log log;
-    const dying_character_source dying{ &log };
+    const auto dying = givm::test::with_passive_skill(dying_character_source{ &log });
     const givm::test::initialized_character_source character{ "Alive" };
     const std::array damages{
         givm::damage{ .source = attacker, .target = victim(0), .value = 1, .type = givm::damage_type::physical },
@@ -367,7 +372,7 @@ TEST_CASE("defeat checks game end before clearing attachments and energy", "[dea
     REQUIRE(state == givm::execution_state::finished);
     CHECK(table[victim(0)].is_valid());
     CHECK(table[victim(0)].state().health == 0);
-    CHECK(std::ranges::distance(table[victim(0)].skills()) == 1);
+    CHECK(std::ranges::distance(table[victim(0)].skills()) == 2);
     CHECK(log.attachment_responses == 0);
     CHECK(table[attacker].state().health == 10);
     if(terminal)
@@ -393,7 +398,7 @@ TEST_CASE("reactions use the calculated element and expand over the living oppos
     const auto aura = GENERATE(givm::element_aura::cryo, givm::element_aura::hydro);
     const std::size_t count = GENERATE(2uz, 5uz);
     group_log log{ .enchant = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source front{ "Front", { .max_health = 10, .health = 1, .aura = aura } };
     const givm::test::initialized_character_source back{ "Back" };
     const std::array damages{ givm::damage{
@@ -424,7 +429,7 @@ TEST_CASE("reactions use the calculated element and expand over the living oppos
 TEST_CASE("reaction damage finishes before the next initial description", "[deal_damage][group][reaction]")
 {
     group_log log;
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const std::array damages{
@@ -451,7 +456,7 @@ TEST_CASE("swirled damage can expand another reaction inside the same group", "[
 {
     const bool reverse_elements = GENERATE(false, true);
     group_log log;
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source front{ "Front",
         { .max_health = 10, .health = 10,
             .aura = reverse_elements ? givm::element_aura::anemo : givm::element_aura::cryo } };
@@ -482,7 +487,7 @@ TEST_CASE("swirled damage can expand another reaction inside the same group", "[
 TEST_CASE("taking over a reaction suppresses its default aura change and extra damage", "[deal_damage][group][reaction]")
 {
     group_log log{ .take_over = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const std::array damages{ givm::damage{
@@ -506,7 +511,7 @@ TEST_CASE("taking over a reaction suppresses its default aura change and extra d
 TEST_CASE("relative and other-character damage targets skip defeated characters and wrap", "[deal_damage][group][target]")
 {
     group_log log;
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source alive{ "Alive" };
     const givm::test::initialized_character_source dead{ "Dead", { .max_health = 10, .health = 0 } };
     const std::array damages{
@@ -536,7 +541,7 @@ TEST_CASE("relative and other-character damage targets skip defeated characters 
 TEST_CASE("damage groups copied at health observation resume independently", "[deal_damage][group][observation]")
 {
     group_log log;
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim" };
     const std::array damages{
         givm::damage{ .source = attacker, .target = victim(0), .value = 2, .type = givm::damage_type::physical },
@@ -581,7 +586,7 @@ TEST_CASE("damage groups copied at health observation resume independently", "[d
 TEST_CASE("a nested damage command completes its own group before resuming the caller", "[deal_damage][group][nested]")
 {
     group_log log{ .nested = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim" };
     const std::array damages{
         givm::damage{ .source = attacker, .target = victim(0), .value = 2, .type = givm::damage_type::physical },
@@ -610,7 +615,7 @@ TEST_CASE("queued damage skips a target defeated by an earlier response and cont
 {
     const bool observed = GENERATE(false, true);
     group_log log{ .nested = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source alive{ "Alive" };
     const givm::test::initialized_character_source fragile{ "Fragile", { .max_health = 10, .health = 1 } };
     const std::array damages{ givm::damage{
@@ -649,7 +654,7 @@ TEST_CASE("queued damage skips a target defeated by an earlier response and cont
 TEST_CASE("standalone element application settles reaction damage before its completion", "[apply_element][group][reaction]")
 {
     group_log log;
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
@@ -673,7 +678,7 @@ TEST_CASE("standalone element application settles reaction damage before its com
 TEST_CASE("a damage group stops before completion responses when the last character is defeated", "[deal_damage][group][game-result]")
 {
     group_log log;
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim", { .max_health = 10, .health = 1 } };
     const std::array damages{
         givm::damage{ .source = attacker, .target = victim(0), .value = 1, .type = givm::damage_type::physical },
@@ -700,7 +705,7 @@ TEST_CASE("a damage group stops before completion responses when the last charac
 TEST_CASE("an independent nested damage group can end the game before its caller resumes", "[deal_damage][group][nested][game-result]")
 {
     group_log log{ .nested_after_first = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim", { .max_health = 10, .health = 1 } };
     const std::array damages{
         givm::damage{ .source = attacker, .target = victim(0), .value = 1, .type = givm::damage_type::physical },
@@ -727,7 +732,7 @@ TEST_CASE("an independent nested damage group can end the game before its caller
 TEST_CASE("elemental reaction identity survives aura changes during damage effect responses", "[deal_damage][group][reaction]")
 {
     group_log log{ .change_aura_during_effect = true };
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source front{ "Front",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const givm::test::initialized_character_source back{ "Back" };
@@ -752,7 +757,7 @@ TEST_CASE("elemental reaction identity survives aura changes during damage effec
 TEST_CASE("applying no element clears an existing aura without reaction or damage notifications", "[apply_element]")
 {
     group_log log;
-    const group_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,

@@ -19,6 +19,13 @@ struct damage_effect;
 | `value` | `std::uint32_t` | 将用于扣除生命的伤害值，可由响应者减少 |
 | `type` | `const damage_type` | 伤害种类；只读 |
 | `flags` | `const damage_flags` | 伤害附加属性；只读 |
+| `reaction` | `const elemental_reaction` | 属性修饰后已判定的反应，默认为 none；只读 |
+
+## 时机
+
+本事件发生在 [`damage_calculation`](damage_calculation.md) 的加伤、默认反应加成及倍率计算之后，扣除生命之前。`value` 已经包含这些数值计算的结果；护盾与减伤在此调整最终用于扣血的数额。
+
+`reaction` 沿用属性修饰结束时的判定，便于响应判断本次伤害是否引起某种反应。此后目标的附着即使发生变化，也不重新判定本次反应。
 
 ## 示例
 

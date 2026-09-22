@@ -136,7 +136,7 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const bool runtime_commands = GENERATE(false, true);
     input_log log;
-    const input_source source{ &log, runtime_commands };
+    const auto source = givm::test::with_passive_skill(input_source{ &log, runtime_commands });
     const givm::test::initialized_character_source plain;
     const givm::test::named_definition_source<givm::card_definition> card{ "InputCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
@@ -177,7 +177,7 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     input_log log;
-    const cached_input_source source{ &log };
+    const auto source = givm::test::with_passive_skill(cached_input_source{ &log });
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{
@@ -301,7 +301,7 @@ TEST_CASE("debug invocation checks input length before execution or caching", "[
     const auto error = GENERATE(input_size_mismatch::typed_missing, input_size_mismatch::typed_extra,
                                input_size_mismatch::raw_missing, input_size_mismatch::raw_extra);
     CAPTURE(mode, cached, error);
-    const mismatched_input_source source{ error };
+    const auto source = givm::test::with_passive_skill(mismatched_input_source{ error });
     const givm::test::initialized_character_source plain;
     const auto program = cached
         ? std::vector<givm::any_command>{

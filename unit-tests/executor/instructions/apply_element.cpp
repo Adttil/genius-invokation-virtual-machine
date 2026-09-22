@@ -113,7 +113,7 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         log.replacement_aura = givm::element_aura::dendro;
         expected_aura = givm::element_aura::dendro;
     }
-    const reaction_observer_source observer{ &log };
+    const auto observer = givm::test::with_passive_skill(reaction_observer_source{ &log });
     const givm::test::initialized_character_source victim{ "Victim" };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id affected{ givm::player_id{ 1 }, 0 };

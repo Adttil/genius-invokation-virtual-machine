@@ -20,6 +20,7 @@ class execution_view<execution_state::health_reduced>;
 | [`value`](health_reduced/value.md) | 取得结算后的伤害值。 |
 | [`type`](health_reduced/type.md) | 取得本次伤害类型。 |
 | [`flags`](health_reduced/flags.md) | 取得本次伤害标志。 |
+| [`reaction`](health_reduced/reaction.md) | 取得本次伤害引起的元素反应种类。 |
 
 ## 注意
 

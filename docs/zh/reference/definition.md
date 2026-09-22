@@ -38,7 +38,6 @@
 | [`any_command`](definition/any_command.md) | 核心命令 variant |
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
-| [`support_subscribed_events`](definition/support_subscribed_events.md) | 场上实体共用的事件列表 |
 | [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
 | [`handle_fn_t`](definition/handle_fn_t.md) | 统一的事件响应函数指针类型 |
 

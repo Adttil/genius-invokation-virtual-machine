@@ -215,7 +215,7 @@ TEST_CASE("action and round observations precede their handlers and ended player
 {
     const auto speed = GENERATE(givm::action_speed::combat, givm::action_speed::fast);
     action_log log;
-    const action_source observer{ &log, speed };
+    const auto observer = givm::test::with_passive_skill(action_source{ &log, speed });
     const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
@@ -296,7 +296,7 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
 {
     const bool observed = GENERATE(false, true);
     action_log log;
-    const action_source observer{ &log, givm::action_speed::combat, true };
+    const auto observer = givm::test::with_passive_skill(action_source{ &log, givm::action_speed::combat, true });
     const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
@@ -417,7 +417,7 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
     const bool free_switch = GENERATE(false, true);
     const bool automatic_quote = GENERATE(false, true);
     action_log log;
-    const action_source observer{ &log, givm::action_speed::combat, false, true, free_switch };
+    const auto observer = givm::test::with_passive_skill(action_source{ &log, givm::action_speed::combat, false, true, free_switch });
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> card{ "PaymentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -481,8 +481,8 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     const bool quote_both = GENERATE(false, true);
     quote_control control{ .add_target_index = true, .enable_payment = true };
     quote_control empty_control;
-    const quote_source source{ &control };
-    const quote_source empty_source{ &empty_control, "EmptyQuote" };
+    const auto source = givm::test::with_passive_skill(quote_source{ &control });
+    const auto empty_source = givm::test::with_passive_skill(quote_source{ &empty_control, "EmptyQuote" });
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> card{ "QuotePaymentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -579,7 +579,7 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
     const bool observed = GENERATE(false, true);
     const auto inventory = dice({ { omni, 4 }, { pyro, 3 }, { hydro, 2 }, { cryo, 1 }, { electro, 1 } });
     quote_control control{ .replace_requirement = true, .enable_payment = true };
-    const quote_source source{ &control, "PaymentRequirements", inventory };
+    const auto source = givm::test::with_passive_skill(quote_source{ &control, "PaymentRequirements", inventory });
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> card{ "UncommittedPaymentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -660,7 +660,7 @@ TEST_CASE("repeated quote reads retain the cached payment response", "[begin_act
 {
     const bool observed = GENERATE(false, true);
     quote_control control{ .enable_payment = true };
-    const quote_source source{ &control };
+    const auto source = givm::test::with_passive_skill(quote_source{ &control });
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> card{ "DiscardedPaymentResponse" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(

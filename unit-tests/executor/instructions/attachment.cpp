@@ -220,7 +220,7 @@ namespace
                 givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
                 givm::draw_cards{ .count = 2 }, givm::begin_action{}, givm::end_game{ givm::game_result::both_loss }
             }, std::tuple{},
-            equipment_character_source{ &log, prepare_equipment }, tagged_character_source{ "Blocked", false },
+            givm::test::with_passive_skill(equipment_character_source{ &log, prepare_equipment }), tagged_character_source{ "Blocked", false },
             tagged_character_source{ "Reserve", true }, givm::test::initialized_character_source{ "Untagged", untagged_state },
             equipment_card_source{}, equipment_card_source{ true },
             attachment_source{ &log, "OrdinaryA" }, attachment_source{ &log, "OrdinaryB" },
@@ -489,7 +489,7 @@ TEST_CASE("a non-card response supplies multiple attachment inputs and removes o
             givm::set_active_character{ equipped_character },
             givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::test_command{}, givm::test_command{}, givm::end_game{ givm::game_result::both_loss }
-        }, std::tuple{}, dynamic_attachment_character_source{ &log },
+        }, std::tuple{}, givm::test::with_passive_skill(dynamic_attachment_character_source{ &log }),
         givm::test::initialized_character_source{ "LowerHealth", { .max_health = 10, .health = 3 } },
         givm::test::initialized_character_source{ "HigherHealth", { .max_health = 10, .health = 9 } },
         givm::test::named_definition_source<givm::attachment_view>{ "DynamicAttachment" },

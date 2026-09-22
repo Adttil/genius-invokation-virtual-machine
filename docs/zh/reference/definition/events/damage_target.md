@@ -16,4 +16,4 @@ using damage_target = std::variant<character_id, relative_character_target, othe
 | [`relative_character_target`](relative_character_target.md) | 按指定一方的当前出战位置循环偏移并寻找存活角色 |
 | [`other_characters_target`](other_characters_target.md) | 指定角色以外的同方存活角色 |
 
-具体伤害开始广播时，目标已经确定；`damage_calculation`、`damage_effect` 和 `after_damage` 的 `target` 仍然为 `character_id`。
+具体伤害开始广播时，范围已经展开为具体角色；`damage_preparation` 的 `target` 为可修改的 `character_id`。属性修饰结束后，`damage_calculation`、`damage_effect` 和 `after_damage` 的 `target` 都是只读 `character_id`。

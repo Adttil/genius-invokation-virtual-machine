@@ -16,9 +16,9 @@ namespace givm::detail
         context.stack().push(damage_group{ .instructions = position }, substack());
         prepend_damage(context.stack(), damage_node{
             .event = { .source = command.source, .target = command.target,
-                .value = 0, .type = damage_type_from_element(command.element) },
-            .reacted_aura = target.state().aura,
-            .reaction = reaction_from_aura(target.state().aura, command.element),
+                .value = 0, .type = damage_type_from_element(command.element),
+                .reaction = reaction_from_aura(target.state().aura, command.element),
+                .reacted_aura = target.state().aura },
             .cause = command.cause, .deals_damage = false
         });
         if(const auto state = apply_group_damage_element<Observed>(library, table, context, random)) return *state;

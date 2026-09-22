@@ -31,7 +31,11 @@ struct deal_damage
 
 ## 结算
 
-每次具体伤害依次经过 [`damage_calculation`](../events/damage_calculation.md)、[`damage_effect`](../events/damage_effect.md)、扣除生命、击倒处理及元素附着处理。计算响应结束后才按最终元素、目标及其附着确定反应；后续使用该次判定，不在扣血后重新判断。
+每次具体伤害先完成 [`damage_preparation`](../events/damage_preparation.md) 的属性修饰，再进入 [`damage_calculation`](../events/damage_calculation.md) 的数值计算，随后经过 [`damage_effect`](../events/damage_effect.md) 的减伤与护盾处理、扣除生命、击倒处理及元素附着处理。附魔等属性修饰全部结束后，数值响应读取的元素、来源、目标与伤害标志均已确定。
+
+元素反应在属性修饰结束后、数值计算开始前判定一次：使用最终元素、目标和目标当时的完整附着，分别作为 `reaction` 与 `reacted_aura` 供数值响应读取。之后即使响应效果改变目标附着，也不重新判定本次反应；后续伤害效果及伤害后通知携带同一个 `reaction`。
+
+数值响应结束后，先加入未被接管的默认反应加伤，再应用倍率，最后进入减伤与护盾阶段。`already_handled_reaction` 只接管反应的数值加成，扣血后的元素反应仍单独处理。
 
 扣血使角色生命降至零时，立即根据双方是否仍有存活角色判断胜负。濒死响应与复活流程尚未接入。若已终局，则直接结束，不再清理该角色的 attachment 与充能，也不再处理本次元素反应、剩余伤害或完成通知；若对局继续，才删除其全部 attachment、清空充能，再继续本组结算。已删除的 attachment 不参与后续广播。
 
@@ -123,6 +127,7 @@ int main()
 
 | | |
 | --- | --- |
+| [`damage_preparation`](../events/damage_preparation.md) | 伤害属性修饰事件 |
 | [`damage_calculation`](../events/damage_calculation.md) | 伤害计算事件 |
 | [`damage_effect`](../events/damage_effect.md) | 扣除生命前的伤害结算事件 |
 | [`after_damage`](../events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
