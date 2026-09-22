@@ -22,6 +22,9 @@
 | [`card_state_modification`](queries/card_state_modification.md) | 由卡牌附属状态修改卡牌自身属性 |
 | [`card_target_validation`](queries/card_target_validation.md) | 分步检查目标与用牌条件 |
 
+| [`technique_initial_cost`](queries/technique_initial_cost.md) | 特技自身的费用与行动速度 |
+| [`technique_target_validation`](queries/technique_target_validation.md) | 分步检查特技目标 |
+
 ## 相关类型与函数
 
 | | |

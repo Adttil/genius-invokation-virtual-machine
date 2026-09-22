@@ -141,3 +141,13 @@
 | | |
 | --- | --- |
 | [`test_event`](events/test_event.md) | 事件响应的测试通知 |
+
+## 特技
+
+| | |
+| --- | --- |
+| [`cost_of_technique`](events/cost_of_technique.md) | 特技报价 |
+| [`technique_will_be_used`](events/technique_will_be_used.md) | 特技使用前广播 |
+| [`technique_effect`](events/technique_effect.md) | 特技自身效果 |
+| [`technique_used`](events/technique_used.md) | 特技使用后广播 |
+| [`technique_target_id`](events/technique_target_id.md) | 特技目标 |

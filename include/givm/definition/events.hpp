@@ -154,6 +154,13 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_skill);
     };
 
+    struct cost_of_technique
+    {
+        const attachment_id technique;
+        action_cost_requirement requirement;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_technique);
+    };
+
     // Card-zone and candidate events.
     struct hand_card_created
     {
@@ -264,6 +271,34 @@ namespace givm
         const action_speed speed;
         const bool effect_cancelled;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(skill_used);
+    };
+
+    // Technique events.
+    using technique_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
+
+    struct technique_effect
+    {
+        const attachment_id technique;
+        const std::array<technique_target_id, 2> targets;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(technique_effect);
+    };
+
+    struct technique_will_be_used
+    {
+        const attachment_id technique;
+        const std::array<technique_target_id, 2> targets;
+        action_speed speed;
+        bool effect_cancelled = false;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(technique_will_be_used);
+    };
+
+    struct technique_used
+    {
+        const attachment_id technique;
+        const std::array<technique_target_id, 2> targets;
+        const action_speed speed;
+        const bool effect_cancelled;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(technique_used);
     };
 
     // Damage events.

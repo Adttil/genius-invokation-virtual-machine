@@ -28,7 +28,7 @@ struct supported_queries;
 | `support_view` | [`support_state_limit`](queries/support_state_limit.md) |
 | `summon_view` | [`summon_state_limit`](queries/summon_state_limit.md) |
 | `combat_status_view` | [`combat_status_state_limit`](queries/combat_status_state_limit.md) |
-| `attachment_view` | [`attachment_state_limit`](queries/attachment_state_limit.md) |
+| `attachment_view` | [`attachment_state_limit`、`technique_initial_cost`、`technique_target_validation`](queries/attachment_state_limit.md) |
 | 其他定义类别 | 空列表。 |
 
 列表提供 [`type_list`](../utils/type_list.md) 的操作。查询按定义类别组织，不按手牌、牌堆等实体形态另设列表；查询所需实体由其参数类型表达。

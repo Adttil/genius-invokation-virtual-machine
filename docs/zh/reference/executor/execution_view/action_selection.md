@@ -9,7 +9,7 @@ template<>
 class execution_view<execution_state::action_selection>;
 ```
 
-选择行动的现场视图，用于使用技能、打出手牌、元素调和、切换出战角色或宣布结束本回合，并提供选择前所需的费用与合法性查询。
+选择行动的现场视图，用于使用技能、特技、打出手牌、元素调和、切换出战角色或宣布结束本回合，并提供选择前所需的费用与合法性查询。
 
 ## 成员函数
 
@@ -23,6 +23,13 @@ class execution_view<execution_state::action_selection>;
 | [`skill_payment_validate`](action_selection/skill_payment_validate.md) | 检查支付骰子及出战角色充能。 |
 | [`skill_targets_validate`](action_selection/skill_targets_validate.md) | 请技能定义分步检查目标及使用条件。 |
 | [`use_skill`](action_selection/use_skill.md) | 选择技能、支付骰子及至多两个目标。 |
+| [`has_technique`](action_selection/has_technique.md) | 是否存在主动特技 |
+| [`technique_id`](action_selection/technique_id.md) | 取得特技附件 ID |
+| [`technique_cost`](action_selection/technique_cost.md) | 读取特技报价 |
+| [`calculate_technique_cost`](action_selection/calculate_technique_cost.md) | 计算特技报价 |
+| [`technique_payment_validate`](action_selection/technique_payment_validate.md) | 检查特技支付 |
+| [`technique_targets_validate`](action_selection/technique_targets_validate.md) | 分步检查特技目标 |
+| [`use_technique`](action_selection/use_technique.md) | 选择使用特技 |
 | [`card_count`](action_selection/card_count.md) | 取得当前手牌候选数量。 |
 | [`card_id`](action_selection/card_id.md) | 按手牌候选索引取得手牌 ID。 |
 | [`card_cost`](action_selection/card_cost.md) | 取得指定手牌的当前出牌费用。 |
@@ -43,7 +50,7 @@ class execution_view<execution_state::action_selection>;
 
 ## 注意
 
-在本现场继续调用 [`executor::step`](../executor/step.md) 前，调用方必须通过 [`use_skill`](action_selection/use_skill.md)、[`play_card`](action_selection/play_card.md)、[`elemental_tuning`](action_selection/elemental_tuning.md)、[`switch_active_character`](action_selection/switch_active_character.md) 或 [`declare_round_end`](action_selection/declare_round_end.md) 提供行动输入。费用预览、支付检查与目标检查不算行动输入；尚未提供输入时，上层应保留当前现场，不调用 `step`。
+在本现场继续调用 [`executor::step`](../executor/step.md) 前，调用方必须通过 [`use_technique`](action_selection/use_technique.md)、[`use_skill`](action_selection/use_skill.md)、[`play_card`](action_selection/play_card.md)、[`elemental_tuning`](action_selection/elemental_tuning.md)、[`switch_active_character`](action_selection/switch_active_character.md) 或 [`declare_round_end`](action_selection/declare_round_end.md) 提供行动输入。费用预览、支付检查与目标检查不算行动输入；尚未提供输入时，上层应保留当前现场，不调用 `step`。
 
 技能、出牌与切换分别使用从零开始的候选索引。可通过 `skill_count`、`card_count` 与 `switch_target_count` 查询候选数量，通过 `skill_id`、`card_id` 与 `switch_target` 取得相应实体 ID，用于查询牌桌并显示候选信息；候选索引仅用于当前行动现场。
 
@@ -62,3 +69,5 @@ class execution_view<execution_state::action_selection>;
 | | |
 | --- | --- |
 | [`executor::view_in`](../executor/view_in.md) | 取得对应执行现场的视图 |
+
+特技是 `equipment_type::technique` 装备附件，至多一个，接口无需候选索引。它与技能独立，费用和目标查询由附件定义提供；受控时技能和特技都不能使用。

@@ -62,6 +62,11 @@ namespace givm
         using result_t = action_cost_requirement;
     };
 
+    struct technique_initial_cost
+    {
+        using result_t = action_cost_requirement;
+    };
+
     enum class target_validation : std::uint8_t
     {
         invalid,
@@ -89,6 +94,17 @@ namespace givm
         const givm::table& table;
         const definition_library& library;
         std::array<skill_target_id, 2> targets;
+        std::size_t target_count;
+    };
+
+    struct technique_target_validation
+    {
+        using result_t = target_validation;
+
+        attachment_view technique;
+        const givm::table& table;
+        const definition_library& library;
+        std::array<technique_target_id, 2> targets;
         std::size_t target_count;
     };
 
@@ -144,6 +160,16 @@ namespace givm
     {
         return query.target_count == 0 ? target_validation::valid_complete : target_validation::invalid;
     }
+    constexpr action_cost_requirement query_default(const technique_initial_cost&) noexcept
+    {
+        return {};
+    }
+
+    constexpr target_validation query_default(const technique_target_validation& query) noexcept
+    {
+        return query.target_count == 0 ? target_validation::valid_complete : target_validation::invalid;
+    }
+
 }
 
 #endif

@@ -42,7 +42,7 @@ namespace givm
     struct supported_queries<combat_status_view> : type_list<combat_status_state_limit>{};
 
     template<>
-    struct supported_queries<attachment_view> : type_list<attachment_state_limit>{};
+    struct supported_queries<attachment_view> : type_list<attachment_state_limit, technique_initial_cost, technique_target_validation>{};
 }
 
 #endif

@@ -44,6 +44,12 @@ namespace givm
             dice_counts paid_dice;
         };
 
+        struct technique_selection
+        {
+            std::array<technique_target_id, 2> targets;
+            dice_counts paid_dice;
+        };
+
         struct elemental_tuning_selection
         {
             stack_count_t card_index = 0;
@@ -51,7 +57,7 @@ namespace givm
         };
 
         using action_selection = std::variant<
-            round_end_selection, switch_selection, card_selection, skill_selection, elemental_tuning_selection
+            round_end_selection, switch_selection, card_selection, skill_selection, technique_selection, elemental_tuning_selection
         >;
     }
 
@@ -82,6 +88,7 @@ namespace givm::detail
     using switch_handler_id = handler_id<cost_of_switch>;
     using card_cost_handler_id = handler_id<cost_of_card>;
     using skill_cost_handler_id = handler_id<cost_of_skill>;
+    using technique_cost_handler_id = handler_id<cost_of_technique>;
 
     // Offsets count execute_fn entries from the start of this command. They never
     // become runtime state or require a second dispatch after fetching the instruction.
@@ -133,16 +140,32 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t skill_used_broadcast_offset = 27 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t elemental_tuning_modification_broadcast_offset = 28 + Observed;
+    inline constexpr std::size_t technique_onpay_offset = 28 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t elemental_tuning_completed_broadcast_offset = 29 + Observed;
+    inline constexpr std::size_t technique_dice_payment_offset = 29 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t first_round_end_broadcast_offset = 30 + Observed;
+    inline constexpr std::size_t technique_dice_energy_payment_offset = 30 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t second_round_end_broadcast_offset = 31 + Observed;
+    inline constexpr std::size_t technique_energy_payment_offset = 31 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t prepare_technique_use_offset = 32 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t technique_will_be_used_broadcast_offset = 33 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t after_technique_effect_offset = 34 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t technique_used_broadcast_offset = 35 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t elemental_tuning_modification_broadcast_offset = 36 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t elemental_tuning_completed_broadcast_offset = 37 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t first_round_end_broadcast_offset = 38 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t second_round_end_broadcast_offset = 39 + Observed;
 
     template<std::size_t From, std::size_t To>
-    execution_state jump_to_action_instruction(execution_context& context) noexcept
+    inline execution_state jump_to_action_instruction(execution_context& context) noexcept
     {
         return context.jump(context.position() - From * sizeof(execute_fn) + To * sizeof(execute_fn));
     }
@@ -313,6 +336,58 @@ namespace givm::detail
         return get<1>(frame)[cost_index];
     }
 
+    inline const cost_of_technique& calculate_technique_cost(
+        const definition_library& library,
+        const table& card_table,
+        frame_stack& stack
+    )
+    {
+        auto frame = stack.top<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        GIVM_ASSERT(0 < get<1>(frame).size());
+        auto& initial_cost = get<1>(frame)[0];
+        const auto technique = card_table[initial_cost.technique];
+        auto zero_random = []() -> std::uint32_t { return 0; };
+        random_fn random{ zero_random };
+        initial_cost.requirement = library[technique.definition_id()].query(technique_initial_cost{});
+
+        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
+        for(stack_count_t column = 0; column < handler_count; ++column)
+        {
+            const auto initial_size = stack.size();
+            auto response = execution_context::make_handle_context(stack, card_table, random);
+            const auto handler_id = get<0>(frame)[column];
+            const auto entry = std::visit([&](auto handler) -> program_entry
+            {
+                const auto entity = card_table[handler];
+                if(entity)
+                {
+                    return library[entity.definition_id()].template handle<cost_of_technique>(
+                        entity, get<1>(frame)[0], response
+                    );
+                }
+                return {};
+            }, handler_id);
+            const auto index = column;
+            const auto size = stack.size() - initial_size;
+            get<2>(frame)[index] = entry;
+            get<3>(frame)[index] = 0;
+            get<4>(frame)[index] = size;
+            if(size != 0)
+            {
+                const auto cache = get<0>(stack.top<substack_t>());
+                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
+                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
+            }
+        }
+        return get<1>(frame)[0];
+    }
+
     inline execution_state prepare_action_phase(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&
@@ -323,7 +398,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state broadcast_action_phase(
+    inline execution_state broadcast_action_phase(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -342,7 +417,7 @@ namespace givm::detail
     }
 
     template<bool Switch, bool Observed>
-    execution_state prepare_before_action(
+    inline execution_state prepare_before_action(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&
     )
@@ -406,9 +481,20 @@ namespace givm::detail
         }
         const auto skill_handlers = skill_count == 0 ? std::vector<skill_cost_handler_id>{}
             : collect_all_broadcast_targets<cost_of_skill>(library, table);
-        auto&& [stored_skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes,
+        const auto active = table[*active_character];
+        const bool has_technique = active.has(equipment_type::technique)
+            && library[active.get(equipment_type::technique).definition_id()].can_handle<technique_effect, attachment_view>();
+        const auto technique_handlers = has_technique ? collect_all_broadcast_targets<cost_of_technique>(library, table)
+            : std::vector<technique_cost_handler_id>{};
+        auto&& [stored_technique_handlers, technique_costs, technique_onpay_entries, technique_onpay_offsets, technique_onpay_sizes,
+                stored_skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes,
                 stored_card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
                 handlers, costs, onpay_entries, onpay_offsets, onpay_sizes, onpay_cursor, selection, cached_inputs] = context.stack().push(
+            dynamic_array<technique_cost_handler_id>(technique_handlers),
+            dynamic_array<cost_of_technique>(has_technique ? 1uz : 0uz),
+            dynamic_array<program_entry>(technique_handlers.size()),
+            dynamic_array<std::size_t>(technique_handlers.size()),
+            dynamic_array<std::size_t>(technique_handlers.size()),
             dynamic_array<skill_cost_handler_id>(skill_handlers),
             dynamic_array<cost_of_skill>(skill_count),
             dynamic_array<program_entry>(skill_count * skill_handlers.size()),
@@ -428,6 +514,11 @@ namespace givm::detail
             action_selection{},
             substack()
         );
+
+        if(has_technique)
+        {
+            std::construct_at(&technique_costs[0], cost_of_technique{ .technique = active.get(equipment_type::technique).id() });
+        }
 
         stack_count_t skill_index = 0;
         for(auto skill : table[*active_character].skills())
@@ -472,7 +563,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state execute_action_selection(
+    inline execution_state execute_action_selection(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&
     )
@@ -487,6 +578,7 @@ namespace givm::detail
         if(std::holds_alternative<round_end_selection>(selection))
         {
             context.stack().pop<
+                technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
                 skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
                 card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
                 switch_handler_id[],
@@ -537,6 +629,12 @@ namespace givm::detail
         }
 
         onpay_cursor = 0;
+        if(std::holds_alternative<technique_selection>(selection))
+        {
+            jump_to_action_instruction<execute_action_selection_offset, technique_onpay_offset<Observed>>(context);
+            context.stack().push(context.position());
+            return continue_execution;
+        }
         if(std::holds_alternative<skill_selection>(selection))
         {
             jump_to_action_instruction<execute_action_selection_offset, skill_onpay_offset<Observed>>(context);
@@ -569,7 +667,7 @@ namespace givm::detail
     }
 
     template<std::size_t From, std::size_t Payment, std::size_t Next>
-    execution_state pay_action_cost(
+    inline execution_state pay_action_cost(
         const definition_library& library, unrestricted_table& table, execution_context& context,
         player_id player, const dice_counts& paid_dice, std::uint32_t energy
     )
@@ -653,7 +751,7 @@ namespace givm::detail
     }
 
     template<std::size_t From, std::size_t To>
-    execution_state broadcast_action_dice_payment(
+    inline execution_state broadcast_action_dice_payment(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -696,7 +794,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state execute_switch_action(
+    inline execution_state execute_switch_action(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&
     )
@@ -728,7 +826,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state broadcast_switch_action(
+    inline execution_state broadcast_switch_action(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -751,6 +849,7 @@ namespace givm::detail
         GIVM_ASSERT(selected->switch_cost_index < costs.size());
         const auto speed = costs[selected->switch_cost_index].requirement.speed;
         context.stack().pop<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
             switch_handler_id[],
@@ -778,7 +877,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state continue_card_onpay(
+    inline execution_state continue_card_onpay(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&
     )
@@ -893,7 +992,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state broadcast_card_played(
+    inline execution_state broadcast_card_played(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -905,6 +1004,7 @@ namespace givm::detail
         const auto speed = get<0>(context.stack().top<card_played, execution_position>()).speed;
         pop_broadcast<card_played>(context);
         context.stack().pop<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
             switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
@@ -918,7 +1018,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state continue_skill_onpay(
+    inline execution_state continue_skill_onpay(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&
     )
@@ -1024,7 +1124,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state broadcast_skill_used(
+    inline execution_state broadcast_skill_used(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -1036,6 +1136,7 @@ namespace givm::detail
         const auto speed = get<0>(context.stack().top<skill_used, execution_position>()).speed;
         pop_broadcast<skill_used>(context);
         context.stack().pop<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
             switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
@@ -1046,6 +1147,140 @@ namespace givm::detail
             return jump_to_action_instruction<skill_used_broadcast_offset<Observed>, before_action_with_switch_offset>(context);
         }
         return jump_to_action_instruction<skill_used_broadcast_offset<Observed>, before_action_offset>(context);
+    }
+
+    template<bool Observed>
+    inline execution_state continue_technique_onpay(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn&
+    )
+    {
+        auto [action_frame, return_frame] = context.stack().top<frame<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >, frame<execution_position>>();
+        auto&& [handlers, costs, onpay_entries, onpay_offsets, onpay_sizes,
+                skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes,
+                card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
+                switch_handlers, switch_costs, switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes,
+                onpay_cursor, selection, cached_inputs] = action_frame;
+        const auto* selected = std::get_if<technique_selection>(&selection);
+        GIVM_ASSERT(selected != nullptr);
+        const auto handler_count = static_cast<stack_count_t>(handlers.size());
+        while(onpay_cursor < handler_count)
+        {
+            const auto column = onpay_cursor++;
+            const auto index = column;
+            const auto entry = onpay_entries[index];
+            if(entry)
+            {
+                const auto offset = onpay_offsets[index];
+                const auto size = onpay_sizes[index];
+                auto& stack = context.stack();
+                const auto capacity = stack.size() + size;
+                if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
+                auto invoke = context.make_program_invoker();
+                return context.enter(invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size }));
+            }
+        }
+
+        const auto paid_dice = selected->paid_dice;
+        const auto& cost = costs[0];
+        context.stack().pop<execution_position>();
+        return pay_action_cost<technique_onpay_offset<Observed>, technique_dice_payment_offset<Observed>, prepare_technique_use_offset<Observed>>(
+            library, table, context, cost.technique.character_id.player_id, paid_dice, cost.requirement.energy
+        );
+    }
+
+    inline execution_state prepare_technique_use(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn&
+    )
+    {
+        auto&& [costs, onpay_entries, onpay_offsets, onpay_sizes, skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes, card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
+                switch_handlers, switch_costs, switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes, onpay_cursor, selection, cached_inputs] = context.stack().top<
+            cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        const auto& selected = std::get<technique_selection>(selection);
+        const auto& cost = costs[0];
+        prepare_broadcast(library, technique_will_be_used{
+            .technique = cost.technique, .targets = selected.targets, .speed = cost.requirement.speed
+        }, table, context.stack(), context.position() + sizeof(execute_fn));
+        return context.enter_next();
+    }
+
+    inline execution_state finish_technique_effect(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn&
+    )
+    {
+        const auto event = get<0>(context.stack().top<technique_used, execution_position>());
+        context.stack().pop<technique_used, execution_position>();
+        prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
+        return context.enter_next();
+    }
+
+    inline execution_state broadcast_technique_will_be_used(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<technique_will_be_used>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        const auto event = get<0>(context.stack().top<technique_will_be_used, execution_position>());
+        pop_broadcast<technique_will_be_used>(context);
+        context.enter_next();
+        context.stack().push(technique_used{
+            .technique = event.technique, .targets = event.targets, .speed = event.speed,
+            .effect_cancelled = event.effect_cancelled
+        }, context.position());
+        if(not event.effect_cancelled)
+        {
+            technique_effect effect{ .technique = event.technique, .targets = event.targets };
+            const auto technique = std::as_const(table)[event.technique];
+            auto response = context.make_handle_context(table, random);
+            const auto entry = library[technique.definition_id()].handle<technique_effect>(technique, effect, response);
+            if(entry)
+            {
+                return context.enter(entry);
+            }
+        }
+        return finish_technique_effect(library, table, context, random);
+    }
+
+    template<bool Observed>
+    inline execution_state broadcast_technique_used(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<technique_used>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        const auto speed = get<0>(context.stack().top<technique_used, execution_position>()).speed;
+        pop_broadcast<technique_used>(context);
+        context.stack().pop<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        if(speed == action_speed::combat)
+        {
+            return jump_to_action_instruction<technique_used_broadcast_offset<Observed>, before_action_with_switch_offset>(context);
+        }
+        return jump_to_action_instruction<technique_used_broadcast_offset<Observed>, before_action_offset>(context);
     }
 
     inline execution_state broadcast_elemental_tuning_modification(
@@ -1070,7 +1305,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state broadcast_elemental_tuning_completed(
+    inline execution_state broadcast_elemental_tuning_completed(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -1081,6 +1316,7 @@ namespace givm::detail
         }
         pop_broadcast<elemental_tuning_completed>(context);
         context.stack().pop<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
             switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
@@ -1090,7 +1326,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state broadcast_first_round_end(
+    inline execution_state broadcast_first_round_end(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -1123,7 +1359,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    void compile_begin_action(program_writer& writer)
+    inline void compile_begin_action(program_writer& writer)
     {
         writer.write<execute_fn>(&prepare_action_phase);
         writer.write<execute_fn>(&broadcast_action_phase<Observed>);
@@ -1157,6 +1393,14 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_skill_will_be_used);
         writer.write<execute_fn>(&finish_skill_effect);
         writer.write<execute_fn>(&broadcast_skill_used<Observed>);
+        writer.write<execute_fn>(&continue_technique_onpay<Observed>);
+        writer.write<execute_fn>(&broadcast_action_dice_payment<technique_dice_payment_offset<Observed>, prepare_technique_use_offset<Observed>>);
+        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
+        writer.write<execute_fn>(&broadcast_action_energy_payment);
+        writer.write<execute_fn>(&prepare_technique_use);
+        writer.write<execute_fn>(&broadcast_technique_will_be_used);
+        writer.write<execute_fn>(&finish_technique_effect);
+        writer.write<execute_fn>(&broadcast_technique_used<Observed>);
         writer.write<execute_fn>(&broadcast_elemental_tuning_modification);
         writer.write<execute_fn>(&broadcast_elemental_tuning_completed<Observed>);
         writer.write<execute_fn>(&broadcast_first_round_end<Observed>);

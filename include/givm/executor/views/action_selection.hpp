@@ -43,6 +43,15 @@ namespace givm
         insufficient_energy
     };
 
+    enum class technique_payment_validation : std::uint8_t
+    {
+        valid,
+        requirement_mismatch,
+        insufficient_dice,
+        energy_tag_mismatch,
+        insufficient_energy
+    };
+
     enum class elemental_tuning_dice_validation : std::uint8_t
     {
         valid,
@@ -389,6 +398,114 @@ namespace givm
         {
             detail::calculate_skill_cost(library, skill_index, card_table, *stack_);
             use_skill(skill_index, paid_dice, targets);
+        }
+
+        constexpr bool has_technique() const noexcept
+        {
+            return get<0>(std::as_const(*stack_).top<
+                cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+                detail::skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+                detail::switch_handler_id[],
+                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+                stack_count_t, detail::action_selection, substack_t
+            >()).size() != 0;
+        }
+
+        constexpr const cost_of_technique& technique_cost() const noexcept
+        {
+            return get<0>(std::as_const(*stack_).top<
+                cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+                detail::skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+                detail::switch_handler_id[],
+                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+                stack_count_t, detail::action_selection, substack_t
+            >())[0];
+        }
+
+        constexpr givm::attachment_id technique_id() const noexcept
+        {
+            return technique_cost().technique;
+        }
+
+        const cost_of_technique& calculate_technique_cost(
+            const definition_library& library, const table& card_table
+        ) const
+        {
+            return detail::calculate_technique_cost(library, card_table, *stack_);
+        }
+
+        constexpr technique_payment_validation technique_payment_validate(
+            const table& card_table, const dice_counts& paid_dice
+        ) const noexcept
+        {
+            const auto& cost = technique_cost();
+            if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
+            {
+                return technique_payment_validation::requirement_mismatch;
+            }
+            if(not card_table[cost.technique.character_id.player_id].state().dice.contains(paid_dice))
+            {
+                return technique_payment_validation::insufficient_dice;
+            }
+            const auto active = *card_table[cost.technique.character_id.player_id].state().active_character;
+            const auto& state = card_table[active].state();
+            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
+            {
+                return technique_payment_validation::energy_tag_mismatch;
+            }
+            if(state.energy < cost.requirement.energy)
+            {
+                return technique_payment_validation::insufficient_energy;
+            }
+            return technique_payment_validation::valid;
+        }
+
+        target_validation technique_targets_validate(
+            const definition_library& library, const table& card_table,
+            std::span<const technique_target_id> targets = {}
+        ) const
+        {
+            const auto id = technique_id();
+            const auto entity = card_table[id];
+            const auto definition = library[entity.definition_id()];
+            std::array<technique_target_id, 2> selected_targets{};
+            const auto target_count = std::min(targets.size(), selected_targets.size());
+            for(std::size_t index = 0; index < target_count; ++index)
+            {
+                selected_targets[index] = targets[index];
+            }
+            return definition.query(technique_target_validation{
+                .technique = entity, .table = card_table, .library = library,
+                .targets = selected_targets, .target_count = target_count
+            });
+        }
+
+        constexpr void use_technique(
+            const dice_counts& paid_dice, std::span<const technique_target_id> targets = {}
+        ) const noexcept
+        {
+            std::array<technique_target_id, 2> selected_targets{};
+            const auto target_count = std::min(targets.size(), selected_targets.size());
+            for(std::size_t index = 0; index < target_count; ++index)
+            {
+                selected_targets[index] = targets[index];
+            }
+            get<0>(stack_->top<detail::action_selection, substack_t>()) = detail::action_selection{
+                detail::technique_selection{
+                    .targets = selected_targets, .paid_dice = paid_dice
+                }
+            };
+        }
+
+        void use_technique(
+            const definition_library& library, const table& card_table,
+            const dice_counts& paid_dice, std::span<const technique_target_id> targets = {}
+        ) const
+        {
+            detail::calculate_technique_cost(library, card_table, *stack_);
+            use_technique(paid_dice, targets);
         }
 
         constexpr void declare_round_end() const noexcept
