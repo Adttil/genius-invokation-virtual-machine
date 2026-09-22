@@ -4,14 +4,23 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-使一个普通附属实体或装备离场。
+使一个角色附属实体离场，并通知其他实体处理相应效果。
 
 ```cpp
-struct remove_attachment {};
+struct remove_attachment
+{
+    relative_player player = relative_player::current;
+    definition_id<attachment_view> definition{};
+};
 ```
 
-本命令始终消费响应通过 `invoke` 提交的一个 [attachment_removal](../events/attachment_removal.md)，目标须为有效实体。
+## 输入
 
-先广播 [entity_will_leave](../events/entity_will_leave.md)，再移除实体并广播 [entity_left](../events/entity_left.md)。若离场前的嵌套响应已经移除了该实体，本次操作不重复移除和发出离场完成通知。
+- 默认构造 `remove_attachment{}` 使用动态模式，由 `invoke` 提交一个 [attachment_removal](../events/attachment_removal.md)。
+- `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定一方执行到本命令时的出战角色。在该出战角色的附属实体中选取首个有效、定义 ID 相同的实体；该实体必须存在。
 
-移除装备后，所属角色的 [`has(type)`](../../table/character_view/has.md) 对该装备类别立即返回 false。移除后实体不再出现在通常的遍历和广播中，但其 ID、定义、所属角色、状态和装备类别在 cleanup 前仍可读取。
+`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前行动玩家。动态输入直接指定要操作的有效实体。固定模式的出战角色目标必须有效。
+
+## 结算
+
+移除指定实体，再广播 [attachment_removed](../events/attachment_removed.md)，完整结算离场响应后继续下一条命令。实体离场后不再参与通常的遍历和广播；在 cleanup 前，其定义和状态仍可由旧 ID 读取。

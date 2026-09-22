@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <variant>
 
@@ -385,11 +386,146 @@ namespace givm
     };
 
     // Entity events.
+    struct summoning
+    {
+        player_id player;
+        definition_id<summon_view> definition;
+        summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct summon_addition
+    {
+        player_id player;
+        definition_id<summon_view> definition;
+        summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct resummoning
+    {
+        const summon_state state;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(resummoning);
+    };
+
+    struct summon_state_change
+    {
+        summon_id summon;
+        summon_state state;
+    };
+
+    struct summon_state_modification
+    {
+        summon_id summon;
+        std::int64_t value{};
+        std::int64_t usages{};
+    };
+
+    struct summon_state_changed
+    {
+        const summon_state previous;
+        const summon_state current;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(summon_state_changed);
+    };
+
+    struct summon_removal
+    {
+        summon_id summon;
+    };
+
+    struct summon_removed
+    {
+        const summon_id summon;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(summon_removed);
+    };
+
+    struct combat_status_generation
+    {
+        player_id player;
+        definition_id<combat_status_view> definition;
+        combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct combat_status_addition
+    {
+        player_id player;
+        definition_id<combat_status_view> definition;
+        combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct combat_status_regeneration
+    {
+        const combat_status_state state;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(combat_status_regeneration);
+    };
+
+    struct combat_status_state_change
+    {
+        combat_status_id status;
+        combat_status_state state;
+    };
+
+    struct combat_status_state_modification
+    {
+        combat_status_id status;
+        std::int64_t count{};
+        std::int64_t round_usages{};
+    };
+
+    struct combat_status_state_changed
+    {
+        const combat_status_state previous;
+        const combat_status_state current;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(combat_status_state_changed);
+    };
+
+    struct combat_status_removal
+    {
+        combat_status_id status;
+    };
+
+    struct combat_status_removed
+    {
+        const combat_status_id status;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(combat_status_removed);
+    };
+
+    struct attachment_application
+    {
+        character_id target;
+        definition_id<attachment_view> definition;
+        attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct attachment_reapplication
+    {
+        const attachment_state state;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_reapplication);
+    };
+
+    struct attachment_state_change
+    {
+        attachment_id attachment;
+        attachment_state state;
+    };
+
+    struct attachment_state_modification
+    {
+        attachment_id attachment;
+        std::int64_t count{};
+        std::int64_t round_usages{};
+    };
+
+    struct attachment_state_changed
+    {
+        const attachment_state previous;
+        const attachment_state current;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_state_changed);
+    };
+
     struct attachment_addition
     {
         character_id target;
         definition_id<attachment_view> definition;
-        attachment_state state;
+        attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct attachment_removal
@@ -397,42 +533,10 @@ namespace givm
         attachment_id attachment;
     };
 
-    struct attachment_added
+    struct attachment_removed
     {
         const attachment_id attachment;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_added);
-    };
-
-    using entity_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id,
-                                   summon_id, combat_status_id, character_id, skill_id, attachment_id>;
-
-    struct entity_will_leave
-    {
-        const entity_id entity;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(entity_will_leave);
-    };
-
-    struct entity_left
-    {
-        const entity_id entity;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(entity_left);
-    };
-
-    using counted_entity_id = std::variant<hand_card_status_id, deck_card_status_id, support_id, summon_id,
-                                           combat_status_id, attachment_id>;
-
-    struct combat_status_count_reduction
-    {
-        combat_status_id status;
-        std::uint32_t count;
-    };
-
-    struct entity_count_changed
-    {
-        const counted_entity_id entity;
-        const std::uint32_t previous;
-        const std::uint32_t current;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(entity_count_changed);
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_removed);
     };
 
 #undef GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND

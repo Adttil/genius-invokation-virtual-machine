@@ -47,5 +47,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`reduce_combat_status_count`](../commands/reduce_combat_status_count.md) | 按提交的数量扣除出战状态计数的命令 |
+| [`modify_combat_status_state`](../commands/modify_combat_status_state.md) | 按增量修改出战状态的层数和本回合次数 |
 | [`deal_damage`](../commands/deal_damage.md) | 伤害结算命令 |

@@ -31,6 +31,8 @@ handler 读取编译后的 definition、自身实体 view、事件、只读 tabl
 
 一次响应只提交一次并立即返回 `invoke` 的结果。此前取得的栈引用可能失效，广播推进器也必须在调用后重新定位或立即交还调度，不能继续读取旧引用。
 
+提交的输入是响应时的快照；前序命令及其嵌套响应改变牌桌后，后序输入仍保留原值。定义源应区分需要保留的快照与需要相对现值计算的修改，并保证每条命令实际执行时的目标及输入满足前提。普通即时响应推荐先消耗已承诺使用的资源，再执行可能触发其他响应的效果；不要求所有根据 table 计算的参数都由程序首条消费。费用缓存的延迟执行前提另见[费用预览与提交](event_dispatch/payment_commit.md#缓存输入的快照与执行前提)。
+
 ## 费用预览
 
 费用响应仍接收同一种 `handle_context&`，但必须以 `context.invoke(substack_t{}, entry, events...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，不保存模式字段。费用提交只缓存入口和整段初始输入，确认后才执行。每个候选在一个行动窗口内只允许报价一次，费用可反复读取；不保存“已报价”标记，不进行重复调用检查。
@@ -41,9 +43,11 @@ handler 读取编译后的 definition、自身实体 view、事件、只读 tabl
 
 固定程序约束的是步骤，不约束输入值。一次响应可以捕获当前生命值 X，为一组伤害提交多个数值相同的 `damage`；前一次伤害的计算响应改变生命值，也不会重新计算后续初始输入。`deal_damage` 已支持消费输入，抽牌的消费参数版本仍未加入。
 
-出战状态护盾直接在 `damage_effect` 响应中减少伤害，并提交 `combat_status_count_reduction` 交给 `reduce_combat_status_count` 扣除指定出战状态计数。命令不再借用外层伤害事件或隐含响应者。
+出战状态护盾直接在 `damage_effect` 响应中减少伤害，并提交 `combat_status_state_modification`，通过负的 `count` 增量交给 `modify_combat_status_state` 扣层，`round_usages` 增量保持零。命令在执行时从目标当前状态扣除，并先写入再通知自身，不借用外层伤害事件或隐含响应者。
 
-默认构造的 `set_active_character{}` 消费 `active_character_changed`，显式提供 `target` 时使用固定目标；默认构造的 `add_attachment{}` 消费 `attachment_addition`，显式提供 `definition`、`state` 时使用固定定义和初始状态，为指定一方执行时的出战角色添加附件。`deal_damage` 使用非空 `damages` 作为固定输入；否则消费 `input_count` 个 `damage`，默认为一个。以上选择均在编译时完成。`remove_attachment` 与 `reduce_combat_status_count` 仍只支持消费输入，其他命令仍只支持固定参数。
+默认构造的 `set_active_character{}` 消费 `active_character_changed`，显式提供 `target` 时使用固定目标；默认构造的 `add_attachment{}` 消费 `attachment_addition`，显式提供 `definition` 时使用固定参数，为指定一方执行时的出战角色添加附件。`deal_damage` 使用非空 `damages` 作为固定输入；否则消费 `input_count` 个 `damage`，默认为一个。以上选择均在编译时完成。召唤物、出战状态与 attachment 的生成、添加、绝对赋值、相对修改和删除命令同样以显式 `definition` 选择固定模式，默认构造消费各自的动态输入。固定生成在执行时查找已有实体；后续响应仍可按当前牌桌生成输入。
+
+`summon`、`generate_combat_status`、`attach` 及对应直接添加命令携带本次 `state`，固定参数和动态输入均默认两个字段为 `UINT32_MAX`。执行时逐字段裁剪到定义通过 `*_state_limit` 查询提供的上限，缺少查询时上限同样为 `UINT32_MAX`；它是普通数值，不是省略状态的哨兵。绝对赋值同样裁剪到上限，相对修改以 `std::int64_t` 增量在执行时按当前值饱和到 `[0, 上限]`。详细生成、重复生成、耗尽与通知边界见[实体事件](event_dispatch/entity_events.md)。
 
 固定版本不能机械地编译成“压入输入的 opcode，再跳到消费版本”。通常固定版与消费版各有开头执行函数，将初始化和首个连续不可中断步骤一起完成，后续恢复点才复用；避免固定版增加一次调度。
 

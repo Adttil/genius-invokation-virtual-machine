@@ -278,7 +278,7 @@ definition_type compile(definition_compile_context& context) const
     return {
         .maximum_count = maximum_count,
         .absorption = context.add_program(std::tuple{
-            reduce_combat_status_count{}
+            modify_combat_status_state{}
         })
     };
 }
@@ -324,11 +324,14 @@ static program_entry handle(
         return {};
     }
     event.value -= absorbed;
-    return context.invoke(definition.absorption, combat_status_count_reduction{ self.id(), absorbed });
+    return context.invoke(definition.absorption, combat_status_state_modification{
+        .status = self.id(),
+        .count = -static_cast<std::int64_t>(absorbed)
+    });
 }
 ```
 
-伤害调整发生在响应内，扣层发生在所选程序中；两者之间不保留一个供命令任意读取的外层事件 Context。
+伤害调整发生在响应内，扣层发生在所选程序中；负增量应用于命令执行时的当前层数，`round_usages` 的零增量保留每回合剩余次数。修改先写入状态再通知自身，定义可在状态变化响应中决定零层数是否删除。两者之间不保留一个供命令任意读取的外层事件 Context。
 
 角色初始化现使用 [character_initial_state](../reference/definition/queries/character_initial_state.md)；卡牌初始费用与目标检查也改用查询，不再为只返回数据的操作制造事件及空入口。事件字段和响应时序由 reference 说明，完整内部映射和帧结构留在[事件分派](event_dispatch.md)与[栈布局备忘](stack_layout.md)。
 

@@ -4,23 +4,26 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-为一名角色添加附属实体或装备所需的初始信息。响应通过 `invoke` 提交它，由默认构造的 [`add_attachment{}`](../commands/add_attachment.md) 消费；它本身不进行广播。
+[add_attachment](../commands/add_attachment.md) 的动态输入，指定本次角色附属实体的目标、定义和状态。
 
 ```cpp
 struct attachment_addition
 {
     character_id target;
     definition_id<attachment_view> definition;
-    attachment_state state;
+    attachment_state state{
+        std::numeric_limits<std::uint32_t>::max(),
+        std::numeric_limits<std::uint32_t>::max()
+    };
 };
 ```
 
-| 成员 | 说明 |
-| --- | --- |
-| `target` | 接受附属实体的角色，须为有效角色 |
-| `definition` | 要创建的 attachment 定义 |
-| `state` | 新实体的初始状态 |
+## 成员对象
 
-装备类别由 attachment 定义的 `weapon`、`artifact`、`talent` 或 `technique` 标签决定，没有这些标签时为普通附属实体；四种标签互斥。武器匹配、角色归属、存活等用牌条件由定义的目标验证负责，添加命令不会代替调用方检查这些条件。
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `target` | `character_id` | 目标角色 |
+| `definition` | `definition_id<attachment_view>` | 本次使用的定义 |
+| `state` | `attachment_state` | 本次请求的状态，各字段默认 `UINT32_MAX`；命令执行时裁剪至定义上限 |
 
-普通附属实体独立追加；装备会先让同类旧装备离场，再创建新装备。目标和状态在响应提交时确定，不需要命令读取外层事件。
+显式指定 `.state = {}` 时，两个字段均为零；部分初始化 `state` 时，省略的字段也会初始化为零。

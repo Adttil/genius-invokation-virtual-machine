@@ -38,9 +38,9 @@ namespace givm
         struct card_will_be_played,
         struct card_played,
         struct active_character_changed,
-        struct attachment_added,
-        struct entity_will_leave,
-        struct entity_left
+        struct summon_removed,
+        struct combat_status_removed,
+        struct attachment_removed
     >{};
 
     template<>
@@ -62,9 +62,9 @@ namespace givm
         struct card_discarded,
         struct card_played,
         struct active_character_changed,
-        struct attachment_added,
-        struct entity_will_leave,
-        struct entity_left
+        struct summon_removed,
+        struct combat_status_removed,
+        struct attachment_removed
     >{};
 
     template<>
@@ -111,20 +111,27 @@ namespace givm
         struct after_elemental_reaction,
         struct character_will_be_defeated,
         struct character_defeated,
-        struct attachment_added,
-        struct entity_will_leave,
-        struct entity_left,
-        struct entity_count_changed
+        struct summon_removed,
+        struct combat_status_removed,
+        struct attachment_removed
     >;
 
     template<>
     struct subscribed_events<support_view> : support_subscribed_events{};
 
     template<>
-    struct subscribed_events<summon_view> : subscribed_events<support_view>{};
+    struct subscribed_events<summon_view> : subscribed_events_detail::append<
+        support_subscribed_events,
+        struct resummoning,
+        struct summon_state_changed
+    >{};
 
     template<>
-    struct subscribed_events<combat_status_view> : subscribed_events<support_view>{};
+    struct subscribed_events<combat_status_view> : subscribed_events_detail::append<
+        support_subscribed_events,
+        struct combat_status_regeneration,
+        struct combat_status_state_changed
+    >{};
 
     template<>
     struct subscribed_events<character_view> : subscribed_events<support_view>{};
@@ -136,7 +143,11 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<attachment_view> : subscribed_events<support_view>{};
+    struct subscribed_events<attachment_view> : subscribed_events_detail::append<
+        support_subscribed_events,
+        struct attachment_reapplication,
+        struct attachment_state_changed
+    >{};
 }
 
 #endif

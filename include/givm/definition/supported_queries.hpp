@@ -31,6 +31,15 @@ namespace givm
         skill_initial_cost,
         skill_target_validation
     >{};
+
+    template<>
+    struct supported_queries<summon_view> : type_list<summon_state_limit>{};
+
+    template<>
+    struct supported_queries<combat_status_view> : type_list<combat_status_state_limit>{};
+
+    template<>
+    struct supported_queries<attachment_view> : type_list<attachment_state_limit>{};
 }
 
 #endif

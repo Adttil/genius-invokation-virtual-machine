@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <ranges>
@@ -25,6 +26,7 @@ namespace givm
     {
         dice_counts dice;
         std::optional<character_id> active_character;
+        std::uint32_t summon_limit = 4;
     };
 }
 

@@ -43,7 +43,7 @@ handler 不能通过 `context.table()` 修改持久状态，持久副作用由�
 
 领域指令可以准备自己的响应者集合，或直接调用单个 definition handler。具体指令和事件的公开约定说明响应范围、调用顺序及提交效果的处理；完整内部帧由源码维护。采用辅助工具的默认遍历不构成所有广播都必须遵循的规则。
 
-`card_effect` 与 `skill_effect` 分别是直接调用本牌、本技能定义的事件，各自流程负责准备和清理返回位置；费用预览也有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `load_deck` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
+`card_effect` 与 `skill_effect` 分别是直接调用本牌、本技能定义的事件，各自流程负责准备和清理返回位置；实体重复生成和自身 `state_changed` 也只调用相应实体，不收集全场响应者。实体删除后才按类别全场广播 `summon_removed`、`combat_status_removed` 或 `attachment_removed`，不再提供离场前或添加完成事件。费用预览有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `load_deck` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
 
 ## 与当前实现逐项核对
 
@@ -51,7 +51,7 @@ handler 不能通过 `context.table()` 修改持久状态，持久副作用由�
 
 `prepare_broadcast` 在调用时完成目标列表采样；`continue_broadcast` 不重新采样。调用前推进游标，调用阶段检查实体是否仍有效，不重新扫描全体订阅关系。
 
-响应者 self 与事件 target 可以不同。出战状态护盾的 handler 自行把 self ID 写入 `combat_status_count_reduction`，后续扣层命令不再读取广播保存的响应者。
+响应者 self 与事件 target 可以不同。出战状态护盾的 handler 自行把 self ID 写入 `combat_status_state_modification`，后续相对修改命令不再读取广播保存的响应者。
 
 `continue_broadcast` 区分广播结束与已经提交响应程序。全部响应者走完后，领域命令继续事件后处理并清理广播；进入响应程序时立即交还调度。每次恢复重新取得所需引用。
 

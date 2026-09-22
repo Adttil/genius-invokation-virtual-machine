@@ -83,6 +83,8 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 
 卡牌初始属性由 [`card_initial_state`](queries/card_initial_state.md) 给出，牌自身的费用与是否允许调和保存在 `card_state`。卡牌附属状态通过 [`card_state_modification`](queries/card_state_modification.md) 修改这些属性；此查询接收卡牌 state 的可变引用与该附属状态的只读 state，不读取牌外的动态状态。
 
+召唤物、出战状态和角色附属实体分别通过 [`summon_state_limit`](queries/summon_state_limit.md)、[`combat_status_state_limit`](queries/combat_status_state_limit.md)、[`attachment_state_limit`](queries/attachment_state_limit.md) 提供各状态字段的上限，并在编译定义库时缓存。生成和直接添加命令的 `state` 成员默认将各字段设为 `UINT32_MAX`，执行时与显式输入一样按上限裁剪；显式的 `state{}` 仍将各字段初始化为零。生成命令在实际执行时决定创建新实体，或通知首个已有同定义实体；重复请求和状态修改后的自身通知仍使用普通 `handle` 接口。
+
 角色初始技能通过有参查询 [`character_initial_skill`](queries/character_initial_skill.md) 按索引逐个取得，首次返回无效 ID 时结束。定义源自行决定如何产生和保存这些结果，不要求使用特定容器。
 
 查询结果若包含引用、指针或视图，所引用的数据必须在结果使用期间保持有效。空查询的结果会随定义库保存与复制，定义源须相应保证其所借用数据的生命周期。

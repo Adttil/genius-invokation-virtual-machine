@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 #include "events.hpp"
 
@@ -14,6 +15,21 @@ namespace givm
     struct character_initial_state
     {
         using result_t = character_state;
+    };
+
+    struct summon_state_limit
+    {
+        using result_t = summon_state;
+    };
+
+    struct combat_status_state_limit
+    {
+        using result_t = combat_status_state;
+    };
+
+    struct attachment_state_limit
+    {
+        using result_t = attachment_state;
     };
 
     struct character_initial_skill
@@ -74,6 +90,21 @@ namespace givm
     constexpr character_state query_default(const character_initial_state&) noexcept
     {
         return {};
+    }
+
+    constexpr summon_state query_default(const summon_state_limit&) noexcept
+    {
+        return { std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    }
+
+    constexpr combat_status_state query_default(const combat_status_state_limit&) noexcept
+    {
+        return { std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    }
+
+    constexpr attachment_state query_default(const attachment_state_limit&) noexcept
+    {
+        return { std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     }
 
     constexpr definition_id<skill_view> query_default(const character_initial_skill&) noexcept

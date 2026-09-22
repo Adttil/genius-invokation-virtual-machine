@@ -8,7 +8,7 @@
 
 命令是否消费响应输入，由编译时给出的具体命令值决定。消费输入的命令要求响应通过 `invoke` 显式提交相应初始事件；使用固定参数的命令不占输入位置。每个已编译入口所需输入的数量、类型和顺序仍然固定，命令不借用外层响应事件或响应者。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
 
-`set_active_character{}`、`add_attachment{}` 和 `deal_damage{}` 默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。`remove_attachment` 和 `reduce_combat_status_count` 始终消费输入；其余命令不消费响应输入。
+`set_active_character{}`、`deal_damage{}`，以及实体生成、添加、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。实体相关命令通过显式指定 `definition` 选择固定模式。
 
 ## 开局与牌堆
 
@@ -39,16 +39,28 @@
 | | |
 | --- | --- |
 | [`deal_damage`](commands/deal_damage.md) | 完成一组可由范围和元素反应展开的伤害 |
-| [`reduce_combat_status_count`](commands/reduce_combat_status_count.md) | 按提交的数量扣除出战状态计数的命令 |
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
 | [`set_element_aura`](commands/set_element_aura.md) | 直接设置元素附着的命令 |
 
-## 附属实体与装备
+## 召唤物、状态与装备
 
 | | |
 | --- | --- |
-| [`add_attachment`](commands/add_attachment.md) | 按响应输入添加附属实体或替换装备，或为指定一方的出战角色添加固定定义的实体 |
-| [`remove_attachment`](commands/remove_attachment.md) | 按输入移除附属实体或装备 |
+| [`summon`](commands/summon.md) | 召唤指定实体，由已有同类实体处理重复请求 |
+| [`add_summon`](commands/add_summon.md) | 直接添加独立召唤物 |
+| [`set_summon_state`](commands/set_summon_state.md) | 设置召唤物的完整状态 |
+| [`modify_summon_state`](commands/modify_summon_state.md) | 按增量修改召唤物的状态 |
+| [`remove_summon`](commands/remove_summon.md) | 移除召唤物并通知离场 |
+| [`generate_combat_status`](commands/generate_combat_status.md) | 生成出战状态，由已有同类实体处理重复请求 |
+| [`add_combat_status`](commands/add_combat_status.md) | 直接添加独立出战状态 |
+| [`set_combat_status_state`](commands/set_combat_status_state.md) | 设置出战状态的完整状态 |
+| [`modify_combat_status_state`](commands/modify_combat_status_state.md) | 按增量修改出战状态的层数和次数 |
+| [`remove_combat_status`](commands/remove_combat_status.md) | 移除出战状态并通知离场 |
+| [`attach`](commands/attach.md) | 向角色附属状态或装备，由已有同类实体处理重复请求 |
+| [`add_attachment`](commands/add_attachment.md) | 直接添加独立角色附属实体 |
+| [`set_attachment_state`](commands/set_attachment_state.md) | 设置角色附属实体的完整状态 |
+| [`modify_attachment_state`](commands/modify_attachment_state.md) | 按增量修改角色附属实体的状态 |
+| [`remove_attachment`](commands/remove_attachment.md) | 移除角色附属实体并通知离场 |
 
 ## 调试
 

@@ -8,7 +8,8 @@ namespace givm
 {
     struct summon_state
     {
-        std::uint32_t count;
+        std::uint32_t value;
+        std::uint32_t usages;
     };
 }
 

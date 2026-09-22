@@ -59,15 +59,109 @@ namespace givm
         relative_player player = relative_player::current;
     };
 
-    struct add_attachment
+    struct summon
+    {
+        relative_player player = relative_player::current;
+        definition_id<summon_view> definition{};
+        summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct add_summon
+    {
+        relative_player player = relative_player::current;
+        definition_id<summon_view> definition{};
+        summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct set_summon_state
+    {
+        relative_player player = relative_player::current;
+        definition_id<summon_view> definition{};
+        summon_state state{};
+    };
+
+    struct modify_summon_state
+    {
+        relative_player player = relative_player::current;
+        definition_id<summon_view> definition{};
+        std::int64_t value{};
+        std::int64_t usages{};
+    };
+
+    struct remove_summon
+    {
+        relative_player player = relative_player::current;
+        definition_id<summon_view> definition{};
+    };
+
+    struct generate_combat_status
+    {
+        relative_player player = relative_player::current;
+        definition_id<combat_status_view> definition{};
+        combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct add_combat_status
+    {
+        relative_player player = relative_player::current;
+        definition_id<combat_status_view> definition{};
+        combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct set_combat_status_state
+    {
+        relative_player player = relative_player::current;
+        definition_id<combat_status_view> definition{};
+        combat_status_state state{};
+    };
+
+    struct modify_combat_status_state
+    {
+        relative_player player = relative_player::current;
+        definition_id<combat_status_view> definition{};
+        std::int64_t count{};
+        std::int64_t round_usages{};
+    };
+
+    struct remove_combat_status
+    {
+        relative_player player = relative_player::current;
+        definition_id<combat_status_view> definition{};
+    };
+
+    struct attach
+    {
+        relative_player player = relative_player::current;
+        definition_id<attachment_view> definition{};
+        attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct set_attachment_state
     {
         relative_player player = relative_player::current;
         definition_id<attachment_view> definition{};
         attachment_state state{};
     };
 
+    struct modify_attachment_state
+    {
+        relative_player player = relative_player::current;
+        definition_id<attachment_view> definition{};
+        std::int64_t count{};
+        std::int64_t round_usages{};
+    };
+
+    struct add_attachment
+    {
+        relative_player player = relative_player::current;
+        definition_id<attachment_view> definition{};
+        attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
     struct remove_attachment
     {
+        relative_player player = relative_player::current;
+        definition_id<attachment_view> definition{};
     };
 
     struct replace_cards
@@ -108,10 +202,6 @@ namespace givm
     {
     };
 
-    struct reduce_combat_status_count
-    {
-    };
-
     struct deal_damage
     {
         std::span<const damage> damages{};
@@ -146,6 +236,19 @@ namespace givm::detail
         set_active_character,
         select_active_character_both,
         draw_cards,
+        summon,
+        add_summon,
+        set_summon_state,
+        modify_summon_state,
+        remove_summon,
+        generate_combat_status,
+        add_combat_status,
+        set_combat_status_state,
+        modify_combat_status_state,
+        remove_combat_status,
+        attach,
+        set_attachment_state,
+        modify_attachment_state,
         add_attachment,
         remove_attachment,
         replace_cards,
@@ -156,7 +259,6 @@ namespace givm::detail
         end_game,
         start_dice_roll_phase,
         start_battle,
-        reduce_combat_status_count,
         deal_damage,
         apply_element,
         set_element_aura,
@@ -189,7 +291,75 @@ namespace givm::detail
         return command.definition ? 0 : sizeof(attachment_addition);
     }
 
-    constexpr size_t input_size(const remove_attachment&) noexcept { return sizeof(attachment_removal); }
+    constexpr size_t input_size(const summon& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(summoning);
+    }
+
+    constexpr size_t input_size(const add_summon& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(summon_addition);
+    }
+
+    constexpr size_t input_size(const set_summon_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(summon_state_change);
+    }
+
+    constexpr size_t input_size(const modify_summon_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(summon_state_modification);
+    }
+
+    constexpr size_t input_size(const remove_summon& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(summon_removal);
+    }
+
+    constexpr size_t input_size(const generate_combat_status& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(combat_status_generation);
+    }
+
+    constexpr size_t input_size(const add_combat_status& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(combat_status_addition);
+    }
+
+    constexpr size_t input_size(const set_combat_status_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(combat_status_state_change);
+    }
+
+    constexpr size_t input_size(const modify_combat_status_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(combat_status_state_modification);
+    }
+
+    constexpr size_t input_size(const remove_combat_status& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(combat_status_removal);
+    }
+
+    constexpr size_t input_size(const attach& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(attachment_application);
+    }
+
+    constexpr size_t input_size(const set_attachment_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(attachment_state_change);
+    }
+
+    constexpr size_t input_size(const modify_attachment_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(attachment_state_modification);
+    }
+
+    constexpr size_t input_size(const remove_attachment& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(attachment_removal);
+    }
     constexpr size_t input_size(const replace_cards&) noexcept { return 0; }
     constexpr size_t input_size(const replace_cards_both&) noexcept { return 0; }
     constexpr size_t input_size(const start_round&) noexcept { return 0; }
@@ -198,7 +368,6 @@ namespace givm::detail
     constexpr size_t input_size(const end_game&) noexcept { return 0; }
     constexpr size_t input_size(const start_dice_roll_phase&) noexcept { return 0; }
     constexpr size_t input_size(const start_battle&) noexcept { return 0; }
-    constexpr size_t input_size(const reduce_combat_status_count&) noexcept { return sizeof(combat_status_count_reduction); }
     constexpr size_t input_size(const deal_damage& command) noexcept
     {
         constexpr auto alignment = alignof(std::max_align_t);

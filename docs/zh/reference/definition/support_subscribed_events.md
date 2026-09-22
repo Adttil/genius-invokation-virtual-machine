@@ -46,9 +46,9 @@ using support_subscribed_events = type_list<
     after_elemental_reaction,
     character_will_be_defeated,
     character_defeated,
-    entity_will_leave,
-    entity_left,
-    entity_count_changed
+    summon_removed,
+    combat_status_removed,
+    attachment_removed
 >;
 ```
 

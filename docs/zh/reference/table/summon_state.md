@@ -4,17 +4,22 @@
 
 定义于头文件 `<givm/table.hpp>`
 
-```cpp
-struct summon_state;
-```
+召唤物的效果量与剩余可用次数。效果量的具体含义由定义决定，例如每次造成的伤害；可用次数耗尽时，执行器的状态修改命令会使召唤物离场。
 
-召唤物在对局中使用的计数状态。`count` 的具体含义由相应定义决定，例如剩余可用次数或累计数量。
+```cpp
+struct summon_state
+{
+    std::uint32_t value;
+    std::uint32_t usages;
+};
+```
 
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `count` | `std::uint32_t` | 该实体当前的计数 |
+| `value` | `std::uint32_t` | 效果量 |
+| `usages` | `std::uint32_t` | 剩余可用次数；生成和添加新实体时，按定义上限裁剪后必须大于零 |
 
 ## 示例
 
@@ -25,14 +30,14 @@ struct summon_state;
 
 int main()
 {
-    givm::summon_state value{ .count = 3 };
-    --value.count;
-    std::println("剩余计数: {}", value.count);
+    givm::summon_state value{ .value = 1, .usages = 3 };
+    --value.usages;
+    std::println("剩余次数: {}", value.usages);
 }
 ```
 
 输出
 
 ```text
-剩余计数: 2
+剩余次数: 2
 ```

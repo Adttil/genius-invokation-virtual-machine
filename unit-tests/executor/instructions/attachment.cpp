@@ -26,11 +26,9 @@ namespace
         std::vector<std::string> responders;
         std::vector<std::string> cost_responders;
         std::vector<givm::attachment_id> removed;
-        bool pause_before_removal = false;
+        bool pause_after_removal = false;
         bool add_during_removal = false;
-        bool replace_before_removal = false;
         bool nested_added = false;
-        std::uint32_t own_departures = 0;
     };
 
     struct attachment_source
@@ -58,18 +56,9 @@ namespace
             data.log->cost_responders.emplace_back(data.name);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self, givm::entity_will_leave& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&, const givm::attachment_view& self, givm::attachment_removed& event, givm::handle_context&)
         {
-            if(const auto id = std::get_if<givm::attachment_id>(&event.entity); id != nullptr && *id == self.id())
-            {
-                CHECK(self.is_valid());
-                ++data.log->own_departures;
-            }
-            return {};
-        }
-        static givm::program_entry handle(const definition_type&, const givm::attachment_view& self, givm::entity_left& event, givm::handle_context&)
-        {
-            if(const auto id = std::get_if<givm::attachment_id>(&event.entity)) CHECK(*id != self.id());
+            CHECK(event.attachment != self.id());
             return {};
         }
     };
@@ -84,7 +73,6 @@ namespace
             givm::program_entry initial;
             givm::program_entry pause;
             givm::program_entry nested;
-            givm::program_entry nested_removal;
         };
         attachment_log* log;
         bool prepare_equipment;
@@ -110,8 +98,7 @@ namespace
                     add("Talent", 5), add("OrdinaryB", 2), add("Artifact", 3)
                 }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ add("NestedWeapon", 11) }),
-                context.add_program(std::tuple{ givm::remove_attachment{}, add("NestedWeapon", 11) })
+                context.add_program(std::tuple{ add("NestedWeapon", 11) })
             };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -124,43 +111,21 @@ namespace
         {
             return data.prepare_equipment ? context.invoke(data.initial) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::attachment_added& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::attachment_removed& event, givm::handle_context& context)
         {
-            const auto attachment = context.table()[event.attachment];
-            CHECK(attachment.is_valid());
-            data.log->events.push_back("added:" + std::to_string(attachment.state().count));
-            return {};
-        }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::entity_will_leave& event, givm::handle_context& context)
-        {
-            const auto id = std::get_if<givm::attachment_id>(&event.entity);
-            if(id == nullptr) return {};
-            const auto attachment = context.table()[*id];
-            CHECK(attachment.is_valid());
-            data.log->events.push_back("will:" + std::to_string(attachment.state().count));
-            if(data.log->pause_before_removal)
-            {
-                data.log->pause_before_removal = false;
-                return context.invoke(data.pause);
-            }
-            if(data.log->replace_before_removal && not data.log->nested_added)
-            {
-                data.log->nested_added = true;
-                return context.invoke(data.nested_removal, givm::attachment_removal{ *id });
-            }
-            return {};
-        }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::entity_left& event, givm::handle_context& context)
-        {
-            const auto id = std::get_if<givm::attachment_id>(&event.entity);
-            if(id == nullptr) return {};
-            const auto attachment = context.table()[*id];
+            const auto id = event.attachment;
+            const auto attachment = context.table()[id];
             CHECK_FALSE(attachment.is_valid());
             CHECK(attachment.definition_id().is_valid());
             CHECK(attachment.character().id() == equipped_character);
-            if(attachment.character().has(givm::equipment_type::weapon)) CHECK(attachment.character().get(givm::equipment_type::weapon).id() != *id);
+            if(attachment.character().has(givm::equipment_type::weapon)) CHECK(attachment.character().get(givm::equipment_type::weapon).id() != id);
             data.log->events.push_back("left:" + std::to_string(attachment.state().count));
-            data.log->removed.push_back(*id);
+            data.log->removed.push_back(id);
+            if(data.log->pause_after_removal)
+            {
+                data.log->pause_after_removal = false;
+                return context.invoke(data.pause);
+            }
             if(data.log->add_during_removal && not data.log->nested_added)
             {
                 data.log->nested_added = true;
@@ -352,6 +317,10 @@ namespace
                     givm::attachment_addition{ .target = target, .definition = data.attachment, .state = { 3 } },
                     givm::attachment_addition{ .target = target, .definition = data.attachment, .state = { 5 } });
             }
+            for(const auto attachment : table[equipped_character].attachments())
+                data.log->added.push_back(attachment.id());
+            for(const auto attachment : table[target].attachments())
+                data.log->added.push_back(attachment.id());
             for(const auto attachment : table[target].attachments())
             {
                 if(attachment.state().count == 3)
@@ -360,24 +329,16 @@ namespace
             FAIL("first dynamic attachment is missing");
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::attachment_added& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::attachment_removed& event, givm::handle_context& context)
         {
-            data.log->added.push_back(event.attachment);
-            return {};
-        }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::entity_left& event, givm::handle_context& context)
-        {
-            if(const auto attachment = std::get_if<givm::attachment_id>(&event.entity))
-            {
-                CHECK_FALSE(context.table()[*attachment].is_valid());
-                data.log->left.push_back(*attachment);
-            }
+            CHECK_FALSE(context.table()[event.attachment].is_valid());
+            data.log->left.push_back(event.attachment);
             return {};
         }
     };
 }
 
-TEST_CASE("equipment cards validate targets and replace equipment through resumable leave events", "[attachment][play_card][compile-mode]")
+TEST_CASE("equipment cards validate targets and resume replacement after the removal broadcast", "[attachment][play_card][compile-mode]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     attachment_log log;
@@ -413,12 +374,13 @@ TEST_CASE("equipment cards validate targets and replace equipment through resuma
     CHECK(action.card_payment_validate(table, equipment_index, {}) == givm::card_payment_validation::valid);
     log.events.clear();
     log.responders.clear();
-    log.pause_before_removal = true;
+    log.pause_after_removal = true;
     action.play_card(equipment_index, {}, targets);
     REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
-    CHECK(log.events == std::vector<std::string>{ "will:7" });
-    CHECK(table[old_weapon].is_valid());
-    CHECK(table[equipped_character].get(givm::equipment_type::weapon).id() == old_weapon);
+    CHECK(log.events == std::vector<std::string>{ "left:7" });
+    CHECK_FALSE(table[old_weapon].is_valid());
+    CHECK_FALSE(table[equipped_character].has(givm::equipment_type::weapon));
+    CHECK(table[old_weapon].state().count == 7);
     const auto paused_log = log;
     auto copied_execution = execution;
     auto copied_table = table;
@@ -427,8 +389,7 @@ TEST_CASE("equipment cards validate targets and replace equipment through resuma
         log = paused_log;
         branch.view_in<givm::execution_state::card_selection>().select({});
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
-        CHECK(log.events == std::vector<std::string>{ "will:7", "left:7", "added:9" });
-        CHECK(log.own_departures == 1);
+        CHECK(log.events == std::vector<std::string>{ "left:7" });
         CHECK(log.responders == std::vector<std::string>{ "NewWeapon", "Artifact", "Talent", "Technique", "OrdinaryA", "OrdinaryB" });
         CHECK_FALSE(branch_table[old_weapon].is_valid());
         CHECK(branch_table[old_weapon].definition_id() == ids.get_id<givm::attachment_view>("Weapon"));
@@ -442,7 +403,7 @@ TEST_CASE("equipment cards validate targets and replace equipment through resuma
         log.events.clear();
         next_action.play_card(library, branch_table, removal_index, {}, targets);
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
-        CHECK(log.events == std::vector<std::string>{ "will:9", "left:9" });
+        CHECK(log.events == std::vector<std::string>{ "left:9" });
         CHECK_FALSE(branch_table[equipped_character].has(givm::equipment_type::weapon));
         CHECK_FALSE(branch_table[new_weapon].is_valid());
         CHECK(branch_table[new_weapon].state().count == 9);
@@ -467,10 +428,9 @@ TEST_CASE("equipment cards validate targets and replace equipment through resuma
     resume(copied_execution, copied_table);
 }
 
-TEST_CASE("equipment replacement handles nested replacement in both leave broadcasts", "[attachment][broadcast][compile-mode]")
+TEST_CASE("equipment replacement handles a nested replacement in the removal broadcast", "[attachment][broadcast][compile-mode]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
-    const bool before_removal = GENERATE(false, true);
     attachment_log log;
     const auto [library, ids] = compile_equipment_scenario(mode, log, true);
     auto table = load_equipment_scenario(library, ids);
@@ -478,17 +438,13 @@ TEST_CASE("equipment replacement handles nested replacement in both leave broadc
     execution.enter_entry(library);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     log.events.clear();
-    log.add_during_removal = not before_removal;
-    log.replace_before_removal = before_removal;
+    log.add_during_removal = true;
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     const auto index = card_index(action, table, ids.get_id<givm::card_definition>("EquipWeaponCard"));
     const std::array<givm::card_target_id, 1> targets{ equipped_character };
     action.play_card(library, table, index, {}, targets);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
-    CHECK(log.events == (before_removal
-        ? std::vector<std::string>{ "will:7", "will:7", "left:7", "added:11", "will:11", "left:11", "added:9" }
-        : std::vector<std::string>{ "will:7", "left:7", "added:11", "will:11", "left:11", "added:9" }));
-    CHECK(log.own_departures == 2);
+    CHECK(log.events == std::vector<std::string>{ "left:7", "left:11" });
     REQUIRE(log.removed.size() == 2);
     CHECK_FALSE(table[log.removed[0]].is_valid());
     CHECK_FALSE(table[log.removed[1]].is_valid());

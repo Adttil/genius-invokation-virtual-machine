@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-指定要移除的附属实体或装备，由 [remove_attachment](../commands/remove_attachment.md) 消费；本身不进行广播。
+[remove_attachment](../commands/remove_attachment.md) 的动态输入，指定要离场的角色附属实体。
 
 ```cpp
 struct attachment_removal
@@ -13,4 +13,4 @@ struct attachment_removal
 };
 ```
 
-`attachment` 须指向尚未移除的实体。移除前广播 [entity_will_leave](entity_will_leave.md)，实际移除后广播 [entity_left](entity_left.md)。
+`attachment` 必须指向有效实体。命令移除实体后，广播 [attachment_removed](attachment_removed.md)。

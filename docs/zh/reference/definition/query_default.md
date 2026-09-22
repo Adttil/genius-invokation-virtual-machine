@@ -6,6 +6,9 @@
 
 ```cpp
 constexpr character_state query_default(const character_initial_state&) noexcept;
+constexpr summon_state query_default(const summon_state_limit&) noexcept;
+constexpr combat_status_state query_default(const combat_status_state_limit&) noexcept;
+constexpr attachment_state query_default(const attachment_state_limit&) noexcept;
 constexpr definition_id<skill_view> query_default(const character_initial_skill&) noexcept;
 constexpr action_cost_requirement query_default(const skill_initial_cost&) noexcept;
 constexpr target_validation query_default(const skill_target_validation& query) noexcept;
@@ -21,6 +24,9 @@ constexpr target_validation query_default(const card_target_validation& query) n
 | 查询 | 默认结果 |
 | --- | --- |
 | [`character_initial_state`](queries/character_initial_state.md) | `character_state{}`。 |
+| [`summon_state_limit`](queries/summon_state_limit.md) | `summon_state`，两个字段均为 `UINT32_MAX`。 |
+| [`combat_status_state_limit`](queries/combat_status_state_limit.md) | `combat_status_state`，两个字段均为 `UINT32_MAX`。 |
+| [`attachment_state_limit`](queries/attachment_state_limit.md) | `attachment_state`，两个字段均为 `UINT32_MAX`。 |
 | [`character_initial_skill`](queries/character_initial_skill.md) | 无效 ID，表示没有初始技能。 |
 | [`skill_initial_cost`](queries/skill_initial_cost.md) | 零骰子、零充能费用，行动速度为 `action_speed::combat`。 |
 | [`skill_target_validation`](queries/skill_target_validation.md) | `target_count == 0` 时为 `valid_complete`，否则为 `invalid`。 |

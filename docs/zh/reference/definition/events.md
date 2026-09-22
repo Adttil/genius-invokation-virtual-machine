@@ -76,13 +76,30 @@
 | [`active_character_changed`](events/active_character_changed.md) | 出战角色设置完成后的通知 |
 | [`character_will_be_defeated`](events/character_will_be_defeated.md) | 角色被击倒前的事件 |
 | [`character_defeated`](events/character_defeated.md) | 角色被击倒后的通知 |
-| [`entity_will_leave`](events/entity_will_leave.md) | 实体离场前的事件 |
-| [`attachment_addition`](events/attachment_addition.md) | 添加附属实体或装备的初始输入 |
-| [`attachment_removal`](events/attachment_removal.md) | 移除附属实体或装备的初始输入 |
-| [`attachment_added`](events/attachment_added.md) | 附属实体或装备加入后的通知 |
-| [`entity_left`](events/entity_left.md) | 实体离场后的通知 |
-| [`combat_status_count_reduction`](events/combat_status_count_reduction.md) | 出战状态计数扣除的初始输入 |
-| [`entity_count_changed`](events/entity_count_changed.md) | 实体计数变化后的通知 |
+| [`summon_removed`](events/summon_removed.md) | 召唤物移除后向其他有效实体广播的通知 |
+| [`combat_status_removed`](events/combat_status_removed.md) | 出战状态移除后向其他有效实体广播的通知 |
+| [`attachment_removed`](events/attachment_removed.md) | 角色附属实体或装备移除后向其他有效实体广播的通知 |
+| [`summoning`](events/summoning.md) | [summon](commands/summon.md) 的动态输入 |
+| [`resummoning`](events/resummoning.md) | 仅向已有召唤物发送的重复请求 |
+| [`summon_addition`](events/summon_addition.md) | [add_summon](commands/add_summon.md) 的动态输入 |
+| [`summon_state_change`](events/summon_state_change.md) | [set_summon_state](commands/set_summon_state.md) 的动态输入 |
+| [`summon_state_modification`](events/summon_state_modification.md) | [modify_summon_state](commands/modify_summon_state.md) 的动态输入 |
+| [`summon_state_changed`](events/summon_state_changed.md) | 状态修改后的自身通知 |
+| [`summon_removal`](events/summon_removal.md) | [remove_summon](commands/remove_summon.md) 的动态输入 |
+| [`combat_status_generation`](events/combat_status_generation.md) | [generate_combat_status](commands/generate_combat_status.md) 的动态输入 |
+| [`combat_status_regeneration`](events/combat_status_regeneration.md) | 仅向已有出战状态发送的重复请求 |
+| [`combat_status_addition`](events/combat_status_addition.md) | [add_combat_status](commands/add_combat_status.md) 的动态输入 |
+| [`combat_status_state_change`](events/combat_status_state_change.md) | [set_combat_status_state](commands/set_combat_status_state.md) 的动态输入 |
+| [`combat_status_state_modification`](events/combat_status_state_modification.md) | [modify_combat_status_state](commands/modify_combat_status_state.md) 的动态输入 |
+| [`combat_status_state_changed`](events/combat_status_state_changed.md) | 状态修改后的自身通知 |
+| [`combat_status_removal`](events/combat_status_removal.md) | [remove_combat_status](commands/remove_combat_status.md) 的动态输入 |
+| [`attachment_application`](events/attachment_application.md) | [attach](commands/attach.md) 的动态输入 |
+| [`attachment_reapplication`](events/attachment_reapplication.md) | 仅向已有角色附属实体发送的重复请求 |
+| [`attachment_addition`](events/attachment_addition.md) | [add_attachment](commands/add_attachment.md) 的动态输入 |
+| [`attachment_state_change`](events/attachment_state_change.md) | [set_attachment_state](commands/set_attachment_state.md) 的动态输入 |
+| [`attachment_state_modification`](events/attachment_state_modification.md) | [modify_attachment_state](commands/modify_attachment_state.md) 的动态输入 |
+| [`attachment_state_changed`](events/attachment_state_changed.md) | 状态修改后的自身通知 |
+| [`attachment_removal`](events/attachment_removal.md) | [remove_attachment](commands/remove_attachment.md) 的动态输入 |
 
 ## 标识类型别名
 
@@ -95,8 +112,6 @@
 | [`damage_target`](events/damage_target.md) | 伤害的具体、相对或范围目标 |
 | [`effect_source_id`](events/effect_source_id.md) | 治疗等效果的来源标识 |
 | [`element_application_source_id`](events/element_application_source_id.md) | 元素附着的来源标识 |
-| [`entity_id`](events/entity_id.md) | 各类牌桌实体的标识 |
-| [`counted_entity_id`](events/counted_entity_id.md) | 具有计数的实体标识 |
 
 ## 调试
 
