@@ -18,7 +18,7 @@ bool add(const TFirstSource& first, const TSecondSource& second,
 
 登记一批可供对局使用的定义源。一次调用中的源可以按名称相互依赖，适合一起加入某张卡牌及其生成的状态、召唤物等相关定义。
 
-(1) 不添加内容。(2) 合并另一个源库，保留接收方构造时选定的三个默认反应定义。(3) 登记一个源。(4) 一起登记多个源。名称在各定义类别内必须唯一。
+(1) 不添加内容。(2) 合并另一个源库，保留接收方构造时选定的四个默认反应定义。(3) 登记一个源。(4) 一起登记多个源。名称在各定义类别内必须唯一。
 
 合并源库时，同名项若是同一个源对象，且被任意一方选为默认反应定义，则跳过该重复项。因此使用相同默认源的库可以直接合并。其他同类别重名仍视为冲突，包括名称相同但源对象不同的情况；直接调用 (3)、(4) 重复登记也仍会失败。
 
@@ -68,7 +68,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     std::println("批量登记成功: {}", sources.add(potion, food));
     std::println("重复登记成功: {}", sources.add(potion));

@@ -3,6 +3,7 @@
 
 #include "executor.hpp"
 
+#include <array>
 #include <limits>
 #include <string_view>
 #include <tuple>
@@ -10,6 +11,55 @@
 
 namespace givm::genshin_impact
 {
+    struct frozen_3_3_0_source
+    {
+        using definition_category = attachment_view;
+
+        struct definition_type
+        {
+            program_entry remove;
+        };
+
+        constexpr std::string_view name() const noexcept
+        {
+            return "frozen-3.3.0-genshin_impact";
+        }
+
+        constexpr std::array<std::string_view, 1> tags() const noexcept
+        {
+            return { "control" };
+        }
+
+        definition_type compile(definition_compile_context& context) const
+        {
+            return { context.add_program(std::tuple{ remove_attachment{} }) };
+        }
+
+        static constexpr attachment_state query(const definition_type&, const attachment_state_limit&) noexcept
+        {
+            return { .count = 1, .round_usages = 0 };
+        }
+
+        static program_entry handle(
+            const definition_type& definition, const attachment_view& attachment,
+            damage_calculation& event, handle_context& context)
+        {
+            if(event.target != attachment.character().id()
+                || (event.type != damage_type::physical && event.type != damage_type::pyro))
+                return {};
+            constexpr auto maximum = std::numeric_limits<std::uint32_t>::max();
+            event.value = event.value > maximum - 2 ? maximum : event.value + 2;
+            return context.invoke(definition.remove, attachment_removal{ attachment.id() });
+        }
+
+        static program_entry handle(
+            const definition_type& definition, const attachment_view& attachment,
+            round_started&, handle_context& context)
+        {
+            return context.invoke(definition.remove, attachment_removal{ attachment.id() });
+        }
+    };
+
     struct dendro_core_3_3_0_source
     {
         using definition_category = combat_status_view;
@@ -302,6 +352,7 @@ namespace givm::genshin_impact
         }
     };
 
+    inline constexpr frozen_3_3_0_source frozen_3_3_0;
     inline constexpr dendro_core_3_3_0_source dendro_core_3_3_0;
     inline constexpr catalyzing_field_3_3_0_source catalyzing_field_3_3_0;
     inline constexpr catalyzing_field_3_4_0_source catalyzing_field_3_4_0;

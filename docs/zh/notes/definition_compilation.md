@@ -389,9 +389,9 @@ bool definition_source_library::add(const TSource& source);
 
 同时添加多个 source 的重载是原子的：它允许同一批 source 互相依赖，任一名称或依赖检查失败时整批都不加入。源库之间也可以合并。合并遇到同名项时，只有它们指向同一 source 对象且任意一方将它选为默认反应定义，才跳过该重复项；其他同类别名称冲突仍拒绝整次合并。合并不改变接收方原先选定的默认反应定义。
 
-源库构造时必须提供草原核、激化领域和燃烧烈焰的 source，前两者属于 combat status，第三者属于 summon；还可一起传入这些 source 依赖的其他 source，整批按 `add` 的规则登记。绑定来自调用方传入的源对象，不通过固定名称、标签或版本字符串识别。
+源库构造时必须依次提供草原核、激化领域、燃烧烈焰和冻结的 source，前两者属于 combat status，第三者属于 summon，第四者属于 attachment；还可一起传入这些 source 依赖的其他 source，整批按 `add` 的规则登记。绑定来自调用方传入的源对象，不通过固定名称、标签或版本字符串识别。
 
-整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition。三个默认反应定义始终属于选择根，与显式选中的定义一起求依赖闭包。源库提供 source view 遍历和成员 `make_issued_id_map`；后者利用登记时保留的声明信息完成选择、依赖闭包和 ID 分配。executor 中的非成员 `compile` 调用这个成员取得映射，再通过 source view 完成最终编译。初始化程序、回合程序与 `compile_mode` 必须在同一次编译中提供；所有响应程序继承该编译模式。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
+整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition。四个默认反应定义始终属于选择根，与显式选中的定义一起求依赖闭包。源库提供 source view 遍历和成员 `make_issued_id_map`；后者利用登记时保留的声明信息完成选择、依赖闭包和 ID 分配。executor 中的非成员 `compile` 调用这个成员取得映射，再通过 source view 完成最终编译。初始化程序、回合程序与 `compile_mode` 必须在同一次编译中提供；所有响应程序继承该编译模式。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
 
 ```cpp
 auto [library, id_map] = compile(source_library, initialization_program, round_program, givm::compile_mode::normal);
@@ -403,7 +403,7 @@ auto [library, id_map] = compile(source_library, initialization_program, round_p
 using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
 ```
 
-需要只编译部分定义时，使用接受 `const definition_selection& selection` 的重载。`selection` 按 definition 类别保存名称序列；每个选中的 definition、三个默认反应定义及它们的传递依赖都会进入编译结果。
+需要只编译部分定义时，使用接受 `const definition_selection& selection` 的重载。`selection` 按 definition 类别保存名称序列；每个选中的 definition、四个默认反应定义及它们的传递依赖都会进入编译结果。
 
 [`compile` 的返回值](../reference/executor/compile.md#返回值)类型未指定。其 `library` 成员是编译后的游戏规则，`id_map` 成员是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。两者对应同一个定义集合和 ID 分配结果，也可以按该顺序结构化绑定；对局运行时只需要 `library`。
 
@@ -430,7 +430,7 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 一份规则库的构建包含以下工作：
 
 1. 读取每个 source 的定义类别、名称、标签和依赖声明。
-2. 从 `definition_selection` 指定的定义和三个默认反应定义求出依赖闭包，或选择全部定义。
+2. 从 `definition_selection` 指定的定义和四个默认反应定义求出依赖闭包，或选择全部定义。
 3. 为选中的定义和标签建立 issued id 映射。
 4. 为每个选中的 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应程序入口。
 5. 根据静态实现和动态源的 `can_handle`、`can_query` 结果选择响应与查询；保存空查询的结果与非空查询的调用函数，安装事件运行时分派。

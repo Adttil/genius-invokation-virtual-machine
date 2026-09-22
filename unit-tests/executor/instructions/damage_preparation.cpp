@@ -208,7 +208,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
             REQUIRE(state == givm::execution_state::health_reduced);
             const auto damage = executor.view_in<givm::execution_state::health_reduced>();
             observed_reactions.push_back(damage.reaction());
-            CHECK(damage.value() == (damage.target() == front ? 10 : 4));
+            CHECK(damage.value() == (damage.target() == front ? 12 : 4));
             CHECK(damage.type() == givm::damage_type::cryo);
             CHECK(damage.flags().contains(givm::damage_flag_bits::normal_attack));
             CHECK(damage.flags().contains(givm::damage_flag_bits::elemental_burst));
@@ -223,13 +223,13 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     CHECK(log.side_effects == std::vector{ givm::elemental_reaction::frozen });
     CHECK(log.normal_bonuses == (grouped ? 2 : 1));
     CHECK(log.burst_bonuses == (grouped ? 2 : 1));
-    CHECK(table[front].state().health == 10);
+    CHECK(table[front].state().health == 8);
     CHECK(table[back].state().health == (grouped ? 16 : 20));
     CHECK(table.state().round_number == (grouped ? 2 : 1));
     CHECK(pauses == (observed ? (grouped ? 2 : 1) : 0));
     CHECK(observed_reactions == (observed ? expected : std::vector<givm::elemental_reaction>{}));
     for(const auto health : log.health_at_completion)
-        CHECK(health == std::array<std::uint32_t, 2>{ 10, grouped ? 16u : 20u });
+        CHECK(health == std::array<std::uint32_t, 2>{ 8, grouped ? 16u : 20u });
 }
 
 TEST_CASE("replacement reaction numbers are applied without default secondary damage", "[deal_damage][preparation][reaction]")

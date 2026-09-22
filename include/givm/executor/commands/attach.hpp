@@ -7,6 +7,31 @@
 
 namespace givm::detail
 {
+    inline std::optional<execution_state> prepare_attachment_application(
+        const definition_library& library, unrestricted_table& table, execution_context& context,
+        random_fn& random, attachment_application input, execution_position reapplication_resume,
+        execution_position replacement_resume)
+    {
+        if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))
+            return std::nullopt;
+        const auto definition = library[input.definition];
+        input.state = clamp_attachment_state(input.state, definition.query(attachment_state_limit{}));
+        for(const auto attachment : std::as_const(table)[input.target].attachments())
+        {
+            if(attachment.definition_id() != input.definition) continue;
+            if(not definition.can_handle<attachment_reapplication, attachment_view>()) return std::nullopt;
+            context.stack().push(reapplication_resume);
+            attachment_reapplication event{ input.state };
+            auto response = context.make_handle_context(table, random);
+            const auto entry = definition.handle<attachment_reapplication>(attachment, event, response);
+            if(entry) return context.enter(entry);
+            context.stack().pop<execution_position>();
+            return std::nullopt;
+        }
+        return prepare_attachment_addition(library, table, context, random,
+            { input.target, input.definition, input.state }, replacement_resume);
+    }
+
     inline execution_state finish_attachment_reapplication(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
@@ -34,25 +59,9 @@ namespace givm::detail
             context.stack().pop<attachment_application>();
             context.enter_next();
         }
-        const auto definition = library[input.definition];
-        input.state = clamp_attachment_state(input.state, definition.query(attachment_state_limit{}));
-        for(const auto attachment : std::as_const(table)[input.target].attachments())
-        {
-            if(attachment.definition_id() != input.definition)
-                continue;
-            if(not definition.can_handle<attachment_reapplication, attachment_view>())
-                return context.advance(2 * sizeof(execute_fn));
-            context.stack().push(context.position());
-            attachment_reapplication event{ input.state };
-            auto response = context.make_handle_context(table, random);
-            const auto entry = definition.handle<attachment_reapplication>(attachment, event, response);
-            if(entry)
-                return context.enter(entry);
-            return finish_attachment_reapplication(library, table, context, random);
-        }
-        context.stack().push(attachment_addition{ input.target, input.definition, input.state });
-        context.enter_next();
-        return apply_attachment_addition(library, table, context, random);
+        if(const auto state = prepare_attachment_application(library, table, context, random, input,
+            context.position(), context.position() + sizeof(execute_fn))) return *state;
+        return context.advance(2 * sizeof(execute_fn));
     }
 
     inline void compile(program_writer& writer, const givm::attach& command, compile_mode)

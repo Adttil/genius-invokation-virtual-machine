@@ -36,6 +36,10 @@ namespace givm
     {
     };
 
+    struct round_started
+    {
+    };
+
     struct before_action
     {
     };

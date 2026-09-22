@@ -37,6 +37,8 @@ void use_skill(
 
 ## 注意
 
+选择技能前应通过 [`is_controlled`](is_controlled.md) 检查出战角色是否受控。本函数及后续执行不自动检查控制状态；控制查询也不代替支付与目标检查。
+
 同一行动窗口内，每个候选只允许计算一次费用。带定义库与牌桌的重载只可用于尚未报价的候选；已报价的候选必须使用采用已计算费用的重载。调用方自行保证，库不进行运行期检查。
 
 不带定义库与牌桌的重载采用已完整计算的费用。另一重载同步计算报价后填写选择；两者都不自动检查支付、目标或其他使用条件。调用方可以独立使用 [`skill_payment_validate`](skill_payment_validate.md) 与分步的 [`skill_targets_validate`](skill_targets_validate.md)，并负责保证输入合法、当前选择允许完成。
@@ -106,7 +108,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     sources.add(skill);
     sources.add(character);

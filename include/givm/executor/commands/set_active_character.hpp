@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SET_ACTIVE_CHARACTER_HPP
 #define GIVM_EXECUTOR_COMMANDS_SET_ACTIVE_CHARACTER_HPP
 
+#include <utility>
+
 #include "../executor.hpp"
 #include "../broadcast.hpp"
 #include "../../definition/events.hpp"
@@ -46,6 +48,9 @@ namespace givm::detail
         GIVM_ASSERT(static_cast<bool>(table[command.target]));
 
         auto& state = table[command.target.player_id].state();
+        if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
+            return context.advance(instruction_extent<1, givm::set_active_character>
+                + (Observed ? 2 : 1) * sizeof(execute_fn));
         const active_character_changed event{ .current = command.target };
         if constexpr(Observed)
         {
@@ -77,6 +82,8 @@ namespace givm::detail
         context.stack().pop<active_character_changed>();
         GIVM_ASSERT(static_cast<bool>(table[event.current]));
         auto& state = table[event.current.player_id].state();
+        if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
+            return context.advance((Observed ? 3 : 2) * sizeof(execute_fn));
         if constexpr(Observed)
         {
             if(state.active_character != event.current)

@@ -56,6 +56,12 @@ namespace givm
     class execution_view<execution_state::action_selection>
     {
     public:
+        bool is_controlled(const definition_library& library, const table& card_table) const noexcept
+        {
+            const auto active = *card_table[card_table.state().active_player].state().active_character;
+            return library.is_controlled(card_table[active]);
+        }
+
         constexpr std::size_t switch_target_count() const noexcept
         {
             return get<0>(std::as_const(*stack_).top<

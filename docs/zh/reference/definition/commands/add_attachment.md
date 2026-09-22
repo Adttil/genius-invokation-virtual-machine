@@ -27,6 +27,8 @@ struct add_attachment
 
 ## 结算
 
+若本次定义带 `control` 标签，且目标当前具有 `control_immunity` 附属，则忽略本次添加，不移除现有装备。保护不解除已有控制；相关查询见 [`definition_library::is_control_immune`](../../executor/definition_library/is_control_immune.md)。
+
 执行时读取 [attachment_state_limit](../queries/attachment_state_limit.md)，将提供的 `state` 各字段分别裁剪至对应上限。`state` 省略时，两个字段均为 `UINT32_MAX`，经同样的裁剪后得到该定义的上限；显式指定较小的值可以创建较少层数或次数的实体。
 
 直接创建独立实体，同定义实体的存在不改变本次操作。
@@ -36,6 +38,8 @@ attachment 定义的 `weapon`、`artifact`、`talent`、`technique` 标签分别
 - 普通附属实体直接追加，同一定义可有多个独立实体。
 - 装备类别已被占用时，先移除旧装备，再广播 [attachment_removed](../events/attachment_removed.md)。
 - 离场响应若另行安装同类装备，会继续移除当前占用者，完成其离场响应后再创建本次装备。
+
+若旧装备离场响应使目标获得免控保护，而本次新装备带 `control` 标签，则停止后续添加；已经完成的旧装备移除不撤销。
 
 同类装备至多保留一个。武器类型用 `sword`、`claymore`、`polearm`、`bow` 或 `catalyst` 标签表示，这些标签互斥；角色状态提供允许的武器类型掩码，实际用牌条件由卡牌定义决定。
 

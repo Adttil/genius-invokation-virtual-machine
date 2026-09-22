@@ -11,7 +11,7 @@ issued_id_map make_issued_id_map(const definition_selection& selection) const; /
 
 为所需定义准备名称与 ID 的对应关系，便于在编写对局流程、准备牌组前取得定义 ID。
 
-(1) 选择全部已登记定义。(2) 选择指定定义以及源库构造时选定的三个默认反应定义，并自动包含这些定义直接或间接声明的名称依赖和标签筛选依赖。即使 `selection` 为空，也保留默认反应定义及其依赖。
+(1) 选择全部已登记定义。(2) 选择指定定义以及源库构造时选定的四个默认反应定义，并自动包含这些定义直接或间接声明的名称依赖和标签筛选依赖。即使 `selection` 为空，也保留默认反应定义及其依赖。
 
 ## 参数
 
@@ -59,7 +59,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     sources.add(potion, food);
     const std::array<std::string_view, 1> names{ "恢复药剂" };

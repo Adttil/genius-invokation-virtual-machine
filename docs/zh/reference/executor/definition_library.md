@@ -30,6 +30,9 @@ class definition_library;
 | [`name`](definition_library/name.md) | 取得定义名称 |
 | [`tag_name`](definition_library/tag_name.md) | 取得标签名称 |
 | [`equipment_type`](definition_library/equipment_type.md) | 取得附着实体定义的装备类别 |
+| [`is_control`](definition_library/is_control.md) | 检查附属定义是否属于控制效果 |
+| [`is_controlled`](definition_library/is_controlled.md) | 检查角色是否处于控制状态 |
+| [`is_control_immune`](definition_library/is_control_immune.md) | 检查角色是否免疫控制附属与效果切人 |
 | [`has_tag`](definition_library/has_tag.md) | 检查定义是否具有一个标签 |
 | [`has_all_tags`](definition_library/has_all_tags.md) | 检查定义是否具有全部标签 |
 | [`has_any_tag`](definition_library/has_any_tag.md) | 检查定义是否具有任一标签 |
@@ -40,6 +43,7 @@ class definition_library;
 | [`dendro_core_id`](definition_library/dendro_core_id.md) | 取得默认草原核定义 ID |
 | [`catalyzing_field_id`](definition_library/catalyzing_field_id.md) | 取得默认激化领域定义 ID |
 | [`burning_flame_id`](definition_library/burning_flame_id.md) | 取得默认燃烧烈焰定义 ID |
+| [`frozen_id`](definition_library/frozen_id.md) | 取得默认冻结定义 ID |
 
 ## 注意
 
@@ -70,7 +74,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     sources.add(source);
     const auto [library, ids] = compile(

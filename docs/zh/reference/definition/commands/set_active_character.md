@@ -27,9 +27,11 @@ struct set_active_character;
 
 ## 注意
 
+执行时，若该玩家当前出战角色具有 `control_immunity` 附属，则忽略此次设置，不产生变更通知或观察现场。没有出战角色时仍可设置初始角色。此限制针对本命令；玩家在行动选择中[主动切换](../../executor/execution_view/action_selection/switch_active_character.md)不受免控保护限制。
+
 设置后发出 [`active_character_changed`](../events/active_character_changed.md)，响应者能够读取新的出战角色。
 
-以 [`compile_mode::observed`](../../executor/compile_mode.md) 编译时，写入新出战角色前先返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)提供目标角色，牌桌上仍保留原出战角色；随后推进才写入目标并处理变更响应。目标本就是该方的出战角色时，不产生此观察现场，规则事件仍照常处理。
+以 [`compile_mode::observed`](../../executor/compile_mode.md) 编译时，写入新出战角色前先返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)提供目标角色，牌桌上仍保留原出战角色；随后推进才写入目标并处理变更响应。未被免控阻止且目标本就是该方的出战角色时，不产生此观察现场，规则事件仍照常处理。
 
 ## 示例
 
@@ -60,7 +62,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     sources.add(source);
     const auto [library, ids] = compile(

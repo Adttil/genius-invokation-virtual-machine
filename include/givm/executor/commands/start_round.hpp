@@ -2,13 +2,27 @@
 #define GIVM_EXECUTOR_COMMANDS_START_ROUND_HPP
 
 #include "../executor.hpp"
+#include "../broadcast.hpp"
 #include "../../definition/commands.hpp"
 
 namespace givm::detail
 {
+    inline execution_state broadcast_round_start(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<round_started>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        pop_broadcast<round_started>(context);
+        return context.enter_next();
+    }
+
     inline execution_state finish_round_start(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
+        execution_context& context, random_fn& random
     )
     {
         const auto& command = context.instruction_data<1, start_round>(library);
@@ -20,7 +34,10 @@ namespace givm::detail
         {
             player.state().dice = {};
         }
-        return context.advance(instruction_extent<1, start_round>);
+        const auto resume = context.position() + instruction_extent<1, start_round>;
+        prepare_broadcast(library, round_started{}, table, context.stack(), resume);
+        context.jump(resume);
+        return broadcast_round_start(library, table, context, random);
     }
 
     inline execution_state start_round_execute(
@@ -53,6 +70,7 @@ namespace givm::detail
             writer.write<execute_fn>(&start_round_execute);
         }
         writer.write(command);
+        writer.write<execute_fn>(&broadcast_round_start);
     }
 }
 

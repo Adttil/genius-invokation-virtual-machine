@@ -8,7 +8,7 @@
 class definition_source_library;
 ```
 
-卡牌、角色和其他实体的定义源集合，供对局选择所需内容。它把分散编写的定义组织在一起，提供按类别和名称访问定义源的能力，并确定元素反应采用哪些草原核、激化领域和燃烧烈焰定义。
+卡牌、角色和其他实体的定义源集合，供对局选择所需内容。它把分散编写的定义组织在一起，提供按类别和名称访问定义源的能力，并确定元素反应采用哪些草原核、激化领域、燃烧烈焰和冻结定义。
 
 ## 成员常量
 
@@ -64,7 +64,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     std::println("登记成功: {}", sources.add(potion));
     const auto [library, ids] = compile(

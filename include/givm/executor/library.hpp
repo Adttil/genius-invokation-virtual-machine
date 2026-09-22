@@ -163,9 +163,10 @@ namespace givm
     public:
         definition_library(const definition_library& other)
         : program_{ other.program_ }, tag_names_{ other.tag_names_ },
-          equipment_tags_{ other.equipment_tags_ }, dendro_core_id_{ other.dendro_core_id_ },
+          equipment_tags_{ other.equipment_tags_ }, control_tag_{ other.control_tag_ },
+          control_immunity_tag_{ other.control_immunity_tag_ }, dendro_core_id_{ other.dendro_core_id_ },
           catalyzing_field_id_{ other.catalyzing_field_id_ }, burning_flame_id_{ other.burning_flame_id_ },
-          buckets_{ other.buckets_ }
+          frozen_id_{ other.frozen_id_ }, buckets_{ other.buckets_ }
         {
             detail::finalize_program(program_);
         }
@@ -200,6 +201,11 @@ namespace givm
         definition_id<summon_view> burning_flame_id() const noexcept
         {
             return burning_flame_id_;
+        }
+
+        definition_id<attachment_view> frozen_id() const noexcept
+        {
+            return frozen_id_;
         }
 
         template<class TDefinitionType>
@@ -348,6 +354,27 @@ namespace givm
             return givm::equipment_type::none;
         }
 
+        bool is_control(definition_id<attachment_view> id) const noexcept
+        {
+            return control_tag_ && has_tag(id, control_tag_);
+        }
+
+        bool is_controlled(character_view character) const noexcept
+        {
+            if(not control_tag_) return false;
+            for(const auto attachment : character.attachments())
+                if(has_tag(attachment.definition_id(), control_tag_)) return true;
+            return false;
+        }
+
+        bool is_control_immune(character_view character) const noexcept
+        {
+            if(not control_immunity_tag_) return false;
+            for(const auto attachment : character.attachments())
+                if(has_tag(attachment.definition_id(), control_immunity_tag_)) return true;
+            return false;
+        }
+
         template<class TDefinitionType>
         bool has_tag(definition_id<TDefinitionType> id, tag_id tag) const
         {
@@ -478,7 +505,8 @@ namespace givm
         : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end()),
           dendro_core_id_{ id_map.get_id<combat_status_view>(sources.dendro_core_name_) },
           catalyzing_field_id_{ id_map.get_id<combat_status_view>(sources.catalyzing_field_name_) },
-          burning_flame_id_{ id_map.get_id<summon_view>(sources.burning_flame_name_) }
+          burning_flame_id_{ id_map.get_id<summon_view>(sources.burning_flame_name_) },
+          frozen_id_{ id_map.get_id<attachment_view>(sources.frozen_name_) }
         {
             constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
                 "weapon", "artifact", "talent", "technique"
@@ -490,6 +518,8 @@ namespace givm
                     equipment_tags_[index] = id_map.get_tag_id(equipment_tag_names[index]);
                 }
             }
+            if(id_map.has_tag("control")) control_tag_ = id_map.get_tag_id("control");
+            if(id_map.has_tag("control_immunity")) control_immunity_tag_ = id_map.get_tag_id("control_immunity");
         }
 
         template<class TDefinitionType>
@@ -680,9 +710,12 @@ namespace givm
         detail::program_bytes program_;
         std::vector<std::string_view> tag_names_;
         std::array<tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
+        tag_id control_tag_{};
+        tag_id control_immunity_tag_{};
         definition_id<combat_status_view> dendro_core_id_;
         definition_id<combat_status_view> catalyzing_field_id_;
         definition_id<summon_view> burning_flame_id_;
+        definition_id<attachment_view> frozen_id_;
         bucket_tuple buckets_;
     };
 

@@ -51,4 +51,6 @@ target_validation card_targets_validate(
 
 本操作只查询本牌定义，不验证支付，也不计算费用、提交行动或修改牌桌。查询直接返回检查结果，不接收随机源或返回效果入口。库不记录检查进度，直接按本次 `targets` 的长度确定检查步骤。
 
+无需目标的牌也可以通过空选择查询其他用牌条件，例如由牌定义调用 `library.is_controlled(character)` 检查控制状态。是否检查由该牌的 [`card_target_validation`](../../../definition/queries/card_target_validation.md) 决定。
+
 本操作与 [`card_payment_validate`](card_payment_validate.md) 独立，且不要求先报价。调用方仍须保证传入当前现场内有效的候选索引，并在选择出牌时保证目标与用牌条件成立；[`play_card`](play_card.md) 不会自动检查。

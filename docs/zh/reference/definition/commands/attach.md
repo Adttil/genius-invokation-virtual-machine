@@ -27,6 +27,8 @@ struct attach
 
 ## 结算
 
+若本次定义带 `control` 标签，且目标当前具有 `control_immunity` 附属，则忽略本次请求：不创建实体，也不调用已有同定义实体的重复施加响应。保护不移除已经存在的控制。查询保护可用 [`definition_library::is_control_immune`](../../executor/definition_library/is_control_immune.md)。
+
 执行时读取 [attachment_state_limit](../queries/attachment_state_limit.md)，将提供的 `state` 各字段分别裁剪至对应上限。`state` 省略时，两个字段均为 `UINT32_MAX`，经同样的裁剪后得到该定义的上限；显式指定较小的值可以创建较少层数或次数的实体。
 
 在目标范围查找首个有效、定义 ID 相同的实体：

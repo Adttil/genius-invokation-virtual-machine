@@ -25,7 +25,7 @@ auto compile(
 
 准备一场对局要使用的实体定义和对局流程。初始化部分只进行一次，回合部分随后反复进行，直到流程主动暂停或结束对局。
 
-(1) 使用全部已登记定义。(2) 从指定定义和源库构造时选定的三个默认反应定义出发，自动包含直接和间接依赖的定义。其余定义不会编译。
+(1) 使用全部已登记定义。(2) 从指定定义和源库构造时选定的四个默认反应定义出发，自动包含直接和间接依赖的定义。其余定义不会编译。
 
 ## 模板参数
 
@@ -83,7 +83,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     const auto [library, ids] = compile(
         sources,

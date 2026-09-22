@@ -102,7 +102,7 @@ TEST_CASE("definition sources can be registered and enumerated without executor 
     check_sources<givm::combat_status_view>(sources, { "Combat status", "TestCatalyzingField", "TestDendroCore" });
     check_sources<givm::character_view>(sources, { "Character" });
     check_sources<givm::skill_view>(sources, { "Skill" });
-    check_sources<givm::attachment_view>(sources, { "Attachment" });
+    check_sources<givm::attachment_view>(sources, { "Attachment", "TestFrozen" });
 
     const auto ids = sources.make_issued_id_map();
     CHECK(ids.has<givm::card_definition>("Another card"));
@@ -115,7 +115,7 @@ TEST_CASE("reaction definitions can be bound without executor headers", "[defini
     const named_source<givm::combat_status_view> core{ "Custom core" };
     const named_source<givm::combat_status_view> field{ "Custom field" };
     const named_source<givm::summon_view> flame{ "Custom flame" };
-    const givm::definition_source_library sources{ core, field, flame };
+    const givm::definition_source_library sources{ core, field, flame, givm_test::frozen };
 
     check_sources<givm::combat_status_view>(sources, { "Custom core", "Custom field" });
     check_sources<givm::summon_view>(sources, { "Custom flame" });

@@ -26,6 +26,7 @@
 | | |
 | --- | --- |
 | [`battle_started`](events/battle_started.md) | 对局首次进入战斗的通知 |
+| [`round_started`](events/round_started.md) | 回合上限检查通过并清空骰子后的新回合通知 |
 | [`action_phase_started`](events/action_phase_started.md) | 本回合行动阶段开始的通知 |
 | [`before_action`](events/before_action.md) | 当前行动玩家选择行动前的事件 |
 | [`round_end_declared`](events/round_end_declared.md) | 玩家宣布本回合结束的通知 |

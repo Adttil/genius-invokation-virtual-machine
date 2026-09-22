@@ -172,7 +172,7 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, source_definition, observer, victim
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
     };
     const givm::character_id source{ player, 0 };
     const givm::character_id first{ other_player(player), 0 };
@@ -249,7 +249,7 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, source_definition, observer, victim
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
     };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
@@ -306,7 +306,7 @@ TEST_CASE("reaction replacement suppresses default numbers and entities while co
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, source_definition, observer, victim
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
     };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
@@ -334,7 +334,7 @@ TEST_CASE("a self-applied reaction creates its entity for the affected player's 
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, target_definition
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, target_definition
     };
     constexpr givm::character_id self{ givm::player_id{ 0 }, 0 };
     const auto [library, ids] = compile(sources, std::tuple{
@@ -365,7 +365,7 @@ TEST_CASE("the first damage completion can use a field produced by a later hit",
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, source_definition, observer, victim
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
     };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
@@ -403,7 +403,7 @@ TEST_CASE("burning flame finishes its damage before exhausting and broadcasting 
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, source_definition, observer, victim
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
     };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
@@ -459,7 +459,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     const givm::test::initialized_character_source victim{ "ReactionTarget",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::electro } };
     givm::definition_source_library sources{ givm::genshin_impact::dendro_core_3_3_0,
-        field, givm::genshin_impact::burning_flame_3_3_0, source_definition, observer, victim };
+        field, givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id first{ givm::player_id{ 1 }, 0 };
     constexpr givm::character_id second{ givm::player_id{ 1 }, 1 };

@@ -9,7 +9,7 @@ using definition_selection =
     std::array<std::span<const std::string_view>, definition_types::size()>;
 ```
 
-一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。建立 [ID 映射](definition_source_library/make_issued_id_map.md)或[编译定义库](../executor/compile.md)时，会自动补入源库构造时选定的三个默认反应定义，以及这些定义和所选定义声明的依赖，无须调用方逐一列出。
+一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。建立 [ID 映射](definition_source_library/make_issued_id_map.md)或[编译定义库](../executor/compile.md)时，会自动补入源库构造时选定的四个默认反应定义，以及这些定义和所选定义声明的依赖，无须调用方逐一列出。
 
 ## 注意
 
@@ -41,7 +41,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     sources.add(potion, food);
     const std::array<std::string_view, 1> names{ "恢复药剂" };

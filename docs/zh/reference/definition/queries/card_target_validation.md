@@ -32,6 +32,8 @@ struct card_target_validation;
 
 `target_count == 0` 可以表达必须选择目标、允许不选但也可继续选择，或者无需目标且不能继续选择，分别返回 `valid_incomplete`、`valid_complete_or_continue`、`valid_complete`。用牌条件不满足时仍可返回 `invalid`。
 
+如果牌要求角色使用技能或主动特技，定义可通过 `library.is_controlled(character)` 检查该角色并拒绝受控时的使用。无需选择目标的牌也应在 `target_count == 0` 时检查这类用牌条件；不需要额外的卡牌分类标签。此查询只返回是否合法，实际效果程序不会自动补做控制检查。
+
 只需一个目标的牌在第一目标有效时返回 `valid_complete`；需要两个目标时返回 `valid_incomplete`；第二目标可选时返回 `valid_complete_or_continue`。达到两个目标的上限后，查询应返回 `invalid` 或 `valid_complete`。
 
 检查第二目标时，以第一目标合法为调用前提，查询可直接采用第一目标，不必重复检查，也不要求调用方实际调用过前一步。牌定义仍可拒绝不允许的目标数量。目标或相关对局条件改变后，调用方须重新保证第一目标合法。

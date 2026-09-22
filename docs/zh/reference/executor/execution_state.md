@@ -53,7 +53,9 @@ enum class execution_state : std::uint8_t
 
 `active_character_changed` 时，目标角色已经确定，牌桌上仍保留原出战角色。通过相应[视图](execution_view/active_character_changed.md)取得目标后，可按其所属玩家直接读取原出战角色；下一次推进才写入目标并处理变更响应。主动切人的支付及资源变化响应在此现场之前完成。
 
-`round_started` 时，`round_number` 已增加；若超过上限，下一次推进才返回 `finished`。`action_started` 时，`active_player` 是当前获得行动机会的玩家：首次行动在行动阶段开始的响应结束后报告；战斗行动结束后再次报告，即使另一方已经宣布结束、仍由同一玩家行动；快速行动后不重复报告。以上通知均早于该次 [`before_action`](../definition/events/before_action.md) 响应。
+`round_started` 时，`round_number` 已增加；若超过上限，下一次推进才返回 `finished`。未超限时，后续推进先清空双方骰子，再广播同名的 [`round_started`](../definition/events/round_started.md) 规则事件；冻结在该规则事件中解除，观察现场到达时尚未解除。
+
+`action_started` 时，`active_player` 是当前获得行动机会的玩家：首次行动在行动阶段开始的响应结束后报告；战斗行动结束后再次报告，即使另一方已经宣布结束、仍由同一玩家行动；快速行动后不重复报告。以上行动通知均早于该次 [`before_action`](../definition/events/before_action.md) 响应。
 
 `round_end_declared` 时，`active_player` 仍是宣布结束的一方，结束声明标记已经写入，随后推进才处理 [`round_end_declared`](../definition/events/round_end_declared.md) 响应。第一方的结束响应完成、行动机会交给另一方后，再报告 `action_started`。`round_ending` 时，`active_player` 仍是最后宣布结束的一方，结束声明标记尚未清除；随后推进才准备下一回合的先手并处理 [`round_ended`](../definition/events/round_ended.md) 响应。
 
@@ -73,7 +75,8 @@ int main()
     givm::definition_source_library sources{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0
+        givm::genshin_impact::burning_flame_3_3_0,
+        givm::genshin_impact::frozen_3_3_0
     };
     const auto [library, ids] = compile(
         sources,

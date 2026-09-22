@@ -30,16 +30,17 @@ namespace givm
     public:
         static constexpr size_t definition_count = definition_types::size();
 
-        template<class TDendroCore, class TCatalyzingField, class TBurningFlame, class... TOtherSources>
+        template<class TDendroCore, class TCatalyzingField, class TBurningFlame, class TFrozen, class... TOtherSources>
             requires std::same_as<typename TDendroCore::definition_category, combat_status_view>
                 && std::same_as<typename TCatalyzingField::definition_category, combat_status_view>
                 && std::same_as<typename TBurningFlame::definition_category, summon_view>
+                && std::same_as<typename TFrozen::definition_category, attachment_view>
         definition_source_library(const TDendroCore& dendro_core, const TCatalyzingField& catalyzing_field,
-            const TBurningFlame& burning_flame, const TOtherSources&... other_sources)
+            const TBurningFlame& burning_flame, const TFrozen& frozen, const TOtherSources&... other_sources)
         : dendro_core_name_{ dendro_core.name() }, catalyzing_field_name_{ catalyzing_field.name() },
-          burning_flame_name_{ burning_flame.name() }
+          burning_flame_name_{ burning_flame.name() }, frozen_name_{ frozen.name() }
         {
-            if(not add(dendro_core, catalyzing_field, burning_flame, other_sources...))
+            if(not add(dendro_core, catalyzing_field, burning_flame, frozen, other_sources...))
             {
                 throw std::invalid_argument{ "invalid reaction definition sources or dependencies" };
             }
@@ -233,6 +234,8 @@ namespace givm
                 return name == dendro_core_name_ || name == catalyzing_field_name_;
             else if constexpr(I == index_of<summon_view>())
                 return name == burning_flame_name_;
+            else if constexpr(I == index_of<attachment_view>())
+                return name == frozen_name_;
             else
                 return false;
         }
@@ -452,6 +455,7 @@ namespace givm
             enqueue_name<index_of<combat_status_view>()>(dendro_core_name_, selected, queue);
             enqueue_name<index_of<combat_status_view>()>(catalyzing_field_name_, selected, queue);
             enqueue_name<index_of<summon_view>()>(burning_flame_name_, selected, queue);
+            enqueue_name<index_of<attachment_view>()>(frozen_name_, selected, queue);
 
             [&]<size_t...I>(std::index_sequence<I...>)
             {
@@ -739,6 +743,7 @@ namespace givm
         std::string_view dendro_core_name_;
         std::string_view catalyzing_field_name_;
         std::string_view burning_flame_name_;
+        std::string_view frozen_name_;
         bucket_tuple buckets_;
 
         friend class definition_library;

@@ -10,6 +10,7 @@
 #include <variant>
 
 #include "../broadcast.hpp"
+#include "attach.hpp"
 #include "generate_combat_status.hpp"
 #include "summon.hpp"
 #include "../../definition.hpp"
@@ -51,15 +52,17 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t damage_entity_resume_offset = 4 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_observation_offset = 5 + Observed;
+    inline constexpr std::size_t damage_attachment_resume_offset = 5 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_broadcast_offset = 5 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_observation_offset = 6 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_reaction_offset = 6 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_broadcast_offset = 6 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_damage_offset = 7 + 2 * Observed;
+    inline constexpr std::size_t damage_after_reaction_offset = 7 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_end_offset = 8 + 2 * Observed;
+    inline constexpr std::size_t damage_after_damage_offset = 8 + 2 * Observed;
+    template<bool Observed>
+    inline constexpr std::size_t damage_end_offset = 9 + 2 * Observed;
 
     inline damage_node& damage_node_at(frame_stack& stack, std::size_t offset) noexcept
     {
@@ -168,6 +171,7 @@ namespace givm::detail
         case elemental_reaction::quicken:
         case elemental_reaction::burning:
         case elemental_reaction::bloom:
+        case elemental_reaction::frozen:
             add_reaction_damage_bonus(event, 1);
             break;
         default:
@@ -276,6 +280,13 @@ namespace givm::detail
                         { .player = player, .definition = definition }, resume);
                 }
                 if(entry) return context.enter(entry);
+            }
+            else if(event.reaction == elemental_reaction::frozen && table[event.target].state().health != 0)
+            {
+                const auto reapplication_resume = group.instructions + damage_entity_resume_offset<Observed> * sizeof(execute_fn);
+                const auto replacement_resume = group.instructions + damage_attachment_resume_offset<Observed> * sizeof(execute_fn);
+                return prepare_attachment_application(library, table, context, random,
+                    { .target = event.target, .definition = library.frozen_id() }, reapplication_resume, replacement_resume);
             }
         }
         return std::nullopt;
@@ -531,6 +542,8 @@ namespace givm::detail
         const auto characters = player.template characters<false>();
         GIVM_ASSERT(player.state().active_character.has_value());
         const auto current = *player.state().active_character;
+        if(library.is_control_immune(std::as_const(table)[current]))
+            return continue_damage_completion<Inputs, Observed>(library, table, context, random);
         auto index = current.index;
         for(std::size_t remaining = characters.size(); remaining != 0; --remaining)
         {
@@ -669,6 +682,7 @@ namespace givm::detail
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_effect<Observed>> });
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_health_observation<Inputs> });
         writer.write(execute_fn{ resume_damage_entity_generation<Inputs, Observed> });
+        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_attachment_replacement> });
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_overloaded_observation<Inputs> });
         writer.write(execute_fn{ continue_damage_overloaded_switch<Inputs, Observed> });
         writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_reaction<Observed>> });

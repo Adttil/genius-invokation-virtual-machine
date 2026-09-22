@@ -41,6 +41,8 @@ void switch_active_character(
 
 ## 注意
 
+主动切换不受 `control` 或 `control_immunity` 附属限制；免控保护阻止的是 [`set_active_character`](../../../definition/commands/set_active_character.md) 和超载等非主动效果切人。
+
 同一行动窗口内，每个候选只允许计算一次费用。带定义库与牌桌的重载只可用于尚未报价的候选；已报价的候选必须使用采用已计算费用的重载。调用方自行保证，库不进行运行期检查。
 
 只接收 `target_index` 和 `paid_dice` 的重载采用已计算费用。调用方须先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 为该候选完整报价，并自行保证该报价可用；本操作不重新计算费用。

@@ -15,6 +15,7 @@ class execution_view<execution_state::action_selection>;
 
 | | |
 | --- | --- |
+| [`is_controlled`](action_selection/is_controlled.md) | 检查当前出战角色是否受控。 |
 | [`skill_count`](action_selection/skill_count.md) | 取得当前技能候选数量。 |
 | [`skill_id`](action_selection/skill_id.md) | 按技能候选索引取得技能 ID。 |
 | [`skill_cost`](action_selection/skill_cost.md) | 取得指定技能的当前使用费用。 |

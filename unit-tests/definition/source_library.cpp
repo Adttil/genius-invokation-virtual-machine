@@ -272,7 +272,8 @@ TEST_CASE("reaction bindings use the supplied definitions and survive library co
     const plain_source<givm::combat_status_view> core{ .source_name = "Z custom core" };
     const plain_source<givm::combat_status_view> field{ .source_name = "A custom field" };
     const plain_source<givm::summon_view> flame{ .source_name = "Custom flame" };
-    const givm::definition_source_library original{ core, field, flame };
+    const plain_source<givm::attachment_view> frozen{ .source_name = "Custom frozen" };
+    const givm::definition_source_library original{ core, field, flame, frozen };
     auto copied_sources = original;
     auto moved_sources = std::move(copied_sources);
     auto assigned_sources = givm_test::make_source_library();
@@ -292,9 +293,11 @@ TEST_CASE("reaction bindings use the supplied definitions and survive library co
             CHECK(compiled.dendro_core_id() == ids.get_id<givm::combat_status_view>(core.name()));
             CHECK(compiled.catalyzing_field_id() == ids.get_id<givm::combat_status_view>(field.name()));
             CHECK(compiled.burning_flame_id() == ids.get_id<givm::summon_view>(flame.name()));
+            CHECK(compiled.frozen_id() == ids.get_id<givm::attachment_view>(frozen.name()));
             CHECK(bool(compiled.name(compiled.dendro_core_id()) == core.name()));
             CHECK(bool(compiled.name(compiled.catalyzing_field_id()) == field.name()));
             CHECK(bool(compiled.name(compiled.burning_flame_id()) == flame.name()));
+            CHECK(bool(compiled.name(compiled.frozen_id()) == frozen.name()));
         };
         check(library);
         auto copied = library;
@@ -316,8 +319,8 @@ TEST_CASE("partial compilation keeps reaction dependencies and excludes unrelate
     const plain_source<givm::support_view> support{ .source_name = "Reaction support" };
     const plain_source<givm::card_definition> unused{ .source_name = "Unused card" };
 
-    CHECK_THROWS_AS((givm::definition_source_library{ core, field, flame }), std::invalid_argument);
-    const givm::definition_source_library sources{ core, field, flame, support, unused };
+    CHECK_THROWS_AS((givm::definition_source_library{ core, field, flame, givm_test::frozen }), std::invalid_argument);
+    const givm::definition_source_library sources{ core, field, flame, givm_test::frozen, support, unused };
     const auto prepared = sources.make_issued_id_map(givm::definition_selection{});
     const auto [library, ids] = compile(sources, givm::definition_selection{},
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
@@ -338,13 +341,17 @@ TEST_CASE("merging reaction versions preserves the receiving library bindings", 
     const plain_source<givm::combat_status_view> new_field{ .source_name = "Field-2" };
     const plain_source<givm::summon_view> flame{ .source_name = "Flame" };
     const plain_source<givm::card_definition> card{ .source_name = "Extension card" };
-    givm::definition_source_library base{ core, old_field, flame };
-    const givm::definition_source_library extension{ core, new_field, flame, card };
+    const plain_source<givm::attachment_view> old_frozen{ .source_name = "Frozen-1" };
+    const plain_source<givm::attachment_view> new_frozen{ .source_name = "Frozen-2" };
+    givm::definition_source_library base{ core, old_field, flame, old_frozen };
+    const givm::definition_source_library extension{ core, new_field, flame, new_frozen, card };
     REQUIRE(base.add(extension));
 
     const auto [library, ids] = compile(base, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     CHECK(ids.has<givm::combat_status_view>(old_field.name()));
     CHECK(ids.has<givm::combat_status_view>(new_field.name()));
+    CHECK(ids.has<givm::attachment_view>(new_frozen.name()));
+    CHECK(library.frozen_id() == ids.get_id<givm::attachment_view>(old_frozen.name()));
     CHECK(ids.has<givm::card_definition>(card.name()));
     CHECK(library.catalyzing_field_id() == ids.get_id<givm::combat_status_view>(old_field.name()));
     CHECK(library.dendro_core_id() == ids.get_id<givm::combat_status_view>(core.name()));
@@ -355,10 +362,13 @@ TEST_CASE("merging reaction versions preserves the receiving library bindings", 
     CHECK(selected_ids.has<givm::combat_status_view>(old_field.name()));
     CHECK_FALSE(selected_ids.has<givm::combat_status_view>(new_field.name()));
     CHECK_FALSE(selected_ids.has<givm::card_definition>(card.name()));
+    CHECK_FALSE(selected_ids.has<givm::attachment_view>(new_frozen.name()));
+    CHECK(selected.frozen_id() == selected_ids.get_id<givm::attachment_view>(old_frozen.name()));
     CHECK(selected.catalyzing_field_id() == selected_ids.get_id<givm::combat_status_view>(old_field.name()));
 
     const auto [other_library, other_ids] = compile(extension, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     CHECK(other_library.catalyzing_field_id() == other_ids.get_id<givm::combat_status_view>(new_field.name()));
+    CHECK(other_library.frozen_id() == other_ids.get_id<givm::attachment_view>(new_frozen.name()));
 }
 
 TEST_CASE("a shared reaction source can also be an ordinary definition in a merged library", "[source_library][reactions]")
@@ -367,8 +377,8 @@ TEST_CASE("a shared reaction source can also be an ordinary definition in a merg
     const plain_source<givm::combat_status_view> first_field{ .source_name = "First field" };
     const plain_source<givm::combat_status_view> second_field{ .source_name = "Second field" };
     const plain_source<givm::summon_view> flame{ .source_name = "Flame" };
-    const givm::definition_source_library first{ core, first_field, flame };
-    const givm::definition_source_library second{ core, second_field, flame, first_field };
+    const givm::definition_source_library first{ core, first_field, flame, givm_test::frozen };
+    const givm::definition_source_library second{ core, second_field, flame, givm_test::frozen, first_field };
     auto first_receives = first;
     auto second_receives = second;
     REQUIRE(first_receives.add(second));
@@ -387,11 +397,11 @@ TEST_CASE("distinct reaction source objects with the same name remain conflictin
     const plain_source<givm::combat_status_view> different_field{ .source_name = "Field" };
     const plain_source<givm::summon_view> flame{ .source_name = "Flame" };
     const plain_source<givm::card_definition> card{ .source_name = "Unmerged card" };
-    givm::definition_source_library base{ core, field, flame };
-    const givm::definition_source_library extension{ core, different_field, flame, card };
+    givm::definition_source_library base{ core, field, flame, givm_test::frozen };
+    const givm::definition_source_library extension{ core, different_field, flame, givm_test::frozen, card };
 
     CHECK_FALSE(base.add(extension));
     CHECK_FALSE(base.has<givm::card_definition>(card.name()));
-    CHECK_THROWS_AS((givm::definition_source_library{ core, core, flame }), std::invalid_argument);
-    CHECK_THROWS_AS((givm::definition_source_library{ core, field, flame, different_field }), std::invalid_argument);
+    CHECK_THROWS_AS((givm::definition_source_library{ core, core, flame, givm_test::frozen }), std::invalid_argument);
+    CHECK_THROWS_AS((givm::definition_source_library{ core, field, flame, givm_test::frozen, different_field }), std::invalid_argument);
 }

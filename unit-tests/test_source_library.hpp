@@ -31,9 +31,11 @@ namespace givm_test
     inline constexpr reaction_source<givm::combat_status_view> catalyzing_field{ "TestCatalyzingField" };
     inline constexpr reaction_source<givm::summon_view> burning_flame{ "TestBurningFlame" };
 
+    inline constexpr reaction_source<givm::attachment_view> frozen{ "TestFrozen" };
+
     inline givm::definition_source_library make_source_library()
     {
-        return { dendro_core, catalyzing_field, burning_flame };
+        return { dendro_core, catalyzing_field, burning_flame, frozen };
     }
 }
 
