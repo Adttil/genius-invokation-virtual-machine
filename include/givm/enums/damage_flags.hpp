@@ -5,7 +5,7 @@
 
 namespace givm
 {
-    enum class damage_flag_bits : std::uint8_t
+    enum class damage_flag_bits : std::uint16_t
     {
         combat_damage = 1u << 0,
         skill_damage = 1u << 1,
@@ -13,7 +13,9 @@ namespace givm
         ignore_shield = 1u << 3,
         normal_attack = 1u << 4,
         elemental_skill = 1u << 5,
-        elemental_burst = 1u << 6
+        elemental_burst = 1u << 6,
+        charged_attack = 1u << 7,
+        plunging_attack = 1u << 8
     };
 
     class damage_flags
@@ -25,14 +27,14 @@ namespace givm
         : bits_{ value_of(bit) }
         {}
 
-        static constexpr damage_flags from_bits(std::uint8_t bits) noexcept
+        static constexpr damage_flags from_bits(std::uint16_t bits) noexcept
         {
             damage_flags flags;
             flags.bits_ = bits;
             return flags;
         }
 
-        [[nodiscard]] constexpr std::uint8_t value() const noexcept
+        [[nodiscard]] constexpr std::uint16_t value() const noexcept
         {
             return bits_;
         }
@@ -49,7 +51,7 @@ namespace givm
 
         constexpr void reset(damage_flag_bits bit) noexcept
         {
-            bits_ &= static_cast<std::uint8_t>(~value_of(bit));
+            bits_ &= static_cast<std::uint16_t>(~value_of(bit));
         }
 
         friend constexpr damage_flags operator|(damage_flags lhs, damage_flag_bits rhs) noexcept
@@ -64,12 +66,12 @@ namespace givm
         }
 
     private:
-        static constexpr std::uint8_t value_of(damage_flag_bits bit) noexcept
+        static constexpr std::uint16_t value_of(damage_flag_bits bit) noexcept
         {
-            return static_cast<std::uint8_t>(bit);
+            return static_cast<std::uint16_t>(bit);
         }
 
-        std::uint8_t bits_ = 0;
+        std::uint16_t bits_ = 0;
     };
 }
 

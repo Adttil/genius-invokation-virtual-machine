@@ -20,6 +20,8 @@ struct player_state;
 | `support_limit` | `std::uint32_t` | 该玩家当前可容纳的支援数量上限，默认 4 |
 | `summon_limit` | `std::uint32_t` | 该玩家当前可容纳的召唤物数量上限，默认 4 |
 
+| `can_plunge` | `bool` | 下一次战斗行动是否仍可作为下落攻击，默认 false |
+
 两位玩家分别拥有自己的 `summon_limit`。上限只限制新召唤物的创建；若当前上限低于已有召唤物数量，已有召唤物仍然保留。同定义召唤物仍会收到重复召唤请求，详见 [summon](../definition/commands/summon.md)。
 
 两位玩家也分别拥有自己的 `support_limit`。[`add_support`](../definition/commands/add_support.md) 按执行时的有效支援数量判断是否仍有空位；降低上限不会移除已有支援。
@@ -50,3 +52,5 @@ int main()
 已有出战角色: false
 召唤物上限: 4
 ```
+
+成功切换出战角色（包括开局选择）将 `can_plunge` 设为 true。同一出战角色的重复设置不建立新资格。快速行动保留资格；出牌、技能或特技的前置广播完成后，若最终为战斗行动，则在执行原有效果前清除资格，即使该效果被取消也是如此。效果中再次切人会重新建立资格。主动切人建立新资格，供其后的战斗行动使用。

@@ -5,7 +5,7 @@
 定义于头文件 `<givm/enums/damage_flags.hpp>`
 
 ```cpp
-static constexpr damage_flags from_bits(std::uint8_t bits) noexcept;
+static constexpr damage_flags from_bits(std::uint16_t bits) noexcept;
 ```
 
 从保存的位值恢复伤害性质集合。

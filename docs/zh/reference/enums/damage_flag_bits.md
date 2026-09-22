@@ -5,7 +5,7 @@
 定义于头文件 `<givm/enums/damage_flags.hpp>`
 
 ```cpp
-enum class damage_flag_bits : std::uint8_t
+enum class damage_flag_bits : std::uint16_t
 {
     combat_damage = 1u << 0,
     skill_damage = 1u << 1,
@@ -34,6 +34,8 @@ enum class damage_flag_bits : std::uint8_t
 这些标志彼此独立，可以组合；设置技能分类位不会自动设置 `skill_damage`。定义源应按规则明确提供本段伤害需要的全部标志。
 
 普通攻击、元素战技和元素爆发标志描述本段伤害的性质，可在 [`damage_preparation`](../definition/events/damage_preparation.md) 中修改。它们不改变实际使用的技能，也不改写 [`skill_will_be_used`](../definition/events/skill_will_be_used.md) 或 [`skill_used`](../definition/events/skill_used.md) 中的技能身份。
+| `charged_attack` | 重击伤害 |
+| `plunging_attack` | 下落攻击伤害 |
 
 ## 示例
 

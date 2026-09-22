@@ -18,6 +18,7 @@ struct skill_used;
 | `targets` | `const std::array<skill_target_id, 2>` | 本次采用的两个目标位置；只读，未使用的位置忽略 |
 | `speed` | [`const action_speed`](../../enums/action_speed.md) | 行动速度；只读 |
 | `effect_cancelled` | `const bool` | 本次技能效果是否已被取消；只读 |
+| `flags` | `const skill_flags` | 本次行动的技能性质；在支付前报价时已确定，效果与通知沿用同一结果 |
 
 ## 注意
 
@@ -43,3 +44,5 @@ int main()
 ```text
 效果已取消: false
 ```
+
+普通攻击的重击和下落攻击性质在行动候选建立时确定，费用响应可以据此减费。定义通过 `event.flags.to_damage_flags()` 将相应性质显式写入动态伤害输入；不会自动修改其他命令的伤害。

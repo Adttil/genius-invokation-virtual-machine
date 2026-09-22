@@ -525,7 +525,13 @@ namespace givm::detail
         {
             if(is_active_skill(skill))
             {
-                std::construct_at(&skill_costs[skill_index++], cost_of_skill{ .skill = skill.id() });
+                auto flags = library.skill_flags(skill.definition_id());
+                if(flags.contains(skill_flag_bits::normal_attack))
+                {
+                    if(player.state().dice.total() % 2 == 0) flags.set(skill_flag_bits::charged_attack);
+                    if(player.state().can_plunge) flags.set(skill_flag_bits::plunging_attack);
+                }
+                std::construct_at(&skill_costs[skill_index++], cost_of_skill{ .skill = skill.id(), .flags = flags });
             }
         }
 
@@ -814,6 +820,7 @@ namespace givm::detail
         if constexpr(not Observed)
         {
             table[target.player_id].state().active_character = target;
+            table[target.player_id].state().can_plunge = true;
         }
         prepare_broadcast(library, active_character_changed{ .current = target }, table, context.stack(),
             context.position() + (switch_action_broadcast_offset<Observed> - switch_action_offset) * sizeof(execute_fn));
@@ -872,6 +879,7 @@ namespace givm::detail
     {
         const auto& event = get<0>(context.stack().top<active_character_changed, execution_position>());
         table[event.current.player_id].state().active_character = event.current;
+        table[event.current.player_id].state().can_plunge = true;
         context.enter_next();
         return broadcast_switch_action<true>(library, table, context, random);
     }
@@ -974,6 +982,7 @@ namespace givm::detail
         const auto event = get<0>(context.stack().top<
             card_will_be_played, execution_position>());
         pop_broadcast<card_will_be_played>(context);
+        if(event.speed == action_speed::combat) table[event.card.player_id].state().can_plunge = false;
         context.enter_next();
         context.stack().push(context.position());
         if(not event.effect_cancelled)
@@ -1077,7 +1086,7 @@ namespace givm::detail
         const auto& selected = std::get<skill_selection>(selection);
         const auto& cost = costs[selected.skill_cost_index];
         prepare_broadcast(library, skill_will_be_used{
-            .skill = cost.skill, .targets = selected.targets, .speed = cost.requirement.speed
+            .skill = cost.skill, .flags = cost.flags, .targets = selected.targets, .speed = cost.requirement.speed
         }, table, context.stack(), context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
@@ -1104,14 +1113,15 @@ namespace givm::detail
         }
         const auto event = get<0>(context.stack().top<skill_will_be_used, execution_position>());
         pop_broadcast<skill_will_be_used>(context);
+        if(event.speed == action_speed::combat) table[event.skill.character_id.player_id].state().can_plunge = false;
         context.enter_next();
         context.stack().push(skill_used{
-            .skill = event.skill, .targets = event.targets, .speed = event.speed,
+            .skill = event.skill, .flags = event.flags, .targets = event.targets, .speed = event.speed,
             .effect_cancelled = event.effect_cancelled
         }, context.position());
         if(not event.effect_cancelled)
         {
-            skill_effect effect{ .skill = event.skill, .targets = event.targets };
+            skill_effect effect{ .skill = event.skill, .flags = event.flags, .targets = event.targets };
             const auto skill = std::as_const(table)[event.skill];
             auto response = context.make_handle_context(table, random);
             const auto entry = library[skill.definition_id()].handle<skill_effect>(skill, effect, response);
@@ -1195,68 +1205,6 @@ namespace givm::detail
         );
     }
 
-    inline execution_state prepare_technique_use(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
-    )
-    {
-        auto&& [costs, onpay_entries, onpay_offsets, onpay_sizes, skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes, card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
-                switch_handlers, switch_costs, switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes, onpay_cursor, selection, cached_inputs] = context.stack().top<
-            cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
-            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-            stack_count_t, action_selection, substack_t
-        >();
-        const auto& selected = std::get<technique_selection>(selection);
-        const auto& cost = costs[0];
-        prepare_broadcast(library, technique_will_be_used{
-            .technique = cost.technique, .targets = selected.targets, .speed = cost.requirement.speed
-        }, table, context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
-    }
-
-    inline execution_state finish_technique_effect(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
-    )
-    {
-        const auto event = get<0>(context.stack().top<technique_used, execution_position>());
-        context.stack().pop<technique_used, execution_position>();
-        prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
-    }
-
-    inline execution_state broadcast_technique_will_be_used(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<technique_will_be_used>(library, table, context, random))
-        {
-            return continue_execution;
-        }
-        const auto event = get<0>(context.stack().top<technique_will_be_used, execution_position>());
-        pop_broadcast<technique_will_be_used>(context);
-        context.enter_next();
-        context.stack().push(technique_used{
-            .technique = event.technique, .targets = event.targets, .speed = event.speed,
-            .effect_cancelled = event.effect_cancelled
-        }, context.position());
-        if(not event.effect_cancelled)
-        {
-            technique_effect effect{ .technique = event.technique, .targets = event.targets };
-            const auto technique = std::as_const(table)[event.technique];
-            auto response = context.make_handle_context(table, random);
-            const auto entry = library[technique.definition_id()].handle<technique_effect>(technique, effect, response);
-            if(entry)
-            {
-                return context.enter(entry);
-            }
-        }
-        return finish_technique_effect(library, table, context, random);
-    }
-
     template<bool Observed>
     inline execution_state broadcast_technique_used(
         const definition_library& library, unrestricted_table& table,
@@ -1281,6 +1229,74 @@ namespace givm::detail
             return jump_to_action_instruction<technique_used_broadcast_offset<Observed>, before_action_with_switch_offset>(context);
         }
         return jump_to_action_instruction<technique_used_broadcast_offset<Observed>, before_action_offset>(context);
+    }
+
+    template<bool Observed>
+    inline execution_state finish_technique_effect(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        const auto event = get<0>(context.stack().top<technique_used, execution_position>());
+        context.stack().pop<technique_used, execution_position>();
+        prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
+        context.enter_next();
+        return broadcast_technique_used<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
+    inline execution_state broadcast_technique_will_be_used(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        if(not continue_broadcast<technique_will_be_used>(library, table, context, random))
+        {
+            return continue_execution;
+        }
+        const auto event = get<0>(context.stack().top<technique_will_be_used, execution_position>());
+        pop_broadcast<technique_will_be_used>(context);
+        if(event.speed == action_speed::combat) table[event.technique.character_id.player_id].state().can_plunge = false;
+        context.enter_next();
+        context.stack().push(technique_used{
+            .technique = event.technique, .targets = event.targets, .speed = event.speed,
+            .effect_cancelled = event.effect_cancelled
+        }, context.position());
+        if(not event.effect_cancelled)
+        {
+            technique_effect effect{ .technique = event.technique, .targets = event.targets };
+            const auto technique = std::as_const(table)[event.technique];
+            auto response = context.make_handle_context(table, random);
+            const auto entry = library[technique.definition_id()].handle<technique_effect>(technique, effect, response);
+            if(entry)
+            {
+                return context.enter(entry);
+            }
+        }
+        return finish_technique_effect<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
+    inline execution_state prepare_technique_use(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random
+    )
+    {
+        auto&& [costs, onpay_entries, onpay_offsets, onpay_sizes, skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes, card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
+                switch_handlers, switch_costs, switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes, onpay_cursor, selection, cached_inputs] = context.stack().top<
+            cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        const auto& selected = std::get<technique_selection>(selection);
+        const auto& cost = costs[0];
+        prepare_broadcast(library, technique_will_be_used{
+            .technique = cost.technique, .targets = selected.targets, .speed = cost.requirement.speed
+        }, table, context.stack(), context.position() + sizeof(execute_fn));
+        context.enter_next();
+        return broadcast_technique_will_be_used<Observed>(library, table, context, random);
     }
 
     inline execution_state broadcast_elemental_tuning_modification(
@@ -1397,9 +1413,9 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_action_dice_payment<technique_dice_payment_offset<Observed>, prepare_technique_use_offset<Observed>>);
         writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
         writer.write<execute_fn>(&broadcast_action_energy_payment);
-        writer.write<execute_fn>(&prepare_technique_use);
-        writer.write<execute_fn>(&broadcast_technique_will_be_used);
-        writer.write<execute_fn>(&finish_technique_effect);
+        writer.write<execute_fn>(&prepare_technique_use<Observed>);
+        writer.write<execute_fn>(&broadcast_technique_will_be_used<Observed>);
+        writer.write<execute_fn>(&finish_technique_effect<Observed>);
         writer.write<execute_fn>(&broadcast_technique_used<Observed>);
         writer.write<execute_fn>(&broadcast_elemental_tuning_modification);
         writer.write<execute_fn>(&broadcast_elemental_tuning_completed<Observed>);

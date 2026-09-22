@@ -29,6 +29,7 @@ class definition_library;
 | [`operator[]`](definition_library/operator_at.md) | 查看指定定义 |
 | [`name`](definition_library/name.md) | 取得定义名称 |
 | [`tag_name`](definition_library/tag_name.md) | 取得标签名称 |
+| [`skill_flags`](definition_library/skill_flags.md) | 取得技能定义标签对应的固有分类 |
 | [`equipment_type`](definition_library/equipment_type.md) | 取得附着实体定义的装备类别 |
 | [`is_control`](definition_library/is_control.md) | 检查附属定义是否属于控制效果 |
 | [`is_controlled`](definition_library/is_controlled.md) | 检查角色是否处于控制状态 |

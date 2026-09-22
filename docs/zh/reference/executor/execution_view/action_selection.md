@@ -71,3 +71,9 @@ class execution_view<execution_state::action_selection>;
 | [`executor::view_in`](../executor/view_in.md) | 取得对应执行现场的视图 |
 
 特技是 `equipment_type::technique` 装备附件，至多一个，接口无需候选索引。它与技能独立，费用和目标查询由附件定义提供；受控时技能和特技都不能使用。
+
+## 普通攻击的特殊性质
+
+技能定义带 `normal_attack` 标签时，建立行动候选会按支付前的骰子总数判定重击：偶数（包括零）具有 `charged_attack`。若该玩家仍有 `can_plunge` 资格，同时具有 `plunging_attack`。两者可以共存，均出现在 `cost_of_skill::flags` 中，因此报价可先按重击减费，再支付折扣后的费用。支付不会重新判定这些性质。
+
+只有行动选择中的普通攻击候选自动获得这些性质；特技、手牌以及其他效果产生的伤害不会因骰子数量自动获得重击性质。定义需要将技能效果事件的 flags 显式转换并填写进其伤害。

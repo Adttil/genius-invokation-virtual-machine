@@ -34,12 +34,13 @@ namespace givm::detail
     {
         const auto& event = get<0>(context.stack().top<active_character_changed, execution_position>());
         table[event.current.player_id].state().active_character = event.current;
+        table[event.current.player_id].state().can_plunge = true;
         context.enter_next();
         return broadcast_active_character_change(library, table, context, random);
     }
 
     template<bool Observed>
-    execution_state prepare_active_character_change(
+    inline execution_state prepare_active_character_change(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
@@ -62,6 +63,7 @@ namespace givm::detail
                 return context.yield(execution_state::active_character_changed);
             }
         }
+        if(state.active_character != command.target) state.can_plunge = true;
         state.active_character = command.target;
         prepare_broadcast(library, event, table, context.stack(),
             context.position() + instruction_extent<1, givm::set_active_character>
@@ -74,7 +76,7 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    execution_state prepare_active_character_change_from_input(
+    inline execution_state prepare_active_character_change_from_input(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
@@ -94,6 +96,7 @@ namespace givm::detail
                 return context.yield(execution_state::active_character_changed);
             }
         }
+        if(state.active_character != event.current) state.can_plunge = true;
         state.active_character = event.current;
         prepare_broadcast(library, event, table, context.stack(),
             context.position() + (Observed ? 2 : 1) * sizeof(execute_fn));

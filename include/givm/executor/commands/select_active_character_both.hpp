@@ -64,6 +64,8 @@ namespace givm::detail
         GIVM_ASSERT(static_cast<bool>(table[player1]));
         table[player_id{ 0 }].state().active_character = player0;
         table[player_id{ 1 }].state().active_character = player1;
+        table[player_id{ 0 }].state().can_plunge = true;
+        table[player_id{ 1 }].state().can_plunge = true;
 
         if constexpr(Observed)
         {

@@ -170,7 +170,7 @@ namespace givm
     public:
         definition_library(const definition_library& other)
         : program_{ other.program_ }, tag_names_{ other.tag_names_ },
-          equipment_tags_{ other.equipment_tags_ }, control_tag_{ other.control_tag_ },
+          equipment_tags_{ other.equipment_tags_ }, skill_tags_{ other.skill_tags_ }, control_tag_{ other.control_tag_ },
           control_immunity_tag_{ other.control_immunity_tag_ }, dendro_core_id_{ other.dendro_core_id_ },
           catalyzing_field_id_{ other.catalyzing_field_id_ }, burning_flame_id_{ other.burning_flame_id_ },
           frozen_id_{ other.frozen_id_ }, buckets_{ other.buckets_ }
@@ -361,6 +361,16 @@ namespace givm
             return givm::equipment_type::none;
         }
 
+        givm::skill_flags skill_flags(definition_id<skill_view> id) const noexcept
+        {
+            givm::skill_flags result;
+            constexpr std::array bits{ skill_flag_bits::normal_attack, skill_flag_bits::elemental_skill,
+                                       skill_flag_bits::elemental_burst };
+            for(size_t index = 0; index != skill_tags_.size(); ++index)
+                if(skill_tags_[index] && has_tag(id, skill_tags_[index])) result.set(bits[index]);
+            return result;
+        }
+
         bool is_control(definition_id<attachment_view> id) const noexcept
         {
             return control_tag_ && has_tag(id, control_tag_);
@@ -525,6 +535,9 @@ namespace givm
                     equipment_tags_[index] = id_map.get_tag_id(equipment_tag_names[index]);
                 }
             }
+            constexpr std::array<std::string_view, 3> skill_tag_names{ "normal_attack", "elemental_skill", "elemental_burst" };
+            for(size_t index = 0; index != skill_tags_.size(); ++index)
+                if(id_map.has_tag(skill_tag_names[index])) skill_tags_[index] = id_map.get_tag_id(skill_tag_names[index]);
             if(id_map.has_tag("control")) control_tag_ = id_map.get_tag_id("control");
             if(id_map.has_tag("control_immunity")) control_immunity_tag_ = id_map.get_tag_id("control_immunity");
         }
@@ -718,6 +731,7 @@ namespace givm
         detail::program_bytes program_;
         std::vector<std::string_view> tag_names_;
         std::array<tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
+        std::array<tag_id, 3> skill_tags_{};
         tag_id control_tag_{};
         tag_id control_immunity_tag_{};
         definition_id<combat_status_view> dendro_core_id_;

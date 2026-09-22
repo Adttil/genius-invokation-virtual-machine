@@ -11,6 +11,7 @@
 #include "../table.hpp"
 #include "../enums/action_speed.hpp"
 #include "../enums/damage_flags.hpp"
+#include "../enums/skill_flags.hpp"
 #include "../enums/damage_type.hpp"
 #include "../enums/element.hpp"
 #include "../enums/element_application_cause.hpp"
@@ -124,6 +125,7 @@ namespace givm
     struct calculating_skill_payment
     {
         const skill_id skill;
+        const skill_flags flags{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(calculating_skill_payment);
     };
 
@@ -150,6 +152,7 @@ namespace givm
     struct cost_of_skill
     {
         const skill_id skill;
+        const skill_flags flags{};
         action_cost_requirement requirement;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_skill);
     };
@@ -251,6 +254,7 @@ namespace givm
     struct skill_effect
     {
         const skill_id skill;
+        const skill_flags flags{};
         const std::array<skill_target_id, 2> targets;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(skill_effect);
     };
@@ -258,6 +262,7 @@ namespace givm
     struct skill_will_be_used
     {
         const skill_id skill;
+        const skill_flags flags{};
         const std::array<skill_target_id, 2> targets;
         action_speed speed;
         bool effect_cancelled = false;
@@ -267,6 +272,7 @@ namespace givm
     struct skill_used
     {
         const skill_id skill;
+        const skill_flags flags{};
         const std::array<skill_target_id, 2> targets;
         const action_speed speed;
         const bool effect_cancelled;

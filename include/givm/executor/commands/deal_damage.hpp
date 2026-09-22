@@ -539,6 +539,7 @@ namespace givm::detail
         const auto position = get<1>(frame);
         context.stack().pop<active_character_changed, execution_position>();
         table[event.current.player_id].state().active_character = event.current;
+        table[event.current.player_id].state().can_plunge = true;
         prepare_broadcast(library, event, table, context.stack(), position);
         return continue_damage_overloaded_switch<Inputs, true>(library, table, context, random);
     }
@@ -578,6 +579,7 @@ namespace givm::detail
             else
             {
                 player.state().active_character = event.current;
+                player.state().can_plunge = true;
                 prepare_broadcast(library, event, table, context.stack(), position);
                 return continue_damage_overloaded_switch<Inputs, Observed>(library, table, context, random);
             }

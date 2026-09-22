@@ -29,6 +29,7 @@ namespace givm
         std::uint32_t hand_limit = 10;
         std::uint32_t summon_limit = 4;
         std::uint32_t support_limit = 4;
+        bool can_plunge = false;
     };
 }
 

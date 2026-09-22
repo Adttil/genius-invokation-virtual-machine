@@ -5,7 +5,7 @@
 定义于头文件 `<givm/enums/damage_flags.hpp>`
 
 ```cpp
-[[nodiscard]] constexpr std::uint8_t value() const noexcept;
+[[nodiscard]] constexpr std::uint16_t value() const noexcept;
 ```
 
 取得便于保存或传递的伤害性质位值。
