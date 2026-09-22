@@ -59,6 +59,16 @@ namespace givm
         relative_player player = relative_player::current;
     };
 
+    struct discard_hand_card
+    {
+        hand_card_id card{ {}, std::numeric_limits<size_t>::max() };
+    };
+
+    struct discard_deck_card
+    {
+        deck_card_id card{ {}, std::numeric_limits<size_t>::max() };
+    };
+
     struct add_support
     {
         relative_player player = relative_player::current;
@@ -263,6 +273,8 @@ namespace givm::detail
         set_active_character,
         select_active_character_both,
         draw_cards,
+        discard_hand_card,
+        discard_deck_card,
         add_support,
         set_support_state,
         modify_support_state,
@@ -316,6 +328,16 @@ namespace givm::detail
 
     constexpr size_t input_size(const select_active_character_both&) noexcept { return 0; }
     constexpr size_t input_size(const draw_cards&) noexcept { return 0; }
+
+    constexpr size_t input_size(const discard_hand_card& command) noexcept
+    {
+        return command.card.index == std::numeric_limits<size_t>::max() ? sizeof(hand_card_discarded) : 0;
+    }
+
+    constexpr size_t input_size(const discard_deck_card& command) noexcept
+    {
+        return command.card.index == std::numeric_limits<size_t>::max() ? sizeof(deck_card_discarded) : 0;
+    }
 
     constexpr size_t input_size(const add_support& command) noexcept
     {

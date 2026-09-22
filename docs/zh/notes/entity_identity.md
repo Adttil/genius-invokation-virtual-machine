@@ -35,7 +35,7 @@ card status 数据存放在 table 级 `status_slots` 池中，牌只保存链首
 
 ## 区域与 View
 
-对应公开类型为 [hand_card_view](../reference/table/hand_card_view.md)、[deck_card_view](../reference/table/deck_card_view.md)、[hand_card_id](../reference/table/hand_card_id.md)、[deck_card_id](../reference/table/deck_card_id.md) 及 [card_id](../reference/definition/events/card_id.md)。
+对应公开类型为 [hand_card_view](../reference/table/hand_card_view.md)、[deck_card_view](../reference/table/deck_card_view.md)、[hand_card_id](../reference/table/hand_card_id.md) 及 [deck_card_id](../reference/table/deck_card_id.md)。
 
 虽然 `card_data` 同构，但两个区域必须使用不同的 view：
 
@@ -55,7 +55,7 @@ ID 用于保存实体身份，view 用于访问实体。新增或删除后继续
 
 两种实体仍指向相同结构的 `card_data`，其 `definition_id()` 返回同一种 `definition_id<card_definition>`。这里共享的是定义 ID 类型，不是实体 ID 类型。
 
-公共类型 `card_id` 是 `std::variant<hand_card_id, deck_card_id>`，供同步 event 描述广播当下的牌实体身份；实体离场后，同一个值可以作为历史 ID 随通知传递。若规则语义本身是“牌堆顶第 N 张”“某种定义的牌”等动态目标，后续固定程序仍应按位置、definition ID 或 tag ID 重新搜索。名称依赖在编译前声明、编译时解析，不要求对局运行期按名称查找。
+通知按区域使用强类型 ID，例如 `hand_card_discarded::card` 与 `deck_card_discarded::card`；实体离场后，同一个值可以作为历史 ID 随通知传递，不需要统一的卡牌 ID variant。若规则语义本身是“牌堆顶第 N 张”“某种定义的牌”等动态目标，后续固定程序仍应按位置、definition ID 或 tag ID 重新搜索。名称依赖在编译前声明、编译时解析，不要求对局运行期按名称查找。
 
 ## 同一张牌的转移
 

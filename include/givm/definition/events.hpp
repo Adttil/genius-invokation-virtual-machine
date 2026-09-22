@@ -167,12 +167,16 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_drawn);
     };
 
-    using card_id = std::variant<hand_card_id, deck_card_id>;
-
-    struct card_discarded
+    struct hand_card_discarded
     {
-        const card_id card;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_discarded);
+        const hand_card_id card;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(hand_card_discarded);
+    };
+
+    struct deck_card_discarded
+    {
+        const deck_card_id card;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(deck_card_discarded);
     };
 
     struct card_candidate_chosen

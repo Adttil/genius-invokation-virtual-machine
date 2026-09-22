@@ -20,6 +20,8 @@
 | [`set_active_character`](commands/set_active_character.md) | 按固定目标或响应输入设置出战角色 |
 | [`select_active_character_both`](commands/select_active_character_both.md) | 双方开局出战角色的选择命令 |
 | [`draw_cards`](commands/draw_cards.md) | 抽牌命令 |
+| [`discard_hand_card`](commands/discard_hand_card.md) | 舍弃手牌，先处理自身效果再全场通知 |
+| [`discard_deck_card`](commands/discard_deck_card.md) | 从牌堆舍弃牌，先处理自身效果再全场通知 |
 | [`replace_cards`](commands/replace_cards.md) | 单方换牌命令 |
 | [`replace_cards_both`](commands/replace_cards_both.md) | 双方开局换牌命令 |
 

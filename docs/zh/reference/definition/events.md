@@ -59,7 +59,8 @@
 | --- | --- |
 | [`hand_card_created`](events/hand_card_created.md) | 新手牌创建后的通知 |
 | [`card_drawn`](events/card_drawn.md) | 一张牌抽取完成后的通知 |
-| [`card_discarded`](events/card_discarded.md) | 手牌或牌堆中的牌被弃置后的通知 |
+| [`hand_card_discarded`](events/hand_card_discarded.md) | 手牌被舍弃时的自身通知及全场通知 |
+| [`deck_card_discarded`](events/deck_card_discarded.md) | 牌堆牌被舍弃时的自身通知及全场通知 |
 | [`card_candidate_chosen`](events/card_candidate_chosen.md) | 候选牌定义选定后的通知 |
 | [`elemental_tuning_modification`](events/elemental_tuning_modification.md) | 修饰元素调和的转换结果 |
 | [`elemental_tuning_completed`](events/elemental_tuning_completed.md) | 元素调和完成后的通知 |
@@ -128,7 +129,6 @@
 
 | | |
 | --- | --- |
-| [`card_id`](events/card_id.md) | 手牌或牌堆中的牌标识 |
 | [`skill_target_id`](events/skill_target_id.md) | 技能效果的目标标识 |
 | [`card_target_id`](events/card_target_id.md) | 卡牌效果的目标标识 |
 | [`damage_source_id`](events/damage_source_id.md) | 伤害的来源标识 |

@@ -123,7 +123,8 @@ namespace
         template<class TEvent>
             requires(std::same_as<TEvent, givm::dice_added> || std::same_as<TEvent, givm::dice_removed>
                 || std::same_as<TEvent, givm::dice_converted> || std::same_as<TEvent, givm::card_played>
-                || std::same_as<TEvent, givm::card_discarded>)
+                || std::same_as<TEvent, givm::hand_card_discarded>
+                || std::same_as<TEvent, givm::deck_card_discarded>)
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             TEvent&, givm::handle_context&)
         {
