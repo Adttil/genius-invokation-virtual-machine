@@ -117,7 +117,8 @@ namespace
         std::string_view name() const { return "PausingField"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::set_combat_status_state{}, givm::start_round{} }) };
+            return { log, context.add_program(std::tuple{ givm::set_combat_status_state{},
+                givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
         static givm::combat_status_state query(const definition_type&, const givm::combat_status_state_limit&)
         {
@@ -485,7 +486,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         CHECK(std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses()) == (target == first ? 0 : 1));
         CHECK(log.values.empty());
     }
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::round_started);
+    REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
     CHECK(log.repeated == 1);
     CHECK(log.values.empty());
     REQUIRE(std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses()) == 1);
@@ -493,6 +494,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     CHECK(table[second].state().health == 28);
     auto copied_executor = executor;
     auto copied_table = table;
+    executor.view_in<givm::execution_state::card_selection>().select({});
     REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().target() == first);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 1);
@@ -504,6 +506,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     CHECK(log.repeated == 1);
     log.values.clear();
     log.statuses_at_completion.clear();
+    copied_executor.view_in<givm::execution_state::card_selection>().select({});
     REQUIRE(copied_executor.step(library, copied_table, random) == givm::execution_state::health_reduced);
     CHECK(copied_executor.view_in<givm::execution_state::health_reduced>().target() == first);
     CHECK(copied_executor.view_in<givm::execution_state::health_reduced>().value() == 1);
@@ -513,7 +516,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     CHECK(log.values == std::vector<std::uint32_t>{ 2, 2, 1 });
     CHECK(log.statuses_at_completion == std::vector<std::size_t>{ 1, 1, 1 });
     CHECK(log.repeated == 1);
-    CHECK(table.state().round_number == 1);
-    CHECK(copied_table.state().round_number == 1);
+    CHECK(table.state().round_number == 0);
+    CHECK(copied_table.state().round_number == 0);
     CHECK((*copied_table[givm::player_id{ 0 }].combat_statuses().begin()).state().count == 2);
 }

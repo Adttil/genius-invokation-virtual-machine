@@ -52,8 +52,8 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } }, givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } }, givm::begin_action{}, givm::end_round{} },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{}, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 0 } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },

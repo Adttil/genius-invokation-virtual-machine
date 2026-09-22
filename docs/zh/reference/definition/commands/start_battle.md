@@ -76,9 +76,12 @@ int main()
     sources.add(character);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::start_round{}, givm::start_battle{} },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{},
+        std::tuple{
+            givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } },
+            givm::start_round{}, givm::start_battle{}
+        }, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 2 } };
     load_deck(table, library, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("character") }
     }, {});

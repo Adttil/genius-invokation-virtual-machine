@@ -383,19 +383,17 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     }
 }
 
-TEST_CASE("a round starts before its limit check and dice reset", "[start_round][execution-view]")
+TEST_CASE("automatic round advancement is observed before its limit check and dice reset", "[round][execution-view]")
 {
     const bool observed = GENERATE(false, true);
     const bool exceeds_limit = GENERATE(false, true);
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
-            givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } },
-            givm::start_round{ .max_rounds = exceeds_limit ? 0u : 1u },
-            givm::end_game{ .result = givm::game_result::player_0_win }
-        }, std::tuple{}
+            givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } }
+        }, std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } }
     );
-    givm::table table;
+    givm::table table{ givm::game_parameters{ .max_rounds = exceeds_limit ? 0u : 1u } };
     givm::executor target;
     target.enter_entry(library);
     zero_random random;

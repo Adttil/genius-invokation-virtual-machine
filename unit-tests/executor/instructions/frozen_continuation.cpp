@@ -22,7 +22,7 @@ namespace
         auto tags() const { return std::array{ std::string_view{ "control" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { applications, context.add_program(std::tuple{ givm::start_round{} }) };
+            return { applications, context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
         static givm::attachment_state query(const definition_type&, const givm::attachment_state_limit&)
         {
@@ -72,15 +72,16 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 2);
     CHECK(applications == 0);
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::round_started);
+    REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
     CHECK(applications == 1);
     CHECK(table[target].state().health == 18);
-    CHECK(table.state().round_number == 1);
+    CHECK(table.state().round_number == 0);
     CHECK(library.is_controlled(table[target]));
     auto copied_executor = executor;
     auto copied_table = table;
     const auto finish = [&](givm::executor& running, givm::table& current)
     {
+        running.view_in<givm::execution_state::card_selection>().select({});
         REQUIRE(running.step(library, current, random) == givm::execution_state::health_reduced);
         const auto next = running.view_in<givm::execution_state::health_reduced>();
         CHECK(next.target() == target);
@@ -88,7 +89,7 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
         CHECK(next.reaction() == givm::elemental_reaction::none);
         REQUIRE(running.step(library, current, random) == givm::execution_state::finished);
         CHECK(current[target].state().health == 17);
-        CHECK(current.state().round_number == 1);
+        CHECK(current.state().round_number == 0);
         CHECK(library.is_controlled(current[target]));
         REQUIRE(std::ranges::distance(current[target].attachments()) == 1);
         CHECK((*current[target].attachments().begin()).definition_id() == library.frozen_id());

@@ -30,6 +30,7 @@ namespace givm
         struct card_will_be_played,
         struct card_played,
         struct active_character_changed,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed
@@ -56,6 +57,7 @@ namespace givm
         struct card_will_be_played,
         struct card_played,
         struct active_character_changed,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
@@ -76,6 +78,7 @@ namespace givm
         struct card_discarded,
         struct card_played,
         struct active_character_changed,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed
@@ -95,6 +98,7 @@ namespace givm
         struct card_discarded,
         struct card_played,
         struct active_character_changed,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed
@@ -144,9 +148,11 @@ namespace givm
         struct after_elemental_reaction,
         struct character_will_be_defeated,
         struct character_defeated,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
-        struct attachment_removed
+        struct attachment_removed,
+        struct support_state_changed
     >{};
 
     template<>
@@ -193,6 +199,7 @@ namespace givm
         struct after_elemental_reaction,
         struct character_will_be_defeated,
         struct character_defeated,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
@@ -244,6 +251,7 @@ namespace givm
         struct after_elemental_reaction,
         struct character_will_be_defeated,
         struct character_defeated,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
@@ -298,6 +306,7 @@ namespace givm
         struct after_elemental_reaction,
         struct character_will_be_defeated,
         struct character_defeated,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
@@ -348,6 +357,7 @@ namespace givm
         struct after_elemental_reaction,
         struct character_will_be_defeated,
         struct character_defeated,
+        struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,

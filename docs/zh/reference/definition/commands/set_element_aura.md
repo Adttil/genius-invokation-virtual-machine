@@ -57,8 +57,8 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::set_element_aura{ .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .aura = givm::element_aura::hydro } },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{}, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 0 } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },

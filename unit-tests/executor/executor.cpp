@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <tuple>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -17,22 +18,26 @@ namespace
 
 TEST_CASE("executor repeats the round program and reports round boundaries", "[executor]")
 {
+    const bool observed = GENERATE(false, true);
+    const bool empty_round = GENERATE(false, true);
     auto sources = givm_test::make_source_library();
     const auto [library, ids] = compile(sources,
-        std::tuple{ givm::start_round{ .max_rounds = 2 } },
-        std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::observed
+        std::tuple{}, empty_round ? std::vector<givm::any_command>{}
+            : std::vector<givm::any_command>{ givm::start_round{} },
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
-    givm::table table;
+    givm::table table{ givm::game_parameters{ .max_rounds = 2 } };
     givm::executor target;
     target.enter_entry(library);
     zero_random random;
 
-    for(std::uint32_t round = 1; round <= 3; ++round)
+    if(observed) for(std::uint32_t round = 1; round <= 3; ++round)
     {
         REQUIRE(target.step(library, table, random) == givm::execution_state::round_started);
         CHECK(table.state().round_number == round);
     }
     REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
+    CHECK(table.state().round_number == 3);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }
 

@@ -8,21 +8,15 @@
 struct start_round;
 ```
 
-新回合的开始命令，负责回合数更新、双方元素骰的清空和回合开始效果。超过回合上限时，结束对局并判定双方失败。
+发送新回合开始的规则通知，供冻结解除、支援返还资源等回合开始效果响应。
 
-## 成员对象
+## 结算
 
-| 名称 | 类型 | 说明 |
-| --- | --- | --- |
-| `max_rounds` | `std::uint32_t` | 允许进行的最大回合数，初始为 14 |
+本命令广播 [`round_started`](../events/round_started.md)，各响应及其返回程序完整结算后继续下一条命令。命令没有参数；不更新回合数、不清空骰子，也不自行处理投骰。
 
-## 注意
+[根回合流程](../../executor/compile.md) 每次开始时自动增加回合数、检查 [`game_parameters::max_rounds`](../../table/game_parameters.md) 并清空旧骰子。调用方在回合命令序列中依次安排 [`start_dice_roll_phase`](start_dice_roll_phase.md)、`start_round{}`，即可让规则通知在双方投骰及全部重投后发生。冻结到本通知时才解除，投骰阶段仍保留。
 
-先增加回合数，再判断是否超过上限；超过时以双方失败结束，不清空骰子，也不广播回合开始事件。因此因回合数超限而结束时，牌桌回合数为 `max_rounds + 1`。
-
-未超过上限时，先清空双方骰子，再广播 [`round_started`](../events/round_started.md)，完整处理其响应及返回程序。冻结在此规则通知中解除；掷骰子由独立的 [`start_dice_roll_phase`](start_dice_roll_phase.md) 安排。
-
-以 [`compile_mode::observed`](../../executor/compile_mode.md) 编译时，增加回合数后先返回 `execution_state::round_started`，随后推进才判断上限、清空骰子和处理同名规则事件。因此观察到回合开始时，冻结尚未因该规则事件解除。
+观察模式的 `execution_state::round_started` 由根回合推进产生，位于回合数增加之后、上限检查之前。本命令只发送规则通知，不额外返回同名观察现场。
 
 ## 示例
 
@@ -44,8 +38,12 @@ int main()
     };
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{},
+        std::tuple{
+            givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } },
+            givm::start_round{}
+        }, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 2 } };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);

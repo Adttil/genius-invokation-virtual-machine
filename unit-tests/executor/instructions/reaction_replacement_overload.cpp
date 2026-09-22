@@ -62,7 +62,7 @@ namespace
             return { log, first, context.resolve_tag(tags()[0]),
                 context.add_program(std::tuple{ givm::set_active_character{} }),
                 context.add_program(std::tuple{ givm::deal_damage{} }),
-                context.add_program(std::tuple{ givm::start_round{} }) };
+                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
             givm::elemental_reaction_will_occur& event, givm::handle_context&)
@@ -347,7 +347,7 @@ TEST_CASE("copied overload switch responses resume before group completion exact
     for(;;)
     {
         const auto state = executor.step(library, table, random);
-        if(state == givm::execution_state::round_started) break;
+        if(state == givm::execution_state::card_selection) break;
         REQUIRE((state == givm::execution_state::health_reduced || state == givm::execution_state::active_character_changed));
     }
     CHECK(log.switches == std::vector<std::size_t>{ 1 });
@@ -355,16 +355,18 @@ TEST_CASE("copied overload switch responses resume before group completion exact
     CHECK(table[givm::player_id{ 1 }].state().active_character == target(1));
     auto copy = executor;
     auto copy_table = table;
+    executor.view_in<givm::execution_state::card_selection>().select({});
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 3 });
     CHECK(log.active_at_completion == std::vector<std::size_t>{ 1 });
     log.values.clear();
     log.active_at_completion.clear();
+    copy.view_in<givm::execution_state::card_selection>().select({});
     REQUIRE(copy.step(library, copy_table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 3 });
     CHECK(log.active_at_completion == std::vector<std::size_t>{ 1 });
     CHECK(log.switches == std::vector<std::size_t>{ 1 });
-    CHECK(copy_table.state().round_number == 1);
+    CHECK(copy_table.state().round_number == 0);
 }
 
 TEST_CASE("overload from element application respects missing alternatives and game termination", "[overload][apply_element]")

@@ -50,4 +50,6 @@ void play_card(
 
 本操作不推进执行器，也不修改牌桌。下一次 [`step`](../../executor/step.md) 先让牌离开手牌，再执行确认的费用效果、扣除骰子与充能，依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../../../definition/events/card_will_be_played.md)。若未被反制，则执行该牌的 [`card_effect`](../../../definition/events/card_effect.md)；之后均广播 [`card_played`](../../../definition/events/card_played.md)。反制只取消牌的原效果，不退还支付，也不撤销牌离手。
 
+支援牌的替换目标由卡牌定义通过现有目标检查与效果表达：支援区已满时要求选择一个己方有效 `support_id`，效果先 [`remove_support`](../../../definition/commands/remove_support.md) 再 [`add_support`](../../../definition/commands/add_support.md)。行动视图不自动选择或移除支援；旧支援的离场响应完整结束后，添加命令重新依据当时容量决定是否生效。
+
 这次行动沿用报价确定的行动速度：快速行动保留行动权，战斗行动按行动阶段规则交接。整个流程由 [`begin_action`](../../../definition/commands/begin_action.md) 处理。

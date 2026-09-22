@@ -27,7 +27,7 @@
 
 | | |
 | --- | --- |
-| [`start_round`](commands/start_round.md) | 新回合的开始命令 |
+| [`start_round`](commands/start_round.md) | 投骰后显式发送回合开始规则通知 |
 | [`start_dice_roll_phase`](commands/start_dice_roll_phase.md) | 双方投骰阶段的处理命令 |
 | [`start_battle`](commands/start_battle.md) | 首回合战斗开始的通知命令 |
 | [`begin_action`](commands/begin_action.md) | 行动阶段的处理命令 |
@@ -42,10 +42,14 @@
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
 | [`set_element_aura`](commands/set_element_aura.md) | 直接设置元素附着的命令 |
 
-## 召唤物、状态与装备
+## 支援、召唤物、状态与装备
 
 | | |
 | --- | --- |
+| [`add_support`](commands/add_support.md) | 向支援区添加独立实体，满区时无效 |
+| [`set_support_state`](commands/set_support_state.md) | 设置支援的完整状态 |
+| [`modify_support_state`](commands/modify_support_state.md) | 按增量修改支援的层数和次数 |
+| [`remove_support`](commands/remove_support.md) | 移除支援并通知离场 |
 | [`summon`](commands/summon.md) | 召唤指定实体，由已有同类实体处理重复请求 |
 | [`add_summon`](commands/add_summon.md) | 直接添加独立召唤物 |
 | [`set_summon_state`](commands/set_summon_state.md) | 设置召唤物的完整状态 |

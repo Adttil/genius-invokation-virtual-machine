@@ -34,6 +34,7 @@ namespace
         std::vector<bool> controlled_at_end_phase;
         std::vector<bool> controlled_at_checkpoint;
         std::size_t rounds_started = 0;
+        std::vector<std::array<std::uint32_t, 2>> dice_at_round_start;
         std::size_t frozen_removed = 0;
     };
 
@@ -63,11 +64,13 @@ namespace
             control_log* log;
             givm::program_entry dynamic_operations;
             givm::program_entry end_phase;
+            givm::program_entry round_start;
             givm::definition_id<givm::attachment_view> control;
         };
         control_log* log;
         bool dynamic_operations;
         std::span<const givm::any_command> end_phase;
+        bool pause_round_start = false;
         std::string_view name() const { return "ControlDriver"; }
         auto attachment_dependencies() const { return std::array{ std::string_view{ "Control" } }; }
         definition_type compile(givm::definition_compile_context& context) const
@@ -76,6 +79,7 @@ namespace
                 dynamic_operations ? context.add_program(std::tuple{
                     givm::attach{}, givm::add_attachment{}, givm::set_active_character{} }) : givm::program_entry{},
                 end_phase.empty() ? givm::program_entry{} : context.add_program(end_phase),
+                pause_round_start ? context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::program_entry{},
                 context.resolve_id<givm::attachment_view>("Control") };
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
@@ -127,10 +131,12 @@ namespace
             return data.end_phase ? context.invoke(data.end_phase) : givm::program_entry{};
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::round_started&, givm::handle_context&)
+            givm::round_started&, givm::handle_context& context)
         {
             ++data.log->rounds_started;
-            return {};
+            data.log->dice_at_round_start.push_back({ context.table()[givm::player_id{ 0 }].state().dice.total(),
+                context.table()[givm::player_id{ 1 }].state().dice.total() });
+            return data.round_start ? context.invoke(data.round_start) : givm::program_entry{};
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
             givm::attachment_removed& event, givm::handle_context& context)
@@ -177,10 +183,11 @@ namespace
 
     template<class TProgram>
     auto compile_scenario(control_log& log, bool observed, TProgram program,
-        bool dynamic_operations = false, std::span<const givm::any_command> end_phase = {})
+        bool dynamic_operations = false, std::span<const givm::any_command> end_phase = {}, bool pause_round_start = false,
+        std::span<const givm::any_command> round = {})
     {
         const driver_character character;
-        const control_driver driver{ &log, dynamic_operations, end_phase };
+        const control_driver driver{ &log, dynamic_operations, end_phase, pause_round_start };
         const givm::test::initialized_character_source ordinary{ "PlainCharacter", { .max_health = 20, .health = 20 } };
         const tagged_attachment control{ "Control", "control", &log };
         const tagged_attachment immunity{ "Immunity", "control_immunity", &log };
@@ -191,7 +198,7 @@ namespace
             givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0,
             character, driver, ordinary, control, immunity, ordinary_attachment, card };
         const auto ids = sources.make_issued_id_map();
-        return compile(sources, program(ids), std::tuple{},
+        return compile(sources, program(ids), round,
             observed ? givm::compile_mode::observed : givm::compile_mode::normal);
     }
 
@@ -373,6 +380,9 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
     const std::array damages{ givm::damage{ .source = actor, .target = target, .value = 1,
         .type = preexisting ? givm::damage_type::pyro : givm::damage_type::cryo } };
     const std::array<givm::any_command, 1> end_phase{ givm::deal_damage{ .damages = damages } };
+    const std::array<givm::any_command, 3> round{
+        givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } }, givm::start_round{},
+        givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map&)
     {
         auto commands = select_fronts();
@@ -380,10 +390,8 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
         if(preexisting) commands.emplace_back(givm::apply_element{ .source = actor, .target = target, .element = givm::element::cryo });
         commands.emplace_back(givm::end_round{});
         commands.emplace_back(givm::test_command{});
-        commands.emplace_back(givm::start_round{});
-        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return commands;
-    }, false, end_phase);
+    }, false, end_phase, false, round);
     givm::table table;
     load_scenario(table, library, ids);
     log.library = &library;
@@ -454,4 +462,97 @@ TEST_CASE("a lethal frozen reaction does not attach control to the defeated char
     CHECK_FALSE(library.is_controlled(table[target]));
     CHECK(std::ranges::empty(table[target].attachments()));
     CHECK(log.controlled_after_damage == std::vector<bool>{ false });
+}
+
+TEST_CASE("round start responses wait for both rerolls and resume independently after copying", "[frozen][round-start][dice]")
+{
+    const bool observed = GENERATE(false, true);
+    control_log log;
+    const std::array<givm::any_command, 3> round{
+        givm::start_dice_roll_phase{ .count = 2, .reroll_count = { 1, 1 } }, givm::start_round{},
+        givm::end_game{ givm::game_result::both_loss } };
+    const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
+    {
+        auto commands = select_fronts();
+        commands.emplace_back(givm::attach{ .player = givm::relative_player::other,
+            .definition = ids.get_id<givm::attachment_view>("frozen-3.3.0-genshin_impact") });
+        return commands;
+    }, false, {}, true, round);
+    givm::table table;
+    load_scenario(table, library, ids);
+    log.library = &library;
+    givm::executor executor;
+    executor.enter_entry(library);
+    zero_random random;
+    auto state = advance(executor, library, table, random);
+    if(observed)
+    {
+        REQUIRE(state == givm::execution_state::round_started);
+        CHECK(table.state().round_number == 1);
+        CHECK(log.rounds_started == 0);
+        CHECK(library.is_controlled(table[target]));
+        state = advance(executor, library, table, random);
+    }
+    REQUIRE(state == givm::execution_state::dice_selection);
+    CHECK(table.state().round_number == 1);
+    CHECK(log.rounds_started == 0);
+    CHECK(library.is_controlled(table[target]));
+    executor.view_in<givm::execution_state::dice_selection>().select({});
+    REQUIRE(advance(executor, library, table, random) == givm::execution_state::dice_selection);
+    CHECK(log.rounds_started == 0);
+    CHECK(library.is_controlled(table[target]));
+    executor.view_in<givm::execution_state::dice_selection>().select({});
+    REQUIRE(advance(executor, library, table, random) == givm::execution_state::card_selection);
+    CHECK(log.rounds_started == 1);
+    CHECK(log.dice_at_round_start == std::vector<std::array<std::uint32_t, 2>>{ { 2, 2 } });
+    CHECK(library.is_controlled(table[target]));
+    auto copied_executor = executor;
+    auto copied_table = table;
+    const auto finish = [&](givm::executor& running, givm::table& current)
+    {
+        running.view_in<givm::execution_state::card_selection>().select({});
+        REQUIRE(advance(running, library, current, random) == givm::execution_state::finished);
+        CHECK_FALSE(library.is_controlled(current[target]));
+        CHECK(current[givm::player_id{ 0 }].state().dice.total() == 2);
+        CHECK(current[givm::player_id{ 1 }].state().dice.total() == 2);
+        CHECK(log.rounds_started == 1);
+    };
+    finish(executor, table);
+    CHECK(library.is_controlled(copied_table[target]));
+    finish(copied_executor, copied_table);
+    CHECK(log.frozen_removed == 2);
+}
+
+TEST_CASE("exceeding the round limit prevents rolling and round start responses", "[round-start][dice]")
+{
+    const bool observed = GENERATE(false, true);
+    control_log log;
+    const std::array<givm::any_command, 3> round{
+        givm::start_dice_roll_phase{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
+    {
+        auto commands = select_fronts();
+        commands.emplace_back(givm::attach{ .player = givm::relative_player::other,
+            .definition = ids.get_id<givm::attachment_view>("frozen-3.3.0-genshin_impact") });
+        return commands;
+    }, false, {}, false, round);
+    givm::table table{ givm::game_parameters{ .max_rounds = 0 } };
+    load_scenario(table, library, ids);
+    log.library = &library;
+    givm::executor executor;
+    executor.enter_entry(library);
+    zero_random random;
+    auto state = advance(executor, library, table, random);
+    if(observed)
+    {
+        REQUIRE(state == givm::execution_state::round_started);
+        state = advance(executor, library, table, random);
+    }
+    REQUIRE(state == givm::execution_state::finished);
+    CHECK(table.state().round_number == 1);
+    CHECK(log.rounds_started == 0);
+    CHECK(log.frozen_removed == 0);
+    CHECK(library.is_controlled(table[target]));
+    CHECK(table[givm::player_id{ 0 }].state().dice.total() == 0);
+    CHECK(table[givm::player_id{ 1 }].state().dice.total() == 0);
 }

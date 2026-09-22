@@ -46,7 +46,7 @@
 
 冻结在 [`damage_calculation`](definition/events/damage_calculation.md) 中检查最终伤害类型：自己的角色受到物理或火伤害时，伤害饱和增加 2，并立即通过 [`remove_attachment`](definition/commands/remove_attachment.md) 移除自身，再继续本次数值广播和后续倍率、护盾处理。因此即使最终被护盾抵挡，也已解除冻结。其他类型不触发这一效果；移除冻结不移除角色身上的其他控制附属。
 
-未被上述伤害解除的冻结响应 [`round_started`](definition/events/round_started.md) 离场，因此结束阶段仍保留冻结，期间新产生的冻结也持续到后续回合开始通知。冻结移除同样发送 [`attachment_removed`](definition/events/attachment_removed.md)。
+未被上述伤害解除的冻结响应 [`round_started`](definition/events/round_started.md) 离场，因此结束阶段仍保留冻结，期间新产生的冻结也持续到后续回合完成投骰与全部重投后的回合开始通知。冻结移除同样发送 [`attachment_removed`](definition/events/attachment_removed.md)。
 
 ## 示例
 

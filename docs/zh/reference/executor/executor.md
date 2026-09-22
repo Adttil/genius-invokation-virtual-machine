@@ -42,9 +42,9 @@ int main()
     const auto [library, id_map] = compile(
         sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
-        std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::normal
+        std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
-    givm::table table{};
+    givm::table table{ { .max_rounds = 2 } };
     auto random = []() -> std::uint32_t { return 0; };
 
     givm::executor execution{};

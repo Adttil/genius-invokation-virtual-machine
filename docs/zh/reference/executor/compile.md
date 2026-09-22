@@ -23,7 +23,7 @@ auto compile(
 ); // (2)
 ```
 
-准备一场对局要使用的实体定义和对局流程。初始化部分只进行一次，回合部分随后反复进行，直到流程主动暂停或结束对局。
+准备一场对局要使用的实体定义和对局流程。初始化部分只进行一次，随后自动推进回合并反复执行回合部分，直到流程主动暂停或结束对局。
 
 (1) 使用全部已登记定义。(2) 从指定定义和源库构造时选定的四个默认反应定义出发，自动包含直接和间接依赖的定义。其余定义不会编译。
 
@@ -55,6 +55,19 @@ auto compile(
 
 两者对应同一个定义集合和 ID 分配结果。调用方可以通过 `auto` 保存结果，或使用 `auto [library, id_map] = compile(...);` 分别取得两者。
 
+## 自动回合推进
+
+初始化流程完整结束后，进入第一个回合；每次回合流程完整结束后，进入下一回合。每次进入都按以下顺序处理：
+
+1. 增加 `table.state().round_number`。
+2. 观察模式先返回 `execution_state::round_started`；再次推进后继续以下步骤。
+3. 若回合数超过 [`game_parameters::max_rounds`](../table/game_parameters.md)，以 `both_loss` 结束，不清空骰子，也不执行本回合程序。
+4. 未超限则清空双方骰子，再从 `round_program` 的第一个命令开始执行。
+
+回合数超限时通常为 `max_rounds + 1`。配置 `max_rounds = 0` 时，仍完整执行初始化，但不进入任何回合程序。初始化或回合流程中的命令若已结束对局，不再继续推进。响应产生的普通子程序执行完毕只回到原流程，不增加回合数。
+
+回合程序应显式安排阶段顺序，例如 `start_dice_roll_phase{}`、`start_round{}`、`start_battle{}`、`begin_action{}`、`end_round{}`。其中 [`start_round`](../definition/commands/start_round.md) 只广播回合开始规则事件，应位于投骰和重投之后；它与上述自动回合推进是不同操作。
+
 ## 异常
 
 |  |  |
@@ -63,7 +76,7 @@ auto compile(
 
 ## 注意
 
-两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。回合流程必须能够暂停或结束，避免空流程无限运行。定义源的编译操作抛出的异常继续向调用者传播。
+两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。空回合流程也会自动推进回合，直至超过牌桌配置的上限而结束。定义源的编译操作抛出的异常继续向调用者传播。
 
 `mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 `executor::step` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
 
@@ -88,9 +101,9 @@ int main()
     };
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 2 } }, givm::compile_mode::normal
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal
     );
-    givm::table table{};
+    givm::table table{ { .max_rounds = 2 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);

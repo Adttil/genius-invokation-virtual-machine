@@ -70,7 +70,7 @@ int main()
     std::println("登记成功: {}", sources.add(potion));
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::normal
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
     std::println("可用卡牌: {}", library.name(ids.get_id<givm::card_definition>("恢复药剂")));
 }

@@ -59,6 +59,34 @@ namespace givm
         relative_player player = relative_player::current;
     };
 
+    struct add_support
+    {
+        relative_player player = relative_player::current;
+        definition_id<support_view> definition{};
+        support_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct set_support_state
+    {
+        relative_player player = relative_player::current;
+        definition_id<support_view> definition{};
+        support_state state{};
+    };
+
+    struct modify_support_state
+    {
+        relative_player player = relative_player::current;
+        definition_id<support_view> definition{};
+        std::int64_t count{};
+        std::int64_t round_usages{};
+    };
+
+    struct remove_support
+    {
+        relative_player player = relative_player::current;
+        definition_id<support_view> definition{};
+    };
+
     struct summon
     {
         relative_player player = relative_player::current;
@@ -175,7 +203,6 @@ namespace givm
 
     struct start_round
     {
-        std::uint32_t max_rounds = 14;
     };
 
     struct begin_action
@@ -236,6 +263,10 @@ namespace givm::detail
         set_active_character,
         select_active_character_both,
         draw_cards,
+        add_support,
+        set_support_state,
+        modify_support_state,
+        remove_support,
         summon,
         add_summon,
         set_summon_state,
@@ -285,6 +316,26 @@ namespace givm::detail
 
     constexpr size_t input_size(const select_active_character_both&) noexcept { return 0; }
     constexpr size_t input_size(const draw_cards&) noexcept { return 0; }
+
+    constexpr size_t input_size(const add_support& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(support_addition);
+    }
+
+    constexpr size_t input_size(const set_support_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(support_state_change);
+    }
+
+    constexpr size_t input_size(const modify_support_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(support_state_modification);
+    }
+
+    constexpr size_t input_size(const remove_support& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(support_removal);
+    }
 
     constexpr size_t input_size(const add_attachment& command) noexcept
     {

@@ -69,7 +69,8 @@ namespace
                 context.add_program(std::tuple{
                     givm::set_element_aura{ .target = victim(0), .aura = givm::element_aura::pyro }
                 }),
-                context.add_program(std::tuple{ givm::start_round{} }), context.resolve_tag("GroupReactionReplacement") };
+                context.add_program(std::tuple{ givm::replace_cards{ .player = attacking_player } }),
+                context.resolve_tag("GroupReactionReplacement") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -300,16 +301,20 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
     givm::executor executor;
     executor.enter_entry(library);
     zero_random random;
-    std::size_t observed_rounds = 0;
+    std::size_t response_pauses = 0;
     std::size_t observed_damage = 0;
     for(;;)
     {
         const auto state = executor.step(library, table, random);
         if(state == givm::execution_state::finished) break;
-        REQUIRE(observed);
-        if(state == givm::execution_state::round_started) ++observed_rounds;
+        if(state == givm::execution_state::card_selection)
+        {
+            ++response_pauses;
+            executor.view_in<givm::execution_state::card_selection>().select({});
+        }
         else
         {
+            REQUIRE(observed);
             REQUIRE(state == givm::execution_state::health_reduced);
             ++observed_damage;
         }
@@ -319,8 +324,8 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
         { phase::calculation, 1 }, { phase::effect, 1 }, { phase::calculation, 1 }, { phase::effect, 1 },
         { phase::after_reaction, 0 }, { phase::after_damage, 0 }, { phase::after_damage, 1 }, { phase::after_damage, 1 }
     });
-    CHECK(table.state().round_number == 11);
-    CHECK(observed_rounds == (observed ? 11 : 0));
+    CHECK(table.state().round_number == 0);
+    CHECK(response_pauses == 11);
     CHECK(observed_damage == (observed ? 3 : 0));
     CHECK(table[victim(0)].state().health == 7);
     CHECK(table[victim(1)].state().health == 6);
@@ -688,7 +693,7 @@ TEST_CASE("a damage group stops before completion responses when the last charac
         givm::damage{ .source = attacker, .target = victim(1), .value = 1, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::start_round{},
+        std::tuple{ givm::deal_damage{ .damages = damages }, givm::replace_cards{ .player = attacking_player },
             givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, character);
     const auto id = ids.get_id<givm::character_view>(character.name());
     givm::table table;
@@ -715,7 +720,7 @@ TEST_CASE("an independent nested damage group can end the game before its caller
         givm::damage{ .source = attacker, .target = victim(1), .value = 1, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::start_round{},
+        std::tuple{ givm::deal_damage{ .damages = damages }, givm::replace_cards{ .player = attacking_player },
             givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, character);
     const auto id = ids.get_id<givm::character_view>(character.name());
     givm::table table;

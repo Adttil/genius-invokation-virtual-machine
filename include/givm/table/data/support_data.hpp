@@ -9,6 +9,7 @@ namespace givm
     struct support_state
     {
         std::uint32_t count;
+        std::uint32_t round_usages;
     };
 }
 

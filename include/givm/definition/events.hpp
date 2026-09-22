@@ -410,6 +410,44 @@ namespace givm
     };
 
     // Entity events.
+    struct support_addition
+    {
+        player_id player;
+        definition_id<support_view> definition;
+        support_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    };
+
+    struct support_state_change
+    {
+        support_id support;
+        support_state state;
+    };
+
+    struct support_state_modification
+    {
+        support_id support;
+        std::int64_t count{};
+        std::int64_t round_usages{};
+    };
+
+    struct support_state_changed
+    {
+        const support_state previous;
+        const support_state current;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(support_state_changed);
+    };
+
+    struct support_removal
+    {
+        support_id support;
+    };
+
+    struct support_removed
+    {
+        const support_id support;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(support_removed);
+    };
+
     struct summoning
     {
         player_id player;

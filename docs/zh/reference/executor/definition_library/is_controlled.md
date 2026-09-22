@@ -66,13 +66,14 @@ int main()
         std::tuple{
             givm::set_active_character{ .target = target },
             givm::set_active_character{ .target = { givm::player_id{ 1 }, 0 } },
-            givm::start_round{ .max_rounds = 2 },
-            givm::attach{ .definition = frozen },
-            givm::begin_action{}, givm::end_round{},
-            givm::start_round{ .max_rounds = 2 },
+            givm::attach{ .definition = frozen }
+        },
+        std::tuple{
+            givm::start_dice_roll_phase{ .count = 1 },
+            givm::start_round{},
             givm::end_game{ .result = givm::game_result::both_loss }
-        }, std::tuple{}, givm::compile_mode::normal);
-    givm::table table{};
+        }, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 2 } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },
@@ -81,21 +82,20 @@ int main()
     givm::executor execution{};
     execution.enter_entry(library);
     execution.step(library, table, random);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
-    std::println("当前出战角色受控: {}", action.is_controlled(library, table));
+    std::println("投骰时出战角色受控: {}", library.is_controlled(table[target]));
     std::println("冻结属于控制: {}", library.is_control(library.frozen_id()));
-    action.declare_round_end();
+    execution.view_in<givm::execution_state::dice_selection>().select({});
     execution.step(library, table, random);
-    execution.view_in<givm::execution_state::action_selection>().declare_round_end();
+    execution.view_in<givm::execution_state::dice_selection>().select({});
     execution.step(library, table, random);
-    std::println("下一回合开始后仍受控: {}", library.is_controlled(table[target]));
+    std::println("回合开始通知后仍受控: {}", library.is_controlled(table[target]));
 }
 ```
 
 输出
 
 ```text
-当前出战角色受控: true
+投骰时出战角色受控: true
 冻结属于控制: true
-下一回合开始后仍受控: false
+回合开始通知后仍受控: false
 ```

@@ -95,7 +95,7 @@ namespace
                 context.add_program(std::tuple{ givm::draw_cards{ .count = 2 } }),
                 context.add_program(std::tuple{
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
-                    givm::start_round{ .max_rounds = 10 }
+                    givm::replace_cards{ .player = givm::player_id{ 0 } }
                 })
             };
         }
@@ -377,16 +377,13 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
             REQUIRE(drawn.size() == index + 1);
             CHECK(execution.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 0 });
             execution.view_in<givm::execution_state::card_selection>().select({});
-            auto state = execution.step(current_library, current_table, random);
-            if(mode == givm::compile_mode::observed)
-            {
-                REQUIRE(state == givm::execution_state::round_started);
-                CHECK(current_table.state().round_number == index + 1);
-                state = execution.step(current_library, current_table, random);
-            }
+            REQUIRE(execution.step(current_library, current_table, random) == givm::execution_state::card_selection);
+            CHECK(drawn.size() == index + 1);
+            execution.view_in<givm::execution_state::card_selection>().select({});
+            const auto state = execution.step(current_library, current_table, random);
             REQUIRE(state == (index == 2 ? givm::execution_state::finished : givm::execution_state::card_selection));
         }
-        CHECK(current_table.state().round_number == 3);
+        CHECK(current_table.state().round_number == 0);
         CHECK(current_table[givm::player_id{ 0 }].hand_card_count() == 3);
         CHECK(current_table[givm::player_id{ 0 }].deck_card_count() == 0);
         CHECK(execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);

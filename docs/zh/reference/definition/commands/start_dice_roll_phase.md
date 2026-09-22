@@ -19,6 +19,8 @@ struct start_dice_roll_phase;
 
 ## 注意
 
+[根回合流程](../../executor/compile.md) 自动增加回合数、判定上限并清空旧骰子，然后才执行调用方提供的回合命令序列。通常该序列先执行本命令，再执行 [`start_round`](start_round.md)，使 [`round_started`](../events/round_started.md) 规则通知位于投骰与全部重投之后。
+
 先发出 [`dice_roll_preparation`](../events/dice_roll_preparation.md)，完成其响应及后续效果后，再按最终事件值进行投骰。以下以 `C` 表示每方骰子总数，`F0`、`F1` 表示双方固定骰子总数，`R0`、`R1` 表示双方重投次数。每方固定骰子总数不得超过 `C`，`C` 不得超过 64。
 
 每个随机值 `r` 来自本次推进传入的随机源，经 [`random_fn`](../../executor/random_fn.md) 取得，取值范围为 `0` 至 `2^32 - 1`。下文的随机调用数量只包括投骰与重投自身；准备事件的响应及其后续效果所作的随机调用另计，并先于本次投骰发生。若这些响应结束对局，则不再投骰。
@@ -54,9 +56,9 @@ struct start_dice_roll_phase;
 
 等待重投时，执行器返回 `execution_state::dice_selection`，通过相应的[现场视图](../../executor/execution_view/dice_selection.md)提交选择。选择以 [`dice_counts`](../../enums/dice_counts.md) 指定每种骰子要重投的数量，各类数量不得超过当前持有数量；可先使用视图的 `selection_validate` 独立检查。非空选择移除选中的骰子，再加入上述新结果，并消耗该方一次重投机会。所有数量为零的选择放弃该方全部剩余机会；不再使用的预分配结果弃用。
 
-默认提示仍有重投机会的玩家 0，否则提示玩家 1；调用方可以指定任意仍有机会的玩家先提交，提交顺序不改变各方获配的随机结果序列。双方均无重投机会时，继续后续流程。
+默认提示仍有重投机会的玩家 0，否则提示玩家 1；调用方可以指定任意仍有机会的玩家先提交，提交顺序不改变各方获配的随机结果序列。双方均无重投机会时，本命令完成，继续后续命令。本命令不广播回合开始；后续显式安排的 `start_round{}` 负责该通知。通知中取得的额外骰子不参与已经结束的重投，也不会被本轮投骰覆盖。
 
-提交选择后的重投操作不再调用随机源。整个投骰命令自身的调用总数为：
+提交选择后的重投操作不再调用随机源。不计准备响应，投骰与重投自身的调用总数为：
 
 `(C - F0) + (C - F1) + ceil(C × R0 / 10) + ceil(C × R1 / 10)`。
 
@@ -81,8 +83,8 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::start_dice_roll_phase{ .count = 8 } },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{}, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 0 } };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
@@ -115,3 +117,4 @@ int main()
 | | |
 | --- | --- |
 | [`dice_roll_preparation`](../events/dice_roll_preparation.md) | 本回合投骰前的准备事件 |
+| [`round_started`](../events/round_started.md) | 投骰与重投完成后的回合开始通知 |

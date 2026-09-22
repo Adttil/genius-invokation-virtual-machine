@@ -37,9 +37,9 @@ int main()
     };
     const auto [library, ids] = compile(
         sources,
-        initialization, std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::normal
+        initialization, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
-    givm::table table{};
+    givm::table table{ { .max_rounds = 1 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);

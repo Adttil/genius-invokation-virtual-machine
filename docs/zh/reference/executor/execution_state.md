@@ -53,7 +53,7 @@ enum class execution_state : std::uint8_t
 
 `active_character_changed` 时，目标角色已经确定，牌桌上仍保留原出战角色。通过相应[视图](execution_view/active_character_changed.md)取得目标后，可按其所属玩家直接读取原出战角色；下一次推进才写入目标并处理变更响应。主动切人的支付及资源变化响应在此现场之前完成。
 
-`round_started` 时，`round_number` 已增加；若超过上限，下一次推进才返回 `finished`。未超限时，后续推进先清空双方骰子，再广播同名的 [`round_started`](../definition/events/round_started.md) 规则事件；冻结在该规则事件中解除，观察现场到达时尚未解除。
+`round_started` 时，`round_number` 已增加；若超过上限，下一次推进才返回 `finished`。未超限时，后续推进先清空双方骰子；随后执行回合程序。该程序应先安排 `start_dice_roll_phase` 完成投骰与全部重投，再用 `start_round` 显式广播同名的 [`round_started`](../definition/events/round_started.md) 规则事件。冻结在该规则事件中解除，观察现场及投骰阶段尚未解除。
 
 `action_started` 时，`active_player` 是当前获得行动机会的玩家：首次行动在行动阶段开始的响应结束后报告；战斗行动结束后再次报告，即使另一方已经宣布结束、仍由同一玩家行动；快速行动后不重复报告。以上行动通知均早于该次 [`before_action`](../definition/events/before_action.md) 响应。
 
@@ -80,8 +80,8 @@ int main()
     };
     const auto [library, ids] = compile(
         sources,
-        std::tuple{}, std::tuple{ givm::start_round{ .max_rounds = 1 } }, givm::compile_mode::observed);
-    givm::table table{};
+        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::observed);
+    givm::table table{ { .max_rounds = 1 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     execution.enter_entry(library);

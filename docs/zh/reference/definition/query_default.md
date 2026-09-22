@@ -6,6 +6,7 @@
 
 ```cpp
 constexpr character_state query_default(const character_initial_state&) noexcept;
+constexpr support_state query_default(const support_state_limit&) noexcept;
 constexpr summon_state query_default(const summon_state_limit&) noexcept;
 constexpr combat_status_state query_default(const combat_status_state_limit&) noexcept;
 constexpr attachment_state query_default(const attachment_state_limit&) noexcept;
@@ -24,6 +25,7 @@ constexpr target_validation query_default(const card_target_validation& query) n
 | 查询 | 默认结果 |
 | --- | --- |
 | [`character_initial_state`](queries/character_initial_state.md) | `character_state{}`。 |
+| [`support_state_limit`](queries/support_state_limit.md) | `support_state`，两个字段均为 `UINT32_MAX`。 |
 | [`summon_state_limit`](queries/summon_state_limit.md) | `summon_state`，两个字段均为 `UINT32_MAX`。 |
 | [`combat_status_state_limit`](queries/combat_status_state_limit.md) | `combat_status_state`，两个字段均为 `UINT32_MAX`。 |
 | [`attachment_state_limit`](queries/attachment_state_limit.md) | `attachment_state`，两个字段均为 `UINT32_MAX`。 |

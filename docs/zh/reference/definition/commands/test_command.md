@@ -77,8 +77,8 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::test_command{} },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{}, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 0 } };
     load_deck(table, library, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("character") }
     }, {});

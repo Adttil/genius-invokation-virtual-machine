@@ -63,7 +63,7 @@
 | [`table_state`](table/table_state.md) | 双方共享的对局状态，用于记录当前回合和行动归属 |
 | [`player_state`](table/player_state.md) | 一位玩家的骰子和出战角色状态 |
 | [`character_state`](table/character_state.md) | 角色在对局中的生命值、充能和元素附着 |
-| [`support_state`](table/support_state.md) | 支援在对局中使用的计数状态 |
+| [`support_state`](table/support_state.md) | 支援的层数与本回合剩余次数 |
 | [`summon_state`](table/summon_state.md) | 召唤物的效果量和剩余可用次数 |
 | [`combat_status_state`](table/combat_status_state.md) | 出战状态在对局中使用的计数状态 |
 | [`attachment_state`](table/attachment_state.md) | 角色附属实体在对局中使用的计数状态 |

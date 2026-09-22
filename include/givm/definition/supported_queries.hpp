@@ -36,6 +36,9 @@ namespace givm
     struct supported_queries<summon_view> : type_list<summon_state_limit>{};
 
     template<>
+    struct supported_queries<support_view> : type_list<support_state_limit>{};
+
+    template<>
     struct supported_queries<combat_status_view> : type_list<combat_status_state_limit>{};
 
     template<>

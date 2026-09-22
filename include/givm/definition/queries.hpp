@@ -22,6 +22,11 @@ namespace givm
         using result_t = summon_state;
     };
 
+    struct support_state_limit
+    {
+        using result_t = support_state;
+    };
+
     struct combat_status_state_limit
     {
         using result_t = combat_status_state;
@@ -93,6 +98,11 @@ namespace givm
     }
 
     constexpr summon_state query_default(const summon_state_limit&) noexcept
+    {
+        return { std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
+    }
+
+    constexpr support_state query_default(const support_state_limit&) noexcept
     {
         return { std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     }

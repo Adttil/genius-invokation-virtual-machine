@@ -25,20 +25,27 @@
 namespace givm::detail
 {
     template<class TExecutionContext>
-    execution_state execute_return(
+    inline execution_state execute_return(
         const definition_library&, unrestricted_table&, TExecutionContext& context, random_fn&)
     {
         return context.return_from_subroutine();
     }
-    template<class TExecutionContext>
-    execution_state execute_jump(
-        const definition_library& library, unrestricted_table&, TExecutionContext& context, random_fn&)
+    // Internal compilation inputs; definition sources do not expose these commands.
+    struct round_program_begin {};
+
+    struct round_program_repeat
     {
-        return context.jump(context.template instruction_data<1, execution_position>(library));
-    }
+        execution_position round_start;
+        execution_position round_entry;
+    };
+
+#ifndef NDEBUG
+    constexpr std::size_t input_size(const round_program_begin&) noexcept { return 0; }
+    constexpr std::size_t input_size(const round_program_repeat&) noexcept { return 0; }
+#endif
 
     template<class TSequence>
-    std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode)
+    inline std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode)
     {
         std::size_t inputs_size = 0;
         const auto append_command = [&](const auto& command)
@@ -685,7 +692,9 @@ namespace givm
                 throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
             }
 #endif
-            const detail::execution_position round_entry = library.program_.size();
+            const detail::execution_position round_start = writer.position();
+            detail::append_commands(writer, std::tuple{ detail::round_program_begin{} }, mode);
+            const detail::execution_position round_entry = writer.position();
             [[maybe_unused]] const auto round_inputs_size =
                 detail::append_commands(writer, std::forward<TRoundSequence>(round_program), mode);
 #ifndef NDEBUG
@@ -694,8 +703,7 @@ namespace givm
                 throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
             }
 #endif
-            writer.write(detail::execute_fn{ detail::execute_jump });
-            writer.write(round_entry);
+            detail::append_commands(writer, std::tuple{ detail::round_program_repeat{ round_start, round_entry } }, mode);
 
             [&]<std::size_t... I>(std::index_sequence<I...>)
             {
@@ -720,7 +728,7 @@ namespace givm
     };
 
     template<class TInitializationSequence, class TRoundSequence>
-    auto compile(
+    inline auto compile(
         const definition_source_library& sources,
         TInitializationSequence&& initialization_program,
         TRoundSequence&& round_program,
@@ -735,7 +743,7 @@ namespace givm
     }
 
     template<class TInitializationSequence, class TRoundSequence>
-    auto compile(
+    inline auto compile(
         const definition_source_library& sources,
         const definition_selection& selection,
         TInitializationSequence&& initialization_program,

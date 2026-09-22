@@ -103,7 +103,7 @@ namespace
         std::string_view name() const { return "Infusion"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{ givm::start_round{} }), type, classify };
+            return { context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }), type, classify };
         }
         static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
             givm::damage_preparation& event, givm::handle_context& context)
@@ -201,10 +201,14 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     {
         const auto state = executor.step(library, table, random);
         if(state == givm::execution_state::finished) break;
-        REQUIRE(observed);
-        if(state == givm::execution_state::round_started) ++pauses;
+        if(state == givm::execution_state::card_selection)
+        {
+            ++pauses;
+            executor.view_in<givm::execution_state::card_selection>().select({});
+        }
         else
         {
+            REQUIRE(observed);
             REQUIRE(state == givm::execution_state::health_reduced);
             const auto damage = executor.view_in<givm::execution_state::health_reduced>();
             observed_reactions.push_back(damage.reaction());
@@ -225,8 +229,8 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     CHECK(log.burst_bonuses == (grouped ? 2 : 1));
     CHECK(table[front].state().health == 8);
     CHECK(table[back].state().health == (grouped ? 16 : 20));
-    CHECK(table.state().round_number == (grouped ? 2 : 1));
-    CHECK(pauses == (observed ? (grouped ? 2 : 1) : 0));
+    CHECK(table.state().round_number == 0);
+    CHECK(pauses == (grouped ? 2 : 1));
     CHECK(observed_reactions == (observed ? expected : std::vector<givm::elemental_reaction>{}));
     for(const auto health : log.health_at_completion)
         CHECK(health == std::array<std::uint32_t, 2>{ 8, grouped ? 16u : 20u });
@@ -253,6 +257,8 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     givm::executor executor;
     executor.enter_entry(library);
     zero_random random;
+    REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
+    executor.view_in<givm::execution_state::card_selection>().select({});
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(table[front].state().health == 13);
     CHECK(table[back].state().health == 20);

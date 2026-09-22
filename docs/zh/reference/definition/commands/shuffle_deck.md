@@ -59,8 +59,8 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{}, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 0 } };
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");
     auto player = table[givm::player_id{ 0 }];

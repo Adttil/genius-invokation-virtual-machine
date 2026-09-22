@@ -14,7 +14,7 @@ namespace givm
     struct game_parameters
     {
         std::uint32_t hand_limit = 10;
-        std::uint32_t support_limit = 4;
+        std::uint32_t max_rounds = 14;
     };
 
     struct table_state

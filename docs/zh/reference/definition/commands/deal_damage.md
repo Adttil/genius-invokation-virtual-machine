@@ -112,8 +112,8 @@ int main()
     const auto [library, ids] = compile(
         sources,
         std::tuple{ givm::deal_damage{ .damages = damages } },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::normal);
-    givm::table table{};
+        std::tuple{}, givm::compile_mode::normal);
+    givm::table table{ { .max_rounds = 0 } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },

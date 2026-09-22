@@ -56,7 +56,7 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, std::tuple{}, givm::compile_mode::normal);
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     const auto id = ids.get_id<givm::skill_view>("observer");
     std::println("提供此事件的响应: {}", library.can_handle<givm::round_end_declared, givm::skill_view>(id));
 }

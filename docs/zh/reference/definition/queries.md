@@ -11,6 +11,7 @@
 | | |
 | --- | --- |
 | [`character_initial_state`](queries/character_initial_state.md) | 角色初始状态 |
+| [`support_state_limit`](queries/support_state_limit.md) | 支援层数和每回合次数的上限 |
 | [`summon_state_limit`](queries/summon_state_limit.md) | 召唤物效果量和可用次数的上限 |
 | [`combat_status_state_limit`](queries/combat_status_state_limit.md) | 出战状态层数和每回合次数的上限 |
 | [`attachment_state_limit`](queries/attachment_state_limit.md) | 角色附属实体层数和每回合次数的上限 |

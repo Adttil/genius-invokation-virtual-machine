@@ -67,8 +67,8 @@ int main()
             givm::set_element_aura{ .target = target, .aura = givm::element_aura::cryo },
             givm::deal_damage{ .damages = damages }
         },
-        std::tuple{ givm::start_round{ .max_rounds = 0 } }, givm::compile_mode::observed);
-    givm::table table{};
+        std::tuple{}, givm::compile_mode::observed);
+    givm::table table{ { .max_rounds = 0 } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },

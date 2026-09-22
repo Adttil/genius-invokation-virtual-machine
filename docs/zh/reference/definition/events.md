@@ -26,7 +26,7 @@
 | | |
 | --- | --- |
 | [`battle_started`](events/battle_started.md) | 对局首次进入战斗的通知 |
-| [`round_started`](events/round_started.md) | 回合上限检查通过并清空骰子后的新回合通知 |
+| [`round_started`](events/round_started.md) | 投骰与全部重投完成后的新回合通知 |
 | [`action_phase_started`](events/action_phase_started.md) | 本回合行动阶段开始的通知 |
 | [`before_action`](events/before_action.md) | 当前行动玩家选择行动前的事件 |
 | [`round_end_declared`](events/round_end_declared.md) | 玩家宣布本回合结束的通知 |
@@ -93,6 +93,12 @@
 | [`active_character_changed`](events/active_character_changed.md) | 出战角色设置完成后的通知 |
 | [`character_will_be_defeated`](events/character_will_be_defeated.md) | 角色被击倒前的事件 |
 | [`character_defeated`](events/character_defeated.md) | 角色被击倒后的通知 |
+| [`support_removed`](events/support_removed.md) | 支援移除后向其他有效实体广播的通知 |
+| [`support_addition`](events/support_addition.md) | [add_support](commands/add_support.md) 的动态输入 |
+| [`support_state_change`](events/support_state_change.md) | [set_support_state](commands/set_support_state.md) 的动态输入 |
+| [`support_state_modification`](events/support_state_modification.md) | [modify_support_state](commands/modify_support_state.md) 的动态输入 |
+| [`support_state_changed`](events/support_state_changed.md) | 支援状态修改后的自身通知 |
+| [`support_removal`](events/support_removal.md) | [remove_support](commands/remove_support.md) 的动态输入 |
 | [`summon_removed`](events/summon_removed.md) | 召唤物移除后向其他有效实体广播的通知 |
 | [`combat_status_removed`](events/combat_status_removed.md) | 出战状态移除后向其他有效实体广播的通知 |
 | [`attachment_removed`](events/attachment_removed.md) | 角色附属实体或装备移除后向其他有效实体广播的通知 |

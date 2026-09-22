@@ -163,9 +163,9 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
         givm::select_active_character_both{}
     };
     const auto round = std::tuple{
-        givm::start_round{ .max_rounds = max_rounds },
         givm::start_dice_roll_phase{ .count = 8, .reroll_count = { 1, 1 } },
         givm::start_battle{},
+        givm::start_round{},
         givm::begin_action{},
         givm::end_round{},
         givm::draw_cards{ .count = 2, .player = givm::relative_player::current },
@@ -180,7 +180,8 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
 
     givm::table table{
         givm::game_parameters{
-            .hand_limit = 10
+            .hand_limit = 10,
+            .max_rounds = max_rounds
         }
     };
     load_deck(table, library, deck, deck);

@@ -397,7 +397,7 @@ bool definition_source_library::add(const TSource& source);
 auto [library, id_map] = compile(source_library, initialization_program, round_program, givm::compile_mode::normal);
 ```
 
-`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束被触发。两者都由不消费响应输入的公开命令值组成；支持固定参数和消费输入两种方式的命令须选择固定参数。`compile(...)` 不提供省略这两段程序的重载。
+`initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束。初始化完成和每轮回合程序完成时自动递增回合数，检查牌桌参数 `max_rounds`，未超限则清空骰子并开始下一轮命令。观察模式在递增后、上限检查前报告 `round_started`；回合程序中的 `start_round` 仅负责显式广播规则通知，应位于投骰命令之后。空回合程序也会自动推进至超限终局；普通响应子程序不推进回合。两者都由不消费响应输入的公开命令值组成；支持固定参数和消费输入两种方式的命令须选择固定参数。`compile(...)` 不提供省略这两段程序的重载。
 
 ```cpp
 using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
