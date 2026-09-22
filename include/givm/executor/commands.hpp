@@ -40,6 +40,7 @@
 #include "commands/apply_element.hpp"
 #include "commands/deal_damage.hpp"
 #include "commands/heal.hpp"
+#include "commands/increase_max_health.hpp"
 #include "commands/set_element_aura.hpp"
 #include "commands/test_command.hpp"
 

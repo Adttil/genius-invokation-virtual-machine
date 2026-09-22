@@ -260,6 +260,13 @@ namespace givm
         std::uint32_t value{};
     };
 
+    struct increase_max_health
+    {
+        effect_source_id source{};
+        character_id target{ {}, std::numeric_limits<size_t>::max() };
+        std::uint32_t value{};
+    };
+
     struct set_element_aura
     {
         character_id target;
@@ -312,6 +319,7 @@ namespace givm::detail
         deal_damage,
         apply_element,
         heal,
+        increase_max_health,
         set_element_aura,
         test_command>;
 
@@ -457,6 +465,10 @@ namespace givm::detail
     }
     constexpr size_t input_size(const apply_element&) noexcept { return 0; }
     constexpr size_t input_size(const heal& command) noexcept
+    {
+        return command.target.index == std::numeric_limits<size_t>::max() ? sizeof(healing) : 0;
+    }
+    constexpr size_t input_size(const increase_max_health& command) noexcept
     {
         return command.target.index == std::numeric_limits<size_t>::max() ? sizeof(healing) : 0;
     }

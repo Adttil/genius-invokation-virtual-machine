@@ -42,6 +42,7 @@
 | --- | --- |
 | [`deal_damage`](commands/deal_damage.md) | 完成一组可由范围和元素反应展开的伤害 |
 | [`heal`](commands/heal.md) | 调整治疗量、恢复生命并通知实际恢复值 |
+| [`increase_max_health`](commands/increase_max_health.md) | 增加生命上限，恢复相同数量生命并通知 |
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
 | [`set_element_aura`](commands/set_element_aura.md) | 直接设置元素附着的命令 |
 
