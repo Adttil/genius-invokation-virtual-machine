@@ -8,7 +8,7 @@
 struct healed;
 ```
 
-角色治疗完成后的通知。
+角色治疗完成后的通知。广播时牌桌已更新生命值；`value` 是经生命上限截断后的实际恢复量。满血等情况仍产生通知，此时值为 `0`。
 
 ## 成员对象
 
@@ -16,7 +16,7 @@ struct healed;
 | --- | --- | --- |
 | `source` | `const effect_source_id` | 本次治疗的来源；只读 |
 | `target` | `const character_id` | 已接受治疗的角色；只读 |
-| `value` | `const std::uint32_t` | 本次治疗的生命值；只读 |
+| `value` | `const std::uint32_t` | 本次实际恢复的生命值；只读 |
 
 ## 示例
 

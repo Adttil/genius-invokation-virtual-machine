@@ -253,6 +253,13 @@ namespace givm
         element_application_cause cause = element_application_cause::effect;
     };
 
+    struct heal
+    {
+        effect_source_id source{};
+        character_id target{ {}, std::numeric_limits<size_t>::max() };
+        std::uint32_t value{};
+    };
+
     struct set_element_aura
     {
         character_id target;
@@ -304,6 +311,7 @@ namespace givm::detail
         start_battle,
         deal_damage,
         apply_element,
+        heal,
         set_element_aura,
         test_command>;
 
@@ -448,6 +456,10 @@ namespace givm::detail
             ? command.input_count * ((sizeof(damage) + alignment - 1) / alignment * alignment) : 0;
     }
     constexpr size_t input_size(const apply_element&) noexcept { return 0; }
+    constexpr size_t input_size(const heal& command) noexcept
+    {
+        return command.target.index == std::numeric_limits<size_t>::max() ? sizeof(healing) : 0;
+    }
     constexpr size_t input_size(const set_element_aura&) noexcept { return 0; }
     constexpr size_t input_size(const test_command&) noexcept { return 0; }
 }
