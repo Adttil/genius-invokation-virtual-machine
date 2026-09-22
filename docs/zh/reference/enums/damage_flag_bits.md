@@ -13,7 +13,9 @@ enum class damage_flag_bits : std::uint16_t
     ignore_shield = 1u << 3,
     normal_attack = 1u << 4,
     elemental_skill = 1u << 5,
-    elemental_burst = 1u << 6
+    elemental_burst = 1u << 6,
+    charged_attack = 1u << 7,
+    plunging_attack = 1u << 8
 };
 ```
 
@@ -30,12 +32,12 @@ enum class damage_flag_bits : std::uint16_t
 | `normal_attack` | 本段被视为普通攻击伤害 |
 | `elemental_skill` | 本段被视为元素战技伤害 |
 | `elemental_burst` | 本段被视为元素爆发伤害 |
+| `charged_attack` | 重击伤害 |
+| `plunging_attack` | 下落攻击伤害 |
 
 这些标志彼此独立，可以组合；设置技能分类位不会自动设置 `skill_damage`。定义源应按规则明确提供本段伤害需要的全部标志。
 
 普通攻击、元素战技和元素爆发标志描述本段伤害的性质，可在 [`damage_preparation`](../definition/events/damage_preparation.md) 中修改。它们不改变实际使用的技能，也不改写 [`skill_will_be_used`](../definition/events/skill_will_be_used.md) 或 [`skill_used`](../definition/events/skill_used.md) 中的技能身份。
-| `charged_attack` | 重击伤害 |
-| `plunging_attack` | 下落攻击伤害 |
 
 ## 示例
 

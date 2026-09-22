@@ -8,7 +8,7 @@
 struct technique_effect;
 ```
 
-执行所选特技自身效果时，提供这项特技及其目标。特技定义通过响应通过 `invoke` 提交的入口实现特技效果。
+执行所选特技自身效果时，提供这项特技及其目标。特技定义在响应中通过 `invoke` 提交程序，实现特技效果。
 
 ## 成员对象
 
@@ -23,4 +23,4 @@ struct technique_effect;
 
 本事件仅调用所选特技自己的定义。在支付和 [`technique_will_be_used`](technique_will_be_used.md) 的响应完成后，只有未被取消的特技效果才执行本事件。其效果完成后再广播 [`technique_used`](technique_used.md)。
 
-特技分类通过定义标签表达，不影响本事件是否存在。
+只有带 `technique` 标签且提供本事件响应的装备附件，才会成为特技行动候选。
