@@ -402,8 +402,6 @@ namespace givm
     struct character_will_be_defeated
     {
         const character_id target;
-        bool prevented = false;
-        std::uint32_t revive_health = 0;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(character_will_be_defeated);
     };
 

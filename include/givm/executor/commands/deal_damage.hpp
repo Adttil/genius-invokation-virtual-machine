@@ -48,21 +48,22 @@ namespace givm::detail
     inline constexpr std::size_t damage_reaction_offset = 1;
     inline constexpr std::size_t damage_calculation_offset = 2;
     inline constexpr std::size_t damage_effect_offset = 3;
-    inline constexpr std::size_t damage_health_resume_offset = 4;
+    inline constexpr std::size_t damage_dying_offset = 4;
+    inline constexpr std::size_t damage_health_resume_offset = 5;
     template<bool Observed>
-    inline constexpr std::size_t damage_entity_resume_offset = 4 + Observed;
+    inline constexpr std::size_t damage_entity_resume_offset = 5 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_attachment_resume_offset = 5 + Observed;
+    inline constexpr std::size_t damage_attachment_resume_offset = 6 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_observation_offset = 6 + Observed;
+    inline constexpr std::size_t damage_overloaded_observation_offset = 7 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_broadcast_offset = 6 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_broadcast_offset = 7 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_reaction_offset = 7 + 2 * Observed;
+    inline constexpr std::size_t damage_after_reaction_offset = 8 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_damage_offset = 8 + 2 * Observed;
+    inline constexpr std::size_t damage_after_damage_offset = 9 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_end_offset = 9 + 2 * Observed;
+    inline constexpr std::size_t damage_end_offset = 10 + 2 * Observed;
 
     inline damage_node& damage_node_at(frame_stack& stack, std::size_t offset) noexcept
     {
@@ -229,7 +230,7 @@ namespace givm::detail
     // Empty means this local stage finished. A value means execution left the
     // local loop: a response program, an observation pause, or game termination.
     template<bool Observed>
-    std::optional<execution_state> apply_group_damage_element(
+    inline std::optional<execution_state> apply_group_damage_element(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
         const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
@@ -293,16 +294,15 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    std::optional<execution_state> continue_damage_after_health_reduction(
+    inline std::optional<execution_state> continue_damage_dying(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
-        const auto id = damage_node_at(context.stack(), group.pending).event.target;
+        if(not continue_broadcast<character_will_be_defeated>(library, table, context, random)) return continue_execution;
+        const auto id = get<0>(context.stack().top<character_will_be_defeated, execution_position>()).target;
+        pop_broadcast<character_will_be_defeated>(context);
         const auto character = table[id];
         if(character.state().health == 0)
         {
-            // A future dying broadcast starts here, while attachments still
-            // exist. Its failed-revival continuation checks termination first.
             if(all_characters_defeated(table, id.player_id))
             {
                 const auto result = all_characters_defeated(table, other_player(id.player_id)) ? game_result::both_loss
@@ -313,6 +313,19 @@ namespace givm::detail
             character.state().energy = 0;
         }
         return apply_group_damage_element<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
+    inline std::optional<execution_state> continue_damage_after_health_reduction(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+        const auto id = damage_node_at(context.stack(), group.pending).event.target;
+        if(table[id].state().health != 0)
+            return apply_group_damage_element<Observed>(library, table, context, random);
+        const auto position = group.instructions + damage_dying_offset * sizeof(execute_fn);
+        prepare_broadcast(library, character_will_be_defeated{ .target = id }, table, context.stack(), position);
+        return continue_damage_dying<Observed>(library, table, context, random);
     }
 
     template<bool Observed>
@@ -674,12 +687,13 @@ namespace givm::detail
     }
 
     template<bool Inputs, bool Observed>
-    void compile_damage_resolution(program_writer& writer)
+    inline void compile_damage_resolution(program_writer& writer)
     {
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_preparation<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_reaction<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_calculation<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_effect<Observed>> });
+        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_dying<Observed>> });
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_health_observation<Inputs> });
         writer.write(execute_fn{ resume_damage_entity_generation<Inputs, Observed> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_attachment_replacement> });

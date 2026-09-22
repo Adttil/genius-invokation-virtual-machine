@@ -8,15 +8,17 @@
 struct character_will_be_defeated;
 ```
 
-角色被击倒前的事件。响应者可以阻止本次击倒，并指定恢复的生命。
+伤害实际扣血至零时的濒死通知，在终局判定和死亡清理之前全局广播。角色自身的技能和尚未清除的附属也能响应。
+
+响应可提交 [`heal`](../commands/heal.md) 等恢复生命的程序。广播及全部响应程序完成后，执行器读取目标的实际生命：非零表示复活成功；仍为零则先判定是否终局，对局继续时才清除该角色全部附属和充能。事件没有独立的“阻止击倒”标记，也不自动恢复生命。
+
+广播期间可以执行其他程序和等待输入，复制执行器及牌桌后也可独立恢复。观察模式先报告扣血现场，恢复执行后才进入本广播。
 
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `target` | `const character_id` | 将被击倒的角色；只读 |
-| `prevented` | `bool` | 是否阻止击倒，初始为 false |
-| `revive_health` | `std::uint32_t` | 阻止击倒时恢复的生命，初始为 0 |
+| `target` | `const character_id` | 生命已降至零的角色；只读 |
 
 ## 示例
 
@@ -28,17 +30,13 @@ struct character_will_be_defeated;
 
 int main()
 {
-    givm::character_will_be_defeated event{ .target = {} };
-    event.prevented = true;
-    event.revive_health = 1;
-    std::println("阻止击倒: {}", event.prevented);
-    std::println("恢复生命: {}", event.revive_health);
+    givm::character_will_be_defeated event{ .target = { givm::player_id{ 1 }, 0 } };
+    std::println("濒死角色位置: {}", event.target.index);
 }
 ```
 
 输出
 
 ```text
-阻止击倒: true
-恢复生命: 1
+濒死角色位置: 0
 ```
