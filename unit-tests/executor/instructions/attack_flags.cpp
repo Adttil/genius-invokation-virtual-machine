@@ -12,6 +12,9 @@
 
 namespace
 {
+    constexpr auto combined_flags = givm::skill_flag_bits::charged_attack | givm::skill_flag_bits::plunging_attack;
+    static_assert(combined_flags.contains(givm::skill_flag_bits::charged_attack));
+    static_assert(combined_flags.to_damage_flags().contains(givm::damage_flag_bits::plunging_attack));
     struct attack_log
     {
         std::vector<givm::skill_flags> costs;

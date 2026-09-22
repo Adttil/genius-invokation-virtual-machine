@@ -27,4 +27,4 @@ enum class target_validation : std::uint8_t
 
 空选择同样可以检查，用于区分必须选目标、允许不选但可继续选择，以及无需目标且不可继续选择。是否允许空选择、目标数量上限和其他合法性条件由具体查询决定。
 
-用于 [`card_target_validation`](card_target_validation.md) 与 [`skill_target_validation`](skill_target_validation.md)，表达目标与相应行动使用条件的分步检查结果。
+用于 [`card_target_validation`](card_target_validation.md)、[`skill_target_validation`](skill_target_validation.md) 与 [`technique_target_validation`](technique_target_validation.md)，表达目标与相应行动使用条件的分步检查结果。

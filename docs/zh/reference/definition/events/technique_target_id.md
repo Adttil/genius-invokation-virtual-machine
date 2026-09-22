@@ -9,4 +9,3 @@ using technique_target_id = std::variant<std::monostate, character_id, support_i
 ```
 
 特技效果的目标标识。没有目标时保存 std::monostate，其余情况分别表示角色、支援或召唤物。
-

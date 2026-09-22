@@ -24,4 +24,3 @@ struct cost_of_technique;
 报价先读取定义库已保存的 [`technique_initial_cost`](../queries/technique_initial_cost.md) 结果作为基础费用，再依次处理费用响应。响应不得调用随机函数，违反此前提属于未定义行为。
 
 需要确认行动后执行的效果由响应通过 [`handle_context::invoke`](../../executor/handle_context/invoke.md) 提交，必须采用 `return context.invoke(givm::substack_t{}, entry, inputs...);` 的形式，没有输入时也须传这个标记。报价时只保留入口和输入，确认后在扣除骰子与充能之前执行所选候选的效果；误用普通重载属于未定义行为，不进行运行期检查。
-

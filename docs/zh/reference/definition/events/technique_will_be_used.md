@@ -22,4 +22,3 @@ struct technique_will_be_used;
 ## 注意
 
 费用结算完成后广播本事件。响应者可以将 `effect_cancelled` 设为 `true`，跳过特技自身的 [`technique_effect`](technique_effect.md)；这不会退还费用或取消之后的 [`technique_used`](technique_used.md) 广播。特技分类通过定义标签查询。
-

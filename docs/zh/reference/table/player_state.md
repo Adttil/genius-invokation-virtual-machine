@@ -19,8 +19,7 @@ struct player_state;
 | `hand_limit` | `std::uint32_t` | 该玩家的手牌上限，默认 10 |
 | `support_limit` | `std::uint32_t` | 该玩家当前可容纳的支援数量上限，默认 4 |
 | `summon_limit` | `std::uint32_t` | 该玩家当前可容纳的召唤物数量上限，默认 4 |
-
-| `can_plunge` | `bool` | 下一次战斗行动是否仍可作为下落攻击，默认 false |
+| `can_plunge` | `bool` | 下一次战斗行动若为普通攻击，是否可视为下落攻击，默认 false |
 
 两位玩家分别拥有自己的 `summon_limit`。上限只限制新召唤物的创建；若当前上限低于已有召唤物数量，已有召唤物仍然保留。同定义召唤物仍会收到重复召唤请求，详见 [summon](../definition/commands/summon.md)。
 

@@ -46,14 +46,14 @@ namespace givm
             return lhs;
         }
 
-        friend constexpr skill_flags operator|(skill_flag_bits lhs, skill_flag_bits rhs) noexcept
-        {
-            return skill_flags{ lhs } | rhs;
-        }
-
     private:
         std::uint8_t bits_ = 0;
     };
+
+    constexpr skill_flags operator|(skill_flag_bits lhs, skill_flag_bits rhs) noexcept
+    {
+        return skill_flags{ lhs } | rhs;
+    }
 }
 
 #endif

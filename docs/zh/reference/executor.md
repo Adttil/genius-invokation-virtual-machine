@@ -50,6 +50,7 @@
 | [`switch_payment_validation`](executor/switch_payment_validation.md) | 切换出战角色的支付检查结果 |
 | [`card_payment_validation`](executor/card_payment_validation.md) | 出牌的支付检查结果 |
 | [`skill_payment_validation`](executor/skill_payment_validation.md) | 技能使用的支付检查结果 |
+| [`technique_payment_validation`](executor/technique_payment_validation.md) | 特技使用的支付检查结果 |
 | [`action_target_kind`](executor/action_target_kind.md) | 行动目标种类 |
 
 ## 常量

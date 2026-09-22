@@ -23,6 +23,6 @@ bool is_controlled(const definition_library& library, const table& card_table) c
 
 ## 注意
 
-此查询独立于费用、目标与支付检查，不改变候选数量，也不提交行动。调用方应在提交技能前检查；[`use_skill`](use_skill.md) 及执行过程不会自动拒绝受控角色使用技能。主动特技的选择也应采用这一判断，当前行动接口没有独立特技选项。
+此查询独立于费用、目标与支付检查，不改变候选数量，也不提交行动。调用方应在提交技能或特技前检查；[`use_skill`](use_skill.md)、[`use_technique`](use_technique.md) 及执行过程不会自动拒绝受控角色使用技能或特技。
 
 控制不禁止主动切换出战角色；免控保护也不阻止主动切换。需要检查任意角色或在卡牌定义中检查时，使用定义库的同名查询。
