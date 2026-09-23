@@ -8,11 +8,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <variant>
 #include <vector>
 
 #include "../broadcast.hpp"
+#include "set_active_character.hpp"
 #include "../../definition/events.hpp"
 #include "../../definition/commands.hpp"
 
@@ -162,7 +164,13 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t first_round_end_broadcast_offset = 38 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t second_round_end_broadcast_offset = 39 + Observed;
+    inline constexpr std::size_t prepared_skill_removal_offset = 39 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t prepared_skill_finish_offset = 40 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t switch_preparation_removal_offset = 41 + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t second_round_end_broadcast_offset = 42 + Observed;
 
     template<std::size_t From, std::size_t To>
     inline execution_state jump_to_action_instruction(execution_context& context) noexcept
@@ -554,6 +562,47 @@ namespace givm::detail
         return context.yield(execution_state::action_selection);
     }
 
+    template<bool Observed>
+    inline execution_state finish_prepared_skill_action(
+        const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
+    {
+        const auto speed = get<0>(context.stack().top<prepared_skill_effect, response_return>()).speed;
+        context.stack().pop<prepared_skill_effect, response_return>();
+        if(speed == action_speed::combat)
+            return jump_to_action_instruction<prepared_skill_finish_offset<Observed>, before_action_with_switch_offset>(context);
+        return jump_to_action_instruction<prepared_skill_finish_offset<Observed>, before_action_offset>(context);
+    }
+
+    template<bool Observed>
+    inline execution_state continue_prepared_skill_removal(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
+    {
+        if(not continue_broadcast<attachment_removed>(library, table, context, random))
+            return continue_execution;
+        pop_broadcast<attachment_removed>(context);
+        context.enter_next();
+        auto& stack = context.stack();
+        const auto frame = stack.top<prepared_skill_effect, response_return>();
+        auto event = get<0>(frame);
+        const auto speed_offset = reinterpret_cast<const unsigned char*>(&get<0>(frame).speed) - stack.data();
+        const auto attachment = std::as_const(table)[event.attachment];
+        auto response = context.make_handle_context(table, random);
+        // The consumed attachment retains its identity and state for its own effect.
+        const auto entry = library[attachment.definition_id()].handle<prepared_skill_effect>(attachment, event, response);
+        // invoke may grow the stack; the event passed to the handler is a local copy.
+        *reinterpret_cast<action_speed*>(stack.data() + speed_offset) = event.speed;
+        if(event.speed == action_speed::combat)
+            table[event.attachment.character_id.player_id].state().can_plunge = false;
+        if(entry)
+        {
+            table.state().self_player = event.attachment.character_id.player_id;
+            return context.enter(entry);
+        }
+        return finish_prepared_skill_action<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
     inline execution_state broadcast_before_action(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
@@ -564,6 +613,28 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<before_action>(context);
+        const auto active = *table[table.state().active_player].state().active_character;
+        std::optional<attachment_id> prepared;
+        for(auto attachment : table[active].attachments())
+        {
+            const auto definition = attachment.definition_id();
+            if(library.is_control(definition))
+            {
+                context.enter_next();
+                return prepare_action_selection(library, table, context);
+            }
+            if(not prepared && library[definition].can_handle<prepared_skill_effect, attachment_view>())
+                prepared = attachment.id();
+        }
+        if(prepared)
+        {
+            jump_to_action_instruction<before_action_broadcast_offset, prepared_skill_removal_offset<Observed>>(context);
+            context.stack().push(prepared_skill_effect{ .attachment = *prepared },
+                response_return{ table.state().self_player, context.position() + sizeof(execute_fn) });
+            table[*prepared].erase();
+            prepare_broadcast(library, attachment_removed{ *prepared }, table, context.stack(), context.position());
+            return continue_prepared_skill_removal<Observed>(library, table, context, random);
+        }
         context.enter_next();
         return prepare_action_selection(library, table, context);
     }
@@ -803,39 +874,6 @@ namespace givm::detail
     }
 
     template<bool Observed>
-    inline execution_state execute_switch_action(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
-    )
-    {
-        auto&& [costs, onpay_entries, onpay_offsets, onpay_sizes, onpay_cursor, selection, cached_inputs] =
-            context.stack().top<
-                cost_of_switch[],
-                program_entry[], std::size_t[], std::size_t[],
-                stack_count_t,
-                action_selection, substack_t
-            >();
-        const auto* selected = std::get_if<switch_selection>(&selection);
-        GIVM_ASSERT(selected != nullptr);
-        GIVM_ASSERT(selected->switch_cost_index < costs.size());
-        const auto target = costs[selected->switch_cost_index].target;
-        GIVM_ASSERT(static_cast<bool>(table[target]));
-        if constexpr(not Observed)
-        {
-            table[target.player_id].state().active_character = target;
-            table[target.player_id].state().can_plunge = true;
-        }
-        prepare_broadcast(library, active_character_changed{ .current = target }, table, context.stack(),
-            context.position() + (switch_action_broadcast_offset<Observed> - switch_action_offset) * sizeof(execute_fn));
-        context.enter_next();
-        if constexpr(Observed)
-        {
-            return context.yield(execution_state::active_character_changed);
-        }
-        return continue_execution;
-    }
-
-    template<bool Observed>
     inline execution_state broadcast_switch_action(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
@@ -875,15 +913,56 @@ namespace givm::detail
         return jump_to_action_instruction<switch_action_broadcast_offset<Observed>, before_action_offset>(context);
     }
 
+    template<bool Observed>
+    inline execution_state continue_switch_action_prepared_removal(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
+    {
+        if(const auto result = continue_switch_prepared_removal(library, table, context, random)) return *result;
+        return broadcast_switch_action<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
+    inline execution_state execute_switch_action(
+        const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
+    {
+        const auto frame = context.stack().top<cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t>();
+        const auto* selected = std::get_if<switch_selection>(&get<5>(frame));
+        GIVM_ASSERT(selected != nullptr);
+        GIVM_ASSERT(selected->switch_cost_index < get<0>(frame).size());
+        const auto target = get<0>(frame)[selected->switch_cost_index].target;
+        GIVM_ASSERT(static_cast<bool>(table[target]));
+        const active_character_changed event{ .current = target };
+        const auto broadcast_position = context.position()
+            + (switch_action_broadcast_offset<Observed> - switch_action_offset) * sizeof(execute_fn);
+        if constexpr(Observed)
+        {
+            context.stack().push(event, response_return{ table.state().self_player, broadcast_position });
+            context.enter_next();
+            return context.yield(execution_state::active_character_changed);
+        }
+        const auto removal_position = context.position()
+            + (switch_preparation_removal_offset<Observed> - switch_action_offset) * sizeof(execute_fn);
+        if(const auto result = prepare_active_character_switch(
+            library, table, context, random, event, removal_position, broadcast_position)) return *result;
+        return broadcast_switch_action<Observed>(library, table, context, random);
+    }
+
     inline execution_state apply_switch_action(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
     )
     {
-        const auto& event = get<0>(context.stack().top<active_character_changed, response_return>());
-        table[event.current.player_id].state().active_character = event.current;
-        table[event.current.player_id].state().can_plunge = true;
-        context.enter_next();
+        const auto frame = context.stack().top<active_character_changed, response_return>();
+        const auto event = get<0>(frame);
+        const auto broadcast_position = get<1>(frame).position;
+        context.stack().pop<active_character_changed, response_return>();
+        const auto removal_position = context.position()
+            + (switch_preparation_removal_offset<true> - switch_action_apply_offset) * sizeof(execute_fn);
+        if(const auto result = prepare_active_character_switch(
+            library, table, context, random, event, removal_position, broadcast_position)) return *result;
         return broadcast_switch_action<true>(library, table, context, random);
     }
 
@@ -1396,7 +1475,7 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_action_phase<Observed>);
         writer.write<execute_fn>(&prepare_before_action<false, Observed>);
         writer.write<execute_fn>(&prepare_before_action<true, Observed>);
-        writer.write<execute_fn>(&broadcast_before_action);
+        writer.write<execute_fn>(&broadcast_before_action<Observed>);
         writer.write<execute_fn>(&execute_action_selection<Observed>);
         writer.write<execute_fn>(&continue_switch_onpay);
         writer.write<execute_fn>(&broadcast_action_dice_payment<switch_dice_payment_offset, switch_action_offset>);
@@ -1435,6 +1514,9 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_elemental_tuning_modification);
         writer.write<execute_fn>(&broadcast_elemental_tuning_completed<Observed>);
         writer.write<execute_fn>(&broadcast_first_round_end<Observed>);
+        writer.write<execute_fn>(&continue_prepared_skill_removal<Observed>);
+        writer.write<execute_fn>(&finish_prepared_skill_action<Observed>);
+        writer.write<execute_fn>(&continue_switch_action_prepared_removal<Observed>);
         writer.write<execute_fn>(&broadcast_second_round_end);
     }
 

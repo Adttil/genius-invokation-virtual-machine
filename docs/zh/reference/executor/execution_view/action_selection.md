@@ -50,6 +50,8 @@ class execution_view<execution_state::action_selection>;
 
 ## 注意
 
+执行器在提供本现场之前已经检查准备技能。未受控制的出战角色若存在支持 [`prepared_skill_effect`](../../definition/events/prepared_skill_effect.md) 的附属，会先自动执行该行动，不提供本次选择现场；受控制时保留准备技能附属并正常提供选择。
+
 在本现场继续调用 [`executor::step`](../executor/step.md) 前，调用方必须通过 [`use_technique`](action_selection/use_technique.md)、[`use_skill`](action_selection/use_skill.md)、[`play_card`](action_selection/play_card.md)、[`elemental_tuning`](action_selection/elemental_tuning.md)、[`switch_active_character`](action_selection/switch_active_character.md) 或 [`declare_round_end`](action_selection/declare_round_end.md) 提供行动输入。费用预览、支付检查与目标检查不算行动输入；尚未提供输入时，上层应保留当前现场，不调用 `step`。
 
 技能、出牌与切换分别使用从零开始的候选索引。可通过 `skill_count`、`card_count` 与 `switch_target_count` 查询候选数量，通过 `skill_id`、`card_id` 与 `switch_target` 取得相应实体 ID，用于查询牌桌并显示候选信息；候选索引仅用于当前行动现场。

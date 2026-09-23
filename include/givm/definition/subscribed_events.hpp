@@ -391,7 +391,8 @@ namespace givm
         struct attachment_removed,
         struct attachment_reapplication,
         struct attachment_state_changed,
-        struct technique_effect
+        struct technique_effect,
+        struct prepared_skill_effect
     >{};
 }
 

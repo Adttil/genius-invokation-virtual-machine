@@ -14,6 +14,10 @@ struct begin_action;
 
 先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持使用技能或特技、打出手牌、元素调和、主动切换出战角色和宣布结束；当前行动方必须已有出战角色。双方均宣布结束后，本命令才结束行动阶段。
 
+每次 `before_action` 及其响应程序完成后、建立行动候选前，检查出战角色的准备技能附属；快速行动后再次选择时也会检查。若角色未受控制，按附属遍历顺序选中第一个支持 [`prepared_skill_effect`](../events/prepared_skill_effect.md) 的有效实体，自动执行本次准备技能，不返回 `action_selection`。若受控制，则保留准备技能附属，正常进入行动选择。
+
+准备技能先离场并完成离场通知，再调用其自身效果；选定后不因离场响应改变状态而撤销。它无需支付，不发送普通技能或特技使用通知；默认战斗行动，可由响应改为快速行动，最终速度决定是否交接行动权和消耗 `can_plunge`。一次只消耗一个准备技能；跨回合或宣布结束本身不清除准备技能附属。
+
 等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、检查或选择行动。出牌选择当前行动玩家的有效手牌，并提供支付骰子及至多两个目标；目标参数默认为空 span，超过两个的元素忽略。目标和用牌条件由牌定义决定。主动切换选择当前行动玩家存活、非出战的角色。调用方保证支付满足费用、骰子持有数量及出战角色充能；宣布结束无需支付骰子。
 
 调用方必须通过 `use_skill`、`use_technique`、`play_card`、`elemental_tuning`、`switch_active_character` 或 `declare_round_end` 提供本次行动输入后，才能再次调用 `step`。费用预览、支付检查与目标检查不提供行动输入；等待玩家决定期间由上层保留当前现场。
@@ -34,7 +38,9 @@ struct begin_action;
 
 通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 选择切换时，可采用已经计算的费用，也可传入定义库和牌桌，在本次调用中同步计算报价后提交。两种重载均由下一次推进执行已确认的费用效果、支付及切换，不自动检查支付是否合法。采用已计算费用时，由调用方保证该角色已经完整报价。同一行动窗口内每个候选只允许计算一次报价，可重复读取结果；带定义库与牌桌的提交重载仅用于尚未报价的候选，库不检查此约定。
 
-在 [`compile_mode::observed`](../../executor/compile_mode.md) 模式下推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)给出目标，牌桌仍可读取原出战角色；随后推进先完成设置，再处理变更响应。到达此现场前，已确认的费用响应、骰子与充能支付及相应变化响应均已完成。
+成功切换时，原出战角色上的所有准备技能附属一起标记为离场，按顺序逐个完成 [`attachment_removed`](../events/attachment_removed.md) 通知后，才处理正常的切换通知。
+
+在 [`compile_mode::observed`](../../executor/compile_mode.md) 模式下推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)给出目标，牌桌仍可读取原出战角色及其准备技能附属；随后推进才实际切换、清除这些附属并处理通知。到达此现场前，已确认的费用响应、骰子与充能支付及相应变化响应均已完成。
 
 以 [`compile_mode::observed`](../../executor/compile_mode.md) 编译时，每次新的行动机会先返回 `execution_state::action_started`，随后才处理 `before_action`。快速行动不结束当前机会；战斗行动结束后，即使另一方已经宣布结束、仍由当前玩家行动，也会报告新的行动机会。宣布结束时先返回 `execution_state::round_end_declared`，此时牌桌上的 `active_player` 仍是宣布结束的一方，随后推进才处理其结束响应。
 
@@ -138,5 +144,6 @@ int main()
 | --- | --- |
 | [`action_phase_started`](../events/action_phase_started.md) | 本回合行动阶段开始的通知 |
 | [`before_action`](../events/before_action.md) | 当前行动玩家选择行动前的事件 |
+| [`prepared_skill_effect`](../events/prepared_skill_effect.md) | 代替选择而自动执行的准备技能 |
 | [`cost_of_switch`](../events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
 | [`round_end_declared`](../events/round_end_declared.md) | 玩家宣布本回合结束的通知 |

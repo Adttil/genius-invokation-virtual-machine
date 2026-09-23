@@ -327,6 +327,13 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(technique_used);
     };
 
+    struct prepared_skill_effect
+    {
+        const attachment_id attachment;
+        action_speed speed = action_speed::combat;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(prepared_skill_effect);
+    };
+
     // Damage events.
     using damage_source_id =
         std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,

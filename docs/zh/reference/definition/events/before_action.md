@@ -14,6 +14,8 @@ struct before_action;
 
 `table.state().active_player` 表示即将行动的玩家。在正常行动机会中，若 `first_ended` 为 `true`，则对手已经宣告结束，本玩家可以继续行动。
 
+本事件及其响应程序结束后，才检查出战角色的 [`prepared_skill_effect`](prepared_skill_effect.md) 响应能力。存在可执行的准备技能时自动执行该行动；否则提供玩家选择。快速行动后再次进入选择前也进行该检查。
+
 ## 示例
 
 ```cpp

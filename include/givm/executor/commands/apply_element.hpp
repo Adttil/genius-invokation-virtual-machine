@@ -12,6 +12,7 @@
 #include "attach.hpp"
 #include "generate_combat_status.hpp"
 #include "summon.hpp"
+#include "set_active_character.hpp"
 #include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
@@ -60,17 +61,16 @@ namespace givm::detail
         const auto event = get<0>(frame);
         const auto position = get<1>(frame).position;
         context.stack().pop<active_character_changed, response_return>();
-        table[event.current.player_id].state().active_character = event.current;
-        table[event.current.player_id].state().can_plunge = true;
-        prepare_broadcast(library, event, table, context.stack(), position);
+        if(const auto state = prepare_active_character_switch(library, table, context, random,
+            event, position - 2 * sizeof(execute_fn), position)) return *state;
         return continue_reaction_overloaded_switch(library, table, context, random);
     }
 
     template<bool Observed>
     inline std::optional<execution_state> prepare_reaction_overloaded_switch(
         const definition_library& library, unrestricted_table& table, execution_context& context,
-        random_fn& random, player_id affected_player, execution_position observation_resume,
-        execution_position broadcast_resume)
+        random_fn& random, player_id affected_player, execution_position removal_resume,
+        execution_position observation_resume, execution_position broadcast_resume)
     {
         const auto player = table[affected_player];
         const auto characters = player.template characters<false>();
@@ -95,9 +95,8 @@ namespace givm::detail
             }
             else
             {
-                player.state().active_character = event.current;
-                player.state().can_plunge = true;
-                prepare_broadcast(library, event, table, context.stack(), broadcast_resume);
+                if(const auto state = prepare_active_character_switch(library, table, context, random,
+                    event, removal_resume, broadcast_resume)) return *state;
                 return continue_reaction_overloaded_switch(library, table, context, random);
             }
         }
@@ -113,13 +112,14 @@ namespace givm::detail
     inline constexpr std::size_t element_reaction_offset = 0;
     inline constexpr std::size_t element_entity_resume_offset = 1;
     inline constexpr std::size_t element_attachment_resume_offset = 2;
-    inline constexpr std::size_t element_overloaded_observation_offset = 3;
+    inline constexpr std::size_t element_overloaded_removal_offset = 3;
+    inline constexpr std::size_t element_overloaded_observation_offset = 4;
     template<bool Observed>
-    inline constexpr std::size_t element_overloaded_broadcast_offset = 3 + Observed;
+    inline constexpr std::size_t element_overloaded_broadcast_offset = 4 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t element_after_reaction_offset = 4 + Observed;
+    inline constexpr std::size_t element_after_reaction_offset = 5 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t element_end_offset = 5 + Observed;
+    inline constexpr std::size_t element_end_offset = 6 + Observed;
 
     template<bool Observed>
     inline execution_state continue_element_application_completion(
@@ -166,6 +166,14 @@ namespace givm::detail
         return prepare_element_application_completion<Observed>(library, table, context, random);
     }
 
+    template<bool Observed>
+    inline execution_state resume_element_overloaded_removal(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        if(const auto state = continue_switch_prepared_removal(library, table, context, random)) return *state;
+        return continue_element_overloaded_switch<Observed>(library, table, context, random);
+    }
+
     inline execution_state resume_element_overloaded_observation(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
@@ -194,7 +202,8 @@ namespace givm::detail
                 && table[event.target.player_id].state().active_character == event.target)
             {
                 if(const auto state = prepare_reaction_overloaded_switch<Observed>(library, table, context, random,
-                    event.target.player_id, frame.instructions + element_overloaded_observation_offset * sizeof(execute_fn),
+                    event.target.player_id, frame.instructions + element_overloaded_removal_offset * sizeof(execute_fn),
+                    frame.instructions + element_overloaded_observation_offset * sizeof(execute_fn),
                     frame.instructions + element_overloaded_broadcast_offset<Observed> * sizeof(execute_fn))) return *state;
             }
             else if(const auto state = prepare_default_reaction_entities(library, table, context, random,
@@ -254,6 +263,7 @@ namespace givm::detail
         writer.write(execute_fn{ continue_element_application_reaction<Observed> });
         writer.write(execute_fn{ resume_element_entity_generation<Observed> });
         writer.write(execute_fn{ resume_element_attachment_replacement<Observed> });
+        writer.write(execute_fn{ resume_element_overloaded_removal<Observed> });
         if constexpr(Observed) writer.write(execute_fn{ resume_element_overloaded_observation });
         writer.write(execute_fn{ continue_element_overloaded_switch<Observed> });
         writer.write(execute_fn{ continue_element_application_completion<Observed> });

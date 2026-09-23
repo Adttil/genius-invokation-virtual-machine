@@ -60,15 +60,17 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t damage_attachment_resume_offset = 6 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_observation_offset = 7 + Observed;
+    inline constexpr std::size_t damage_overloaded_removal_offset = 7 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_broadcast_offset = 7 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_observation_offset = 8 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_reaction_offset = 8 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_broadcast_offset = 8 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_damage_offset = 9 + 2 * Observed;
+    inline constexpr std::size_t damage_after_reaction_offset = 9 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_end_offset = 10 + 2 * Observed;
+    inline constexpr std::size_t damage_after_damage_offset = 10 + 2 * Observed;
+    template<bool Observed>
+    inline constexpr std::size_t damage_end_offset = 11 + 2 * Observed;
 
     inline damage_record& damage_record_at(damage_group& group, std::size_t index) noexcept
     {
@@ -448,6 +450,14 @@ namespace givm::detail
         return continue_damage_completion<Inputs, Observed>(library, table, context, random);
     }
 
+    template<bool Inputs, bool Observed>
+    inline execution_state resume_damage_overloaded_removal(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        if(const auto state = continue_switch_prepared_removal(library, table, context, random)) return *state;
+        return continue_damage_overloaded_switch<Inputs, Observed>(library, table, context, random);
+    }
+
     template<bool Inputs>
     inline execution_state resume_damage_overloaded_observation(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
@@ -467,6 +477,7 @@ namespace givm::detail
         const auto player = player_id{ group.overloaded_player };
         group.overloaded_player = no_overloaded_player;
         if(const auto state = prepare_reaction_overloaded_switch<Observed>(library, table, context, random, player,
+            group.instructions + damage_overloaded_removal_offset<Observed> * sizeof(execute_fn),
             group.instructions + damage_overloaded_observation_offset<Observed> * sizeof(execute_fn),
             group.instructions + damage_overloaded_broadcast_offset<Observed> * sizeof(execute_fn))) return *state;
         return continue_damage_completion<Inputs, Observed>(library, table, context, random);
@@ -634,6 +645,7 @@ namespace givm::detail
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_health_observation<Inputs> });
         writer.write(execute_fn{ resume_damage_entity_generation<Inputs, Observed> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_attachment_replacement> });
+        writer.write(execute_fn{ resume_damage_overloaded_removal<Inputs, Observed> });
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_overloaded_observation<Inputs> });
         writer.write(execute_fn{ continue_damage_overloaded_switch<Inputs, Observed> });
         writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_reaction<Observed>> });

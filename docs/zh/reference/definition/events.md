@@ -73,6 +73,7 @@
 | [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |
 | [`skill_effect`](events/skill_effect.md) | 执行所选技能自身效果 |
 | [`skill_used`](events/skill_used.md) | 技能使用完成后的通知 |
+| [`prepared_skill_effect`](events/prepared_skill_effect.md) | 消耗准备技能附属并执行其自身效果 |
 
 ## 伤害、治疗与元素
 

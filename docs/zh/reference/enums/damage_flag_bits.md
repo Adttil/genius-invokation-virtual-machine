@@ -15,7 +15,8 @@ enum class damage_flag_bits : std::uint16_t
     elemental_skill = 1u << 5,
     elemental_burst = 1u << 6,
     charged_attack = 1u << 7,
-    plunging_attack = 1u << 8
+    plunging_attack = 1u << 8,
+    prepared_skill = 1u << 9
 };
 ```
 
@@ -34,8 +35,11 @@ enum class damage_flag_bits : std::uint16_t
 | `elemental_burst` | 本段被视为元素爆发伤害 |
 | `charged_attack` | 重击伤害 |
 | `plunging_attack` | 下落攻击伤害 |
+| `prepared_skill` | 准备技能直接产生的伤害 |
 
 这些标志彼此独立，可以组合；设置技能分类位不会自动设置 `skill_damage`。定义源应按规则明确提供本段伤害需要的全部标志。
+
+[`prepared_skill_effect`](../definition/events/prepared_skill_effect.md) 的直接伤害由定义源显式设置 `prepared_skill`。执行准备技能不会自动给后续伤害添加此标志，也不会因此产生普通技能或特技的使用通知。
 
 普通攻击、元素战技和元素爆发标志描述本段伤害的性质，可在 [`damage_preparation`](../definition/events/damage_preparation.md) 中修改。它们不改变实际使用的技能，也不改写 [`skill_will_be_used`](../definition/events/skill_will_be_used.md) 或 [`skill_used`](../definition/events/skill_used.md) 中的技能身份。
 

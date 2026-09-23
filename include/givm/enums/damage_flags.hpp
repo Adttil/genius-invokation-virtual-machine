@@ -15,7 +15,8 @@ namespace givm
         elemental_skill = 1u << 5,
         elemental_burst = 1u << 6,
         charged_attack = 1u << 7,
-        plunging_attack = 1u << 8
+        plunging_attack = 1u << 8,
+        prepared_skill = 1u << 9
     };
 
     class damage_flags
