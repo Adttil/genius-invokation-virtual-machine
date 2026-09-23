@@ -10,13 +10,16 @@ namespace givm::detail
     inline execution_state execute_max_health_increase(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        const auto input = [&]() -> healing
+        const auto input = [&]() -> std::optional<healing>
         {
             if constexpr(Fixed)
             {
                 const auto command = context.instruction_data<1, increase_max_health>(library);
                 context.advance(instruction_extent<1, increase_max_health>);
-                return { command.source, command.target, command.value };
+                const auto source = resolve_character_target<false>(table, command.source);
+                const auto target = resolve_character_target<false>(table, command.target);
+                if(not source || not target) return std::nullopt;
+                return healing{ *source, *target, command.value };
             }
             else
             {
@@ -26,22 +29,23 @@ namespace givm::detail
                 return event;
             }
         }();
-        const bool valid = static_cast<bool>(table[input.target]);
+        if(not input) return context.enter_next();
+        const bool valid = static_cast<bool>(table[input->target]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
-        auto& state = table[input.target].state();
+        auto& state = table[input->target].state();
         GIVM_ASSERT(state.health <= state.max_health);
         [[assume(state.health <= state.max_health)]];
-        const auto value = std::min(input.value, std::numeric_limits<std::uint32_t>::max() - state.max_health);
+        const auto value = std::min(input->value, std::numeric_limits<std::uint32_t>::max() - state.max_health);
         state.max_health += value;
         state.health += value;
-        prepare_broadcast(library, healed{ input.source, input.target, value }, table, context.stack(), context.position());
+        prepare_broadcast(library, healed{ input->source, input->target, value }, table, context.stack(), context.position());
         return broadcast_healing_completed(library, table, context, random);
     }
 
     inline void compile(program_writer& writer, const givm::increase_max_health& command, compile_mode)
     {
-        if(command.target.index == std::numeric_limits<size_t>::max())
+        if(command.target.offset == std::numeric_limits<std::int32_t>::max())
             writer.write(execute_fn{ execute_max_health_increase<false> });
         else
         {

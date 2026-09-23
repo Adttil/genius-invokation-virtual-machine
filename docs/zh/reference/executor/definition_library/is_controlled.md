@@ -64,8 +64,7 @@ int main()
     const givm::character_id target{ givm::player_id{ 0 }, 0 };
     const auto [library, ids] = compile(sources,
         std::tuple{
-            givm::set_active_character{ .target = target },
-            givm::set_active_character{ .target = { givm::player_id{ 1 }, 0 } },
+            givm::select_active_character_both{},
             givm::attach{ .definition = frozen }
         },
         std::tuple{
@@ -73,7 +72,7 @@ int main()
             givm::start_round{},
             givm::end_game{ .result = givm::game_result::both_loss }
         }, givm::compile_mode::normal);
-    givm::table table{ { .max_rounds = 2 } };
+    givm::table table{ { .max_rounds = 2, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },
@@ -81,6 +80,12 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 1 }, 0 });
     execution.step(library, table, random);
     std::println("投骰时出战角色受控: {}", library.is_controlled(table[target]));
     std::println("冻结属于控制: {}", library.is_control(library.frozen_id()));

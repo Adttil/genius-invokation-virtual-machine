@@ -42,7 +42,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto command = log->dynamic ? givm::heal{} : givm::heal{
-                .source = patient, .target = patient, .value = log->value };
+                .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::self, 0 }, .value = log->value };
             return { log, context.add_program(std::tuple{ command }), log->pause
                 ? context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::program_entry{} };
         }
@@ -98,7 +98,8 @@ TEST_CASE("healing modifies the request then reports actual recovery including z
     log.bonus = GENERATE(0u, 3u);
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto [library, ids] = compile_healing(log, mode);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
     load_healing(table, library, ids);
     givm::executor executor;
     executor.enter_entry(library);
@@ -115,7 +116,8 @@ TEST_CASE("healing broadcasts resume and copy before and after recovery", "[heal
     healing_log log{ .value = 5, .bonus = 1, .dynamic = GENERATE(false, true), .pause = true };
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto [library, ids] = compile_healing(log, mode);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
     load_healing(table, library, ids);
     givm::executor executor;
     executor.enter_entry(library);

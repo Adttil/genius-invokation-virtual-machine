@@ -83,9 +83,9 @@ int main()
     sources.add(card);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } }, givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } }, givm::draw_cards{ .count = 1 }, givm::begin_action{} },
+        std::tuple{ givm::select_active_character_both{}, givm::draw_cards{ .count = 1 }, givm::begin_action{} },
         std::tuple{}, givm::compile_mode::normal);
-    givm::table table{ { .max_rounds = 0 } };
+    givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     const auto card_definition = ids.get_id<givm::card_definition>("card");
     load_deck(table, library,
@@ -96,6 +96,12 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 1 }, 0 });
     auto state = execution.step(library, table, random);
     if(state == givm::execution_state::action_selection)
     {

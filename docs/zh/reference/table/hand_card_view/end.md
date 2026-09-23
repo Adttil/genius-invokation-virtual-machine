@@ -54,7 +54,7 @@ int main()
         sources,
         std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
     const auto definition = ids.get_id<givm::card_definition>("示例");
-    givm::table table{};
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});
 
     auto random = []() -> std::uint32_t { return 0; };

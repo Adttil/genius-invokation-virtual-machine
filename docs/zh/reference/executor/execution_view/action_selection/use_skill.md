@@ -115,8 +115,7 @@ int main()
     sources.add(character);
     const auto [library, ids] = compile(sources,
         std::tuple{
-            givm::set_active_character{ .target = { givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ .target = { givm::player_id{ 1 }, 0 } },
+            givm::select_active_character_both{},
             givm::begin_action{}, givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, givm::compile_mode::normal);
 
@@ -128,6 +127,12 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 1 }, 0 });
     auto state = execution.step(library, table, random);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     std::println("技能候选数量: {}", action.skill_count());

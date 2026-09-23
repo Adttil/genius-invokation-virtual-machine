@@ -18,7 +18,7 @@ constexpr element_aura aura_from_element(element value) noexcept;
 
 ## 返回值
 
-同名的单元素附着；`element::none` 对应 `element_aura::none`。
+冰、水、火、雷、草返回同名的单元素附着；风、岩不会留下附着，与 `element::none` 一样返回 `element_aura::none`。
 
 ## 示例
 

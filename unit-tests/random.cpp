@@ -58,7 +58,7 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
     })
     {
         INFO(value);
-        givm::table table;
+        givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, givm::linked_deck{ .cards = { a, b } }, {});
         givm::executor execution;
         execution.enter_entry(library);
@@ -71,7 +71,7 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
 
     for(const auto cards : { std::vector<givm::definition_id<givm::card_definition>>{}, std::vector{ a } })
     {
-        givm::table table;
+        givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, givm::linked_deck{ .cards = cards }, {});
         givm::executor execution;
         execution.enter_entry(library);
@@ -93,7 +93,7 @@ TEST_CASE("initial replacements assign random values by player and selected card
         givm::compile_mode::normal,
         std::tuple{
             givm::draw_cards{ .count = 3 },
-            givm::draw_cards{ .count = 3, .player = givm::relative_player::other },
+            givm::draw_cards{ .count = 3, .player = givm::relative_player::opponent },
             givm::replace_cards_both{}, givm::end_game{ givm::game_result::both_loss }
         },
         std::tuple{}, alpha, beta, gamma, delta, epsilon
@@ -103,7 +103,7 @@ TEST_CASE("initial replacements assign random values by player and selected card
     const auto c = ids.get_id<givm::card_definition>(gamma.name());
     const auto d = ids.get_id<givm::card_definition>(delta.name());
     const auto e = ids.get_id<givm::card_definition>(epsilon.name());
-    givm::table initial_table;
+    givm::table initial_table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .cards = { a, b, c, d, e } };
     load_deck(initial_table, library, deck, deck);
     givm::executor initial_execution;
@@ -161,7 +161,7 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
         const auto c = ids.get_id<givm::card_definition>(gamma.name());
         const auto d = ids.get_id<givm::card_definition>(delta.name());
         const auto e = ids.get_id<givm::card_definition>(epsilon.name());
-        givm::table table;
+        givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, { .cards = { a, d, c, e, c, b, a } }, {});
         givm::executor execution;
         execution.enter_entry(library);
@@ -192,7 +192,7 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
                     givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal
     );
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor execution;
     execution.enter_entry(library);
     // Player 0 receives dice 1,2,3,4,5,6,7,0,1,2, then 3,4,... .

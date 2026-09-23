@@ -65,13 +65,11 @@ namespace givm
             return elemental_reaction::bloom;
         if(detail::is_element_pair(aura, incoming, element::electro, element::dendro))
             return elemental_reaction::quicken;
-        if((aura == element::anemo && detail::is_swirl_or_crystallize_target(incoming)) ||
-           (incoming == element::anemo && detail::is_swirl_or_crystallize_target(aura)))
+        if(incoming == element::anemo && detail::is_swirl_or_crystallize_target(aura))
         {
             return elemental_reaction::swirl;
         }
-        if((aura == element::geo && detail::is_swirl_or_crystallize_target(incoming)) ||
-           (incoming == element::geo && detail::is_swirl_or_crystallize_target(aura)))
+        if(incoming == element::geo && detail::is_swirl_or_crystallize_target(aura))
         {
             return elemental_reaction::crystallize;
         }

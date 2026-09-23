@@ -40,52 +40,48 @@ namespace givm
 
     struct set_active_character
     {
-        character_id target{ {}, std::numeric_limits<size_t>::max() };
+        relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
     };
 
     struct select_active_character_both
     {
     };
 
-    enum class relative_player : std::uint8_t
-    {
-        current,
-        other
-    };
-
     struct draw_cards
     {
         std::uint32_t count;
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
     };
 
     struct discard_hand_card
     {
-        hand_card_id card{ {}, std::numeric_limits<size_t>::max() };
+        relative_player player = relative_player::self;
+        definition_id<card_definition> definition{};
     };
 
-    struct discard_deck_card
+    struct discard_deck_cards
     {
-        deck_card_id card{ {}, std::numeric_limits<size_t>::max() };
+        std::uint32_t count = std::numeric_limits<std::uint32_t>::max();
+        relative_player player = relative_player::self;
     };
 
     struct add_support
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<support_view> definition{};
         support_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct set_support_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<support_view> definition{};
         support_state state{};
     };
 
     struct modify_support_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<support_view> definition{};
         std::int64_t count{};
         std::int64_t round_usages{};
@@ -93,34 +89,34 @@ namespace givm
 
     struct remove_support
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<support_view> definition{};
     };
 
     struct summon
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<summon_view> definition{};
         summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct add_summon
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<summon_view> definition{};
         summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct set_summon_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<summon_view> definition{};
         summon_state state{};
     };
 
     struct modify_summon_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<summon_view> definition{};
         std::int64_t value{};
         std::int64_t usages{};
@@ -128,34 +124,34 @@ namespace givm
 
     struct remove_summon
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<summon_view> definition{};
     };
 
     struct generate_combat_status
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<combat_status_view> definition{};
         combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct add_combat_status
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<combat_status_view> definition{};
         combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct set_combat_status_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<combat_status_view> definition{};
         combat_status_state state{};
     };
 
     struct modify_combat_status_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<combat_status_view> definition{};
         std::int64_t count{};
         std::int64_t round_usages{};
@@ -163,27 +159,27 @@ namespace givm
 
     struct remove_combat_status
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<combat_status_view> definition{};
     };
 
     struct attach
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<attachment_view> definition{};
         attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct set_attachment_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<attachment_view> definition{};
         attachment_state state{};
     };
 
     struct modify_attachment_state
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<attachment_view> definition{};
         std::int64_t count{};
         std::int64_t round_usages{};
@@ -191,14 +187,14 @@ namespace givm
 
     struct add_attachment
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<attachment_view> definition{};
         attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct remove_attachment
     {
-        relative_player player = relative_player::current;
+        relative_player player = relative_player::self;
         definition_id<attachment_view> definition{};
     };
 
@@ -239,38 +235,50 @@ namespace givm
     {
     };
 
+    struct relative_damage_target
+    {
+        relative_player player = relative_player::opponent;
+        std::int32_t offset = 0;
+        damage_target_selection selection = damage_target_selection::character;
+    };
+
+    struct fixed_damage
+    {
+        relative_character_target source;
+        relative_damage_target target;
+        std::uint32_t value;
+        std::uint16_t multiplier_numerator = 1;
+        std::uint16_t multiplier_denominator = 1;
+        damage_type type;
+        damage_flags flags;
+    };
+
     struct deal_damage
     {
-        std::span<const damage> damages{};
+        std::span<const fixed_damage> damages{};
         std::size_t input_count = 1;
     };
 
     struct apply_element
     {
-        element_application_source_id source;
-        character_id target;
+        relative_character_target source{};
+        relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
         element element;
         element_application_cause cause = element_application_cause::effect;
     };
 
     struct heal
     {
-        effect_source_id source{};
-        character_id target{ {}, std::numeric_limits<size_t>::max() };
+        relative_character_target source{};
+        relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
         std::uint32_t value{};
     };
 
     struct increase_max_health
     {
-        effect_source_id source{};
-        character_id target{ {}, std::numeric_limits<size_t>::max() };
+        relative_character_target source{};
+        relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
         std::uint32_t value{};
-    };
-
-    struct set_element_aura
-    {
-        character_id target;
-        element_aura aura;
     };
 
     struct test_command
@@ -288,7 +296,7 @@ namespace givm::detail
         select_active_character_both,
         draw_cards,
         discard_hand_card,
-        discard_deck_card,
+        discard_deck_cards,
         add_support,
         set_support_state,
         modify_support_state,
@@ -320,7 +328,6 @@ namespace givm::detail
         apply_element,
         heal,
         increase_max_health,
-        set_element_aura,
         test_command>;
 
 }
@@ -339,7 +346,7 @@ namespace givm::detail
 
     constexpr size_t input_size(const set_active_character& command) noexcept
     {
-        return command.target.index == std::numeric_limits<size_t>::max() ? sizeof(active_character_changed) : 0;
+        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(active_character_changed) : 0;
     }
 
     constexpr size_t input_size(const select_active_character_both&) noexcept { return 0; }
@@ -347,12 +354,12 @@ namespace givm::detail
 
     constexpr size_t input_size(const discard_hand_card& command) noexcept
     {
-        return command.card.index == std::numeric_limits<size_t>::max() ? sizeof(hand_card_discarded) : 0;
+        return command.definition ? 0 : sizeof(hand_card_discard_effect);
     }
 
-    constexpr size_t input_size(const discard_deck_card& command) noexcept
+    constexpr size_t input_size(const discard_deck_cards& command) noexcept
     {
-        return command.card.index == std::numeric_limits<size_t>::max() ? sizeof(deck_card_discarded) : 0;
+        return command.count == std::numeric_limits<std::uint32_t>::max() ? sizeof(deck_card_discard) : 0;
     }
 
     constexpr size_t input_size(const add_support& command) noexcept
@@ -463,16 +470,18 @@ namespace givm::detail
         return command.damages.empty()
             ? command.input_count * ((sizeof(damage) + alignment - 1) / alignment * alignment) : 0;
     }
-    constexpr size_t input_size(const apply_element&) noexcept { return 0; }
+    constexpr size_t input_size(const apply_element& command) noexcept
+    {
+        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(element_application) : 0;
+    }
     constexpr size_t input_size(const heal& command) noexcept
     {
-        return command.target.index == std::numeric_limits<size_t>::max() ? sizeof(healing) : 0;
+        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(healing) : 0;
     }
     constexpr size_t input_size(const increase_max_health& command) noexcept
     {
-        return command.target.index == std::numeric_limits<size_t>::max() ? sizeof(healing) : 0;
+        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(healing) : 0;
     }
-    constexpr size_t input_size(const set_element_aura&) noexcept { return 0; }
     constexpr size_t input_size(const test_command&) noexcept { return 0; }
 }
 #endif

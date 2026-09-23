@@ -9,7 +9,7 @@
 ```cpp
 struct add_attachment
 {
-    relative_player player = relative_player::current;
+    relative_player player = relative_player::self;
     definition_id<attachment_view> definition{};
     attachment_state state{
         std::numeric_limits<std::uint32_t>::max(),
@@ -23,7 +23,7 @@ struct add_attachment
 - 默认构造 `add_attachment{}` 使用动态模式，由 `invoke` 提交一个 [attachment_addition](../events/attachment_addition.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定一方执行到本命令时的出战角色。
 
-`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前行动玩家。动态输入明确指定目标角色和定义，目标角色必须有效。固定模式的出战角色目标必须有效。
+`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入明确指定目标角色和定义，目标角色必须有效。固定模式的出战角色目标必须有效。
 
 ## 结算
 

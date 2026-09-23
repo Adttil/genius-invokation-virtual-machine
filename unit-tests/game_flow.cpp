@@ -157,8 +157,8 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const auto initialization = std::tuple{
         givm::shuffle_deck{ .player = givm::player_id{ 0 } },
         givm::shuffle_deck{ .player = givm::player_id{ 1 } },
-        givm::draw_cards{ .count = 5, .player = givm::relative_player::current },
-        givm::draw_cards{ .count = 5, .player = givm::relative_player::other },
+        givm::draw_cards{ .count = 5, .player = givm::relative_player::self },
+        givm::draw_cards{ .count = 5, .player = givm::relative_player::opponent },
         givm::replace_cards_both{},
         givm::select_active_character_both{}
     };
@@ -168,8 +168,8 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
         givm::start_round{},
         givm::begin_action{},
         givm::end_round{},
-        givm::draw_cards{ .count = 2, .player = givm::relative_player::current },
-        givm::draw_cards{ .count = 2, .player = givm::relative_player::other }
+        givm::draw_cards{ .count = 2, .player = givm::relative_player::self },
+        givm::draw_cards{ .count = 2, .player = givm::relative_player::opponent }
     };
     const auto [library, id_map] = compile(source_library, initialization, round, givm::compile_mode::normal);
     std::array<std::string_view, 10> card_names;
@@ -179,7 +179,7 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const auto deck = link_deck(id_map, card_names, character_names);
 
     givm::table table{
-        givm::table_state{ .max_rounds = max_rounds }
+        givm::table_state{ .max_rounds = max_rounds, .self_player = givm::player_id{ 0 } }
     };
     load_deck(table, library, deck, deck);
     givm::executor target;
@@ -281,8 +281,8 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     REQUIRE(sources.add(card_source, character_source));
     const auto [library, id_map] = compile(sources,
         std::tuple{
-            givm::draw_cards{ .count = 5, .player = givm::relative_player::current },
-            givm::draw_cards{ .count = 5, .player = givm::relative_player::other },
+            givm::draw_cards{ .count = 5, .player = givm::relative_player::self },
+            givm::draw_cards{ .count = 5, .player = givm::relative_player::opponent },
             givm::replace_cards_both{},
             givm::select_active_character_both{},
             givm::begin_action{}
@@ -294,7 +294,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     std::array<std::string_view, 3> characters;
     characters.fill(character_source.name());
     const auto deck = link_deck(id_map, cards, characters);
-    givm::table table{ {}, { .hand_limit = 10 }, { .hand_limit = 10 } };
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 10 }, { .hand_limit = 10 } };
     load_deck(table, library, deck, deck);
     givm::executor target;
     target.enter_entry(library);

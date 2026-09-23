@@ -14,10 +14,14 @@ struct apply_element;
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `source` | [`element_application_source_id`](../events/element_application_source_id.md) | 施加元素的来源 |
-| `target` | [`character_id`](../../table/character_id.md) | 受到附着的有效角色 |
+| `source` | [`relative_character_target`](../events/relative_character_target.md) | 固定模式下的来源角色位置 |
+| `target` | [`relative_character_target`](../events/relative_character_target.md) | 固定模式下的目标位置 |
 | `element` | [`element`](../../enums/element.md) | 施加的元素 |
 | `cause` | [`element_application_cause`](../../enums/element_application_cause.md) | 附着来源的类别，初始为 effect |
+
+## 输入
+
+默认构造 `apply_element{}` 使用动态输入，消费响应通过 `invoke` 提交的一个 [`element_application`](../events/element_application.md)。显式填写固定目标时不消费输入，执行时解析来源和目标的位置；任一位置不存在时，本次附着无效。固定定位允许生命为零但尚未离场的角色。
 
 ## 注意
 
@@ -27,7 +31,7 @@ struct apply_element;
 
 默认超载同样支持强制切换。反应判定及标签选择完成时，若目标是其所属玩家的出战角色，就登记该玩家；附着处理完成后，以该玩家当时的出战位置为起点，循环选择下一个存活角色，完成切换及其通知后再广播反应后通知。原目标后来死亡或中途换人不取消已登记的切换；若唯一存活角色已出战则不切换、不通知。观察模式也会报告实际切换产生的 `active_character_changed` 现场。
 
-组末执行超载时，若当时的出战角色具有 `control_immunity` 附属，则取消此次切换，不产生通知或切人观察现场。该保护不撤销已完成的附着处理。
+执行超载时，若当时的出战角色具有 `control_immunity` 附属，则取消此次切换，不产生通知或切人观察现场。该保护不撤销已完成的附着处理。
 
 默认冻结在附着处理后，向仍存活的目标施加定义库指定的冻结附属；同样遵守 [`attach`](attach.md) 的免控与重复施加规则。独立附着没有主伤害，因而不额外扣除冻结反应的 1 点加伤。随库提供的冻结具有 `control` 标签，物理或火伤害会触发其加伤与解除，详见[基础定义源](../../basic_definitions.md#冻结与控制)。
 
@@ -68,9 +72,9 @@ int main()
     sources.add(source);
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::apply_element{ .source = givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }, .target = { .player_id = givm::player_id{ 1 }, .index = 0 }, .element = givm::element::hydro } },
+        std::tuple{ givm::select_active_character_both{}, givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro } },
         std::tuple{}, givm::compile_mode::normal);
-    givm::table table{ { .max_rounds = 0 } };
+    givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },
@@ -80,6 +84,12 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 1 }, 0 });
     execution.step(library, table, random);
     std::println("目标附着水元素: {}", table[target].state().aura == givm::element_aura::hydro);
 }

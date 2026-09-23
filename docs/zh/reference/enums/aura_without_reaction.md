@@ -19,7 +19,7 @@ constexpr element_aura aura_without_reaction(element_aura current, element incom
 
 ## 返回值
 
-冰附着遇草、草附着遇冰时，返回相应顺序的共存附着；其他情况返回新元素对应的附着。
+新元素为风或岩时，保留已有附着。冰附着遇草、草附着遇冰时，返回相应顺序的共存附着；其他情况返回新元素对应的附着。
 
 ## 示例
 

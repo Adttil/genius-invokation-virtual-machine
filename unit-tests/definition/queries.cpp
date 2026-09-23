@@ -221,7 +221,7 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
 
     CHECK(library[initial_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 4);
     CHECK(library[validation_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { initial_id, validation_id } }, {});
     givm::executor executor;
     executor.enter_entry(library);
@@ -339,7 +339,7 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
         givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = first_id },
         givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = second_id },
         givm::draw_cards{ .count = 1 },
-        givm::draw_cards{ .count = 1, .player = givm::relative_player::other },
+        givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent },
         givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::normal);
     REQUIRE(ids.get_id<givm::card_definition>(first.name()) == first_id);
@@ -353,7 +353,7 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
         CHECK(card.state().cost.speed == givm::action_speed::fast);
         CHECK(card.state().elemental_tuning_allowed == not is_first);
     };
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { first_id, second_id } }, { .cards = { second_id, first_id } });
     for(const auto player : table.players())
     {
@@ -387,7 +387,7 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
         std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
     const auto id = ids.get_id<givm::card_definition>(source.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { id, id, id } }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor first_draw;
@@ -430,7 +430,7 @@ TEST_CASE("missing queries use their operation specific defaults", "[definition]
     CHECK(cost.dice_requirement.any == 0);
     CHECK(cost.speed == givm::action_speed::fast);
 
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { card_definition } }, {});
     givm::executor draw;
     draw.enter_entry(library);

@@ -24,7 +24,7 @@ struct elemental_reaction_will_occur;
 
 ## 注意
 
-由伤害引发时，本事件在 [`damage_preparation`](damage_preparation.md) 结束、反应判定完成后广播，先于 [`damage_calculation`](damage_calculation.md)。`reaction`、`reacted_aura` 和 `incoming_element` 均已固定；之后即使响应效果改变附着，也不重新判定本次反应。独立 [`apply_element`](../commands/apply_element.md) 也在反应判定后广播本事件。没有发生反应时不广播。
+由伤害引发时，本事件属于整组准备阶段。初始描述经过 [`damage_preparation`](damage_preparation.md) 后展开具体命中；默认反应派生伤害则直接判定反应。两者在判定发生反应时均广播本事件，先于整组的 [`damage_calculation`](damage_calculation.md)。`reaction`、`reacted_aura` 和 `incoming_element` 均已固定；之后即使响应效果改变附着，也不重新判定本次反应。独立 [`apply_element`](../commands/apply_element.md) 也在反应判定后广播本事件。没有发生反应时不广播。
 
 响应者按[全场广播顺序](../events.md#全场广播)读取和修改 `replacement_reaction`。后一次写入无条件覆盖前一次，写回空标签会恢复默认效果；没有额外的标签优先级。本事件结束后，后续事件中的标签只读。
 

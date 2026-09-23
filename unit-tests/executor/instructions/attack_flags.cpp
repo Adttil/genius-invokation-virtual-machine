@@ -59,7 +59,7 @@ namespace
         {
             data.log->effects.push_back(event.flags);
             return context.invoke(data.damage, givm::damage{
-                .source = self.id(), .target = givm::relative_character_target{ givm::other_player(self.player().id()) },
+                .source = self.id(), .target = givm::relative_character_target{ givm::relative_player::opponent },
                 .value = 1, .type = givm::damage_type::physical, .flags = event.flags.to_damage_flags()
             });
         }
@@ -104,13 +104,13 @@ namespace
         struct definition_type { givm::card_state state; givm::program_entry effect; };
         bool fast = true;
         bool switch_character = false;
-        std::size_t switch_index = 1;
+        std::int32_t switch_offset = 1;
         constexpr std::string_view name() const { return "AttackCard"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { { .cost = { .speed = fast ? givm::action_speed::fast : givm::action_speed::combat } },
                 switch_character ? context.add_program(std::tuple{
-                    givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, switch_index } }
+                    givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, switch_offset } }
                 }) : givm::program_entry{} };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&) { return data.state; }
@@ -124,8 +124,7 @@ namespace
     inline auto compile_attacks(givm::compile_mode mode, attack_log& log, std::uint32_t dice = 6, attack_card card = {})
     {
         return givm::test::compile_definitions_with_program(mode, std::tuple{
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
+            givm::select_active_character_both{},
             givm::start_dice_roll_phase{ .count = dice, .reroll_count = { 0, 0 } },
             givm::draw_cards{ .count = 1 }, givm::begin_action{}
         }, std::tuple{}, attack_source{ &log, true }, attack_source{ &log, false }, attack_character{}, card);
@@ -133,17 +132,24 @@ namespace
 
     inline givm::table attack_table(const givm::definition_library& library, const givm::issued_id_map& ids)
     {
-        givm::table table;
+        givm::table table{ { .self_player = givm::player_id{ 0 } } };
         const auto character = ids.get_id<givm::character_view>("AttackCharacter");
         load_deck(table, library, { .cards = { ids.get_id<givm::card_definition>("AttackCard") },
             .characters = { character, character } }, { .characters = { character } });
         return table;
     }
 
-    inline givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table)
+    inline givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table, bool select_initial = true)
     {
         auto random = []() -> std::uint32_t { return 0; };
         auto state = executor.step(library, table, random);
+        if(select_initial && state == givm::execution_state::initial_active_character_selection)
+        {
+            executor.view_in<givm::execution_state::initial_active_character_selection>().select({ givm::player_id{ 0 }, 0 });
+            REQUIRE(executor.step(library, table, random) == givm::execution_state::remaining_active_character_selection);
+            executor.view_in<givm::execution_state::remaining_active_character_selection>().select({ givm::player_id{ 1 }, 0 });
+            state = executor.step(library, table, random);
+        }
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started
             || state == givm::execution_state::initial_active_characters_selected
             || state == givm::execution_state::health_reduced || state == givm::execution_state::round_end_declared)
@@ -276,11 +282,11 @@ TEST_CASE("initial character choices grant plunging opportunities and library co
     auto table = attack_table(library, ids);
     givm::executor executor;
     executor.enter_entry(library);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::initial_active_character_selection);
+    REQUIRE(advance(executor, library, table, false) == givm::execution_state::initial_active_character_selection);
     executor.view_in<givm::execution_state::initial_active_character_selection>().select({ givm::player_id{ 0 }, 1 });
-    REQUIRE(advance(executor, library, table) == givm::execution_state::remaining_active_character_selection);
+    REQUIRE(advance(executor, library, table, false) == givm::execution_state::remaining_active_character_selection);
     executor.view_in<givm::execution_state::remaining_active_character_selection>().select({ givm::player_id{ 1 }, 0 });
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(advance(executor, library, table, false) == givm::execution_state::action_selection);
     CHECK(table[givm::player_id{ 0 }].state().can_plunge);
     CHECK(table[givm::player_id{ 1 }].state().can_plunge);
     CHECK(executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0)

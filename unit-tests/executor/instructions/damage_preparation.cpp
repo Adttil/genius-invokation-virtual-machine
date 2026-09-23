@@ -43,7 +43,8 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::tuple{
-                givm::set_element_aura{ .target = front, .aura = givm::element_aura::pyro }
+                givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::none },
+                    givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro }
             }), context.resolve_tag("PreparedReactionReplacement") };
         }
         static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
@@ -123,7 +124,7 @@ namespace
     {
         using definition_category = givm::skill_view;
         struct definition_type { givm::program_entry entry; };
-        std::span<const givm::damage> damages;
+        std::span<const givm::fixed_damage> damages;
         std::string_view name() const { return "PreparationDriver"; }
         auto combat_status_dependencies() const
         {
@@ -173,9 +174,9 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     const bool grouped = GENERATE(false, true);
     preparation_log log{ .change_aura_in_calculation = true };
     const std::array damages{
-        givm::damage{ .source = source, .target = front, .value = 1,
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1,
             .multiplier_numerator = 3, .multiplier_denominator = 2, .type = givm::damage_type::physical },
-        givm::damage{ .source = source, .target = back, .value = 1,
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 1,
             .multiplier_numerator = 2, .multiplier_denominator = 3, .type = givm::damage_type::physical }
     };
     const preparation_character character;
@@ -189,7 +190,9 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         character, driver, bonus, infusion, target, reserve);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
         { .characters = { ids.get_id<givm::character_view>(target.name()), ids.get_id<givm::character_view>(reserve.name()) } });
     givm::executor executor;
@@ -228,6 +231,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     CHECK(log.normal_bonuses == (grouped ? 2 : 1));
     CHECK(log.burst_bonuses == (grouped ? 2 : 1));
     CHECK(table[front].state().health == 8);
+    CHECK(table[front].state().aura == givm::element_aura::pyro);
     CHECK(table[back].state().health == (grouped ? 16 : 20));
     CHECK(table.state().round_number == 0);
     CHECK(pauses == (grouped ? 2 : 1));
@@ -239,7 +243,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
 TEST_CASE("replacement reaction numbers are applied without default secondary damage", "[deal_damage][preparation][reaction]")
 {
     preparation_log log{ .replace_reaction_bonus = true };
-    const std::array damages{ givm::damage{ .source = source, .target = front, .value = 2,
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 2,
         .type = givm::damage_type::physical } };
     const preparation_character character;
     const preparation_driver driver{ damages };
@@ -250,7 +254,9 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         character, driver, bonus, infusion, target);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto target_id = ids.get_id<givm::character_view>(target.name());
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
         { .characters = { target_id, target_id } });

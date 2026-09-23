@@ -51,24 +51,24 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
         givm::genshin_impact::burning_flame_3_3_0, frozen, character };
     const auto prepared_ids = sources.make_issued_id_map();
     const std::array damages{
-        givm::damage{ .source = source, .target = target, .value = 1, .type = givm::damage_type::cryo },
-        givm::damage{ .source = source, .target = target, .value = 1, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = compile(sources, std::tuple{
-        givm::set_active_character{ source }, givm::set_active_character{ target },
-        givm::attach{ .player = givm::relative_player::other,
+        givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } }, givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent, 0 } },
+        givm::attach{ .player = givm::relative_player::opponent,
             .definition = prepared_ids.get_id<givm::attachment_view>(frozen.name()) },
-        givm::set_element_aura{ .target = target, .aura = givm::element_aura::hydro },
+        givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro },
         givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::observed);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     load_deck(table, library, { .characters = { character_id } }, { .characters = { character_id } });
     givm::executor executor;
     executor.enter_entry(library);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::active_character_changed);
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::active_character_changed);
     REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 2);
     CHECK(applications == 0);

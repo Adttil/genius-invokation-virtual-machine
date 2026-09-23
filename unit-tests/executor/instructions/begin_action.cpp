@@ -193,11 +193,9 @@ namespace
         return result;
     }
 
-    auto action_setup(std::uint32_t dice_count = 4, std::size_t active_index = 0)
+    auto action_setup(std::uint32_t dice_count = 4)
     {
         return std::tuple{
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, active_index } },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::start_dice_roll_phase{ .count = dice_count, .reroll_count = { 0, 0 } }
         };
     }
@@ -205,8 +203,6 @@ namespace
     template<class TRandom>
     void reach_action_start(givm::executor& target, const givm::definition_library& library, givm::table& table, TRandom& random)
     {
-        REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
-        REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
         REQUIRE(target.step(library, table, random) == givm::execution_state::action_started);
     }
 }
@@ -223,7 +219,8 @@ TEST_CASE("action and round observations precede their handlers and ended player
             givm::begin_action{}, givm::end_round{}, givm::end_game{ .result = givm::game_result::both_loss }
         }), std::tuple{}, observer, character
     );
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto plain = ids.get_id<givm::character_view>(character.name());
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } },
@@ -302,7 +299,8 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, observer, character
     );
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto plain = ids.get_id<givm::character_view>(character.name());
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } }, { .characters = { plain } });
     givm::executor target;
@@ -351,11 +349,12 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     const givm::test::initialized_character_source defeated{ "Defeated", { .max_health = 10, .health = 0 } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
-        std::tuple_cat(action_setup(4, active_index), std::tuple{ givm::begin_action{} }), std::tuple{}, living, defeated
+        std::tuple_cat(action_setup(4), std::tuple{ givm::begin_action{} }), std::tuple{}, living, defeated
     );
     const auto alive = ids.get_id<givm::character_view>(living.name());
     const auto dead = ids.get_id<givm::character_view>(defeated.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, active_index } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .characters = { active_in_middle ? dead : alive, active_in_middle ? alive : dead, living_standby ? alive : dead }
     }, { .characters = { alive } });
@@ -423,7 +422,8 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, observer, character, card
     );
     const auto plain = ids.get_id<givm::character_view>(character.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(observer.name()), plain }
@@ -489,7 +489,8 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     );
     const auto plain = ids.get_id<givm::character_view>(character.name());
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
         .characters = { ids.get_id<givm::character_view>(source.name()), plain, plain }
@@ -585,7 +586,8 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
         std::tuple_cat(action_setup(inventory.total()), std::tuple{ givm::begin_action{} }), std::tuple{}, source, character, card
     );
     const auto plain = ids.get_id<givm::character_view>(character.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(source.name()), plain }
@@ -666,7 +668,8 @@ TEST_CASE("repeated quote reads retain the cached payment response", "[begin_act
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, source, character, card
     );
     const auto plain = ids.get_id<givm::character_view>(character.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(source.name()), plain }

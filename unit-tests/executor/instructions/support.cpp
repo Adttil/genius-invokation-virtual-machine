@@ -97,7 +97,7 @@ namespace
             for(const auto& action : log->actions)
             {
                 const auto player = action.player == givm::player_id{ 0 }
-                    ? givm::relative_player::current : givm::relative_player::other;
+                    ? givm::relative_player::self : givm::relative_player::opponent;
                 const auto definition = log->dynamic ? givm::definition_id<givm::support_view>{} : support;
                 switch(action.kind)
                 {
@@ -199,9 +199,7 @@ namespace
     {
         const auto driver = givm::test::with_passive_skill(support_driver{ &log });
         const support_source a{ "SupportA", &log }, b{ "SupportB", &log };
-        std::vector<givm::any_command> commands{
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } } };
+        std::vector<givm::any_command> commands;
         for(std::size_t index = 0; index < log.actions.size(); ++index) commands.emplace_back(givm::test_command{});
         if(play_card)
         {
@@ -249,7 +247,8 @@ TEST_CASE("support capacity counts duplicate definitions and removal releases a 
     log.actions.push_back({ operation::add, { std::numeric_limits<std::uint32_t>::max(),
         std::numeric_limits<std::uint32_t>::max() }, givm::player_id{ 1 } });
     const auto [library, ids] = compile_scenario(log, mode);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
     executor.enter_entry(library);
@@ -290,7 +289,8 @@ TEST_CASE("support state changes preserve packed dice and saturate without delet
     const auto limit = library.query(ids.get_id<givm::support_view>("SupportA"), givm::support_state_limit{});
     CHECK(limit.count == 255);
     CHECK(limit.round_usages == 3);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
     executor.enter_entry(library);
@@ -319,7 +319,8 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
         log.actions.push_back({ operation::add, { 7, 1 } });
     log.actions.push_back({ operation::add, { 8, 1 }, givm::player_id{ 1 } });
     const auto [library, ids] = compile_scenario(log, mode, true);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
     executor.enter_entry(library);
@@ -379,7 +380,8 @@ TEST_CASE("support definitions can remove themselves through a resumable state c
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     log.actions = { { operation::add, { 7, 1 } }, { operation::set, { 0, 2 } }, { operation::add, { 9, 3 } } };
     const auto [library, ids] = compile_scenario(log, mode);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
     executor.enter_entry(library);

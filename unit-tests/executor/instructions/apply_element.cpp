@@ -18,7 +18,7 @@ namespace
     {
         std::vector<int> order;
         bool take_over = false;
-        givm::element_aura replacement_aura = givm::element_aura::none;
+        givm::element replacement_element = givm::element::none;
         givm::element incoming = givm::element::none;
         givm::element_aura reacted_aura = givm::element_aura::none;
         givm::elemental_reaction reaction = givm::elemental_reaction::none;
@@ -51,7 +51,10 @@ namespace
             return {
                 .log = log,
                 .replacement_entry = context.add_program(
-                    std::tuple{ givm::set_element_aura{ .target = givm::character_id{ givm::player_id{ 1 }, 0 }, .aura = log->replacement_aura } }
+                    std::tuple{
+                        givm::apply_element{ .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 }, .element = givm::element::none },
+                        givm::apply_element{ .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 }, .element = log->replacement_element }
+                    }
                 ),
                 .replacement = context.resolve_tag("TestReactionReplacement")
             };
@@ -116,22 +119,23 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         initial_aura = givm::element_aura::hydro;
         incoming = givm::element::pyro;
         log.take_over = true;
-        log.replacement_aura = givm::element_aura::dendro;
+        log.replacement_element = givm::element::dendro;
         expected_aura = givm::element_aura::none;
     }
     const auto observer = givm::test::with_passive_skill(reaction_observer_source{ &log });
-    const givm::test::initialized_character_source victim{ "Victim" };
+    const givm::test::initialized_character_source victim{ "Victim", { .max_health = 10, .health = 10, .aura = initial_aura } };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id affected{ givm::player_id{ 1 }, 0 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
-            givm::set_element_aura{ .target = affected, .aura = initial_aura },
-            givm::apply_element{ .source = source, .target = affected, .element = incoming },
+            givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = incoming },
             givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, observer, victim
     );
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });

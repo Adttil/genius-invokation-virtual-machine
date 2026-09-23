@@ -17,8 +17,8 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, modify_summon_state>(library);
-            const auto player = command.player == relative_player::current
-                ? table.state().active_player : other_player(table.state().active_player);
+            const auto player = command.player == relative_player::self
+                ? table.state().self_player : other_player(table.state().self_player);
             input = { require_summon(table, player, command.definition), command.value, command.usages };
             context.advance(instruction_extent<1, modify_summon_state>);
         }

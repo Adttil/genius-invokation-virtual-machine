@@ -12,6 +12,19 @@
 
 namespace
 {
+    struct tuning_opponent_source
+    {
+        using definition_category = givm::character_view;
+        struct definition_type {};
+
+        std::string_view name() const noexcept { return "TuningOpponent"; }
+        definition_type compile(givm::definition_compile_context&) const { return {}; }
+        static givm::character_state query(const definition_type&, const givm::character_initial_state&)
+        {
+            return { .max_health = 10, .health = 10 };
+        }
+    };
+
     struct tuning_log
     {
         std::uint32_t quotes = 0;
@@ -136,8 +149,6 @@ namespace
     auto setup()
     {
         return std::tuple{
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::draw_cards{ .count = 2 },
             givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } },
             givm::begin_action{}
@@ -161,10 +172,11 @@ TEST_CASE("elemental tuning shares card candidates and validates card attributes
     const auto character = givm::test::with_passive_skill(tuning_character_source{ &log, element });
     const tuning_card_source allowed{ &log, "TunableCard", true, true };
     const tuning_card_source blocked{ &log, "UntunableCard", false };
-    const givm::test::named_definition_source<givm::character_view> opponent{ "TuningOpponent" };
+    const tuning_opponent_source opponent;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal, setup(), std::tuple{}, character, allowed, blocked, opponent);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(blocked.name()), ids.get_id<givm::card_definition>(allowed.name()) },
         .characters = { ids.get_id<givm::character_view>(character.name()) }
@@ -202,12 +214,13 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
     const auto character = givm::test::with_passive_skill(tuning_character_source{ &log });
     const tuning_card_source card{ &log, "SelectedTuningCard", true, empowered };
     const givm::test::named_definition_source<givm::card_definition> filler{ "TuningFiller" };
-    const givm::test::named_definition_source<givm::character_view> opponent{ "TuningOpponent" };
+    const tuning_opponent_source opponent;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, character, card, filler, opponent);
     const auto card_definition = ids.get_id<givm::card_definition>(card.name());
     const auto filler_definition = ids.get_id<givm::card_definition>(filler.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { filler_definition, filler_definition, card_definition },
         .characters = { ids.get_id<givm::character_view>(character.name()) }

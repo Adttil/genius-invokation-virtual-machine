@@ -18,6 +18,7 @@
 #include "../enums/element_aura.hpp"
 #include "../enums/elemental_dice.hpp"
 #include "../enums/elemental_reaction.hpp"
+#include "../enums/relative_player.hpp"
 
 namespace givm
 {
@@ -177,6 +178,25 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_drawn);
     };
 
+    struct hand_card_discard_effect
+    {
+        const hand_card_id card;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(hand_card_discard_effect);
+    };
+
+    struct deck_card_discard
+    {
+        const player_id player;
+        const std::uint32_t count;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(deck_card_discard);
+    };
+
+    struct deck_card_discard_effect
+    {
+        const deck_card_id card;
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(deck_card_discard_effect);
+    };
+
     struct hand_card_discarded
     {
         const hand_card_id card;
@@ -309,26 +329,29 @@ namespace givm
 
     // Damage events.
     using damage_source_id =
-        std::variant<hand_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
+        std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
                      combat_status_id, character_id, skill_id, attachment_id>;
 
     struct relative_character_target
     {
-        player_id player;
+        relative_player player = relative_player::self;
         std::int32_t offset = 0;
     };
 
-    struct other_characters_target
-    {
-        character_id excluded;
-    };
+    using damage_target = std::variant<character_id, relative_character_target>;
 
-    using damage_target = std::variant<character_id, relative_character_target, other_characters_target>;
+    enum class damage_target_selection : std::uint8_t
+    {
+        character,
+        others,
+        all
+    };
 
     struct damage
     {
         damage_source_id source;
         damage_target target;
+        damage_target_selection selection = damage_target_selection::character;
         std::uint32_t value;
         std::uint16_t multiplier_numerator = 1;
         std::uint16_t multiplier_denominator = 1;
@@ -410,8 +433,16 @@ namespace givm
 
     // Element application events.
     using element_application_source_id =
-        std::variant<hand_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
+        std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
                      combat_status_id, character_id, skill_id, attachment_id>;
+
+    struct element_application
+    {
+        element_application_source_id source;
+        character_id target;
+        element element;
+        element_application_cause cause = element_application_cause::effect;
+    };
 
     struct elemental_reaction_will_occur
     {

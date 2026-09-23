@@ -46,7 +46,7 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
         mode,
         std::tuple{
             givm::draw_cards{ .count = 2 },
-            givm::draw_cards{ .count = 2, .player = givm::relative_player::other },
+            givm::draw_cards{ .count = 2, .player = givm::relative_player::opponent },
             givm::replace_cards_both{},
             givm::end_game{ givm::game_result::both_loss }
         },
@@ -55,7 +55,7 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     const auto a = ids.get_id<givm::card_definition>(alpha.name());
     const auto b = ids.get_id<givm::card_definition>(beta.name());
     const auto c = ids.get_id<givm::card_definition>(gamma.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .cards = { a, b, c } };
     load_deck(table, library, deck, deck);
     givm::executor execution;
@@ -123,7 +123,7 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     givm::linked_deck deck;
     deck.cards.assign(hand_count + 1, a);
     deck.cards.front() = b;
-    givm::table table{ {}, { .hand_limit = static_cast<std::uint32_t>(hand_count) }, { .hand_limit = static_cast<std::uint32_t>(hand_count) } };
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = static_cast<std::uint32_t>(hand_count) }, { .hand_limit = static_cast<std::uint32_t>(hand_count) } };
     load_deck(table, library, deck, {});
     givm::executor execution;
     execution.enter_entry(library);
@@ -156,7 +156,7 @@ TEST_CASE("initial character checks validate ownership and existence without req
         std::tuple{}, character
     );
     const auto definition = ids.get_id<givm::character_view>(character.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .characters = { definition, definition } };
     load_deck(table, library, deck, deck);
     const givm::character_id first_choice{ givm::player_id{ 1 }, 1 };
@@ -226,7 +226,7 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
             givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, mode
     );
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor execution;
     execution.enter_entry(library);
     counting_random random;

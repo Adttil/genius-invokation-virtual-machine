@@ -272,7 +272,7 @@ namespace
             for(const auto& action : log->actions)
             {
                 const auto player = action.player == givm::player_id{ 0 }
-                    ? givm::relative_player::current : givm::relative_player::other;
+                    ? givm::relative_player::self : givm::relative_player::opponent;
                 auto definition = log->dynamic ? givm::definition_id<typename T::view>{} : entity;
                 if constexpr(std::is_same_v<T, summon_traits>)
                     if(action.other_summon && not log->dynamic) definition = result.other_summon;
@@ -356,17 +356,22 @@ namespace
     {
         const lifecycle_source<T> entity{ &log };
         const auto driver = givm::test::with_passive_skill(lifecycle_driver<T>{ &log });
-        const givm::test::named_definition_source<givm::character_view> character{ "LifecycleTarget" };
-        const givm::test::named_definition_source<givm::summon_view> other_summon{ "OtherSummon" };
-        std::vector<givm::any_command> program{
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } }
+        struct target_source : givm::test::named_definition_source<givm::character_view>
+        {
+            static givm::character_state query(const definition_type&, const givm::character_initial_state&)
+            {
+                return { .max_health = 10, .health = 10 };
+            }
         };
+        const target_source character{ { "LifecycleTarget" } };
+        const givm::test::named_definition_source<givm::summon_view> other_summon{ "OtherSummon" };
+        std::vector<givm::any_command> program;
         for(std::size_t index = 0; index < log.actions.size(); ++index) program.emplace_back(givm::test_command{});
         program.emplace_back(givm::end_game{ givm::game_result::both_loss });
         const auto [library, ids] = givm::test::compile_definitions_with_program(
             mode, program, std::tuple{}, entity, driver, character, other_summon);
-        givm::table table;
+        givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+            { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
         load_deck(table, library,
             { .characters = { ids.template get_id<givm::character_view>(driver.name()) } },
             { .characters = { ids.template get_id<givm::character_view>(character.name()),

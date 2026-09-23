@@ -5,11 +5,13 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-using damage_source_id = std::variant<hand_card_id, hand_card_status_id, deck_card_status_id, support_id,
+using damage_source_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id,
                  summon_id, combat_status_id, character_id, skill_id, attachment_id>;
 ```
 
 伤害的来源标识。它保留造成伤害的具体实体种类，便于区分角色、技能和场上效果造成的伤害。
+
+牌堆牌的自身舍弃效果可以使用 `deck_card_id` 作为来源；该牌此时已离场，结算期间仍可读取其定义与状态。
 
 ## 示例
 

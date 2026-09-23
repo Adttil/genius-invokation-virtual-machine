@@ -14,8 +14,8 @@ struct heal;
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `source` | [`effect_source_id`](../events/effect_source_id.md) | 固定治疗来源 |
-| `target` | [`character_id`](../../table/character_id.md) | 固定目标；默认采用动态输入 |
+| `source` | [`relative_character_target`](../events/relative_character_target.md) | 固定来源角色的位置；默认本方的出战角色 |
+| `target` | [`relative_character_target`](../events/relative_character_target.md) | 固定目标位置；默认采用动态输入 |
 | `value` | `std::uint32_t` | 固定治疗量；默认 `0` |
 
 ## 输入
@@ -23,7 +23,9 @@ struct heal;
 - 默认构造 `heal{}`，消费响应通过 `invoke` 提交的一个 [`healing`](../events/healing.md)。
 - 显式指定 `target` 时使用命令中的固定参数，不消费响应输入。
 
-目标必须是有效角色。允许目标生命值为 `0`，因此濒死响应可以通过本命令恢复生命。
+动态输入须指定有效角色。固定参数在命令执行时分别定位来源和目标；缺少任一角色时跳过命令。来源不会被替换成目标，也不会从外层响应推断；需要精确技能、牌或召唤物来源时应采用动态输入。
+
+允许目标生命值为 `0`，因此濒死响应可以通过本命令恢复生命。
 
 ## 结算
 
@@ -39,7 +41,7 @@ struct heal;
 
 int main()
 {
-    const givm::character_id target{ givm::player_id{ 0 }, 0 };
+    const givm::relative_character_target target{ givm::relative_player::self, 0 };
     const givm::heal command{ .source = target, .target = target, .value = 2 };
     std::println("治疗量: {}", command.value);
 }

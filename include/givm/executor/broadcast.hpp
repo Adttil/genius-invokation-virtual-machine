@@ -146,7 +146,7 @@ namespace givm::detail
             dynamic_array<handler_id<TEvent>>(targets),
             stack_count_t{},
             event,
-            return_position
+            response_return{ table.state().self_player, return_position }
         );
     }
 
@@ -170,7 +170,7 @@ namespace givm::detail
     template<class TEvent>
     bool continue_broadcast(
         const definition_library& library,
-        const unrestricted_table& table,
+        unrestricted_table& table,
         execution_context& context,
         random_fn& random
     )
@@ -180,24 +180,28 @@ namespace givm::detail
                 handler_id<TEvent>[],
                 stack_count_t,
                 TEvent,
-                execution_position
+                response_return
             >();
         const auto target_count = static_cast<stack_count_t>(targets.size());
         while(cursor < target_count)
         {
             const auto current_handler = targets[static_cast<size_t>(cursor++)];
             auto response = context.make_handle_context(table, random);
+            player_id player;
             const auto entry = std::visit([&](auto id)
             {
+                const auto entity = std::as_const(table)[id];
+                player = entity.player().id();
                 return try_handle(
                     library,
-                    std::as_const(table)[id],
+                    entity,
                     event,
                     response
                 );
             }, current_handler);
             if(entry)
             {
+                table.state().self_player = player;
                 context.enter(entry);
                 return false;
             }
@@ -212,7 +216,7 @@ namespace givm::detail
             handler_id<TEvent>[],
             stack_count_t,
             TEvent,
-            execution_position
+            response_return
         >();
     }
 

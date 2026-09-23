@@ -15,9 +15,11 @@ struct draw_cards;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `count` | `std::uint32_t` | 尝试抽取的牌数 |
-| `player` | [`relative_player`](relative_player.md) | 相对于当前行动玩家的抽牌方，初始为 current |
+| `player` | [`relative_player`](relative_player.md) | 相对于当前效果本方的抽牌方，初始为 `self` |
 
 ## 注意
+
+响应程序中的本方是响应实体所属玩家。根流程使用本命令时，须显式设置 [`table_state::self_player`](../../table/table_state.md)；下例设为玩家 0。
 
 牌堆耗尽后停止抽取。达到手牌上限后，仍继续从牌堆移走本次应抽的牌，但这些牌不进入手牌。先完成本次所有抽牌，再逐张发出 [`card_drawn`](../events/card_drawn.md)，只通知实际进入手牌的牌。
 
@@ -55,7 +57,7 @@ int main()
         sources,
         std::tuple{ givm::draw_cards{ .count = 2 } },
         std::tuple{}, givm::compile_mode::normal);
-    givm::table table{ { .max_rounds = 0 } };
+    givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     auto player = table[givm::player_id{ 0 }];
     const auto card = ids.get_id<givm::card_definition>("first");
     load_deck(table, library, givm::linked_deck{ .cards = { card, card } }, {});

@@ -9,7 +9,7 @@
 #include "commands/select_active_character_both.hpp"
 #include "commands/draw_cards.hpp"
 #include "commands/discard_hand_card.hpp"
-#include "commands/discard_deck_card.hpp"
+#include "commands/discard_deck_cards.hpp"
 #include "commands/replace_cards.hpp"
 #include "commands/replace_cards_both.hpp"
 #include "commands/start_round.hpp"
@@ -41,7 +41,6 @@
 #include "commands/deal_damage.hpp"
 #include "commands/heal.hpp"
 #include "commands/increase_max_health.hpp"
-#include "commands/set_element_aura.hpp"
 #include "commands/test_command.hpp"
 
 #endif

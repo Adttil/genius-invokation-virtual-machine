@@ -47,7 +47,7 @@ namespace givm::detail
     {
         if(not continue_broadcast<attachment_removed>(library, table, context, random))
             return continue_execution;
-        const auto resume = get<1>(context.stack().top<attachment_removed, execution_position>());
+        const auto resume = get<1>(context.stack().top<attachment_removed, response_return>()).position;
         pop_broadcast<attachment_removed>(context);
         const auto input = get<0>(context.stack().top<attachment_addition>());
         context.stack().pop<attachment_addition>();
@@ -74,8 +74,8 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, add_attachment>(library);
-            const auto player = command.player == relative_player::current
-                ? table.state().active_player : other_player(table.state().active_player);
+            const auto player = command.player == relative_player::self
+                ? table.state().self_player : other_player(table.state().self_player);
             input = {
                 .target = *table[player].state().active_character,
                 .definition = command.definition, .state = command.state

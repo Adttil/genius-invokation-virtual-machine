@@ -42,7 +42,7 @@ TEST_CASE("table views track execution changes while copies own their state", "[
         givm::compile_mode::normal,
         std::tuple{
             givm::draw_cards{ .count = 2 },
-            givm::draw_cards{ .count = 2, .player = givm::relative_player::other },
+            givm::draw_cards{ .count = 2, .player = givm::relative_player::opponent },
             givm::start_round{}
         },
         std::tuple{ givm::end_game{ givm::game_result::both_loss } },
@@ -51,7 +51,7 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     const auto alpha_id = id_map.get_id<givm::card_definition>(alpha.name());
     const auto beta_id = id_map.get_id<givm::card_definition>(beta.name());
     const auto gamma_id = id_map.get_id<givm::card_definition>(gamma.name());
-    givm::table table{ { .max_rounds = 3 }, { .hand_limit = 2 }, { .hand_limit = 1 } };
+    givm::table table{ { .max_rounds = 3, .self_player = givm::player_id{ 0 } }, { .hand_limit = 2 }, { .hand_limit = 1 } };
     const givm::linked_deck deck{ .cards = { alpha_id, beta_id, gamma_id } };
     load_deck(table, library, deck, deck);
     const auto player = table[givm::player_id{ 0 }];

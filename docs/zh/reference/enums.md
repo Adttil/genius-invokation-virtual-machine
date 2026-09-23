@@ -17,6 +17,7 @@
 | [`elemental_reaction`](enums/elemental_reaction.md) | 元素相遇时产生的反应种类 |
 | [`equipment_type`](enums/equipment_type.md) | 附着实体定义的装备类别 |
 | [`game_result`](enums/game_result.md) | 一场对局的结果，区分尚未结束、某一方获胜和双方均告负 |
+| [`relative_player`](definition/commands/relative_player.md) | 当前效果的本方或对方 |
 | [`weapon_type`](enums/weapon_type.md) | 武器类别 |
 | [`elemental_dice`](enums/elemental_dice.md) | 元素骰的种类，包括七种元素和万能元素 |
 

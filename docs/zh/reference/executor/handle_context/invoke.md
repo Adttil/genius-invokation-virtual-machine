@@ -52,6 +52,8 @@ program_entry invoke(substack_t, program_entry entry, std::span<const unsigned c
 
 不需要后续效果时，响应返回空入口（`return {};`），不调用本函数。提交不保证效果立即执行：费用预览只保留效果，未被选择的候选效果不会执行。
 
+返回程序实际执行时，以响应实体所属玩家作为 [`table_state::self_player`](../../table/table_state.md)，供相对效果命令使用；程序完成后恢复外层本方。`invoke` 本身及调用它的 `handle` 不改变本方，费用预览也不会改变它。
+
 ## 示例
 
 下例由角色的被动技能响应事件，选定其所属角色。默认构造的 `set_active_character{}` 使用动态输入，响应通过 `active_character_changed` 提供目标；源无需为不同角色登记不同入口。

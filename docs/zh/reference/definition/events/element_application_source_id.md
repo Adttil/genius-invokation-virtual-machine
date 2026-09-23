@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-using element_application_source_id = std::variant<hand_card_id, hand_card_status_id, deck_card_status_id, support_id,
+using element_application_source_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id,
                  summon_id, combat_status_id, character_id, skill_id, attachment_id>;
 ```
 

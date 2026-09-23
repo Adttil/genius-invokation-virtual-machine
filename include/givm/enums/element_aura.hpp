@@ -27,8 +27,8 @@ namespace givm
         case element::hydro: return element_aura::hydro;
         case element::pyro: return element_aura::pyro;
         case element::electro: return element_aura::electro;
-        case element::anemo: return element_aura::anemo;
-        case element::geo: return element_aura::geo;
+        case element::anemo:
+        case element::geo: return element_aura::none;
         case element::dendro: return element_aura::dendro;
         case element::none: return element_aura::none;
         }
@@ -55,6 +55,7 @@ namespace givm
 
     constexpr element_aura aura_without_reaction(element_aura current, element incoming) noexcept
     {
+        if(incoming == element::anemo || incoming == element::geo) return current;
         const auto incoming_aura = aura_from_element(incoming);
         if(current == element_aura::none || current == incoming_aura)
         {
@@ -63,8 +64,7 @@ namespace givm
         if(current == element_aura::cryo && incoming == element::dendro) return element_aura::cryo_dendro;
         if(current == element_aura::dendro && incoming == element::cryo) return element_aura::dendro_cryo;
 
-        // TODO: complete non-reactive aura preservation/replacement rules, especially for
-        // Anemo/Geo and ordered Cryo/Dendro coexistence.
+        // TODO: complete non-reactive aura preservation/replacement rules for ordered Cryo/Dendro coexistence.
         return incoming_aura;
     }
 }

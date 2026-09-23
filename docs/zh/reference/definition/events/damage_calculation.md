@@ -27,11 +27,11 @@ struct damage_calculation;
 
 ## 注意
 
-[`damage_preparation`](damage_preparation.md) 结束后，按最终 `target`、`type` 和目标当时的附着判定反应；有反应时先完成 [`elemental_reaction_will_occur`](elemental_reaction_will_occur.md) 的标签选择，再开始本事件。之后即使响应效果改变目标的附着，本次伤害的 `reaction` 与 `reacted_aura` 也保持不变；后续伤害效果、扣血及元素反应处理沿用这次判定。
+整组准备阶段已完成属性修饰、每次命中的反应判定、[`elemental_reaction_will_occur`](elemental_reaction_will_occur.md) 的标签选择及元素附着推进，随后才逐段开始本事件。之后即使响应效果改变目标的附着，本次伤害的 `reaction` 与 `reacted_aura` 也保持不变；后续伤害效果、扣血及元素反应处理沿用这次判定。
 
 本事件结束后，只有 `replacement_reaction` 为空时才加入默认反应加伤，再统一应用倍率。非空标签同时取消该反应的默认派生伤害、实体生成和超载切人，但不改变原始 `reaction`，也不影响默认附着消耗。响应者可根据只读标签调整数值或在后续事件中完成替代效果。
 
-同组各次伤害分别广播本事件；此前伤害的扣血和附着已经生效，但本组的伤害后响应尚未调用。
+同组各次伤害分别广播本事件；此前伤害的扣血已经生效，而整组元素附着均已在准备阶段推进，本组的伤害后响应尚未调用。判断“伤害前已有某元素附着”时，应读取 `reacted_aura`；读取牌桌的 `state().aura` 得到的是此时的当前附着，可能已经受本次及后续命中影响。
 
 ## 示例
 

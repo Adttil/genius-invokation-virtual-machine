@@ -122,6 +122,10 @@ namespace
         bool respond_to_draws = false;
 
         constexpr std::string_view name() const noexcept { return "EntityObserver"; }
+        static givm::character_state query(const definition_type&, const givm::character_initial_state&)
+        {
+            return { .max_health = 10, .health = 10 };
+        }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return {
@@ -165,6 +169,10 @@ namespace
         int behavior;
 
         constexpr std::string_view name() const noexcept { return "InitialSwitchResponse"; }
+        static givm::character_state query(const definition_type&, const givm::character_initial_state&)
+        {
+            return { .max_health = 10, .health = 10 };
+        }
         definition_type compile(givm::definition_compile_context& context) const
         {
             if(behavior == 1)
@@ -173,7 +181,7 @@ namespace
                 }) };
             if(behavior == 2)
                 return { log, context.add_program(std::tuple{
-                    givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 1 }, 0 } },
+                    givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, -1 } },
                     givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
             return { log, givm::program_entry::null() };
@@ -201,10 +209,14 @@ namespace
         entity_event_log* log;
 
         constexpr std::string_view name() const noexcept { return "SwitchBack"; }
+        static givm::character_state query(const definition_type&, const givm::character_initial_state&)
+        {
+            return { .max_health = 10, .health = 10 };
+        }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::tuple{
-                givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } }
+                givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::self, -1 } }
             }) };
         }
         static givm::program_entry handle(
@@ -236,7 +248,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     };
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
-    givm::table table{};
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(program_source.name()) } }, {});
     auto normal_table = table;
     counting_random normal_random;
@@ -278,7 +290,7 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
     };
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
-    givm::table table{};
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } }, {});
     auto normal_table = table;
     counting_random random;
@@ -309,9 +321,9 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
         return givm::test::compile_definitions_with_program(
             mode,
             std::tuple{
-                givm::draw_cards{ .count = static_cast<std::uint32_t>(initial_hand_count), .player = givm::relative_player::current },
-                givm::draw_cards{ .count = 5, .player = givm::relative_player::current },
-                givm::draw_cards{ .count = 1, .player = givm::relative_player::current },
+                givm::draw_cards{ .count = static_cast<std::uint32_t>(initial_hand_count), .player = givm::relative_player::self },
+                givm::draw_cards{ .count = 5, .player = givm::relative_player::self },
+                givm::draw_cards{ .count = 1, .player = givm::relative_player::self },
                 givm::end_game{ .result = givm::game_result::both_loss }
             },
             std::tuple{}, observer_source, card_source
@@ -319,7 +331,7 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     };
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
-    givm::table table{ {}, { .hand_limit = 2 }, { .hand_limit = 2 } };
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 2 }, { .hand_limit = 2 } };
     const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
     givm::linked_deck deck;
     deck.cards.assign(initial_hand_count + 3, card_definition);
@@ -356,21 +368,21 @@ TEST_CASE("single-player active-character observation precedes the table update 
 {
     entity_event_log log;
     const auto observer_source = givm::test::with_passive_skill(entity_observer_source{ &log });
-    const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
+    const initialized_character_source character_source;
     constexpr givm::character_id previous{ .player_id = givm::player_id{ 0 }, .index = 0 };
     constexpr givm::character_id current{ .player_id = givm::player_id{ 0 }, .index = 1 };
     const auto compile_program = [&](givm::compile_mode mode)
     {
         return givm::test::compile_definitions_with_program(
             mode,
-            std::tuple{ givm::set_active_character{ previous }, givm::set_active_character{ current },
-                givm::set_active_character{ current }, givm::end_game{ .result = givm::game_result::both_loss } },
+            std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
+                givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } }, givm::end_game{ .result = givm::game_result::both_loss } },
             std::tuple{}, observer_source, character_source
         );
     };
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
-    givm::table table{};
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = previous } };
     const auto definition = ids.get_id<givm::character_view>(character_source.name());
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer_source.name()), definition } }, {});
 
@@ -379,13 +391,11 @@ TEST_CASE("single-player active-character observation precedes the table update 
     givm::executor normal;
     normal.enter_entry(normal_compilation.library);
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
-    const std::vector normal_events(log.active.begin() + 1, log.active.end());
+    const auto normal_events = log.active;
     log.active.clear();
 
     givm::executor observed;
     observed.enter_entry(library);
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::active_character_changed);
-    CHECK(observed.view_in<givm::execution_state::active_character_changed>().character() == previous);
     REQUIRE(observed.step(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
     const auto view = observed.view_in<givm::execution_state::active_character_changed>();
@@ -405,13 +415,13 @@ TEST_CASE("initial active choices update both players before either response", "
     const auto behavior = GENERATE(0, 1, 2);
     entity_event_log log;
     const auto observer = givm::test::with_passive_skill(initial_switch_response_source{ &log, behavior });
-    const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
+    const initialized_character_source character_source;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
         std::tuple{ givm::select_active_character_both{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
         observer, character_source
     );
-    givm::table table{};
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const auto character = ids.get_id<givm::character_view>(character_source.name());
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(observer.name()), character } },
@@ -479,22 +489,22 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
 {
     entity_event_log log;
     const auto response = givm::test::with_passive_skill(switch_back_source{ &log });
-    const givm::test::named_definition_source<givm::character_view> character_source{ "Character" };
+    const initialized_character_source character_source;
     constexpr givm::character_id previous{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id next{ givm::player_id{ 0 }, 1 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
-        std::tuple{ givm::set_active_character{ previous }, givm::set_active_character{ next },
+        std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
             givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
         response, character_source
     );
     const auto normal_compilation = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
-        std::tuple{ givm::set_active_character{ previous }, givm::set_active_character{ next },
+        std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
             givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
         response, character_source
     );
-    givm::table table{};
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = previous } };
     const auto character = ids.get_id<givm::character_view>(character_source.name());
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(response.name()), character } }, {});
     auto normal_table = table;
@@ -502,13 +512,11 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
     normal.enter_entry(normal_compilation.library);
     counting_random random;
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
-    CHECK(log.active == std::vector{ previous, next, previous });
+    CHECK(log.active == std::vector{ next, previous });
     log.active.clear();
 
     givm::executor target;
     target.enter_entry(library);
-    REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
-    CHECK(target.view_in<givm::execution_state::active_character_changed>().character() == previous);
     REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
     CHECK(target.view_in<givm::execution_state::active_character_changed>().character() == next);
@@ -552,7 +560,7 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     );
     const auto first_id = ids.get_id<givm::card_definition>(first.name());
     const auto second_id = ids.get_id<givm::card_definition>(second.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library,
         { .cards = { second_id, second_id, second_id, second_id, first_id, first_id } },
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } });

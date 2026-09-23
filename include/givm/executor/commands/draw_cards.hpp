@@ -49,9 +49,9 @@ namespace givm::detail
     )
     {
         const auto& command = context.instruction_data<1, givm::draw_cards>(library);
-        const auto target_player = command.player == relative_player::current
-            ? table.state().active_player
-            : other_player(table.state().active_player);
+        const auto target_player = command.player == relative_player::self
+            ? table.state().self_player
+            : other_player(table.state().self_player);
         auto player_entity = table[target_player];
         const auto count = std::min<size_t>(command.count, player_entity.deck_card_count());
         if(count == 0)
@@ -64,7 +64,7 @@ namespace givm::detail
         const auto drawn_count = hand_count < hand_limit
             ? std::min<size_t>(count, hand_limit - hand_count) : size_t{ 0 };
 
-        // No responses run until the entire batch, including overflow discards, is complete.
+        // No responses run until the entire batch, including overflow removals, is complete.
         if(drawn_count != 0)
         {
             auto drawn_cards = get<0>(context.stack().push(

@@ -51,6 +51,7 @@ namespace
         {
             std::vector<givm::character_id>* handlers;
             givm::program_entry entry;
+            bool terminal;
         };
         std::string_view source_name;
         std::vector<givm::character_id>* handlers;
@@ -61,10 +62,10 @@ namespace
             if(terminal)
                 return { handlers, context.add_program(std::tuple{
                     givm::end_game{ .result = givm::game_result::player_1_win }
-                }) };
+                }), true };
             return { handlers, context.add_program(std::tuple{
-                givm::set_element_aura{ .target = givm::character_id{ givm::player_id{ 0 }, 0 }, .aura = givm::element_aura::hydro }
-            }) };
+                givm::apply_element{}
+            }), false };
         }
         static givm::program_entry handle(
             const definition_type& data, const givm::skill_view& self, givm::test_event&,
@@ -73,7 +74,9 @@ namespace
             if(not data.handlers->empty())
                 CHECK(context.table()[givm::character_id{ givm::player_id{ 0 }, 0 }].state().aura == givm::element_aura::hydro);
             data.handlers->push_back(self.character().id());
-            return context.invoke(data.entry);
+            if(data.terminal) return context.invoke(data.entry);
+            return context.invoke(data.entry, givm::element_application{
+                .source = self.id(), .target = { givm::player_id{ 0 }, 0 }, .element = givm::element::hydro });
         }
     };
     struct nested_selection_source
@@ -236,17 +239,13 @@ namespace
                 return std::tuple{ add("OrdinaryA"), add("Talent"), add("Weapon"), add("Technique"), add("OrdinaryB"), add("Artifact") };
             };
             return { log, context.add_program(std::tuple_cat(
-                std::tuple{
-                    givm::set_active_character{ .target = { givm::player_id{ 0 }, 1 } },
-                    givm::set_active_character{ .target = { givm::player_id{ 1 }, 2 } }
-                },
-                attachments(givm::relative_player::current), attachments(givm::relative_player::other),
+                attachments(givm::relative_player::self), attachments(givm::relative_player::opponent),
                 std::tuple{
                     givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("CombatStatus"), .state = { 1 } },
-                    givm::add_combat_status{ .player = givm::relative_player::other,
+                    givm::add_combat_status{ .player = givm::relative_player::opponent,
                         .definition = context.resolve_id<givm::combat_status_view>("CombatStatus"), .state = { 1 } },
                     givm::add_summon{ .definition = context.resolve_id<givm::summon_view>("Summon"), .state = { 1, 1 } },
-                    givm::add_summon{ .player = givm::relative_player::other,
+                    givm::add_summon{ .player = givm::relative_player::opponent,
                         .definition = context.resolve_id<givm::summon_view>("Summon"), .state = { 1, 1 } }
                 }
             )) };
@@ -276,7 +275,7 @@ TEST_CASE("handle context exposes the current table random source and invocation
     const givm::test::named_definition_source<givm::card_definition> card{ "ContextCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(character.name()) }
@@ -309,7 +308,7 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
     const auto [library, ids] = compile(sources,
         std::tuple{ givm::test_command{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     );
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = {
         ids.get_id<givm::character_view>(first_character.name()), ids.get_id<givm::character_view>(second_character.name())
     } }, {});
@@ -345,7 +344,7 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
             givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, source, character, card
     );
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
     load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
@@ -415,7 +414,7 @@ TEST_CASE("consecutive broadcasts mix missing empty and parameterized response p
                     givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
         .characters = { character_id, character_id, character_id, character_id }
@@ -457,7 +456,7 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     const order_source<givm::summon_view> summon{ &log, "Summon" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::test_command{}, givm::draw_cards{ .count = 1 },
-            givm::draw_cards{ .count = 1, .player = givm::relative_player::other },
+            givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent },
             givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         skill, character, card, ordinary_a, ordinary_b, weapon, artifact, talent, technique, status, summon);
     const auto character_id = ids.get_id<givm::character_view>(character.name());
@@ -465,7 +464,8 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     const givm::linked_deck deck{
         .cards = { card_id, card_id, card_id }, .characters = { character_id, character_id, character_id }
     };
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 1 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 2 } } };
     load_deck(table, library, deck, deck);
     givm::executor execution;
     execution.enter_entry(library);

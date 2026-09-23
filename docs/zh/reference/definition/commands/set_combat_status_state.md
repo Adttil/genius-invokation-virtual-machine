@@ -9,7 +9,7 @@
 ```cpp
 struct set_combat_status_state
 {
-    relative_player player = relative_player::current;
+    relative_player player = relative_player::self;
     definition_id<combat_status_view> definition{};
     combat_status_state state{};
 };
@@ -20,7 +20,7 @@ struct set_combat_status_state
 - 默认构造 `set_combat_status_state{}` 使用动态模式，由 `invoke` 提交一个 [combat_status_state_change](../events/combat_status_state_change.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定的一方。在该玩家的出战状态中选取首个有效、定义 ID 相同的实体；该实体必须存在。
 
-`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前行动玩家。动态输入直接指定要操作的有效实体。
+`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入直接指定要操作的有效实体。
 
 ## 结算
 

@@ -330,8 +330,6 @@ namespace
     auto setup(std::uint32_t cards = 0)
     {
         return std::tuple{
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::draw_cards{ .count = cards },
             givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
             givm::begin_action{}
@@ -368,7 +366,8 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     CHECK(library[owner_id].query(givm::character_initial_state{}).energy_tag == energy_tag);
     CHECK(library[ids.get_id<givm::skill_view>(active.name())].query(givm::skill_initial_cost{}).energy_tag == energy_tag);
     CHECK_FALSE(library[plain_id].query(givm::character_initial_skill{ 0 }).is_valid());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { owner_id, plain_id } }, { .characters = { plain_id } });
     CHECK(log.initial_skill_indices == std::vector<std::size_t>{ 0, 1, 2, 3 });
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 1 }].skills().empty());
@@ -437,7 +436,8 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
         { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
@@ -493,7 +493,8 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
         { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
@@ -546,7 +547,8 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, active, passive, untargeted, owner, plain, filler);
     const auto card = ids.get_id<givm::card_definition>(filler.name());
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { card, card, card, card, card, card }, .characters = { ids.get_id<givm::character_view>(owner.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
@@ -610,7 +612,8 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     log.switch_energy_tag = ids.get_tag_id("Resolve");
     CHECK(library[ids.get_id<givm::card_definition>(card.name())].query(givm::card_initial_state{}).cost.energy_tag
         == log.switch_energy_tag);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(owner.name()), ids.get_id<givm::character_view>(plain.name()) }
@@ -689,7 +692,8 @@ TEST_CASE("action payments distinguish energy tags without consuming resources",
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(1), std::tuple{}, active, passive, untargeted, owner, plain, card);
     log.switch_energy_tag = cost_tag.empty() ? givm::tag_id{} : ids.get_tag_id(cost_tag);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(owner.name()), ids.get_id<givm::character_view>(plain.name()) }
@@ -737,7 +741,7 @@ TEST_CASE("entering a character loads its indexed initial skills without deck in
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, active, passive, untargeted, owner, enter);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(enter.name()) } }, {});
     givm::executor target;
     target.enter_entry(library);
@@ -767,7 +771,8 @@ TEST_CASE("card energy validation follows dice requirement and ownership checks"
     const energy_card_source card{ &log, 1, 1 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal, setup(1), std::tuple{}, character, card);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) }, .characters = { character_id }

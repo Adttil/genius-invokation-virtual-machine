@@ -5,37 +5,14 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-struct deck_card_discarded;
-```
-
-[舍弃牌堆牌命令](../commands/discard_deck_card.md)产生的通知，也是该命令采用动态参数时的输入。通知先发给被舍弃牌自身；其响应程序完成后再向全场广播。
-
-## 成员对象
-
-| 名称 | 类型 | 说明 |
-| --- | --- | --- |
-| `card` | `const deck_card_id` | 被舍弃的牌堆牌 ID；只读 |
-
-## 注意
-
-响应时牌及其附属状态已经离场，仍可按 ID 查询保留的信息。该牌自身仅接收前面的自身通知，不参加后面的全场广播。抽牌、转移到手牌和超过手牌上限不产生此事件。
-
-## 示例
-
-```cpp
-#include <print>
-#include <givm/definition.hpp>
-
-int main()
+struct deck_card_discarded
 {
-    const givm::deck_card_id card{ givm::player_id{ 1 }, 1 };
-    const givm::deck_card_discarded event{ .card = card };
-    std::println("通知指定牌堆牌: {}", event.card == card);
-}
+    const deck_card_id card;
+};
 ```
 
-输出
+[舍弃命令](../commands/discard_deck_cards.md)在该牌的 [`deck_card_discard_effect`](deck_card_discard_effect.md) 响应程序执行完成后发送的全场通知。
 
-```text
-通知指定牌堆牌: true
-```
+`card` 是被舍弃牌的强类型 ID。该牌及其附属状态已经离场，不参加此次全场广播；其定义和状态在安全清理前仍可通过 ID 读取。
+
+只有明确的舍弃命令产生此事件。打出牌、元素调和和手牌溢出的移除均不产生舍弃通知。响应全场通知不等于该牌具有自身舍弃效果。

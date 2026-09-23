@@ -18,7 +18,7 @@ namespace givm
         character_id character() const noexcept
         {
             const auto& event = get<0>(std::as_const(*stack_).top<
-                active_character_changed, detail::execution_position>());
+                active_character_changed, detail::response_return>());
             return event.current;
         }
     };

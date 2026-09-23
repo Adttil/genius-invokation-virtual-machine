@@ -32,6 +32,7 @@ namespace givm
         dice_selection,
         action_selection,
         health_reduced,
+        deck_cards_discarded,
         active_character_changed,
         initial_active_characters_selected,
         round_started,
@@ -155,13 +156,6 @@ namespace givm::detail
             GIVM_ASSERT(result != game_result::no_result);
             stack_.push(result);
             return execution_state::finished;
-        }
-
-        constexpr execution_state return_from_subroutine()
-        {
-            // The caller keeps this position until its sequence of calls finishes.
-            const auto [position] = stack_.top<execution_position>();
-            return jump(position);
         }
 
     private:

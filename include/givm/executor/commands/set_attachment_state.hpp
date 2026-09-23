@@ -12,7 +12,7 @@ namespace givm::detail
     inline execution_state finish_attachment_state_change(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         return context.enter_next();
     }
 
@@ -26,11 +26,14 @@ namespace givm::detail
         const auto definition = library[attachment.definition_id()];
         if(not definition.can_handle<attachment_state_changed, attachment_view>())
             return context.enter_next();
-        context.stack().push(context.position());
+        context.stack().push(response_return{ table.state().self_player, context.position() });
         auto response = context.make_handle_context(table, random);
         const auto entry = definition.handle<attachment_state_changed>(std::as_const(table)[id], event, response);
         if(entry)
+        {
+            table.state().self_player = attachment.player().id();
             return context.enter(entry);
+        }
         return finish_attachment_state_change(library, table, context, random);
     }
 
@@ -43,8 +46,8 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, set_attachment_state>(library);
-            const auto player = command.player == relative_player::current
-                ? table.state().active_player : other_player(table.state().active_player);
+            const auto player = command.player == relative_player::self
+                ? table.state().self_player : other_player(table.state().self_player);
             input = { require_attachment(table, player, command.definition), command.state };
             context.advance(instruction_extent<1, set_attachment_state>);
         }

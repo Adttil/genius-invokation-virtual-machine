@@ -133,7 +133,7 @@ namespace givm::detail
             return continue_execution;
         }
 
-        const auto event = get<0>(context.stack().top<dice_roll_preparation, execution_position>());
+        const auto event = get<0>(context.stack().top<dice_roll_preparation, response_return>());
         GIVM_ASSERT(event.count <= 64);
 
         for(size_t player_index = 0; player_index < 2; ++player_index)

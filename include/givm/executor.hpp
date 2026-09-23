@@ -14,5 +14,6 @@
 #include "executor/views/action_selection.hpp"
 #include "executor/views/damage.hpp"
 #include "executor/views/entities.hpp"
+#include "executor/views/deck_cards_discarded.hpp"
 
 #endif

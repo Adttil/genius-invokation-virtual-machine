@@ -216,8 +216,6 @@ namespace
         untagged_state.allowed_weapon_types.set(givm::weapon_type::sword);
         return givm::test::compile_definitions_with_program(mode,
             std::tuple{
-                givm::set_active_character{ equipped_character },
-                givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
                 givm::draw_cards{ .count = 2 }, givm::begin_action{}, givm::end_game{ givm::game_result::both_loss }
             }, std::tuple{},
             givm::test::with_passive_skill(equipment_character_source{ &log, prepare_equipment }), tagged_character_source{ "Blocked", false },
@@ -242,7 +240,8 @@ namespace
 
     givm::table load_equipment_scenario(const givm::definition_library& library, const givm::issued_id_map& ids)
     {
-        givm::table table;
+        givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+            { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
         load_deck(table, library, {
             .cards = { ids.get_id<givm::card_definition>("RemoveWeaponCard"), ids.get_id<givm::card_definition>("EquipWeaponCard") },
             .characters = { ids.get_id<givm::character_view>("EquippableCharacter"), ids.get_id<givm::character_view>("Reserve"),
@@ -486,15 +485,14 @@ TEST_CASE("a non-card response supplies multiple attachment inputs and removes o
     attachment_log equipment_log;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{
-            givm::set_active_character{ equipped_character },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::test_command{}, givm::test_command{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, givm::test::with_passive_skill(dynamic_attachment_character_source{ &log }),
         givm::test::initialized_character_source{ "LowerHealth", { .max_health = 10, .health = 3 } },
         givm::test::initialized_character_source{ "HigherHealth", { .max_health = 10, .health = 9 } },
         givm::test::named_definition_source<givm::attachment_view>{ "DynamicAttachment" },
         attachment_source{ &equipment_log, "DynamicWeapon", { "weapon", "sword" } });
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("DynamicAttachmentCharacter") } },
         { .characters = { ids.get_id<givm::character_view>("LowerHealth"), ids.get_id<givm::character_view>("HigherHealth") } });
     givm::executor execution;

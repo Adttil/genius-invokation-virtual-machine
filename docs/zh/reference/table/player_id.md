@@ -26,7 +26,7 @@ friend constexpr bool operator==(player_id, player_id) = default;
 
 ## 注意
 
-只接受 0 和 1 作为玩家编号。
+访问玩家时只接受 0 和 1。仅 [`table_state::self_player`](table_state.md) 使用 `player_id{ 2 }` 表示没有本方；该值不能用于取得玩家实体。
 
 ## 示例
 

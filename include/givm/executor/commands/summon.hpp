@@ -22,10 +22,11 @@ namespace givm::detail
             if(not definition.can_handle<resummoning, summon_view>())
                 return {};
             resummoning event{ input.state };
-            context.stack().push(resume);
+            context.stack().push(response_return{ table.state().self_player, resume });
             auto response = context.make_handle_context(table, random);
             const auto entry = definition.handle<resummoning>(existing, event, response);
-            if(not entry) context.stack().pop<execution_position>();
+            if(not entry) context.stack().pop<response_return>();
+            else table.state().self_player = existing.player().id();
             return entry;
         }
 
@@ -40,7 +41,7 @@ namespace givm::detail
     inline execution_state finish_resummoning(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         return context.enter_next();
     }
 
@@ -54,8 +55,8 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, summon>(library);
             input = {
-                .player = command.player == relative_player::current
-                    ? table.state().active_player : other_player(table.state().active_player),
+                .player = command.player == relative_player::self
+                    ? table.state().self_player : other_player(table.state().self_player),
                 .definition = command.definition, .state = command.state
             };
             context.advance(instruction_extent<1, summon>);

@@ -6,9 +6,13 @@
 
 规则流程与事件效果只能组合核心给定集合中的命令；公开接口不支持自行定义新的命令类型。
 
-命令是否消费响应输入，由编译时给出的具体命令值决定。消费输入的命令要求响应通过 `invoke` 显式提交相应初始事件；使用固定参数的命令不占输入位置。每个已编译入口所需输入的数量、类型和顺序仍然固定，命令不借用外层响应事件或响应者。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
+命令是否消费响应输入，由编译时给出的具体命令值决定。消费输入的命令要求响应通过 `invoke` 显式提交相应初始事件；使用固定参数的命令不占输入位置。每个已编译入口所需输入的数量、类型和顺序仍然固定，命令不借用外层响应事件。相对玩家参数以当前效果的本方为基准。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
 
-`set_active_character{}`、`deal_damage{}`，以及实体生成、添加、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。实体相关命令通过显式指定 `definition` 选择固定模式。
+`set_active_character{}`、`deal_damage{}`、`apply_element{}`、`heal{}`、`increase_max_health{}`，以及实体生成、添加、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。实体相关命令通过显式指定 `definition` 选择固定模式。
+
+固定效果命令使用角色位置、本方或对方身份、定义 ID，不保存对局中才分配的实体 ID。具体实体 ID 由响应在运行时通过动态输入提交。角色位置在命令执行时解析，仅使用相对于所选一方当前出战角色的有符号偏移。
+
+[`relative_player`](commands/relative_player.md) 的 `self`、`opponent` 相对于 [`table_state::self_player`](../table/table_state.md)。响应程序执行期间本方为响应实体所属玩家；嵌套效果结束后恢复外层。根流程默认没有本方，需要使用相对效果命令时须显式设置，不能自动采用当前行动玩家。`insert_deck_card`、`enter_character`、`shuffle_deck`、`replace_cards` 等根流程命令仍使用明确的 `player_id`。
 
 ## 开局与牌堆
 
@@ -21,7 +25,7 @@
 | [`select_active_character_both`](commands/select_active_character_both.md) | 双方开局出战角色的选择命令 |
 | [`draw_cards`](commands/draw_cards.md) | 抽牌命令 |
 | [`discard_hand_card`](commands/discard_hand_card.md) | 舍弃手牌，先处理自身效果再全场通知 |
-| [`discard_deck_card`](commands/discard_deck_card.md) | 从牌堆舍弃牌，先处理自身效果再全场通知 |
+| [`discard_deck_cards`](commands/discard_deck_cards.md) | 整批舍弃牌堆顶的牌，再逐张处理自身效果和全场通知 |
 | [`replace_cards`](commands/replace_cards.md) | 单方换牌命令 |
 | [`replace_cards_both`](commands/replace_cards_both.md) | 双方开局换牌命令 |
 
@@ -44,7 +48,6 @@
 | [`heal`](commands/heal.md) | 调整治疗量、恢复生命并通知实际恢复值 |
 | [`increase_max_health`](commands/increase_max_health.md) | 增加生命上限，恢复相同数量生命并通知 |
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
-| [`set_element_aura`](commands/set_element_aura.md) | 直接设置元素附着的命令 |
 
 ## 支援、召唤物、状态与装备
 
@@ -81,5 +84,9 @@
 | | |
 | --- | --- |
 | [`any_command`](any_command.md) | 命令 variant |
-| [`relative_player`](commands/relative_player.md) | 相对于当前行动玩家的一方 |
+| [`relative_player`](commands/relative_player.md) | 相对于当前效果本方的一方 |
+| [`relative_character_target`](events/relative_character_target.md) | 执行时解析的角色位置 |
+| [`fixed_damage`](commands/fixed_damage.md) | 固定伤害组中的单段描述 |
+| [`relative_damage_target`](commands/relative_damage_target.md) | 固定伤害的相对位置及作用范围 |
+| [`damage_target_selection`](commands/damage_target_selection.md) | 选择定位角色、其他角色或全部角色 |
 | [`action_argument`](../executor/action_argument.md) | 行动输入参数 |

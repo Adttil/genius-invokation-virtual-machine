@@ -24,11 +24,19 @@
 
 namespace givm::detail
 {
+    struct response_return
+    {
+        player_id previous_player;
+        execution_position position;
+    };
+
     template<class TExecutionContext>
     inline execution_state execute_return(
-        const definition_library&, unrestricted_table&, TExecutionContext& context, random_fn&)
+        const definition_library&, unrestricted_table& table, TExecutionContext& context, random_fn&)
     {
-        return context.return_from_subroutine();
+        const auto record = get<0>(context.stack().template top<response_return>());
+        table.state().self_player = record.previous_player;
+        return context.jump(record.position);
     }
     // Internal compilation inputs; definition sources do not expose these commands.
     struct round_program_begin {};

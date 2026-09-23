@@ -343,7 +343,7 @@ namespace givm::genshin_impact
             return context.invoke(definition.end_phase,
                 damage{
                     .source = summon.id(),
-                    .target = relative_character_target{ other_player(summon.player().id()) },
+                    .target = relative_character_target{ relative_player::opponent },
                     .value = summon.state().value,
                     .type = damage_type::pyro,
                     .flags = damage_flag_bits::combat_damage

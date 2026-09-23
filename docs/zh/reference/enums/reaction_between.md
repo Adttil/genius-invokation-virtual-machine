@@ -34,8 +34,8 @@ constexpr elemental_reaction reaction_between(element aura, element incoming) no
 | 火与草 | 燃烧 |
 | 水与草 | 绽放 |
 | 雷与草 | 激化 |
-| 风与冰、水、火或雷 | 扩散 |
-| 岩与冰、水、火或雷 | 结晶 |
+
+扩散和结晶有方向要求：仅在已有冰、水、火或雷附着，而新施加的元素为风或岩时，分别产生扩散或结晶。交换已有元素与新元素不会产生这两种反应。
 
 ## 示例
 

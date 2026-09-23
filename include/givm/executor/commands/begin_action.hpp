@@ -638,13 +638,13 @@ namespace givm::detail
         if(std::holds_alternative<technique_selection>(selection))
         {
             jump_to_action_instruction<execute_action_selection_offset, technique_onpay_offset<Observed>>(context);
-            context.stack().push(context.position());
+            context.stack().push(response_return{ table.state().self_player, context.position() });
             return continue_execution;
         }
         if(std::holds_alternative<skill_selection>(selection))
         {
             jump_to_action_instruction<execute_action_selection_offset, skill_onpay_offset<Observed>>(context);
-            context.stack().push(context.position());
+            context.stack().push(response_return{ table.state().self_player, context.position() });
             return continue_execution;
         }
         if(const auto* selected = std::get_if<card_selection>(&selection))
@@ -657,7 +657,7 @@ namespace givm::detail
             >())[card_index];
             table[cost.card].erase();
             jump_to_action_instruction<execute_action_selection_offset, card_onpay_offset<Observed>>(context);
-            context.stack().push(context.position());
+            context.stack().push(response_return{ table.state().self_player, context.position() });
             return continue_execution;
         }
 
@@ -668,7 +668,7 @@ namespace givm::detail
 #endif
 
         context.enter_next();
-        context.stack().push(context.position());
+        context.stack().push(response_return{ table.state().self_player, context.position() });
         return continue_execution;
     }
 
@@ -723,7 +723,7 @@ namespace givm::detail
                 program_entry[], std::size_t[], std::size_t[],
                 stack_count_t,
                 action_selection, substack_t
-            >, frame<execution_position>>();
+            >, frame<response_return>>();
         auto&& [handlers, costs, onpay_entries, onpay_offsets, onpay_sizes, onpay_cursor, selection, cached_inputs] =
             action_frame;
         const auto* selected = std::get_if<switch_selection>(&selection);
@@ -738,19 +738,22 @@ namespace givm::detail
             const auto entry = onpay_entries[index];
             if(entry)
             {
+                const auto player = std::visit([&](auto id) { return table[id].player().id(); }, handlers[column]);
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
                 auto invoke = context.make_program_invoker();
-                return context.enter(invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size }));
+                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                table.state().self_player = player;
+                return context.enter(prepared);
             }
         }
 
         const auto paid_dice = selected->paid_dice;
         const auto energy = costs[selected->switch_cost_index].requirement.energy;
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         return pay_action_cost<switch_onpay_offset, switch_dice_payment_offset, switch_action_offset>(
             library, table, context, table.state().active_player, paid_dice, energy
         );
@@ -877,7 +880,7 @@ namespace givm::detail
         execution_context& context, random_fn& random
     )
     {
-        const auto& event = get<0>(context.stack().top<active_character_changed, execution_position>());
+        const auto& event = get<0>(context.stack().top<active_character_changed, response_return>());
         table[event.current.player_id].state().active_character = event.current;
         table[event.current.player_id].state().can_plunge = true;
         context.enter_next();
@@ -894,7 +897,7 @@ namespace givm::detail
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
             switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
             stack_count_t, action_selection, substack_t
-        >, frame<execution_position>>();
+        >, frame<response_return>>();
         auto&& [handlers, costs, onpay_entries, onpay_offsets, onpay_sizes,
                 switch_handlers, switch_costs, switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes,
                 onpay_cursor, selection, cached_inputs] = action_frame;
@@ -909,19 +912,22 @@ namespace givm::detail
             const auto entry = onpay_entries[index];
             if(entry)
             {
+                const auto player = std::visit([&](auto id) { return table[id].player().id(); }, handlers[column]);
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
                 auto invoke = context.make_program_invoker();
-                return context.enter(invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size }));
+                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                table.state().self_player = player;
+                return context.enter(prepared);
             }
         }
 
         const auto paid_dice = selected->paid_dice;
         const auto& cost = costs[selected->card_cost_index];
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         return pay_action_cost<card_onpay_offset<Observed>, card_dice_payment_offset<Observed>, prepare_card_play_offset<Observed>>(
             library, table, context, cost.card.player_id, paid_dice, cost.requirement.energy
         );
@@ -953,7 +959,7 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         auto&& [costs, onpay_entries, onpay_offsets, onpay_sizes, switch_handlers, switch_costs,
                 switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes, onpay_cursor, selection, cached_inputs] = context.stack().top<
             cost_of_card[], program_entry[], std::size_t[], std::size_t[],
@@ -980,11 +986,11 @@ namespace givm::detail
             return continue_execution;
         }
         const auto event = get<0>(context.stack().top<
-            card_will_be_played, execution_position>());
+            card_will_be_played, response_return>());
         pop_broadcast<card_will_be_played>(context);
         if(event.speed == action_speed::combat) table[event.card.player_id].state().can_plunge = false;
         context.enter_next();
-        context.stack().push(context.position());
+        context.stack().push(response_return{ table.state().self_player, context.position() });
         if(not event.effect_cancelled)
         {
             card_effect effect{ .card = event.card, .targets = event.targets };
@@ -994,6 +1000,7 @@ namespace givm::detail
             const auto entry = library[card.definition_id()].handle<card_effect>(card, effect, response);
             if(entry)
             {
+                table.state().self_player = card.player().id();
                 return context.enter(entry);
             }
         }
@@ -1010,7 +1017,7 @@ namespace givm::detail
         {
             return continue_execution;
         }
-        const auto speed = get<0>(context.stack().top<card_played, execution_position>()).speed;
+        const auto speed = get<0>(context.stack().top<card_played, response_return>()).speed;
         pop_broadcast<card_played>(context);
         context.stack().pop<
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
@@ -1037,7 +1044,7 @@ namespace givm::detail
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
             switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
             stack_count_t, action_selection, substack_t
-        >, frame<execution_position>>();
+        >, frame<response_return>>();
         auto&& [handlers, costs, onpay_entries, onpay_offsets, onpay_sizes,
                 card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
                 switch_handlers, switch_costs, switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes,
@@ -1053,19 +1060,22 @@ namespace givm::detail
             const auto entry = onpay_entries[index];
             if(entry)
             {
+                const auto player = std::visit([&](auto id) { return table[id].player().id(); }, handlers[column]);
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
                 auto invoke = context.make_program_invoker();
-                return context.enter(invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size }));
+                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                table.state().self_player = player;
+                return context.enter(prepared);
             }
         }
 
         const auto paid_dice = selected->paid_dice;
         const auto& cost = costs[selected->skill_cost_index];
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         return pay_action_cost<skill_onpay_offset<Observed>, skill_dice_payment_offset<Observed>, prepare_skill_use_offset<Observed>>(
             library, table, context, cost.skill.character_id.player_id, paid_dice, cost.requirement.energy
         );
@@ -1096,8 +1106,8 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        const auto event = get<0>(context.stack().top<skill_used, execution_position>());
-        context.stack().pop<skill_used, execution_position>();
+        const auto event = get<0>(context.stack().top<skill_used, response_return>());
+        context.stack().pop<skill_used, response_return>();
         prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
@@ -1111,14 +1121,14 @@ namespace givm::detail
         {
             return continue_execution;
         }
-        const auto event = get<0>(context.stack().top<skill_will_be_used, execution_position>());
+        const auto event = get<0>(context.stack().top<skill_will_be_used, response_return>());
         pop_broadcast<skill_will_be_used>(context);
         if(event.speed == action_speed::combat) table[event.skill.character_id.player_id].state().can_plunge = false;
         context.enter_next();
         context.stack().push(skill_used{
             .skill = event.skill, .flags = event.flags, .targets = event.targets, .speed = event.speed,
             .effect_cancelled = event.effect_cancelled
-        }, context.position());
+        }, response_return{ table.state().self_player, context.position() });
         if(not event.effect_cancelled)
         {
             skill_effect effect{ .skill = event.skill, .flags = event.flags, .targets = event.targets };
@@ -1127,6 +1137,7 @@ namespace givm::detail
             const auto entry = library[skill.definition_id()].handle<skill_effect>(skill, effect, response);
             if(entry)
             {
+                table.state().self_player = skill.player().id();
                 return context.enter(entry);
             }
         }
@@ -1143,7 +1154,7 @@ namespace givm::detail
         {
             return continue_execution;
         }
-        const auto speed = get<0>(context.stack().top<skill_used, execution_position>()).speed;
+        const auto speed = get<0>(context.stack().top<skill_used, response_return>()).speed;
         pop_broadcast<skill_used>(context);
         context.stack().pop<
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
@@ -1171,7 +1182,7 @@ namespace givm::detail
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
             switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
             stack_count_t, action_selection, substack_t
-        >, frame<execution_position>>();
+        >, frame<response_return>>();
         auto&& [handlers, costs, onpay_entries, onpay_offsets, onpay_sizes,
                 skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes,
                 card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
@@ -1187,19 +1198,22 @@ namespace givm::detail
             const auto entry = onpay_entries[index];
             if(entry)
             {
+                const auto player = std::visit([&](auto id) { return table[id].player().id(); }, handlers[column]);
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
                 auto invoke = context.make_program_invoker();
-                return context.enter(invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size }));
+                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                table.state().self_player = player;
+                return context.enter(prepared);
             }
         }
 
         const auto paid_dice = selected->paid_dice;
         const auto& cost = costs[0];
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         return pay_action_cost<technique_onpay_offset<Observed>, technique_dice_payment_offset<Observed>, prepare_technique_use_offset<Observed>>(
             library, table, context, cost.technique.character_id.player_id, paid_dice, cost.requirement.energy
         );
@@ -1215,7 +1229,7 @@ namespace givm::detail
         {
             return continue_execution;
         }
-        const auto speed = get<0>(context.stack().top<technique_used, execution_position>()).speed;
+        const auto speed = get<0>(context.stack().top<technique_used, response_return>()).speed;
         pop_broadcast<technique_used>(context);
         context.stack().pop<
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
@@ -1237,8 +1251,8 @@ namespace givm::detail
         execution_context& context, random_fn& random
     )
     {
-        const auto event = get<0>(context.stack().top<technique_used, execution_position>());
-        context.stack().pop<technique_used, execution_position>();
+        const auto event = get<0>(context.stack().top<technique_used, response_return>());
+        context.stack().pop<technique_used, response_return>();
         prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
         context.enter_next();
         return broadcast_technique_used<Observed>(library, table, context, random);
@@ -1254,14 +1268,14 @@ namespace givm::detail
         {
             return continue_execution;
         }
-        const auto event = get<0>(context.stack().top<technique_will_be_used, execution_position>());
+        const auto event = get<0>(context.stack().top<technique_will_be_used, response_return>());
         pop_broadcast<technique_will_be_used>(context);
         if(event.speed == action_speed::combat) table[event.technique.character_id.player_id].state().can_plunge = false;
         context.enter_next();
         context.stack().push(technique_used{
             .technique = event.technique, .targets = event.targets, .speed = event.speed,
             .effect_cancelled = event.effect_cancelled
-        }, context.position());
+        }, response_return{ table.state().self_player, context.position() });
         if(not event.effect_cancelled)
         {
             technique_effect effect{ .technique = event.technique, .targets = event.targets };
@@ -1270,6 +1284,7 @@ namespace givm::detail
             const auto entry = library[technique.definition_id()].handle<technique_effect>(technique, effect, response);
             if(entry)
             {
+                table.state().self_player = technique.player().id();
                 return context.enter(entry);
             }
         }
@@ -1308,7 +1323,7 @@ namespace givm::detail
         {
             return continue_execution;
         }
-        const auto event = get<0>(context.stack().top<elemental_tuning_modification, execution_position>());
+        const auto event = get<0>(context.stack().top<elemental_tuning_modification, response_return>());
         pop_broadcast<elemental_tuning_modification>(context);
         table[event.card].erase();
         auto& dice = table[event.card.player_id].state().dice;

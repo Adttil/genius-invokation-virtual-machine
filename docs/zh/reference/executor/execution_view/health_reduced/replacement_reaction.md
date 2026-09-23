@@ -18,7 +18,7 @@ tag_id replacement_reaction() const noexcept;
 
 标签在伤害属性确定、反应判定完成后，通过 [`elemental_reaction_will_occur`](../../../definition/events/elemental_reaction_will_occur.md) 选择，并在数值计算开始前固定。本现场只能读取标签，不能重新选择。
 
-非空标签取消默认反应加伤、派生伤害、实体生成与超载切人，但不改变原始反应，也不影响默认附着处理。到达本现场时，本段伤害已经采用该标签完成数值计算；元素附着与扣血后的默认反应效果尚未处理。
+非空标签取消默认反应加伤、派生伤害、实体生成与超载切人，但不改变原始反应，也不影响默认附着处理。到达本现场时，本段伤害已经采用该标签完成数值计算，整组元素附着也已在准备阶段推进；本段扣血后的默认反应效果尚未处理。
 
 ## 示例
 
@@ -58,17 +58,21 @@ int main()
     sources.add(source);
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     const std::array damages{
-        givm::damage{
-            .source = givm::character_id{ givm::player_id{ 0 }, 0 },
-            .target = target, .value = 1, .type = givm::damage_type::pyro }
+        givm::fixed_damage{
+            .source = givm::relative_character_target{ givm::relative_player::self, 0 },
+            .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro }
     };
     const auto [library, ids] = compile(sources,
         std::tuple{
-            givm::set_element_aura{ .target = target, .aura = givm::element_aura::cryo },
+            givm::select_active_character_both{},
+            givm::apply_element{
+                .source = givm::relative_character_target{ givm::relative_player::self, 0 },
+                .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
+                .element = givm::element::cryo },
             givm::deal_damage{ .damages = damages }
         },
         std::tuple{}, givm::compile_mode::observed);
-    givm::table table{ { .max_rounds = 0 } };
+    givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },
@@ -76,6 +80,13 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 1 }, 0 });
+    execution.step(library, table, random);
     if(execution.step(library, table, random) == givm::execution_state::health_reduced)
     {
         const auto view = execution.view_in<givm::execution_state::health_reduced>();

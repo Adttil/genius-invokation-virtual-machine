@@ -20,12 +20,16 @@ namespace givm::detail
         {
             if(attachment.definition_id() != input.definition) continue;
             if(not definition.can_handle<attachment_reapplication, attachment_view>()) return std::nullopt;
-            context.stack().push(reapplication_resume);
+            context.stack().push(response_return{ table.state().self_player, reapplication_resume });
             attachment_reapplication event{ input.state };
             auto response = context.make_handle_context(table, random);
             const auto entry = definition.handle<attachment_reapplication>(attachment, event, response);
-            if(entry) return context.enter(entry);
-            context.stack().pop<execution_position>();
+            if(entry)
+            {
+                table.state().self_player = attachment.player().id();
+                return context.enter(entry);
+            }
+            context.stack().pop<response_return>();
             return std::nullopt;
         }
         return prepare_attachment_addition(library, table, context, random,
@@ -35,7 +39,7 @@ namespace givm::detail
     inline execution_state finish_attachment_reapplication(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
-        context.stack().pop<execution_position>();
+        context.stack().pop<response_return>();
         return context.advance(2 * sizeof(execute_fn));
     }
 
@@ -48,8 +52,8 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, attach>(library);
-            const auto player = command.player == relative_player::current
-                ? table.state().active_player : other_player(table.state().active_player);
+            const auto player = command.player == relative_player::self
+                ? table.state().self_player : other_player(table.state().self_player);
             input = { *table[player].state().active_character, command.definition, command.state };
             context.advance(instruction_extent<1, attach>);
         }

@@ -5,6 +5,7 @@
 #include <limits>
 
 #include "../executor.hpp"
+#include "../character_target.hpp"
 #include "../broadcast.hpp"
 #include "../instruction.hpp"
 #include "../../definition/commands.hpp"
@@ -24,7 +25,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
         if(not continue_broadcast<healing>(library, table, context, random)) return continue_execution;
-        const auto event = get<0>(context.stack().top<healing, execution_position>());
+        const auto event = get<0>(context.stack().top<healing, response_return>());
         pop_broadcast<healing>(context);
         auto& state = table[event.target].state();
         GIVM_ASSERT(state.health <= state.max_health);
@@ -40,13 +41,16 @@ namespace givm::detail
     inline execution_state prepare_healing(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        const auto event = [&]() -> healing
+        const auto event = [&]() -> std::optional<healing>
         {
             if constexpr(Fixed)
             {
                 const auto command = context.instruction_data<1, heal>(library);
                 context.advance(instruction_extent<1, heal>);
-                return { command.source, command.target, command.value };
+                const auto source = resolve_character_target<false>(table, command.source);
+                const auto target = resolve_character_target<false>(table, command.target);
+                if(not source || not target) return std::nullopt;
+                return healing{ *source, *target, command.value };
             }
             else
             {
@@ -56,16 +60,17 @@ namespace givm::detail
                 return input;
             }
         }();
-        const bool valid = static_cast<bool>(table[event.target]);
+        if(not event) return context.advance(2 * sizeof(execute_fn));
+        const bool valid = static_cast<bool>(table[event->target]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
-        prepare_broadcast(library, event, table, context.stack(), context.position());
+        prepare_broadcast(library, *event, table, context.stack(), context.position());
         return apply_healing(library, table, context, random);
     }
 
     inline void compile(program_writer& writer, const givm::heal& command, compile_mode)
     {
-        if(command.target.index == std::numeric_limits<size_t>::max())
+        if(command.target.offset == std::numeric_limits<std::int32_t>::max())
             writer.write(execute_fn{ prepare_healing<false> });
         else
         {

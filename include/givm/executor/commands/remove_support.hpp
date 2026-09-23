@@ -40,8 +40,8 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, remove_support>(library);
-            const auto player = command.player == relative_player::current
-                ? table.state().active_player : other_player(table.state().active_player);
+            const auto player = command.player == relative_player::self
+                ? table.state().self_player : other_player(table.state().self_player);
             support = require_support(table, player, command.definition);
             context.advance(instruction_extent<1, remove_support>);
         }

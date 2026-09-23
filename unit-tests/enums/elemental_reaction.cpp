@@ -4,7 +4,7 @@
 
 #include <givm/enums/elemental_reaction.hpp>
 
-TEST_CASE("elemental reaction pairs are symmetric", "[elemental_reaction]")
+TEST_CASE("reactions between persistent elements are symmetric", "[elemental_reaction]")
 {
     struct reaction_case
     {
@@ -30,11 +30,15 @@ TEST_CASE("elemental reaction pairs are symmetric", "[elemental_reaction]")
         CHECK(reaction_between(second, first) == expected);
     }
 
+}
+
+TEST_CASE("swirl and crystallize require incoming Anemo and Geo", "[elemental_reaction]")
+{
     for(const auto target : { givm::element::cryo, givm::element::hydro, givm::element::pyro, givm::element::electro })
     {
-        CHECK(reaction_between(givm::element::anemo, target) == givm::elemental_reaction::swirl);
+        CHECK(reaction_between(givm::element::anemo, target) == givm::elemental_reaction::none);
         CHECK(reaction_between(target, givm::element::anemo) == givm::elemental_reaction::swirl);
-        CHECK(reaction_between(givm::element::geo, target) == givm::elemental_reaction::crystallize);
+        CHECK(reaction_between(givm::element::geo, target) == givm::elemental_reaction::none);
         CHECK(reaction_between(target, givm::element::geo) == givm::elemental_reaction::crystallize);
     }
 }

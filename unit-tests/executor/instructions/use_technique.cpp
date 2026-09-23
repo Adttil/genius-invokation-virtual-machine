@@ -125,11 +125,10 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ givm::character_id{ givm::player_id{ 1 }, 0 } },
             givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } }, givm::begin_action{}
         }, std::tuple{}, owner, plain, technique_source{ &log });
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
         { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor executor;

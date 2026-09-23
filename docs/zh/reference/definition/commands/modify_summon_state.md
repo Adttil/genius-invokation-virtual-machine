@@ -9,7 +9,7 @@
 ```cpp
 struct modify_summon_state
 {
-    relative_player player = relative_player::current;
+    relative_player player = relative_player::self;
     definition_id<summon_view> definition{};
     std::int64_t value{};
     std::int64_t usages{};
@@ -21,7 +21,7 @@ struct modify_summon_state
 - 默认构造 `modify_summon_state{}` 使用动态模式，由 `invoke` 提交一个 [summon_state_modification](../events/summon_state_modification.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定的一方。在该玩家的召唤物中选取首个有效、定义 ID 相同的实体；该实体必须存在。
 
-`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前行动玩家。动态输入直接指定要操作的有效实体。
+`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入直接指定要操作的有效实体。
 
 ## 结算
 

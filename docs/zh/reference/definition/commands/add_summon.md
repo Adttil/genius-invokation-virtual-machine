@@ -9,7 +9,7 @@
 ```cpp
 struct add_summon
 {
-    relative_player player = relative_player::current;
+    relative_player player = relative_player::self;
     definition_id<summon_view> definition{};
     summon_state state{
         std::numeric_limits<std::uint32_t>::max(),
@@ -23,7 +23,7 @@ struct add_summon
 - 默认构造 `add_summon{}` 使用动态模式，由 `invoke` 提交一个 [summon_addition](../events/summon_addition.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定的一方。
 
-`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前行动玩家。动态输入明确指定目标玩家和定义，两者须合法。
+`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入明确指定目标玩家和定义，两者须合法。
 
 ## 结算
 

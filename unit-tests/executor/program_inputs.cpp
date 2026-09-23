@@ -1,5 +1,6 @@
 #include <concepts>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -141,7 +142,7 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
     const givm::test::named_definition_source<givm::card_definition> card{ "InputCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, plain, card);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
@@ -180,11 +181,9 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
     const auto source = givm::test::with_passive_skill(cached_input_source{ &log });
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{
-            givm::set_active_character{ { givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ { givm::player_id{ 1 }, 0 } }, givm::begin_action{}
-        }, std::tuple{}, source, plain);
-    givm::table table;
+        std::tuple{ givm::begin_action{} }, std::tuple{}, source, plain);
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto source_id = ids.get_id<givm::character_view>(source.name());
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     load_deck(table, library, { .characters = { source_id, source_id, plain_id } }, { .characters = { plain_id } });
@@ -258,7 +257,7 @@ namespace
         {
             const auto entry = error == input_size_mismatch::typed_missing or error == input_size_mismatch::raw_missing
                 ? context.add_program(std::tuple{ givm::set_active_character{} })
-                : context.add_program(std::tuple{ givm::set_active_character{ { givm::player_id{ 0 }, 0 } } });
+                : context.add_program(std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } } });
             return { error, entry };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -304,13 +303,12 @@ TEST_CASE("debug invocation checks input length before execution or caching", "[
     const auto source = givm::test::with_passive_skill(mismatched_input_source{ error });
     const givm::test::initialized_character_source plain;
     const auto program = cached
-        ? std::vector<givm::any_command>{
-            givm::set_active_character{ { givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ { givm::player_id{ 1 }, 0 } }, givm::begin_action{}
-        }
+        ? std::vector<givm::any_command>{ givm::begin_action{} }
         : std::vector<givm::any_command>{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, program, std::tuple{}, source, plain);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = cached ? std::optional{ givm::character_id{ givm::player_id{ 0 }, 0 } } : std::nullopt },
+        { .active_character = cached ? std::optional{ givm::character_id{ givm::player_id{ 1 }, 0 } } : std::nullopt } };
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     load_deck(table, library, {
         .characters = { ids.get_id<givm::character_view>(source.name()), plain_id }

@@ -84,19 +84,19 @@ int main()
     };
     sources.add(source);
     const std::array damages{
-        givm::damage{
-            .source = givm::character_id{ givm::player_id{ 0 }, 1 },
-            .target = givm::character_id{ givm::player_id{ 1 }, 0 },
+        givm::fixed_damage{
+            .source = givm::relative_character_target{ givm::relative_player::self, 0 },
+            .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 },
             .value = 999, .type = givm::damage_type::physical, .flags = {} }
     };
     const auto [library, ids] = compile(
         sources,
         std::tuple{
-            givm::set_active_character{ .target = givm::character_id{ givm::player_id{ 0 }, 0 } },
-            givm::set_active_character{ .target = { .player_id = givm::player_id{ 0 }, .index = 1 } },
+            givm::select_active_character_both{},
+            givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::self, 1 } },
             givm::deal_damage{ .damages = damages } },
         std::tuple{}, givm::compile_mode::observed);
-    givm::table table{ { .max_rounds = 0 } };
+    givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition, definition } },
@@ -107,6 +107,12 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
     execution.enter_entry(library);
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
+        givm::character_id{ givm::player_id{ 1 }, 0 });
     execution.step(library, table, random);
     execution.step(library, table, random);
     const auto switch_view = execution.view_in<givm::execution_state::active_character_changed>();

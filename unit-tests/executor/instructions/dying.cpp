@@ -118,7 +118,7 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
     const auto observer = givm::test::with_passive_skill(dying_observer{ &log });
     const givm::test::initialized_character_source target{ "DyingTarget",
         { .max_health = 10, .max_energy = 3, .health = 1, .energy = 2 } };
-    const std::array damages{ givm::damage{ .source = attacker, .target = victim,
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
@@ -127,7 +127,9 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
     const auto target_id = ids.get_id<givm::character_view>(target.name());
     givm::linked_deck defenders{ .characters = { target_id } };
     if(has_reserve) defenders.characters.push_back(target_id);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, defenders);
     givm::executor executor;
     executor.enter_entry(library);
@@ -162,13 +164,15 @@ TEST_CASE("dying response inputs survive suspension and independent executor cop
     const auto observer = givm::test::with_passive_skill(dying_observer{ &log });
     const givm::test::initialized_character_source target{ "DyingTarget",
         { .max_health = 10, .max_energy = 3, .health = 1, .energy = 2 } };
-    const std::array damages{ givm::damage{ .source = attacker, .target = victim,
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::test_command{}, givm::deal_damage{ .damages = damages },
             givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(target.name()) } });
     givm::executor executor;

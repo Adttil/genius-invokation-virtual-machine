@@ -39,7 +39,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto command = log->dynamic ? givm::increase_max_health{} : givm::increase_max_health{
-                .source = target, .target = target, .value = log->value };
+                .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::self, 0 }, .value = log->value };
             return { log, context.add_program(std::tuple{ command }), log->pause
                 ? context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::program_entry{} };
         }
@@ -88,7 +88,8 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::test_command{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         givm::test::with_passive_skill(increase_source{ &log }));
-    givm::table table;
+    givm::table table{ { .self_player = givm::player_id{ 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("HealthIncreaseSource") } }, {});
     givm::executor executor;
     executor.enter_entry(library);

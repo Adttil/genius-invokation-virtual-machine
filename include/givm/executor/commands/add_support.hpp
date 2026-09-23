@@ -24,8 +24,8 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, add_support>(library);
             input = {
-                .player = command.player == relative_player::current
-                    ? table.state().active_player : other_player(table.state().active_player),
+                .player = command.player == relative_player::self
+                    ? table.state().self_player : other_player(table.state().self_player),
                 .definition = command.definition, .state = command.state
             };
             context.advance(instruction_extent<1, add_support>);

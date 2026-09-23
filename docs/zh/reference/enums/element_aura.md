@@ -31,8 +31,8 @@ enum class element_aura : unsigned char
 | `hydro` | 水附着 |
 | `pyro` | 火附着 |
 | `electro` | 雷附着 |
-| `anemo` | 风附着 |
-| `geo` | 岩附着 |
+| `anemo` | 保留值，正常附着流程不会产生风附着 |
+| `geo` | 保留值，正常附着流程不会产生岩附着 |
 | `dendro` | 草附着 |
 | `cryo_dendro` | 冰在先、草在后的共存附着 |
 | `dendro_cryo` | 草在先、冰在后的共存附着 |

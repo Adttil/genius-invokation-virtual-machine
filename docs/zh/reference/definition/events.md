@@ -59,8 +59,11 @@
 | --- | --- |
 | [`hand_card_created`](events/hand_card_created.md) | 新手牌创建后的通知 |
 | [`card_drawn`](events/card_drawn.md) | 一张牌抽取完成后的通知 |
-| [`hand_card_discarded`](events/hand_card_discarded.md) | 手牌被舍弃时的自身通知及全场通知 |
-| [`deck_card_discarded`](events/deck_card_discarded.md) | 牌堆牌被舍弃时的自身通知及全场通知 |
+| [`hand_card_discard_effect`](events/hand_card_discard_effect.md) | 仅向手牌自身发送的舍弃效果事件 |
+| [`deck_card_discard`](events/deck_card_discard.md) | 批量舍弃牌堆顶卡牌的动态输入 |
+| [`deck_card_discard_effect`](events/deck_card_discard_effect.md) | 仅向牌堆牌自身发送的舍弃效果事件 |
+| [`hand_card_discarded`](events/hand_card_discarded.md) | 手牌自身舍弃效果完成后的全场通知 |
+| [`deck_card_discarded`](events/deck_card_discarded.md) | 牌堆牌自身舍弃效果完成后的全场通知 |
 | [`card_candidate_chosen`](events/card_candidate_chosen.md) | 候选牌定义选定后的通知 |
 | [`elemental_tuning_modification`](events/elemental_tuning_modification.md) | 修饰元素调和的转换结果 |
 | [`elemental_tuning_completed`](events/elemental_tuning_completed.md) | 元素调和完成后的通知 |
@@ -76,14 +79,14 @@
 | | |
 | --- | --- |
 | [`damage`](events/damage.md) | 单体或范围伤害的初始描述 |
-| [`relative_character_target`](events/relative_character_target.md) | 相对于出战位置的伤害目标 |
-| [`other_characters_target`](events/other_characters_target.md) | 指定角色以外的同方存活角色 |
+| [`relative_character_target`](events/relative_character_target.md) | 按出战位置的有符号偏移定位角色 |
 | [`damage_preparation`](events/damage_preparation.md) | 伤害来源、目标、元素与标志的属性修饰 |
 | [`damage_calculation`](events/damage_calculation.md) | 伤害计算事件 |
 | [`damage_effect`](events/damage_effect.md) | 扣除生命前的伤害结算事件 |
 | [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
 | [`healing`](events/healing.md) | 角色恢复生命前的治疗调整事件 |
 | [`healed`](events/healed.md) | 角色治疗完成后的通知 |
+| [`element_application`](events/element_application.md) | 直接附着的动态输入 |
 | [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 反应判定后选择替代效果的事件 |
 | [`after_elemental_reaction`](events/after_elemental_reaction.md) | 元素反应处理完成后的通知 |
 
@@ -132,7 +135,7 @@
 | [`skill_target_id`](events/skill_target_id.md) | 技能效果的目标标识 |
 | [`card_target_id`](events/card_target_id.md) | 卡牌效果的目标标识 |
 | [`damage_source_id`](events/damage_source_id.md) | 伤害的来源标识 |
-| [`damage_target`](events/damage_target.md) | 伤害的具体、相对或范围目标 |
+| [`damage_target`](events/damage_target.md) | 动态伤害的具体或相对目标 |
 | [`effect_source_id`](events/effect_source_id.md) | 治疗等效果的来源标识 |
 | [`element_application_source_id`](events/element_application_source_id.md) | 元素附着的来源标识 |
 
