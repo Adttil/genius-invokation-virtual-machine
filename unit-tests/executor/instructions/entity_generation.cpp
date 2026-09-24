@@ -133,6 +133,7 @@ namespace
         regeneration_behavior behavior = regeneration_behavior::ignore;
         bool dynamic = false;
         bool erase_empty = false;
+        bool restore_empty = false;
         bool regeneration_handler_enabled = true;
         bool state_handler_enabled = true;
         state_values limit{ 20, 30 };
@@ -224,8 +225,19 @@ namespace
             data.log->changed.push_back(self.id());
             data.log->previous_states.push_back(T::values(event.previous));
             data.log->current_states.push_back(T::values(event.current));
+            CHECK(self.is_valid());
             CHECK(T::values(self.state()) == T::values(event.current));
-            if constexpr(not std::is_same_v<T, summon_traits>)
+            if constexpr(std::is_same_v<T, summon_traits>)
+            {
+                if(self.state().usages == 0)
+                {
+                    if(data.log->erase_empty)
+                        return context.invoke(data.remove, typename T::removal{ self.id() });
+                    if(data.log->restore_empty)
+                        return context.invoke(data.change, typename T::change{ self.id(), { self.state().value, 1 } });
+                }
+            }
+            else
                 if(data.log->erase_empty && self.state().count == 0)
                     return context.invoke(data.remove, typename T::removal{ self.id() });
             return {};
@@ -625,17 +637,18 @@ TEMPLATE_TEST_CASE("signed deltas handle the full unsigned state range",
     CHECK(T::values(table[log.created[0]].state()) == log.limit);
 }
 
-TEMPLATE_TEST_CASE("zero layers and round usages remain unless the entity response removes them",
-    "[entity-state]", combat_status_traits, attachment_traits)
+TEMPLATE_TEST_CASE("zero state remains unless the entity response removes it",
+    "[entity-state]", summon_traits, combat_status_traits, attachment_traits)
 {
     using T = TestType;
     lifecycle_log<T> log;
     log.dynamic = GENERATE(false, true);
     log.erase_empty = GENERATE(false, true);
     const auto op = GENERATE(operation::set, operation::modify);
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     log.actions = { { operation::generate },
         { .operation = op, .state = { 0, 0 }, .delta = { std::numeric_limits<std::int64_t>::min(), std::numeric_limits<std::int64_t>::min() } } };
-    const auto table = run_lifecycle(log, givm::compile_mode::normal);
+    const auto table = run_lifecycle(log, mode);
     REQUIRE(log.created.size() == 1);
     CHECK(log.changed == log.created);
     CHECK(log.previous_states == std::vector{ log.limit });
@@ -653,22 +666,60 @@ TEMPLATE_TEST_CASE("zero layers and round usages remain unless the entity respon
     }
 }
 
-TEST_CASE("summon exhaustion broadcasts readable departure without calling its state handler", "[entity-state][summon]")
+TEST_CASE("summons without a state handler remain available for resummoning at zero usages", "[entity-state][summon]")
 {
     lifecycle_log<summon_traits> log;
     log.dynamic = GENERATE(false, true);
-    log.state_handler_enabled = GENERATE(false, true);
+    log.state_handler_enabled = false;
     const auto op = GENERATE(operation::set, operation::modify);
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     log.actions = { { operation::generate },
         { .operation = op, .state = { 7, 0 }, .delta = { -13, std::numeric_limits<std::int64_t>::min() } },
         { operation::generate } };
-    const auto table = run_lifecycle(log, givm::compile_mode::normal);
-    REQUIRE(log.created.size() == 2);
-    CHECK(ids_of<summon_traits>(table) == std::vector{ log.created[1] });
+    const auto table = run_lifecycle(log, mode);
+    REQUIRE(log.created.size() == 1);
+    CHECK(ids_of<summon_traits>(table) == log.created);
+    CHECK(summon_traits::values(table[log.created[0]].state()) == state_values{ 7, 0 });
     CHECK(log.changed.empty());
-    CHECK(log.regenerated.empty());
-    CHECK(log.left == std::vector{ log.created[0] });
-    CHECK(log.departing_states == std::vector<state_values>{ { 7, 0 } });
+    CHECK(log.regenerated == log.created);
+    CHECK(log.left.empty());
+    CHECK(log.departing_states.empty());
+}
+
+TEST_CASE("a summon can restore usages in its state response before the next command executes", "[entity-state][summon]")
+{
+    lifecycle_log<summon_traits> log;
+    log.dynamic = GENERATE(false, true);
+    log.restore_empty = true;
+    const auto op = GENERATE(operation::set, operation::modify);
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    log.actions = { { operation::generate },
+        { .operation = op, .state = { 7, 0 }, .delta = { -13, -30 } },
+        { .operation = operation::modify_twice, .delta = { 0, -1 }, .next_delta = { 2, 3 } } };
+    const auto table = run_lifecycle(log, mode);
+    REQUIRE(log.created.size() == 1);
+    CHECK(ids_of<summon_traits>(table) == log.created);
+    CHECK(log.changed == std::vector(5, log.created[0]));
+    CHECK(log.previous_states == std::vector<state_values>{ log.limit, { 7, 0 }, { 7, 1 }, { 7, 0 }, { 7, 1 } });
+    CHECK(log.current_states == std::vector<state_values>{ { 7, 0 }, { 7, 1 }, { 7, 0 }, { 7, 1 }, { 9, 4 } });
+    CHECK(summon_traits::values(table[log.created[0]].state()) == state_values{ 9, 4 });
+    CHECK(log.left.empty());
+}
+
+TEST_CASE("summon creation accepts zero usages including a zero definition limit", "[entity-generation][summon]")
+{
+    lifecycle_log<summon_traits> log;
+    log.dynamic = GENERATE(false, true);
+    const auto op = GENERATE(operation::generate, operation::add);
+    const auto zero_limit = GENERATE(false, true);
+    if(zero_limit) log.limit[1] = 0;
+    log.actions = { { op, { 7, zero_limit ? maximum : 0 } } };
+    const auto table = run_lifecycle(log, givm::compile_mode::normal);
+    REQUIRE(log.created.size() == 1);
+    CHECK(ids_of<summon_traits>(table) == log.created);
+    CHECK(summon_traits::values(table[log.created[0]].state()) == state_values{ 7, 0 });
+    CHECK(log.changed.empty());
+    CHECK(log.left.empty());
 }
 
 TEMPLATE_TEST_CASE("entity limit queries cache source results and default to the unsigned maximum",

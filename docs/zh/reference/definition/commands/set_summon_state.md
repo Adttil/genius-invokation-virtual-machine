@@ -26,6 +26,6 @@ struct set_summon_state
 
 执行时读取 [summon_state_limit](../queries/summon_state_limit.md)，将提供的 `state` 各字段分别裁剪至对应上限。然后以裁剪结果替换目标的完整状态。`state{}` 的两个字段均为零。
 
-先写入新状态。若 `usages == 0`，立即移除召唤物并广播 [summon_removed](../events/summon_removed.md)；否则仅向该召唤物发送 [summon_state_changed](../events/summon_state_changed.md)。
+先写入新状态，再仅向该召唤物发送 [summon_state_changed](../events/summon_state_changed.md)，`usages == 0` 时也一样。是否离场由召唤物自己的响应决定；需要离场时，响应程序可执行 [remove_summon](remove_summon.md)，由该命令广播 [summon_removed](../events/summon_removed.md)。
 
 通知包含修改前和裁剪后的状态；返回的响应程序完整结算后才继续下一条命令。

@@ -21,4 +21,4 @@ struct summon_state_changed
 | `previous` | `const summon_state` | 本次修改前的状态 |
 | `current` | `const summon_state` | 本次修改并裁剪后的状态 |
 
-可用次数变为零时直接移除实体并广播 [summon_removed](summon_removed.md)，不发送本通知。
+可用次数变为零时仍发送本通知。是否离场由该召唤物的响应决定；响应程序可执行 [remove_summon](../commands/remove_summon.md) 并产生 [summon_removed](summon_removed.md) 广播。未提供响应或返回空入口时，召唤物保留修改后的状态。

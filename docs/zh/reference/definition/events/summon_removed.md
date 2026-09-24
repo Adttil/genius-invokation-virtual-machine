@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-召唤物已移除后向其他有效实体广播的通知。已移除的对象自身不参与响应；其定义和状态在 cleanup 前仍可按通知中的旧 ID 读取。主动移除和可用次数耗尽都会产生本通知。
+召唤物已移除后向其他有效实体广播的通知。已移除的对象自身不参与响应；其定义和状态在 cleanup 前仍可按通知中的旧 ID 读取。[remove_summon](../commands/remove_summon.md) 产生本通知，包括召唤物在可用次数耗尽后通过自身响应执行该命令的情况。
 
 ```cpp
 struct summon_removed

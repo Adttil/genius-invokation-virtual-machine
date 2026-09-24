@@ -32,8 +32,6 @@ namespace givm::detail
 
         if(summon_count >= player.state().summon_limit)
             return {};
-        GIVM_ASSERT(input.state.usages != 0);
-        [[assume(input.state.usages != 0)]];
         table[input.player].add(input.definition, input.state);
         return {};
     }

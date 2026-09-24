@@ -11,26 +11,19 @@ namespace givm::detail
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
         context.stack().pop<response_return>();
-        return context.advance(2 * sizeof(execute_fn));
+        return context.enter_next();
     }
 
     inline execution_state change_summon_state(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random, const summon_state_change& input)
     {
-        const auto previous = table[input.summon].state();
+        summon_state_changed event{ table[input.summon].state(), input.state };
         table[input.summon].state() = input.state;
-        if(input.state.usages == 0)
-        {
-            context.enter_next();
-            return remove_summon_and_broadcast(library, table, context, random, input.summon);
-        }
-
-        summon_state_changed event{ previous, input.state };
         const auto summon = std::as_const(table)[input.summon];
         const auto definition = library[summon.definition_id()];
         if(not definition.can_handle<summon_state_changed, summon_view>())
-            return context.advance(2 * sizeof(execute_fn));
+            return context.enter_next();
         context.stack().push(response_return{ table.state().self_player, context.position() });
         auto response = context.make_handle_context(table, random);
         const auto entry = definition.handle<summon_state_changed>(summon, event, response);
@@ -43,7 +36,7 @@ namespace givm::detail
     }
 
     template<bool Fixed>
-    execution_state execute_summon_state_change(
+    inline execution_state execute_summon_state_change(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
@@ -81,7 +74,6 @@ namespace givm::detail
         else
             writer.write(execute_fn{ execute_summon_state_change<false> });
         writer.write(execute_fn{ finish_summon_state_change });
-        writer.write(execute_fn{ broadcast_summon_removal });
     }
 }
 

@@ -46,8 +46,6 @@ namespace givm::detail
                 return continue_execution;
         }
         input.state = clamp_summon_state(input.state, library[input.definition].query(summon_state_limit{}));
-        GIVM_ASSERT(input.state.usages != 0);
-        [[assume(input.state.usages != 0)]];
         table[input.player].add(input.definition, input.state);
         return continue_execution;
     }

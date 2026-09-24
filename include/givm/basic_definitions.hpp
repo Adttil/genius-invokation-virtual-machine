@@ -305,6 +305,7 @@ namespace givm::genshin_impact
         {
             program_entry end_phase;
             program_entry accumulate;
+            program_entry remove;
         };
 
         constexpr std::string_view name() const noexcept
@@ -316,7 +317,8 @@ namespace givm::genshin_impact
         {
             return {
                 context.add_program(std::tuple{ deal_damage{}, modify_summon_state{} }),
-                context.add_program(std::tuple{ modify_summon_state{} })
+                context.add_program(std::tuple{ modify_summon_state{} }),
+                context.add_program(std::tuple{ remove_summon{} })
             };
         }
 
@@ -332,6 +334,15 @@ namespace givm::genshin_impact
         {
             return context.invoke(definition.accumulate,
                 summon_state_modification{ .summon = summon.id(), .usages = event.state.usages });
+        }
+
+        static program_entry handle(
+            const definition_type& definition, const summon_view& summon,
+            summon_state_changed& event, handle_context& context)
+        {
+            if(event.current.usages != 0)
+                return {};
+            return context.invoke(definition.remove, summon_removal{ summon.id() });
         }
 
         static program_entry handle(

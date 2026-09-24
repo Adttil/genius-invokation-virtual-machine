@@ -9,7 +9,7 @@
 namespace givm::detail
 {
     template<bool Fixed>
-    execution_state execute_summon_state_modification(
+    inline execution_state execute_summon_state_modification(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
@@ -61,7 +61,6 @@ namespace givm::detail
         else
             writer.write(execute_fn{ execute_summon_state_modification<false> });
         writer.write(execute_fn{ finish_summon_state_change });
-        writer.write(execute_fn{ broadcast_summon_removal });
     }
 }
 

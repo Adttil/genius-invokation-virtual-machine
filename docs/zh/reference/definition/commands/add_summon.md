@@ -29,7 +29,7 @@ struct add_summon
 
 执行时读取 [summon_state_limit](../queries/summon_state_limit.md)，将提供的 `state` 各字段分别裁剪至对应上限。`state` 省略时，两个字段均为 `UINT32_MAX`，经同样的裁剪后得到该定义的上限；显式指定较小的值可以创建效果量或可用次数较少的召唤物。
 
-目标玩家的有效召唤物数量小于其当前 [`player_state::summon_limit`](../../table/player_state.md) 时，直接创建独立实体；同定义实体的存在不改变本次操作，但同样占用容量。创建时裁剪后的 `usages` 必须大于零。
+目标玩家的有效召唤物数量小于其当前 [`player_state::summon_limit`](../../table/player_state.md) 时，直接创建独立实体；同定义实体的存在不改变本次操作，但同样占用容量。`usages` 可以为零，创建时不发送状态修改通知。
 
 容量按命令实际执行时目标玩家的有效召唤物计数；已移除的实体和另一位玩家的召唤物不占用该玩家的容量。每位玩家的上限默认为 4。达到或超过上限时（包括上限为零），本命令不创建实体，也不移除已有召唤物或广播 [summon_removed](../events/summon_removed.md)。从 [resummoning](../events/resummoning.md) 响应中执行本命令时，也遵循相同的容量规则。
 
