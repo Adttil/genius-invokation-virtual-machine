@@ -5,10 +5,14 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-struct dice_added;
+struct dice_added
+{
+    const player_id player;
+    const dice_counts dice;
+};
 ```
 
-元素骰增加后的通知。
+[`add_dice`](../commands/add_dice.md) 的动态输入，也是元素骰增加完成后的通知。
 
 ## 成员对象
 
@@ -16,6 +20,12 @@ struct dice_added;
 | --- | --- | --- |
 | `player` | `const player_id` | 这次事件对应的玩家；只读 |
 | `dice` | `const dice_counts` | 本次获得的骰子及数量；只读 |
+
+## 注意
+
+响应可通过 `invoke` 将此事件提交给默认构造的 `add_dice{}`。命令一次性增加全部指定骰子后，全场广播一次本事件，再继续后续命令。`dice` 是本次增加量，不是玩家增加后的骰子总量；全部数量为零时不广播。
+
+投骰和元素调和不发送此通知。
 
 ## 示例
 
@@ -39,3 +49,9 @@ int main()
 ```text
 本次骰子数量: 2
 ```
+
+## 参阅
+
+| | |
+| --- | --- |
+| [`add_dice`](../commands/add_dice.md) | 增加指定元素骰的命令 |

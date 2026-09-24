@@ -262,6 +262,12 @@ namespace givm
 
     };
 
+    struct add_dice
+    {
+        relative_player player = static_cast<relative_player>(-1);
+        dice_counts dice{};
+    };
+
     struct start_battle
     {
     };
@@ -352,6 +358,7 @@ namespace givm::detail
         end_round,
         end_game,
         start_dice_roll_phase,
+        add_dice,
         start_battle,
         deal_damage,
         apply_element,
@@ -513,6 +520,10 @@ namespace givm::detail
     constexpr size_t input_size(const end_round&) noexcept { return 0; }
     constexpr size_t input_size(const end_game&) noexcept { return 0; }
     constexpr size_t input_size(const start_dice_roll_phase&) noexcept { return 0; }
+    constexpr size_t input_size(const add_dice& command) noexcept
+    {
+        return command.player == static_cast<relative_player>(-1) ? sizeof(dice_added) : 0;
+    }
     constexpr size_t input_size(const start_battle&) noexcept { return 0; }
     constexpr size_t input_size(const deal_damage& command) noexcept
     {

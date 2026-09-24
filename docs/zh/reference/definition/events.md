@@ -32,7 +32,7 @@
 | [`round_end_declared`](events/round_end_declared.md) | 玩家宣布本回合结束的通知 |
 | [`round_ended`](events/round_ended.md) | 本回合结束的通知 |
 | [`dice_roll_preparation`](events/dice_roll_preparation.md) | 本回合投骰前的准备事件 |
-| [`dice_added`](events/dice_added.md) | 元素骰增加后的通知 |
+| [`dice_added`](events/dice_added.md) | 产骰的动态输入和增加完成后的通知 |
 | [`dice_removed`](events/dice_removed.md) | 元素骰移除或支付后的通知 |
 | [`dice_converted`](events/dice_converted.md) | 元素骰种类转换后的通知 |
 
