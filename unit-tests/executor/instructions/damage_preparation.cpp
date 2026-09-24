@@ -174,9 +174,9 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     const bool grouped = GENERATE(false, true);
     preparation_log log{ .change_aura_in_calculation = true };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1,
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1,
             .multiplier_numerator = 3, .multiplier_denominator = 2, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 1,
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 1,
             .multiplier_numerator = 2, .multiplier_denominator = 3, .type = givm::damage_type::physical }
     };
     const preparation_character character;
@@ -243,7 +243,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
 TEST_CASE("replacement reaction numbers are applied without default secondary damage", "[deal_damage][preparation][reaction]")
 {
     preparation_log log{ .replace_reaction_bonus = true };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 2,
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 2,
         .type = givm::damage_type::physical } };
     const preparation_character character;
     const preparation_driver driver{ damages };

@@ -45,7 +45,7 @@ namespace givm::detail
         std::size_t count = 0;
         std::size_t cursor = 0;
         execution_position instructions = 0;
-        damage_target_selection selection = damage_target_selection::character;
+        character_selection selection = character_selection::character;
         std::uint8_t overloaded_player = no_overloaded_player;
     };
 
@@ -79,13 +79,13 @@ namespace givm::detail
     }
 
     inline damage_target_cursor damage_targets(
-        const unrestricted_table& table, character_id anchor, damage_target_selection selection)
+        const unrestricted_table& table, character_id anchor, character_selection selection)
     {
         const auto count = table[anchor.player_id].template characters<false>().size();
         auto next = anchor.index;
-        if(selection == damage_target_selection::others && ++next == count) next = 0;
-        return { next, selection == damage_target_selection::character ? 1
-            : count - (selection == damage_target_selection::others), count };
+        if(selection == character_selection::others && ++next == count) next = 0;
+        return { next, selection == character_selection::character ? 1
+            : count - (selection == character_selection::others), count };
     }
 
     inline std::optional<character_id> next_damage_target(
@@ -296,13 +296,13 @@ namespace givm::detail
         {
             GIVM_ASSERT(incoming == element::anemo);
             group.swirl_parent = parent;
-            group.swirl_targets = damage_targets(table, event.target, damage_target_selection::others);
+            group.swirl_targets = damage_targets(table, event.target, character_selection::others);
         }
         else if(event.reaction == elemental_reaction::superconduct || event.reaction == elemental_reaction::electro_charged)
         {
             // Piercing children have neither attribute preparation nor a reaction;
             // the complete range can be appended here without a resumable cursor.
-            auto targets = damage_targets(table, event.target, damage_target_selection::others);
+            auto targets = damage_targets(table, event.target, character_selection::others);
             while(const auto target = next_damage_target(table, event.target.player_id, targets))
                 append_damage(context.stack(), damage_calculation{
                     .source = event.source, .target = *target, .value = 1, .type = damage_type::piercing,
@@ -553,9 +553,17 @@ namespace givm::detail
                 const auto input_end = reinterpret_cast<const unsigned char*>(&group) - padding;
                 std::memcpy(&input, input_end - index * stride - sizeof(damage), sizeof(damage));
                 source = input.source;
-                group.selection = input.selection;
-                if(const auto* id = std::get_if<character_id>(&input.target)) target = *id;
-                else target = resolve_character_target<true>(table, std::get<relative_character_target>(input.target));
+                if(const auto* id = std::get_if<character_id>(&input.target))
+                {
+                    target = *id;
+                    group.selection = input.selection;
+                }
+                else
+                {
+                    const auto& relative = std::get<relative_character_target>(input.target);
+                    target = resolve_character_target<true>(table, relative);
+                    group.selection = relative.selection;
+                }
             }
             else
             {
@@ -566,7 +574,7 @@ namespace givm::detail
                 if(not id) continue;
                 source = *id;
                 group.selection = input.target.selection;
-                target = resolve_character_target<true>(table, { input.target.player, input.target.offset });
+                target = resolve_character_target<true>(table, input.target);
             }
             if(not target) continue;
             const auto character = table[*target];

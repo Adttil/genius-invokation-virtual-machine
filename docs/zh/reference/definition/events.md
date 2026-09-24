@@ -85,6 +85,7 @@
 | [`damage_calculation`](events/damage_calculation.md) | 伤害计算事件 |
 | [`damage_effect`](events/damage_effect.md) | 扣除生命前的伤害结算事件 |
 | [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
+| [`healing_application`](events/healing_application.md) | 单角色或范围治疗的动态输入 |
 | [`healing`](events/healing.md) | 角色恢复生命前的治疗调整事件 |
 | [`healed`](events/healed.md) | 角色治疗完成后的通知 |
 | [`element_application`](events/element_application.md) | 直接附着的动态输入 |

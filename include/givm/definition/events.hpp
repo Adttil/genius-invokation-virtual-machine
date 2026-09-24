@@ -339,26 +339,27 @@ namespace givm
         std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
                      combat_status_id, character_id, skill_id, attachment_id>;
 
-    struct relative_character_target
-    {
-        relative_player player = relative_player::self;
-        std::int32_t offset = 0;
-    };
-
-    using damage_target = std::variant<character_id, relative_character_target>;
-
-    enum class damage_target_selection : std::uint8_t
+    enum class character_selection : std::uint8_t
     {
         character,
         others,
         all
     };
 
+    struct relative_character_target
+    {
+        relative_player player = relative_player::self;
+        std::int32_t offset = 0;
+        character_selection selection = character_selection::character;
+    };
+
+    using damage_target = std::variant<character_id, relative_character_target>;
+
     struct damage
     {
         damage_source_id source;
         damage_target target;
-        damage_target_selection selection = damage_target_selection::character;
+        character_selection selection = character_selection::character;
         std::uint32_t value;
         std::uint16_t multiplier_numerator = 1;
         std::uint16_t multiplier_denominator = 1;
@@ -421,6 +422,15 @@ namespace givm
     using effect_source_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id,
                                           support_id, summon_id, combat_status_id, character_id, skill_id,
                                           attachment_id>;
+
+    using healing_target = std::variant<character_id, relative_character_target>;
+
+    struct healing_application
+    {
+        effect_source_id source;
+        healing_target target;
+        std::uint32_t value;
+    };
 
     struct healing
     {

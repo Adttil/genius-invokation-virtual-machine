@@ -21,7 +21,7 @@ namespace
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target(std::size_t index) { return { givm::player_id{ 1 }, index }; }
     constexpr givm::relative_character_target fixed_source{ givm::relative_player::self, 0 };
-    constexpr givm::relative_damage_target fixed_target(std::int32_t index) { return { givm::relative_player::opponent, index }; }
+    constexpr givm::relative_character_target fixed_target(std::int32_t index) { return { givm::relative_player::opponent, index }; }
 
     enum class phase { preparation, reaction, calculation, effect, completion };
     struct preparation_log
@@ -253,10 +253,14 @@ TEST_CASE("each original wind description prepares once while its range and reac
     const bool observed = GENERATE(false, true);
     const bool dynamic = GENERATE(false, true);
     const bool range = GENERATE(false, true);
+    const bool relative = GENERATE(false, true);
+    const auto selection = range ? givm::character_selection::all : givm::character_selection::character;
     preparation_log log{ .infuse_anemo = true };
     const std::array inputs{
-        givm::damage{ .source = source, .target = target(0),
-            .selection = range ? givm::damage_target_selection::all : givm::damage_target_selection::character,
+        givm::damage{ .source = source,
+            .target = relative ? givm::damage_target{ givm::relative_character_target{ givm::relative_player::opponent, 0, selection } }
+                : givm::damage_target{ target(0) },
+            .selection = relative ? givm::character_selection::character : selection,
             .value = 1, .type = givm::damage_type::physical },
         givm::damage{ .source = source, .target = target(1), .value = 1, .type = givm::damage_type::physical }
     };
@@ -266,7 +270,7 @@ TEST_CASE("each original wind description prepares once while its range and reac
     const givm::test::initialized_character_source bare{ "Bare", { .max_health = 20, .health = 20 } };
     const std::array damages{
         givm::fixed_damage{ .source = fixed_source,
-            .target = { givm::relative_player::opponent, 0, range ? givm::damage_target_selection::all : givm::damage_target_selection::character },
+            .target = { givm::relative_player::opponent, 0, range ? givm::character_selection::all : givm::character_selection::character },
             .value = 1, .type = givm::damage_type::physical },
         givm::fixed_damage{ .source = fixed_source, .target = fixed_target(1), .value = 1, .type = givm::damage_type::physical }
     };

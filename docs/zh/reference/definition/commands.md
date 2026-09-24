@@ -87,6 +87,5 @@
 | [`relative_player`](commands/relative_player.md) | 相对于当前效果本方的一方 |
 | [`relative_character_target`](events/relative_character_target.md) | 执行时解析的角色位置 |
 | [`fixed_damage`](commands/fixed_damage.md) | 固定伤害组中的单段描述 |
-| [`relative_damage_target`](commands/relative_damage_target.md) | 固定伤害的相对位置及作用范围 |
-| [`damage_target_selection`](commands/damage_target_selection.md) | 选择定位角色、其他角色或全部角色 |
+| [`character_selection`](commands/character_selection.md) | 选择定位角色、其他角色或全部角色 |
 | [`action_argument`](../executor/action_argument.md) | 行动输入参数 |

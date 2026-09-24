@@ -235,17 +235,10 @@ namespace givm
     {
     };
 
-    struct relative_damage_target
-    {
-        relative_player player = relative_player::opponent;
-        std::int32_t offset = 0;
-        damage_target_selection selection = damage_target_selection::character;
-    };
-
     struct fixed_damage
     {
         relative_character_target source;
-        relative_damage_target target;
+        relative_character_target target{ relative_player::opponent };
         std::uint32_t value;
         std::uint16_t multiplier_numerator = 1;
         std::uint16_t multiplier_denominator = 1;
@@ -476,7 +469,7 @@ namespace givm::detail
     }
     constexpr size_t input_size(const heal& command) noexcept
     {
-        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(healing) : 0;
+        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(healing_application) : 0;
     }
     constexpr size_t input_size(const increase_max_health& command) noexcept
     {

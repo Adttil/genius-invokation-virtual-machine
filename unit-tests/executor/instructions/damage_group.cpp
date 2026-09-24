@@ -248,8 +248,8 @@ TEST_CASE("damage groups finish all health changes before invoking completion re
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim" };
     std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
     };
     std::vector<givm::any_command> commands;
     if(dynamic) commands.emplace_back(givm::test_command{});
@@ -289,8 +289,8 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const givm::test::initialized_character_source back{ "Back" };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
     };
     std::vector<givm::any_command> commands;
     if(dynamic) commands.emplace_back(givm::test_command{});
@@ -345,8 +345,8 @@ TEST_CASE("defeat checks game end before clearing attachments and energy", "[dea
     const auto dying = givm::test::with_passive_skill(dying_character_source{ &log });
     const givm::test::initialized_character_source character{ "Alive" };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = terminal ? givm::relative_damage_target{ givm::relative_player::self, 0 } : givm::relative_damage_target{ givm::relative_player::opponent, 1 },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = terminal ? givm::relative_character_target{ givm::relative_player::self, 0 } : givm::relative_character_target{ givm::relative_player::opponent, 1 },
             .value = 1, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -418,7 +418,7 @@ TEST_CASE("reactions use the calculated element and expand over the living oppos
     const givm::test::initialized_character_source front{ "Front", { .max_health = 10, .health = 1, .aura = aura } };
     const givm::test::initialized_character_source back{ "Back" };
     const std::array damages{ givm::fixed_damage{
-        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical } };
+        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, 0 } }, givm::deal_damage{ .damages = damages },
             givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, front, back);
@@ -451,8 +451,8 @@ TEST_CASE("reaction damage finishes before the next initial description", "[deal
     const givm::test::initialized_character_source character{ "Victim",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 5, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 5, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
@@ -483,7 +483,7 @@ TEST_CASE("swirled damage can expand another reaction inside the same group", "[
         { .max_health = 10, .health = 10, .aura = givm::element_aura::electro } };
     const givm::test::initialized_character_source empty{ "Empty" };
     const std::array damages{ givm::fixed_damage{
-        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1,
+        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1,
         .type = givm::damage_type::anemo } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
@@ -512,7 +512,7 @@ TEST_CASE("replacing a reaction suppresses its extra damage while consuming the 
     const givm::test::initialized_character_source character{ "Victim",
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const std::array damages{ givm::fixed_damage{
-        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro } };
+        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, character);
@@ -538,11 +538,11 @@ TEST_CASE("relative and other-character damage targets skip defeated characters 
     const givm::test::initialized_character_source alive{ "Alive" };
     const givm::test::initialized_character_source dead{ "Dead", { .max_health = 10, .health = 0 } };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 },
             .value = 1, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, -1 },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, -1 },
             .value = 2, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0, givm::damage_target_selection::others },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0, givm::character_selection::others },
             .value = 3, .type = givm::damage_type::piercing }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
@@ -568,9 +568,9 @@ TEST_CASE("relative damage selections share a living anchor and visit each selec
     const bool observed = GENERATE(false, true);
     const bool lone_survivor = GENERATE(false, true);
     const auto offset = GENERATE(-1, -6);
-    const auto selection = GENERATE(givm::damage_target_selection::character,
-        givm::damage_target_selection::others,
-        givm::damage_target_selection::all);
+    const auto selection = GENERATE(givm::character_selection::character,
+        givm::character_selection::others,
+        givm::character_selection::all);
     group_log log;
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source alive{ "Alive" };
@@ -601,8 +601,8 @@ TEST_CASE("relative damage selections share a living anchor and visit each selec
         observations.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index);
     }
     std::vector<std::size_t> expected;
-    if(selection != givm::damage_target_selection::others) expected.push_back(2);
-    if(selection != givm::damage_target_selection::character && not lone_survivor)
+    if(selection != givm::character_selection::others) expected.push_back(2);
+    if(selection != givm::character_selection::character && not lone_survivor)
     {
         expected.push_back(4);
         expected.push_back(0);
@@ -610,10 +610,10 @@ TEST_CASE("relative damage selections share a living anchor and visit each selec
     CHECK(targets_at(log, phase::effect) == expected);
     CHECK(targets_at(log, phase::after_damage) == expected);
     CHECK(observations == (observed ? expected : std::vector<std::size_t>{}));
-    CHECK(table[victim(2)].state().health == (selection == givm::damage_target_selection::others ? 10 : 9));
+    CHECK(table[victim(2)].state().health == (selection == givm::character_selection::others ? 10 : 9));
     for(const auto index : { 0uz, 4uz })
         CHECK(table[victim(index)].state().health == (lone_survivor ? 0
-            : selection == givm::damage_target_selection::character ? 10 : 9));
+            : selection == givm::character_selection::character ? 10 : 9));
     CHECK(table[victim(1)].state().health == 0);
     CHECK(table[victim(3)].state().health == 0);
 }
@@ -624,8 +624,8 @@ TEST_CASE("damage groups copied at health observation resume independently", "[d
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim" };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::observed,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
@@ -671,8 +671,8 @@ TEST_CASE("a nested damage command completes its own group before resuming the c
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim" };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 2, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 3, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
@@ -703,7 +703,7 @@ TEST_CASE("queued damage skips a target defeated by an earlier response and cont
     const givm::test::initialized_character_source alive{ "Alive" };
     const givm::test::initialized_character_source fragile{ "Fragile", { .max_health = 10, .health = 1 } };
     const std::array damages{ givm::fixed_damage{
-        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 4, givm::damage_target_selection::others },
+        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 4, givm::character_selection::others },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
@@ -777,8 +777,8 @@ TEST_CASE("a damage group stops before completion responses when the last charac
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim", { .max_health = 10, .health = 1 } };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 1, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 1, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::replace_cards{ .player = attacking_player },
@@ -806,8 +806,8 @@ TEST_CASE("an independent nested damage group can end the game before its caller
     const auto observer = givm::test::with_passive_skill(group_source{ &log });
     const givm::test::initialized_character_source character{ "Victim", { .max_health = 10, .health = 1 } };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 1 }, .value = 1, .type = givm::damage_type::physical }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 1, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::replace_cards{ .player = attacking_player },
@@ -837,7 +837,7 @@ TEST_CASE("elemental reaction identity survives aura changes during damage effec
         { .max_health = 10, .health = 10, .aura = givm::element_aura::cryo } };
     const givm::test::initialized_character_source back{ "Back" };
     const std::array damages{ givm::fixed_damage{
-        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro } };
+        .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, front, back);

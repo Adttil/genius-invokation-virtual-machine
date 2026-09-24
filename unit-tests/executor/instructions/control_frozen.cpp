@@ -292,7 +292,7 @@ TEST_CASE("control immunity prevents overload switching without suppressing its 
     const bool observed = GENERATE(false, true);
     const bool immune = GENERATE(false, true);
     control_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
     {
         std::vector<givm::any_command> commands;
@@ -332,8 +332,8 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
     const auto shatter_type = GENERATE(givm::damage_type::physical, givm::damage_type::pyro);
     control_log log{ .shield = true };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = shatter_type }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = shatter_type }
     };
     const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
     {
@@ -379,7 +379,7 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
     const bool observed = GENERATE(false, true);
     const bool preexisting = GENERATE(false, true);
     control_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1,
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1,
         .type = preexisting ? givm::damage_type::pyro : givm::damage_type::cryo } };
     const std::array<givm::any_command, 1> end_phase{ givm::deal_damage{ .damages = damages } };
     const std::array<givm::any_command, 3> round{
@@ -445,7 +445,7 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
 TEST_CASE("a lethal frozen reaction does not attach control to the defeated character", "[control][frozen][defeat]")
 {
     control_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 20, .type = givm::damage_type::cryo } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 20, .type = givm::damage_type::cryo } };
     const auto [library, ids] = compile_scenario(log, false, [&](const givm::issued_id_map&)
     {
         std::vector<givm::any_command> commands;

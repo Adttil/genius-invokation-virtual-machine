@@ -27,7 +27,7 @@ struct deal_damage
 
 非空 `damages` 的内容在编译该命令时复制，所引用的数组只需保持有效至相应 `add_program` 或整体 `compile` 返回。执行时不借用原数组；此时 `input_count` 不参与结算。
 
-[`fixed_damage`](fixed_damage.md) 以位置描述来源和目标，不保存对局实体 ID。先以当前效果的本方或对方确定玩家，再在准备这一条初始描述时解析出战位置，因此能表达出战角色、下一个角色、上一个角色，以及定位角色以外的其他角色或全部角色。作用范围由 [`damage_target_selection`](damage_target_selection.md) 指定。本方取自 [`table_state::self_player`](../../table/table_state.md)，根流程使用相对描述时须显式设置有效本方。需要保留具体技能、召唤物或卡牌来源时，使用动态 `damage` 输入；固定命令不会把来源隐式设为响应实体。
+[`fixed_damage`](fixed_damage.md) 以位置描述来源和目标，不保存对局实体 ID。先以当前效果的本方或对方确定玩家，再在准备这一条初始描述时解析出战位置，因此能表达出战角色、下一个角色、上一个角色，以及定位角色以外的其他角色或全部角色。作用范围由 [`character_selection`](character_selection.md) 指定。本方取自 [`table_state::self_player`](../../table/table_state.md)，根流程使用相对描述时须显式设置有效本方。需要保留具体技能、召唤物或卡牌来源时，使用动态 `damage` 输入；固定命令不会把来源隐式设为响应实体。
 
 初始描述数量不等于实际伤害次数：一条范围描述可以命中多个角色，元素反应还可能派生新的伤害。
 
@@ -108,11 +108,11 @@ int main()
     const std::array damages{
         givm::fixed_damage{
             .source = givm::relative_character_target{ givm::relative_player::self, 0 },
-            .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 },
+            .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
             .value = 3, .type = givm::damage_type::physical, .flags = {} },
         givm::fixed_damage{
             .source = givm::relative_character_target{ givm::relative_player::self, 0 },
-            .target = givm::relative_damage_target{ givm::relative_player::opponent, 0, givm::damage_target_selection::others },
+            .target = givm::relative_character_target{ givm::relative_player::opponent, 0, givm::character_selection::others },
             .value = 1, .type = givm::damage_type::piercing, .flags = {} }
     };
     const auto [library, ids] = compile(

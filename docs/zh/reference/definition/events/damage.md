@@ -16,7 +16,7 @@ struct damage;
 | --- | --- | --- |
 | `source` | [`damage_source_id`](damage_source_id.md) | 造成伤害的来源 |
 | `target` | [`damage_target`](damage_target.md) | 具体角色或相对出战位置 |
-| `selection` | [`damage_target_selection`](../commands/damage_target_selection.md) | 选择定位角色、其他角色或全部角色，默认为 `character` |
+| `selection` | [`character_selection`](../commands/character_selection.md) | `target` 为精确角色 ID 时的范围，默认为 `character`；相对目标使用其自身的 `selection` |
 | `value` | `std::uint32_t` | 初始伤害值 |
 | `multiplier_numerator` | `std::uint16_t` | 初始倍率分子，默认为 1 |
 | `multiplier_denominator` | `std::uint16_t` | 初始倍率的非零分母，默认为 1 |
@@ -25,8 +25,8 @@ struct damage;
 
 ## 目标
 
-- [`character_id`](../../table/character_id.md)：指定定位角色，开始处理该描述时若已移除或生命为 0，跳过该描述。
-- [`relative_character_target`](relative_character_target.md)：在处理该描述时，先以当前效果本方为基准确定玩家，再以所选一方的当前出战角色为基准定位存活目标。使用此分支须有有效的 `self_player`，精确角色 ID 分支不依赖本方。
+- [`character_id`](../../table/character_id.md)：指定定位角色，开始处理该描述时若已移除或生命为 0，跳过该描述。作用范围由 `damage::selection` 确定。
+- [`relative_character_target`](relative_character_target.md)：在处理该描述时，先以当前效果本方为基准确定玩家，再以所选一方的当前出战角色为基准定位存活目标。作用范围由 `relative_character_target::selection` 确定，此分支忽略 `damage::selection`。使用此分支须有有效的 `self_player`，精确角色 ID 分支不依赖本方。
 
 每段描述只广播一次 `damage_preparation`，其中的 `target` 是定位到的具体角色。响应可以修改此角色及伤害属性，但不能修改 `selection`。修饰结束后，`character` 选择修饰后的角色，`others` 选择该角色以外的其他存活角色，`all` 选择该角色及其他存活角色。其他角色按该角色的下一位置开始循环选取；所有展开的伤害使用同一份修饰后的来源、元素、数值、倍率和标志，不分别广播属性修饰事件。
 

@@ -217,7 +217,7 @@ TEST_CASE("the final reaction replacement tag reaches every damage stage and pre
     const auto mode = GENERATE(replacement::first, replacement::second, replacement::clear);
     const bool observed = GENERATE(false, true);
     reaction_log log{ .mode = mode };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(damage_program(damages), log, observed);
     const auto expected_tag = mode == replacement::clear ? givm::tag_id{}
         : ids.get_tag_id(mode == replacement::first ? "FirstReplacement" : "LastReplacement");
@@ -262,10 +262,10 @@ TEST_CASE("a damage group overloads only once after all hits and ignores standby
     const bool standby_only = GENERATE(false, true);
     reaction_log log;
     const std::array group{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 2 }, .value = 1, .type = givm::damage_type::pyro },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro }
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 2 }, .value = 1, .type = givm::damage_type::pyro },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro },
+        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro }
     };
     const auto damages = standby_only ? std::span{ group }.subspan(1, 1) : std::span{ group }.subspan(0);
     const auto [library, ids] = compile_scenario(damage_program(damages), log, observed);
@@ -315,7 +315,7 @@ TEST_CASE("overload follows the current active character after death or nested r
     const auto behavior = GENERATE(response::defeated, response::changed, response::nested);
     const bool observed = GENERATE(false, true);
     reaction_log log{ .change_current = behavior == response::changed, .nested_damage = behavior == response::nested };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(damage_program(damages), log, observed,
         behavior == response::defeated ? 1 : 20);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
@@ -350,7 +350,7 @@ TEST_CASE("overload follows the current active character after death or nested r
 TEST_CASE("copied overload switch responses resume before group completion exactly once", "[overload][observation]")
 {
     reaction_log log{ .pause_switch = true };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(damage_program(damages), log, true);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -390,7 +390,7 @@ TEST_CASE("overload from element application respects missing alternatives and g
     const auto kind = GENERATE(scenario::application, scenario::lone_application, scenario::lone_damage, scenario::terminal);
     const bool observed = GENERATE(false, true);
     reaction_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     std::vector<givm::any_command> program{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent, 0 } } };
     if(kind == scenario::application || kind == scenario::lone_application)
         program.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro });

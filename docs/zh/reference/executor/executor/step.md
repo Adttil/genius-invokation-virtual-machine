@@ -86,7 +86,7 @@ int main()
     const std::array damages{
         givm::fixed_damage{
             .source = givm::relative_character_target{ givm::relative_player::self, 0 },
-            .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 },
+            .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
             .value = 999, .type = givm::damage_type::physical, .flags = {} }
     };
     const auto [library, ids] = compile(

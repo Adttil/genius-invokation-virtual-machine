@@ -48,7 +48,7 @@ namespace
             CHECK(self.is_valid());
             data.log->order.push_back(2);
             if(not data.log->revive) return {};
-            return context.invoke(data.entry, givm::healing{ .source = self.id(), .target = event.target, .value = 2 });
+            return context.invoke(data.entry, givm::healing_application{ .source = self.id(), .target = event.target, .value = 2 });
         }
         static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
             givm::after_damage&, givm::handle_context&)
@@ -118,7 +118,7 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
     const auto observer = givm::test::with_passive_skill(dying_observer{ &log });
     const givm::test::initialized_character_source target{ "DyingTarget",
         { .max_health = 10, .max_energy = 3, .health = 1, .energy = 2 } };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 },
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
@@ -164,7 +164,7 @@ TEST_CASE("dying response inputs survive suspension and independent executor cop
     const auto observer = givm::test::with_passive_skill(dying_observer{ &log });
     const givm::test::initialized_character_source target{ "DyingTarget",
         { .max_health = 10, .max_energy = 3, .health = 1, .energy = 2 } };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 },
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,

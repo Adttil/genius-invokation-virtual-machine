@@ -171,7 +171,7 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     const givm::test::initialized_character_source victim{ "Victim", initial };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = value, .type = type } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = value, .type = type } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
@@ -219,7 +219,7 @@ TEST_CASE("damage observation follows aura preparation and copies resume indepen
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
     const auto compile_program = [&](givm::compile_mode mode)
     {
-        const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 3,
+        const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 3,
             .type = givm::damage_type::pyro, .flags = givm::damage_flag_bits::skill_damage } };
         return givm::test::compile_definitions_with_program(
             mode,
@@ -287,7 +287,7 @@ TEST_CASE("lethal damage reports overkill and ends the game before later instruc
     const givm::test::initialized_character_source victim{ "Victim", { .max_health = 10, .health = 1 } };
     const givm::character_id source{ other_player(damaged_player), 0 };
     const givm::character_id damaged{ damaged_player, 0 };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = 999,
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 999,
         .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
@@ -334,7 +334,7 @@ TEST_CASE("zero damage skips health observation and preserves element applicatio
     const givm::test::initialized_character_source victim{ "Victim" };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id damaged{ givm::player_id{ 1 }, 0 };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_damage_target{ givm::relative_player::opponent, 0 }, .value = value, .type = type } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = value, .type = type } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
         std::tuple{
