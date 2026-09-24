@@ -53,6 +53,12 @@ namespace givm
         relative_player player = relative_player::self;
     };
 
+    struct create_hand_card
+    {
+        relative_player player = relative_player::self;
+        definition_id<card_definition> definition{};
+    };
+
     struct discard_hand_card
     {
         relative_player player = relative_player::self;
@@ -313,6 +319,7 @@ namespace givm::detail
         set_active_character,
         select_active_character_both,
         draw_cards,
+        create_hand_card,
         discard_hand_card,
         discard_deck_cards,
         add_support,
@@ -373,6 +380,11 @@ namespace givm::detail
 
     constexpr size_t input_size(const select_active_character_both&) noexcept { return 0; }
     constexpr size_t input_size(const draw_cards&) noexcept { return 0; }
+
+    constexpr size_t input_size(const create_hand_card& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(hand_card_creation);
+    }
 
     constexpr size_t input_size(const discard_hand_card& command) noexcept
     {

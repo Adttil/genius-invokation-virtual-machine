@@ -16,6 +16,10 @@ struct card_drawn;
 | --- | --- | --- |
 | `card` | `const hand_card_id` | 本次事件对应的牌标识；只读 |
 
+## 注意
+
+抽牌只对实际进入手牌的牌发出本通知，不额外发送 [`hand_card_added`](hand_card_added.md)。需要响应任意方式加入手牌的定义，应同时响应这两种事件；由抽牌触发时只在本次 `card_drawn` 广播中响应一次。
+
 ## 示例
 
 ```cpp
@@ -45,3 +49,4 @@ int main()
 | --- | --- |
 | [`draw_cards`](../commands/draw_cards.md) | 抽牌命令 |
 | [`replace_cards`](../commands/replace_cards.md) | 单方换牌命令 |
+| [`hand_card_added`](hand_card_added.md) | 非抽牌方式加入手牌后的通知 |

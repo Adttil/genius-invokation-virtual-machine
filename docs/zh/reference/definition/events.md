@@ -57,9 +57,12 @@
 
 ## 卡牌与技能
 
+抽牌成功时只广播 [`card_drawn`](events/card_drawn.md)，非抽牌方式加入手牌时使用 [`hand_card_added`](events/hand_card_added.md)。需要响应任意方式加入手牌的定义，应同时响应这两种事件；抽牌时它与仅响应抽牌的定义共同遵循同一次广播的响应顺序，不另设加入手牌的广播阶段。
+
 | | |
 | --- | --- |
-| [`hand_card_created`](events/hand_card_created.md) | 新手牌创建后的通知 |
+| [`hand_card_creation`](events/hand_card_creation.md) | 生成手牌的动态输入 |
+| [`hand_card_added`](events/hand_card_added.md) | 非抽牌方式加入手牌后的通知 |
 | [`card_drawn`](events/card_drawn.md) | 一张牌抽取完成后的通知 |
 | [`hand_card_discard_effect`](events/hand_card_discard_effect.md) | 仅向手牌自身发送的舍弃效果事件 |
 | [`deck_card_discard`](events/deck_card_discard.md) | 批量舍弃牌堆顶卡牌的动态输入 |

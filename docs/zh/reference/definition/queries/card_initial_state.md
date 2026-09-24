@@ -21,7 +21,7 @@ struct card_initial_state
 
 ## 注意
 
-本查询没有参数，结果在编译定义库时按具体定义保存；初始化新牌时直接复制，不再调用定义源的查询函数。[`load_deck`](../../executor/load_deck.md) 与 [`insert_deck_card`](../commands/insert_deck_card.md) 都采用这个初始结果。区域转移保留原牌的状态，不重新初始化。
+本查询没有参数，结果在编译定义库时按具体定义保存；初始化新牌时直接复制，不再调用定义源的查询函数。[`load_deck`](../../executor/load_deck.md)、[`insert_deck_card`](../commands/insert_deck_card.md) 与 [`create_hand_card`](../commands/create_hand_card.md) 都采用这个初始结果。区域转移保留原牌的状态，不重新初始化。
 
 结果的 `cost.energy_tag` 指定费用需要的充能类型。需要替代充能时，定义源通过 `tag_dependencies()` 声明资源标签，在 `compile` 中用 [`resolve_tag`](../../executor/definition_compile_context/resolve_tag.md) 取得 ID，再写入本查询结果。
 

@@ -8,6 +8,7 @@
 #include "commands/set_active_character.hpp"
 #include "commands/select_active_character_both.hpp"
 #include "commands/draw_cards.hpp"
+#include "commands/create_hand_card.hpp"
 #include "commands/discard_hand_card.hpp"
 #include "commands/discard_deck_cards.hpp"
 #include "commands/replace_cards.hpp"

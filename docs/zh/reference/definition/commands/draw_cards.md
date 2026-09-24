@@ -23,6 +23,8 @@ struct draw_cards;
 
 牌堆耗尽后停止抽取。达到手牌上限后，仍继续从牌堆移走本次应抽的牌，但这些牌不进入手牌。先完成本次所有抽牌，再逐张发出 [`card_drawn`](../events/card_drawn.md)，只通知实际进入手牌的牌。
 
+抽牌不额外广播 [`hand_card_added`](../events/hand_card_added.md)。响应任意方式加入手牌的定义，通过响应 `card_drawn` 参与同一次抽牌通知，与仅响应抽牌的定义按广播顺序共同结算。
+
 ## 示例
 
 ```cpp

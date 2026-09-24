@@ -178,10 +178,16 @@ namespace givm
     };
 
     // Card-zone and candidate events.
-    struct hand_card_created
+    struct hand_card_creation
+    {
+        player_id player;
+        definition_id<card_definition> definition;
+    };
+
+    struct hand_card_added
     {
         const hand_card_id card;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(hand_card_created);
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(hand_card_added);
     };
 
     struct card_drawn
