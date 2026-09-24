@@ -221,6 +221,25 @@ namespace givm
         definition_id<skill_view> definition{};
     };
 
+    struct set_skill_state
+    {
+        relative_character_target character{};
+        definition_id<skill_view> definition{};
+        skill_state state{};
+    };
+
+    struct set_energy
+    {
+        relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
+        std::uint32_t value{};
+    };
+
+    struct modify_energy
+    {
+        relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
+        std::int64_t delta{};
+    };
+
     struct end_round
     {
     };
@@ -320,6 +339,9 @@ namespace givm::detail
         start_round,
         begin_action,
         use_skill,
+        set_skill_state,
+        set_energy,
+        modify_energy,
         end_round,
         end_game,
         start_dice_roll_phase,
@@ -463,6 +485,18 @@ namespace givm::detail
     constexpr size_t input_size(const use_skill& command) noexcept
     {
         return command.definition ? 0 : sizeof(skill_effect);
+    }
+    constexpr size_t input_size(const set_skill_state& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(skill_state_change);
+    }
+    constexpr size_t input_size(const set_energy& command) noexcept
+    {
+        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(energy_change) : 0;
+    }
+    constexpr size_t input_size(const modify_energy& command) noexcept
+    {
+        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? sizeof(energy_modification) : 0;
     }
     constexpr size_t input_size(const end_round&) noexcept { return 0; }
     constexpr size_t input_size(const end_game&) noexcept { return 0; }

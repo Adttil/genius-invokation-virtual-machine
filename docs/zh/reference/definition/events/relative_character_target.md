@@ -31,6 +31,8 @@ struct relative_character_target
 
 固定参数中的角色来源允许是已战败但未离场的角色；单角色治疗、增加生命上限、直接附着元素的目标同样允许生命值为 `0`。它们不会因为目标战败而改为另一个存活角色，因此濒死响应仍可通过单角色治疗复活原目标。
 
+[`set_energy`](../commands/set_energy.md)、[`modify_energy`](../commands/modify_energy.md) 与 [`set_skill_state`](../commands/set_skill_state.md) 也按原位置定位，不跳过已战败但未离场的角色；这三个命令只接受 `character` 范围。
+
 范围治疗的 `others` 和 `all` 只选择存活角色。它们先从偏移后的位置向后循环找到存活角色，再从此位置开始按循环顺序处理，`others` 跳过此角色；轮到后续每个角色时判断其是否存活。
 
 ## 作用范围

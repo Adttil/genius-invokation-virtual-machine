@@ -47,6 +47,8 @@ void use_skill(
 
 本操作不推进执行器，也不修改牌桌。下一次 [`step`](../../executor/step.md) 先执行确认的费用效果，再扣除骰子与充能，依次处理骰子移除和充能变化通知，然后广播 [`skill_will_be_used`](../../../definition/events/skill_will_be_used.md)。若效果未被取消，则执行该技能的 [`skill_effect`](../../../definition/events/skill_effect.md)；之后均广播 [`skill_used`](../../../definition/events/skill_used.md)。取消效果不退还支付，也不撤销本次技能使用。
 
+技能使用不会自动增加充能。需要获得充能的技能应在自身效果程序中显式安排 [`modify_energy`](../../../definition/commands/modify_energy.md)，因此获得充能的时机由技能效果决定。
+
 本次行动采用 `skill_will_be_used` 响应完成后的行动速度：快速行动保留行动权，战斗行动按行动阶段规则交接。整个流程由 [`begin_action`](../../../definition/commands/begin_action.md) 处理。
 
 ## 示例

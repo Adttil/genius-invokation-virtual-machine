@@ -44,6 +44,8 @@
 | [`secret_points_changed`](events/secret_points_changed.md) | 秘传点数变化后的通知 |
 | [`changing_energy`](events/changing_energy.md) | 角色充能变化前的调整事件 |
 | [`energy_changed`](events/energy_changed.md) | 角色充能变化后的通知 |
+| [`energy_change`](events/energy_change.md) | 角色充能赋值的动态输入 |
+| [`energy_modification`](events/energy_modification.md) | 按增量修改角色充能的动态输入 |
 | [`calculating_card_payment`](events/calculating_card_payment.md) | 打出手牌时的支付计算事件 |
 | [`calculating_skill_payment`](events/calculating_skill_payment.md) | 使用技能时的支付计算事件 |
 | [`calculating_switch_payment`](events/calculating_switch_payment.md) | 切换出战角色时的支付计算事件 |
@@ -73,6 +75,7 @@
 | [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |
 | [`skill_effect`](events/skill_effect.md) | 执行所选技能自身效果 |
 | [`skill_used`](events/skill_used.md) | 技能使用完成后的通知 |
+| [`skill_state_change`](events/skill_state_change.md) | 技能状态赋值的动态输入 |
 | [`prepared_skill_effect`](events/prepared_skill_effect.md) | 消耗准备技能附属并执行其自身效果 |
 
 ## 伤害、治疗与元素

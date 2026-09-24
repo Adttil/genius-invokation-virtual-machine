@@ -108,6 +108,18 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(changing_energy);
     };
 
+    struct energy_change
+    {
+        character_id target;
+        std::uint32_t value;
+    };
+
+    struct energy_modification
+    {
+        character_id target;
+        std::int64_t delta{};
+    };
+
     struct energy_changed
     {
         const character_id target;
@@ -270,6 +282,12 @@ namespace givm
 
     // Skill events.
     using skill_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
+
+    struct skill_state_change
+    {
+        skill_id skill;
+        skill_state state;
+    };
 
     struct skill_effect
     {

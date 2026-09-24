@@ -29,6 +29,8 @@ struct character_state;
 
 普通充能和替代充能共用 `energy` 与 `max_energy`，分别表示当前点数与上限。角色在同一时刻只持有 `energy_tag` 指定的一种充能。
 
+效果程序可以用 [`set_energy`](../definition/commands/set_energy.md) 赋值，或用 [`modify_energy`](../definition/commands/modify_energy.md) 按增量修改充能；两者都将结果限制在零和当前 `max_energy` 之间，不改变 `energy_tag`，也不广播充能变化事件。使用技能本身不会自动获得充能，增益应由技能效果程序显式执行。
+
 通过 [`operator[]`](../enums/weapon_type_mask/operator_at.md) 读取指定武器类别是否允许装备，通过 [`set`](../enums/weapon_type_mask/set.md) 和 [`reset`](../enums/weapon_type_mask/reset.md) 修改。例如，`state.allowed_weapon_types.set(weapon_type::sword)` 允许单手剑，`state.allowed_weapon_types.reset(weapon_type::sword)` 禁止单手剑。可以同时允许多个类别；`weapon_type::none` 不表示一种可装备的武器，不能传给这些接口。
 
 这个状态记录当前装备限制。角色定义的武器类别标签仍可用于描述角色和判断其他效果；两者不自动同步。

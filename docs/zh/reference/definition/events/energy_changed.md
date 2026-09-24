@@ -22,6 +22,8 @@ struct energy_changed;
 
 行动支付充能时也发出本通知。支付先完成骰子与充能扣除，再处理非零骰子支付的 `dice_removed`，随后处理非零充能支付的本事件。费用已由报价确定，不在支付时通过 `changing_energy` 重新修改。
 
+[`set_energy`](../commands/set_energy.md) 与 [`modify_energy`](../commands/modify_energy.md) 直接修改充能，不发送本通知。
+
 ## 示例
 
 ```cpp

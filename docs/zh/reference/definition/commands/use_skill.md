@@ -33,6 +33,8 @@ struct use_skill
 
 因此，天赋牌的 `card_effect` 程序包含本命令时，技能效果和所有 `skill_used` 响应会先完成；牌的其余效果继续执行，全部结束后才广播 [`card_played`](../events/card_played.md)。
 
+技能使用不会自动增加充能。需要获得充能的技能应在自身效果程序中显式安排 [`modify_energy`](modify_energy.md)，其执行位置由程序中的命令顺序决定。
+
 本命令的 `skill_will_be_used::speed` 初始为 `action_speed::fast`，响应可修改它，`skill_used` 保留修改后的值。该值不会改变外层行动的速度、当前行动玩家或下落攻击机会。天赋牌是否为战斗行动仍由牌的费用及出牌流程决定；本命令不读取技能费用。
 
 ## 示例

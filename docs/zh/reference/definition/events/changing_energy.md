@@ -17,6 +17,10 @@ struct changing_energy;
 | `target` | `const character_id` | 充能将要改变的角色；只读 |
 | `delta` | `std::int32_t` | 本次变化量；正数增加，负数减少 |
 
+## 注意
+
+[`set_energy`](../commands/set_energy.md) 与 [`modify_energy`](../commands/modify_energy.md) 直接修改充能，不发送本事件。
+
 ## 示例
 
 ```cpp
