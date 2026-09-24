@@ -8,7 +8,7 @@
 
 命令是否消费响应输入，由编译时给出的具体命令值决定。消费输入的命令要求响应通过 `invoke` 显式提交相应初始事件；使用固定参数的命令不占输入位置。每个已编译入口所需输入的数量、类型和顺序仍然固定，命令不借用外层响应事件。相对玩家参数以当前效果的本方为基准。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
 
-`set_active_character{}`、`deal_damage{}`、`apply_element{}`、`heal{}`、`increase_max_health{}`，以及实体生成、添加、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。实体相关命令通过显式指定 `definition` 选择固定模式。
+`set_active_character{}`、`use_skill{}`、`deal_damage{}`、`apply_element{}`、`heal{}`、`increase_max_health{}`，以及实体生成、添加、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。实体相关命令通过显式指定 `definition` 选择固定模式。
 
 固定效果命令使用角色位置、本方或对方身份、定义 ID，不保存对局中才分配的实体 ID。具体实体 ID 由响应在运行时通过动态输入提交。角色位置在命令执行时解析，仅使用相对于所选一方当前出战角色的有符号偏移。
 
@@ -40,10 +40,11 @@
 | [`end_round`](commands/end_round.md) | 回合结束命令 |
 | [`end_game`](commands/end_game.md) | 按指定胜负结果结束对局的命令 |
 
-## 伤害与元素
+## 技能、伤害与元素
 
 | | |
 | --- | --- |
+| [`use_skill`](commands/use_skill.md) | 直接使用技能并通知，不支付技能费用 |
 | [`deal_damage`](commands/deal_damage.md) | 完成一组可由范围和元素反应展开的伤害 |
 | [`heal`](commands/heal.md) | 调整治疗量、恢复生命并通知实际恢复值 |
 | [`increase_max_health`](commands/increase_max_health.md) | 增加生命上限，恢复相同数量生命并通知 |

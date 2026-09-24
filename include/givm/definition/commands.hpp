@@ -215,6 +215,12 @@ namespace givm
     {
     };
 
+    struct use_skill
+    {
+        relative_player player = relative_player::self;
+        definition_id<skill_view> definition{};
+    };
+
     struct end_round
     {
     };
@@ -313,6 +319,7 @@ namespace givm::detail
         replace_cards_both,
         start_round,
         begin_action,
+        use_skill,
         end_round,
         end_game,
         start_dice_roll_phase,
@@ -453,6 +460,10 @@ namespace givm::detail
     constexpr size_t input_size(const replace_cards_both&) noexcept { return 0; }
     constexpr size_t input_size(const start_round&) noexcept { return 0; }
     constexpr size_t input_size(const begin_action&) noexcept { return 0; }
+    constexpr size_t input_size(const use_skill& command) noexcept
+    {
+        return command.definition ? 0 : sizeof(skill_effect);
+    }
     constexpr size_t input_size(const end_round&) noexcept { return 0; }
     constexpr size_t input_size(const end_game&) noexcept { return 0; }
     constexpr size_t input_size(const start_dice_roll_phase&) noexcept { return 0; }

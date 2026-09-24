@@ -14,6 +14,7 @@
 #include "commands/replace_cards_both.hpp"
 #include "commands/start_round.hpp"
 #include "commands/begin_action.hpp"
+#include "commands/use_skill.hpp"
 #include "commands/end_round.hpp"
 #include "commands/end_game.hpp"
 #include "commands/start_dice_roll_phase.hpp"

@@ -15,6 +15,7 @@
 
 #include "../broadcast.hpp"
 #include "set_active_character.hpp"
+#include "use_skill.hpp"
 #include "../../definition/events.hpp"
 #include "../../definition/commands.hpp"
 
@@ -1180,49 +1181,6 @@ namespace givm::detail
         return context.enter_next();
     }
 
-    inline execution_state finish_skill_effect(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
-    )
-    {
-        const auto event = get<0>(context.stack().top<skill_used, response_return>());
-        context.stack().pop<skill_used, response_return>();
-        prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
-    }
-
-    inline execution_state broadcast_skill_will_be_used(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<skill_will_be_used>(library, table, context, random))
-        {
-            return continue_execution;
-        }
-        const auto event = get<0>(context.stack().top<skill_will_be_used, response_return>());
-        pop_broadcast<skill_will_be_used>(context);
-        if(event.speed == action_speed::combat) table[event.skill.character_id.player_id].state().can_plunge = false;
-        context.enter_next();
-        context.stack().push(skill_used{
-            .skill = event.skill, .flags = event.flags, .targets = event.targets, .speed = event.speed,
-            .effect_cancelled = event.effect_cancelled
-        }, response_return{ table.state().self_player, context.position() });
-        if(not event.effect_cancelled)
-        {
-            skill_effect effect{ .skill = event.skill, .flags = event.flags, .targets = event.targets };
-            const auto skill = std::as_const(table)[event.skill];
-            auto response = context.make_handle_context(table, random);
-            const auto entry = library[skill.definition_id()].handle<skill_effect>(skill, effect, response);
-            if(entry)
-            {
-                table.state().self_player = skill.player().id();
-                return context.enter(entry);
-            }
-        }
-        return finish_skill_effect(library, table, context, random);
-    }
-
     template<bool Observed>
     inline execution_state broadcast_skill_used(
         const definition_library& library, unrestricted_table& table,
@@ -1500,7 +1458,7 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
         writer.write<execute_fn>(&broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_skill_use);
-        writer.write<execute_fn>(&broadcast_skill_will_be_used);
+        writer.write<execute_fn>(&broadcast_skill_will_be_used<true>);
         writer.write<execute_fn>(&finish_skill_effect);
         writer.write<execute_fn>(&broadcast_skill_used<Observed>);
         writer.write<execute_fn>(&continue_technique_onpay<Observed>);
