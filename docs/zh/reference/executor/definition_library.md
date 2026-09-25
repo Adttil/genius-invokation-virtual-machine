@@ -31,6 +31,7 @@ class definition_library;
 | [`tag_name`](definition_library/tag_name.md) | 取得标签名称 |
 | [`skill_flags`](definition_library/skill_flags.md) | 取得技能定义标签对应的固有分类 |
 | [`equipment_type`](definition_library/equipment_type.md) | 取得附着实体定义的装备类别 |
+| [`remove_at_zero_usages`](definition_library/remove_at_zero_usages.md) | 检查召唤物定义是否按零次数离场 |
 | [`is_control`](definition_library/is_control.md) | 检查附属定义是否属于控制效果 |
 | [`is_controlled`](definition_library/is_controlled.md) | 检查角色是否处于控制状态 |
 | [`is_control_immune`](definition_library/is_control_immune.md) | 检查角色是否免疫控制附属与效果切人 |

@@ -486,13 +486,6 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(resummoning);
     };
 
-    struct summon_state_changed
-    {
-        const summon_state previous;
-        const summon_state current;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(summon_state_changed);
-    };
-
     struct summon_removed
     {
         const summon_id summon;

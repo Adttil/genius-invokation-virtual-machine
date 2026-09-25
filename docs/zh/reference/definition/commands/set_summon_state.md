@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-设置一个召唤物的状态。用于指定效果量与剩余可用次数。
+设置一个或多个召唤物的完整状态，用于指定效果量与剩余可用次数。
 
 ```cpp
 struct set_summon_state
@@ -28,12 +28,12 @@ struct set_summon_state
 - 默认构造 `set_summon_state{}` 使用动态模式，由 `invoke` 提交一个 [set_summon_state_input](../command_inputs/set_summon_state_input.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定的一方。在该玩家的召唤物中选取首个有效、定义 ID 相同的实体；该实体必须存在。
 
-`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入直接指定要操作的有效实体。
+`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入以数组指定本次全部目标，可跨双方；允许为空，目标不得重复，并须在命令开始时有效。数组内容在 `invoke` 时复制。
 
 ## 结算
 
-执行时读取 [summon_state_limit](../queries/summon_state_limit.md)，将提供的 `state` 各字段分别裁剪至对应上限。然后以裁剪结果替换目标的完整状态。`state{}` 的两个字段均为零。
+按输入顺序，以每个目标定义的 [summon_state_limit](../queries/summon_state_limit.md) 逐字段裁剪后写入完整状态。固定模式使用命令的 `state`；动态模式的每项 `change` 都有自己的 `state`。
 
-先写入新状态，再仅向该召唤物发送 [summon_state_changed](../events/summon_state_changed.md)，`usages == 0` 时也一样。是否离场由召唤物自己的响应决定；需要离场时，响应程序可执行 [remove_summon](remove_summon.md)，由该命令广播 [summon_removed](../events/summon_removed.md)。
+本命令不发送状态修改通知，也不触发耗尽离场，即使目标带 `remove_at_zero_usages` 标签且被设置为零次数也仍保留。需要强制移除时，后续显式执行 [remove_summon](remove_summon.md)。这允许先一次性设置全部指定召唤物，再开始处理离场通知。
 
-通知包含修改前和裁剪后的状态；返回的响应程序完整结算后才继续下一条命令。
+例如清除召唤区时，可以先对需要归零的子集提交各自的 `{ 原效果量, 0 }`，再向 `remove_summon` 提交全部目标；其他召唤物保留原状态直到离场。

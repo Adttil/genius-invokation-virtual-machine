@@ -221,8 +221,7 @@ namespace givm
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
-        struct resummoning,
-        struct summon_state_changed
+        struct resummoning
     >{};
 
     template<>

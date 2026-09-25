@@ -32,6 +32,26 @@ namespace givm::detail
         return std::tuple{ dynamic_array<damage>(input.damages) };
     }
 
+    inline auto command_input_members(const discard_hand_card_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<hand_card_id>(input.cards) };
+    }
+
+    inline auto command_input_members(const set_summon_state_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<set_summon_state_input::change>(input.changes) };
+    }
+
+    inline auto command_input_members(const modify_summon_state_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<summon_id>(input.summons), input.value, input.usages };
+    }
+
+    inline auto command_input_members(const remove_summon_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<summon_id>(input.summons) };
+    }
+
     template<class TDestination, command_input T>
     inline void push_command_input(TDestination& destination, const T& input)
     {

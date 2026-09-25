@@ -36,7 +36,7 @@ namespace
         using modify = givm::modify_summon_state;
         using modification = givm::modify_summon_state_input;
         using change = givm::set_summon_state_input;
-        using changed = givm::summon_state_changed;
+        using changed = void;
         using remove = givm::remove_summon;
         using removal = givm::remove_summon_input;
         using removed = givm::summon_removed;
@@ -133,7 +133,6 @@ namespace
         regeneration_behavior behavior = regeneration_behavior::ignore;
         bool dynamic = false;
         bool erase_empty = false;
-        bool restore_empty = false;
         bool regeneration_handler_enabled = true;
         bool state_handler_enabled = true;
         state_values limit{ 20, 30 };
@@ -179,6 +178,12 @@ namespace
         lifecycle_log<T>* log;
 
         std::string_view name() const { return "LifecycleEntity"; }
+        auto tags() const
+        {
+            if constexpr(std::is_same_v<T, summon_traits>)
+                return std::array<std::string_view, 1>{ log->erase_empty ? "remove_at_zero_usages" : "persistent" };
+            else return std::array<std::string_view, 0>{};
+        }
         template<class TView, class TEvent>
         bool can_handle() const
         {
@@ -217,29 +222,25 @@ namespace
                 return data.log->behavior == regeneration_behavior::accumulate
                     ? previous[index] + incoming[index] : std::max(previous[index], incoming[index]);
             };
-            return context.invoke(data.change, typename T::change{ self.id(), { combine(0), combine(1) } });
+            if constexpr(std::is_same_v<T, summon_traits>)
+            {
+                const std::array changes{ givm::set_summon_state_input::change{ self.id(), { combine(0), combine(1) } } };
+                return context.invoke(data.change, givm::set_summon_state_input{ changes });
+            }
+            else return context.invoke(data.change, typename T::change{ self.id(), { combine(0), combine(1) } });
         }
+        template<class TEvent>
+        requires std::is_same_v<TEvent, typename T::changed>
         static givm::program_entry handle(const definition_type& data, const typename T::view& self,
-            typename T::changed& event, givm::handle_context& context)
+            TEvent& event, givm::handle_context& context)
         {
             data.log->changed.push_back(self.id());
             data.log->previous_states.push_back(T::values(event.previous));
             data.log->current_states.push_back(T::values(event.current));
             CHECK(self.is_valid());
             CHECK(T::values(self.state()) == T::values(event.current));
-            if constexpr(std::is_same_v<T, summon_traits>)
-            {
-                if(self.state().usages == 0)
-                {
-                    if(data.log->erase_empty)
-                        return context.invoke(data.remove, typename T::removal{ self.id() });
-                    if(data.log->restore_empty)
-                        return context.invoke(data.change, typename T::change{ self.id(), { self.state().value, 1 } });
-                }
-            }
-            else
-                if(data.log->erase_empty && self.state().count == 0)
-                    return context.invoke(data.remove, typename T::removal{ self.id() });
+            if(data.log->erase_empty && self.state().count == 0)
+                return context.invoke(data.remove, typename T::removal{ self.id() });
             return {};
         }
     };
@@ -340,15 +341,35 @@ namespace
             auto entities = T::entities(context.table(), action.player, action.character_index);
             REQUIRE(std::ranges::distance(entities) > static_cast<std::ptrdiff_t>(action.target_index));
             const auto target = (*std::ranges::next(entities.begin(), action.target_index)).id();
-            if(action.operation == operation::set)
-                return context.invoke(entry, typename T::change{ target, state });
-            if(action.operation == operation::remove)
-                return context.invoke(entry, typename T::removal{ target });
-            if(action.operation == operation::modify_twice)
+            if constexpr(std::is_same_v<T, summon_traits>)
+            {
+                const std::array targets{ target };
+                if(action.operation == operation::set)
+                {
+                    const std::array changes{ givm::set_summon_state_input::change{ target, state } };
+                    return context.invoke(entry, givm::set_summon_state_input{ changes });
+                }
+                if(action.operation == operation::remove)
+                    return context.invoke(entry, givm::remove_summon_input{ targets });
+                if(action.operation == operation::modify_twice)
+                    return context.invoke(entry,
+                        givm::modify_summon_state_input{ targets, action.delta[0], action.delta[1] },
+                        givm::modify_summon_state_input{ targets, action.next_delta[0], action.next_delta[1] });
+                return context.invoke(entry, givm::modify_summon_state_input{ targets, action.delta[0], action.delta[1] });
+            }
+            else
+            {
+                if(action.operation == operation::set)
+                    return context.invoke(entry, typename T::change{ target, state });
+                if(action.operation == operation::remove)
+                    return context.invoke(entry, typename T::removal{ target });
+                if(action.operation == operation::modify_twice)
+                    return context.invoke(entry,
+                        typename T::modification{ target, action.delta[0], action.delta[1] },
+                        typename T::modification{ target, action.next_delta[0], action.next_delta[1] });
                 return context.invoke(entry,
-                    typename T::modification{ target, action.delta[0], action.delta[1] },
-                    typename T::modification{ target, action.next_delta[0], action.next_delta[1] });
-            return context.invoke(entry, typename T::modification{ target, action.delta[0], action.delta[1] });
+                    typename T::modification{ target, action.delta[0], action.delta[1] });
+            }
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             typename T::removed& event, givm::handle_context& context)
@@ -445,7 +466,7 @@ TEMPLATE_TEST_CASE("generation addition and assignment clamp each supplied field
     const state_values expected{ std::min(supplied[0], log.limit[0]), std::min(supplied[1], log.limit[1]) };
     CHECK(T::values(table[log.created[0]].state()) == expected);
     CHECK(log.regenerated.empty());
-    if(op == operation::set)
+    if(op == operation::set && not std::is_same_v<T, summon_traits>)
     {
         CHECK(log.changed == log.created);
         CHECK(log.previous_states == std::vector<state_values>{ { 2, 3 } });
@@ -496,9 +517,13 @@ TEMPLATE_TEST_CASE("repeated generation delegates accumulation refresh and indep
     {
         const state_values expected = log.behavior == regeneration_behavior::accumulate ? state_values{ 9, 4 } : state_values{ 7, 3 };
         CHECK(T::values(table[log.created[0]].state()) == expected);
-        CHECK(log.changed == std::vector{ log.created[0] });
-        CHECK(log.previous_states == std::vector<state_values>{ { 7, 1 } });
-        CHECK(log.current_states == std::vector{ expected });
+        if constexpr(not std::is_same_v<T, summon_traits>)
+        {
+            CHECK(log.changed == std::vector{ log.created[0] });
+            CHECK(log.previous_states == std::vector<state_values>{ { 7, 1 } });
+            CHECK(log.current_states == std::vector{ expected });
+        }
+        else CHECK(log.changed.empty());
     }
 }
 
@@ -567,7 +592,7 @@ TEST_CASE("dynamic attachment application and modification can select a standby 
 }
 
 TEMPLATE_TEST_CASE("assignment and modification notify only the selected entity with previous and current state",
-    "[entity-state]", summon_traits, combat_status_traits, attachment_traits)
+    "[entity-state]", combat_status_traits, attachment_traits)
 {
     using T = TestType;
     lifecycle_log<T> log;
@@ -598,8 +623,12 @@ TEMPLATE_TEST_CASE("multiple delta commands in one response read state when each
         { .operation = operation::modify_twice, .delta = { 3, 1 }, .next_delta = { 2, 2 } } };
     const auto table = run_lifecycle(log, mode);
     REQUIRE(log.created.size() == 1);
-    CHECK(log.previous_states == std::vector<state_values>{ { 7, 8 }, { 9, 8 }, { 9, 5 }, { 12, 6 } });
-    CHECK(log.current_states == std::vector<state_values>{ { 9, 8 }, { 9, 5 }, { 12, 6 }, { 14, 8 } });
+    if constexpr(not std::is_same_v<T, summon_traits>)
+    {
+        CHECK(log.previous_states == std::vector<state_values>{ { 7, 8 }, { 9, 8 }, { 9, 5 }, { 12, 6 } });
+        CHECK(log.current_states == std::vector<state_values>{ { 9, 8 }, { 9, 5 }, { 12, 6 }, { 14, 8 } });
+    }
+    else CHECK(log.changed.empty());
     CHECK(T::values(table[log.created[0]].state()) == state_values{ 14, 8 });
 }
 
@@ -616,8 +645,12 @@ TEMPLATE_TEST_CASE("signed deltas saturate without overflow at zero and definiti
         { .operation = operation::modify, .delta = { lower, 0 } } };
     const auto table = run_lifecycle(log, givm::compile_mode::normal);
     REQUIRE(log.created.size() == 1);
-    CHECK(log.previous_states == std::vector<state_values>{ { 7, 8 }, { 20, 30 } });
-    CHECK(log.current_states == std::vector<state_values>{ { 20, 30 }, { 0, 30 } });
+    if constexpr(not std::is_same_v<T, summon_traits>)
+    {
+        CHECK(log.previous_states == std::vector<state_values>{ { 7, 8 }, { 20, 30 } });
+        CHECK(log.current_states == std::vector<state_values>{ { 20, 30 }, { 0, 30 } });
+    }
+    else CHECK(log.changed.empty());
     CHECK(T::values(table[log.created[0]].state()) == state_values{ 0, 30 });
 }
 
@@ -633,12 +666,16 @@ TEMPLATE_TEST_CASE("signed deltas handle the full unsigned state range",
         { .operation = operation::modify, .delta = { std::numeric_limits<std::int64_t>::max(), std::numeric_limits<std::int64_t>::max() } } };
     const auto table = run_lifecycle(log, givm::compile_mode::normal);
     REQUIRE(log.created.size() == 1);
-    CHECK(log.current_states == std::vector<state_values>{ { maximum - 1, maximum - 1 }, { maximum, maximum } });
+    if constexpr(not std::is_same_v<T, summon_traits>)
+    {
+        CHECK(log.current_states == std::vector<state_values>{ { maximum - 1, maximum - 1 }, { maximum, maximum } });
+    }
+    else CHECK(log.changed.empty());
     CHECK(T::values(table[log.created[0]].state()) == log.limit);
 }
 
 TEMPLATE_TEST_CASE("zero state remains unless the entity response removes it",
-    "[entity-state]", summon_traits, combat_status_traits, attachment_traits)
+    "[entity-state]", combat_status_traits, attachment_traits)
 {
     using T = TestType;
     lifecycle_log<T> log;
@@ -666,7 +703,7 @@ TEMPLATE_TEST_CASE("zero state remains unless the entity response removes it",
     }
 }
 
-TEST_CASE("summons without a state handler remain available for resummoning at zero usages", "[entity-state][summon]")
+TEST_CASE("summons without the exhaustion tag remain available for resummoning at zero usages", "[entity-state][summon]")
 {
     lifecycle_log<summon_traits> log;
     log.dynamic = GENERATE(false, true);
@@ -686,24 +723,27 @@ TEST_CASE("summons without a state handler remain available for resummoning at z
     CHECK(log.departing_states.empty());
 }
 
-TEST_CASE("a summon can restore usages in its state response before the next command executes", "[entity-state][summon]")
+TEST_CASE("only modification removes tagged summons at zero usages", "[entity-state][summon]")
 {
     lifecycle_log<summon_traits> log;
     log.dynamic = GENERATE(false, true);
-    log.restore_empty = true;
+    log.erase_empty = GENERATE(false, true);
     const auto op = GENERATE(operation::set, operation::modify);
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     log.actions = { { operation::generate },
-        { .operation = op, .state = { 7, 0 }, .delta = { -13, -30 } },
-        { .operation = operation::modify_twice, .delta = { 0, -1 }, .next_delta = { 2, 3 } } };
+        { .operation = op, .state = { 7, 0 }, .delta = { -13, -30 } } };
     const auto table = run_lifecycle(log, mode);
     REQUIRE(log.created.size() == 1);
-    CHECK(ids_of<summon_traits>(table) == log.created);
-    CHECK(log.changed == std::vector(5, log.created[0]));
-    CHECK(log.previous_states == std::vector<state_values>{ log.limit, { 7, 0 }, { 7, 1 }, { 7, 0 }, { 7, 1 } });
-    CHECK(log.current_states == std::vector<state_values>{ { 7, 0 }, { 7, 1 }, { 7, 0 }, { 7, 1 }, { 9, 4 } });
-    CHECK(summon_traits::values(table[log.created[0]].state()) == state_values{ 9, 4 });
-    CHECK(log.left.empty());
+    const bool removed = log.erase_empty && op == operation::modify;
+    CHECK(ids_of<summon_traits>(table).size() == (removed ? 0 : 1));
+    CHECK(log.changed.empty());
+    CHECK(summon_traits::values(table[log.created[0]].state()) == state_values{ 7, 0 });
+    if(removed)
+    {
+        CHECK(log.left == log.created);
+        CHECK(log.departing_states == std::vector<state_values>{ { 7, 0 } });
+    }
+    else CHECK(log.left.empty());
 }
 
 TEST_CASE("summon creation accepts zero usages including a zero definition limit", "[entity-generation][summon]")
@@ -814,10 +854,7 @@ TEST_CASE("a full summon area still dispatches resummoning but its response cann
     CHECK(summon_traits::values(table[log.created[0]].state()) == expected);
     for(std::size_t index = 1; index < log.created.size(); ++index)
         CHECK(summon_traits::values(table[log.created[index]].state()) == state_values{ 7, 1 });
-    if(log.behavior == regeneration_behavior::refresh)
-        CHECK(log.changed == std::vector{ log.created[0] });
-    else
-        CHECK(log.changed.empty());
+    CHECK(log.changed.empty());
     CHECK(log.left.empty());
 }
 

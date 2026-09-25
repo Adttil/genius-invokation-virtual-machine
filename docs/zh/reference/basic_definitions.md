@@ -36,7 +36,7 @@
 
 燃烧烈焰通过 [summon_state_limit](definition/queries/summon_state_limit.md) 限制效果量和次数。默认燃烧反应请求的状态是 `{ .value = 1, .usages = 1 }`，已有燃烧烈焰时累加一次。直接使用 [summon](definition/commands/summon.md) 或 [add_summon](definition/commands/add_summon.md) 且省略 `state`，仍遵守这些命令的规则，采用上限状态 `{ .value = 1, .usages = 2 }`。
 
-燃烧烈焰的回合结束伤害完整结算后才扣除次数；次数耗尽时，燃烧烈焰响应自身的 [summon_state_changed](definition/events/summon_state_changed.md)，执行 [remove_summon](definition/commands/remove_summon.md) 并发送 [summon_removed](definition/events/summon_removed.md)。草原核和激化领域的移除发送 [combat_status_removed](definition/events/combat_status_removed.md)。
+燃烧烈焰的回合结束伤害完整结算后才扣除次数；燃烧烈焰具有 `remove_at_zero_usages` 标签，扣次的 [modify_summon_state](definition/commands/modify_summon_state.md) 在次数耗尽后将其移除并发送 [summon_removed](definition/events/summon_removed.md)。草原核和激化领域的移除发送 [combat_status_removed](definition/events/combat_status_removed.md)。
 
 ## 冻结与控制
 

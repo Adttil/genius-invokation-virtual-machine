@@ -103,7 +103,6 @@
 | [`combat_status_removed`](events/combat_status_removed.md) | 出战状态移除后向其他有效实体广播的通知 |
 | [`attachment_removed`](events/attachment_removed.md) | 角色附属实体或装备移除后向其他有效实体广播的通知 |
 | [`resummoning`](events/resummoning.md) | 仅向已有召唤物发送的重复请求 |
-| [`summon_state_changed`](events/summon_state_changed.md) | 状态修改后的自身通知 |
 | [`combat_status_regeneration`](events/combat_status_regeneration.md) | 仅向已有出战状态发送的重复请求 |
 | [`combat_status_state_changed`](events/combat_status_state_changed.md) | 状态修改后的自身通知 |
 | [`attachment_reapplication`](events/attachment_reapplication.md) | 仅向已有角色附属实体发送的重复请求 |

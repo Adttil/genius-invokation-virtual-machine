@@ -305,7 +305,6 @@ namespace givm::genshin_impact
         {
             program_entry end_phase;
             program_entry accumulate;
-            program_entry remove;
         };
 
         constexpr std::string_view name() const noexcept
@@ -313,12 +312,16 @@ namespace givm::genshin_impact
             return "burning_flame-3.3.0-genshin_impact";
         }
 
+        constexpr std::array<std::string_view, 1> tags() const noexcept
+        {
+            return { "remove_at_zero_usages" };
+        }
+
         definition_type compile(definition_compile_context& context) const
         {
             return {
                 context.add_program(std::tuple{ deal_damage{}, modify_summon_state{} }),
-                context.add_program(std::tuple{ modify_summon_state{} }),
-                context.add_program(std::tuple{ remove_summon{} })
+                context.add_program(std::tuple{ modify_summon_state{} })
             };
         }
 
@@ -333,16 +336,7 @@ namespace givm::genshin_impact
             resummoning& event, handle_context& context)
         {
             return context.invoke(definition.accumulate,
-                modify_summon_state_input{ .summon = summon.id(), .usages = event.state.usages });
-        }
-
-        static program_entry handle(
-            const definition_type& definition, const summon_view& summon,
-            summon_state_changed& event, handle_context& context)
-        {
-            if(event.current.usages != 0)
-                return {};
-            return context.invoke(definition.remove, remove_summon_input{ summon.id() });
+                modify_summon_state_input{ .summons = std::array{ summon.id() }, .usages = event.state.usages });
         }
 
         static program_entry handle(
@@ -359,7 +353,7 @@ namespace givm::genshin_impact
                     .type = damage_type::pyro,
                     .flags = damage_flag_bits::combat_damage
                 } } },
-                modify_summon_state_input{ .summon = summon.id(), .usages = -1 });
+                modify_summon_state_input{ .summons = std::array{ summon.id() }, .usages = -1 });
         }
     };
 

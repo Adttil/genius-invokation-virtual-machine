@@ -1,6 +1,7 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <limits>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -60,7 +61,7 @@ namespace
             if(not data.log->dynamic) return context.invoke(data.discard);
             const auto hand_card = context.table()[givm::player_id{ 0 }].hand_cards().front().id();
             return context.invoke(data.discard,
-                givm::discard_hand_card_input{ hand_card },
+                givm::discard_hand_card_input{ std::array{ hand_card } },
                 givm::discard_deck_cards_input{ .player = givm::player_id{ 0 }, .count = 2 });
         }
         static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
@@ -333,4 +334,188 @@ TEST_CASE("discarded deck cards remain valid effect sources through damage and n
     CHECK(table[target].state().health == 8);
     CHECK(table[target].state().aura == givm::element_aura::cryo);
     CHECK(log.order == std::vector<char>{ 'E', 'A', 'D' });
+}
+
+namespace
+{
+    struct hand_discard_batch_log
+    {
+        bool dynamic;
+        bool missing;
+        std::uint32_t count;
+        std::vector<givm::hand_card_id> original;
+        std::vector<givm::hand_card_id> selected;
+        std::vector<givm::hand_card_id> effects;
+        std::vector<givm::hand_card_id> notifications;
+        std::vector<char> order;
+    };
+
+    struct hand_discard_batch_card
+    {
+        using definition_category = givm::card_definition;
+        struct definition_type
+        {
+            hand_discard_batch_log* log;
+            givm::program_entry effect;
+        };
+        hand_discard_batch_log* log;
+        std::string_view source_name;
+        constexpr std::string_view name() const { return source_name; }
+        constexpr auto card_dependencies() const { return std::array{ std::string_view{ "BatchCardA" } }; }
+        definition_type compile(givm::definition_compile_context& context) const
+        {
+            return { log, context.add_program(std::tuple{
+                givm::create_hand_card{ .definition = context.resolve_id<givm::card_definition>("BatchCardA") },
+                givm::replace_cards{ givm::player_id{ 0 } }
+            }) };
+        }
+        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
+            givm::hand_card_discard_effect& event, givm::handle_context& context)
+        {
+            CHECK(self.id() == event.card);
+            for(const auto id : data.log->selected) CHECK_FALSE(context.table()[id].is_valid());
+            data.log->effects.push_back(event.card);
+            data.log->order.push_back('E');
+            return context.invoke(data.effect);
+        }
+    };
+
+    struct hand_discard_batch_driver
+    {
+        using definition_category = givm::card_definition;
+        struct definition_type
+        {
+            hand_discard_batch_log* log;
+            givm::definition_id<givm::card_definition> selected_definition;
+            givm::program_entry discard;
+            givm::program_entry pause;
+        };
+        hand_discard_batch_log* log;
+        constexpr std::string_view name() const { return "BatchObserver"; }
+        constexpr auto card_dependencies() const
+        {
+            return std::array{ std::string_view{ "BatchCardA" }, std::string_view{ "BatchAbsentCard" } };
+        }
+        definition_type compile(givm::definition_compile_context& context) const
+        {
+            const auto definition = context.resolve_id<givm::card_definition>(log->missing ? "BatchAbsentCard" : "BatchCardA");
+            const auto discard = log->dynamic
+                ? context.add_program(std::tuple{ givm::discard_hand_card{} })
+                : context.add_program(std::tuple{ givm::discard_hand_card{
+                    .player = givm::relative_player::opponent, .definition = definition, .count = log->count } });
+            return { log, definition, discard,
+                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
+        }
+        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
+            givm::test_event&, givm::handle_context& context)
+        {
+            auto& log = *data.log;
+            for(const auto card : context.table()[givm::player_id{ 0 }].hand_cards())
+                log.original.push_back(card.id());
+            if(log.dynamic)
+            {
+                const std::array order{ 3u, 0u, 2u };
+                for(const auto index : order)
+                {
+                    if(log.selected.size() == log.count) break;
+                    log.selected.push_back(log.original[index]);
+                }
+                return context.invoke(data.discard, givm::discard_hand_card_input{ log.selected });
+            }
+            for(const auto id : log.original)
+            {
+                if(log.selected.size() == log.count) break;
+                if(context.table()[id].definition_id() == data.selected_definition)
+                    log.selected.push_back(id);
+            }
+            return context.invoke(data.discard);
+        }
+        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
+            givm::hand_card_added& event, givm::handle_context& context)
+        {
+            CHECK(std::ranges::find_if(data.log->original,
+                [&](givm::hand_card_id id) { return id == event.card; }) == data.log->original.end());
+            data.log->order.push_back('A');
+            return context.invoke(data.pause);
+        }
+        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
+            givm::hand_card_discarded& event, givm::handle_context& context)
+        {
+            for(const auto id : data.log->selected) CHECK_FALSE(context.table()[id].is_valid());
+            CHECK(data.log->effects.back() == event.card);
+            data.log->notifications.push_back(event.card);
+            data.log->order.push_back('N');
+            return context.invoke(data.pause);
+        }
+    };
+}
+
+TEST_CASE("hand discard selects a batch once and resolves every card before the next", "[discard]")
+{
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    hand_discard_batch_log log{ .dynamic = GENERATE(false, true), .missing = false,
+        .count = GENERATE(0u, 1u, 2u, std::numeric_limits<std::uint32_t>::max()) };
+    const hand_discard_batch_card first{ &log, "BatchCardA" };
+    const hand_discard_batch_card second{ &log, "BatchCardB" };
+    const hand_discard_batch_driver driver{ &log };
+    const givm::test::named_definition_source<givm::card_definition> absent{ "BatchAbsentCard" };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
+        std::tuple{ givm::draw_cards{ .count = 5 }, givm::test_command{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, first, second, absent, driver);
+    const auto first_id = ids.get_id<givm::card_definition>(first.name());
+    const auto second_id = ids.get_id<givm::card_definition>(second.name());
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
+    load_deck(table, library, { .cards = { first_id, second_id, first_id, second_id, first_id } },
+        { .cards = { ids.get_id<givm::card_definition>(driver.name()) } });
+    givm::executor executor;
+    executor.enter_entry(library);
+    std::size_t pauses = 0;
+    for(;;)
+    {
+        const auto state = advance(executor, library, table);
+        if(state == givm::execution_state::finished) break;
+        REQUIRE(state == givm::execution_state::card_selection);
+        ++pauses;
+        auto copy_table = table;
+        auto copy_executor = executor;
+        table = std::move(copy_table);
+        executor = std::move(copy_executor);
+        executor.view_in<givm::execution_state::card_selection>().select({});
+    }
+    REQUIRE(log.original.size() == 5);
+    const auto count = std::min(log.count, 3u);
+    REQUIRE(log.selected.size() == count);
+    for(std::size_t index = 0; index != count; ++index)
+        CHECK(log.selected[index] == log.original[log.dynamic ? std::array{ 3u, 0u, 2u }[index] : 2 * index]);
+    CHECK(log.effects == log.selected);
+    CHECK(log.notifications == log.selected);
+    std::vector<char> expected;
+    for(std::size_t index = 0; index != count; ++index) expected.insert(expected.end(), { 'E', 'A', 'N' });
+    CHECK(log.order == expected);
+    CHECK(pauses == 3 * count);
+    CHECK(table[givm::player_id{ 0 }].hand_card_count() == 5);
+    for(const auto id : log.selected) CHECK_FALSE(table[id].is_valid());
+}
+
+TEST_CASE("fixed hand discard with no matching definition is a no-op", "[discard]")
+{
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    hand_discard_batch_log log{ .dynamic = false, .missing = true,
+        .count = std::numeric_limits<std::uint32_t>::max() };
+    const hand_discard_batch_card card{ &log, "BatchCardA" };
+    const hand_discard_batch_driver driver{ &log };
+    const givm::test::named_definition_source<givm::card_definition> absent{ "BatchAbsentCard" };
+    const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
+        std::tuple{ givm::draw_cards{ .count = 2 }, givm::test_command{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, card, absent, driver);
+    const auto card_id = ids.get_id<givm::card_definition>(card.name());
+    givm::table table{ { .self_player = givm::player_id{ 0 } } };
+    load_deck(table, library, { .cards = { card_id, card_id } },
+        { .cards = { ids.get_id<givm::card_definition>(driver.name()) } });
+    givm::executor executor;
+    executor.enter_entry(library);
+    CHECK(advance(executor, library, table) == givm::execution_state::finished);
+    CHECK(log.selected.empty());
+    CHECK(log.order.empty());
+    CHECK(table[givm::player_id{ 0 }].hand_card_count() == 2);
 }

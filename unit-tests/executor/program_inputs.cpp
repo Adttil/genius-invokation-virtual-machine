@@ -423,7 +423,8 @@ namespace
                     return context.invoke(data.entry, inputs...);
             };
             const givm::set_active_character_input active{ self.id() };
-            const givm::remove_summon_input summon{ { self.id().player_id, 0 } };
+            const std::array summon_ids{ givm::summon_id{ self.id().player_id, 0 } };
+            const givm::remove_summon_input summon{ summon_ids };
             const givm::remove_support_input support{ { self.id().player_id, 0 } };
             static_assert(sizeof(summon) == sizeof(support));
             switch(data.error)

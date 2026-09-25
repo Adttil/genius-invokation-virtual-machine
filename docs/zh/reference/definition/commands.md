@@ -25,7 +25,7 @@
 | [`select_active_character_both`](commands/select_active_character_both.md) | 双方开局出战角色的选择命令 |
 | [`draw_cards`](commands/draw_cards.md) | 抽牌命令 |
 | [`create_hand_card`](commands/create_hand_card.md) | 向手牌中生成一张指定牌的命令 |
-| [`discard_hand_card`](commands/discard_hand_card.md) | 舍弃手牌，先处理自身效果再全场通知 |
+| [`discard_hand_card`](commands/discard_hand_card.md) | 整批舍弃手牌，再逐张处理自身效果和全场通知 |
 | [`discard_deck_cards`](commands/discard_deck_cards.md) | 整批舍弃牌堆顶的牌，再逐张处理自身效果和全场通知 |
 | [`replace_cards`](commands/replace_cards.md) | 单方换牌命令 |
 | [`replace_cards_both`](commands/replace_cards_both.md) | 双方开局换牌命令 |

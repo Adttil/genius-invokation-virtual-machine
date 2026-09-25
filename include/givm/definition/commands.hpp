@@ -71,7 +71,10 @@ namespace givm
         definition_id<card_definition> definition{};
     };
 
-    using discard_hand_card_input = hand_card_discard_effect;
+    struct discard_hand_card_input
+    {
+        std::span<const hand_card_id> cards;
+    };
 
     struct discard_hand_card
     {
@@ -79,6 +82,7 @@ namespace givm
 
         relative_player player = relative_player::self;
         definition_id<card_definition> definition{};
+        std::uint32_t count = 1;
     };
 
     struct discard_deck_cards_input
@@ -190,8 +194,13 @@ namespace givm
 
     struct set_summon_state_input
     {
-        summon_id summon;
-        summon_state state;
+        struct change
+        {
+            summon_id summon;
+            summon_state state;
+        };
+
+        std::span<const change> changes;
     };
 
     struct set_summon_state
@@ -205,7 +214,7 @@ namespace givm
 
     struct modify_summon_state_input
     {
-        summon_id summon;
+        std::span<const summon_id> summons;
         std::int64_t value{};
         std::int64_t usages{};
     };
@@ -222,7 +231,7 @@ namespace givm
 
     struct remove_summon_input
     {
-        summon_id summon;
+        std::span<const summon_id> summons;
     };
 
     struct remove_summon

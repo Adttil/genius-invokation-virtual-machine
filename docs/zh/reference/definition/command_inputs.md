@@ -12,6 +12,7 @@
 
 | | |
 | --- | --- |
+| [`discard_hand_card_input`](command_inputs/discard_hand_card_input.md) | [`discard_hand_card`](commands/discard_hand_card.md) 的动态输入 |
 | [`add_attachment_input`](command_inputs/add_attachment_input.md) | [`add_attachment`](commands/add_attachment.md) 的动态输入 |
 | [`add_combat_status_input`](command_inputs/add_combat_status_input.md) | [`add_combat_status`](commands/add_combat_status.md) 的动态输入 |
 | [`add_summon_input`](command_inputs/add_summon_input.md) | [`add_summon`](commands/add_summon.md) 的动态输入 |
@@ -46,7 +47,6 @@
 | | |
 | --- | --- |
 | [`add_dice_input`](command_inputs/add_dice_input.md) | [`add_dice`](commands/add_dice.md) 的动态输入 |
-| [`discard_hand_card_input`](command_inputs/discard_hand_card_input.md) | [`discard_hand_card`](commands/discard_hand_card.md) 的动态输入 |
 | [`increase_max_health_input`](command_inputs/increase_max_health_input.md) | [`increase_max_health`](commands/increase_max_health.md) 的动态输入 |
 | [`set_active_character_input`](command_inputs/set_active_character_input.md) | [`set_active_character`](commands/set_active_character.md) 的动态输入 |
 | [`use_skill_input`](command_inputs/use_skill_input.md) | [`use_skill`](commands/use_skill.md) 的动态输入 |
