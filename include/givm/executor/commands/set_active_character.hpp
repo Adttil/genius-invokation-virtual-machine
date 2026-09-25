@@ -120,17 +120,16 @@ namespace givm::detail
         const auto target = resolve_character_target<true>(table, command.target);
         if(not target) return context.jump(broadcast_resume + sizeof(execute_fn));
         const auto& state = table[target->player_id].state();
+        if(state.active_character == *target)
+            return context.jump(broadcast_resume + sizeof(execute_fn));
         if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
             return context.jump(broadcast_resume + sizeof(execute_fn));
         const active_character_changed event{ .current = *target };
         if constexpr(Observed)
         {
-            if(state.active_character != *target)
-            {
-                context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
-                context.jump(removal_resume + sizeof(execute_fn));
-                return context.yield(execution_state::active_character_changed);
-            }
+            context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
+            context.jump(removal_resume + sizeof(execute_fn));
+            return context.yield(execution_state::active_character_changed);
         }
         if(const auto result = prepare_active_character_switch(library, table, context, random,
             event, removal_resume, broadcast_resume)) return *result;
@@ -147,16 +146,15 @@ namespace givm::detail
         const auto removal_resume = context.position() + sizeof(execute_fn);
         const auto broadcast_resume = removal_resume + (Observed ? 2 : 1) * sizeof(execute_fn);
         const auto& state = table[event.current.player_id].state();
+        if(state.active_character == event.current)
+            return context.jump(broadcast_resume + sizeof(execute_fn));
         if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
             return context.jump(broadcast_resume + sizeof(execute_fn));
         if constexpr(Observed)
         {
-            if(state.active_character != event.current)
-            {
-                context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
-                context.jump(removal_resume + sizeof(execute_fn));
-                return context.yield(execution_state::active_character_changed);
-            }
+            context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
+            context.jump(removal_resume + sizeof(execute_fn));
+            return context.yield(execution_state::active_character_changed);
         }
         if(const auto result = prepare_active_character_switch(library, table, context, random,
             event, removal_resume, broadcast_resume)) return *result;

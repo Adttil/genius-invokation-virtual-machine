@@ -392,7 +392,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
     CHECK(log.effects.empty());
     CHECK(log.removed.size() == (cancelled ? 2 : 0));
     if(cancelled) CHECK(log.remaining_at_removal == std::vector<std::size_t>{ 0, 0 });
-    CHECK(log.switches == (choice == scenario::immune ? 0 : 1));
+    CHECK(log.switches == (cancelled ? 1 : 0));
     CHECK(table[owner].state().active_character == (cancelled ? ally : actor));
     const auto plain = ids.get_id<givm::attachment_view>("PlainAttachment");
     CHECK(std::ranges::any_of(table[actor].attachments(), [&](auto attachment) { return attachment.definition_id() == plain; }));

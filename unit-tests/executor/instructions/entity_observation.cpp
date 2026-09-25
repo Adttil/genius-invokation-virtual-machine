@@ -404,7 +404,7 @@ TEST_CASE("single-player active-character observation precedes the table update 
     CHECK(log.active.empty());
 
     REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
-    CHECK(log.active == std::vector{ current, current });
+    CHECK(log.active == std::vector{ current });
     CHECK(log.active == normal_events);
     CHECK(table[givm::player_id{ 0 }].state().active_character == normal_table[givm::player_id{ 0 }].state().active_character);
 }

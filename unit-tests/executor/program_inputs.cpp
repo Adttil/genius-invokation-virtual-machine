@@ -165,7 +165,7 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
         log.active = prefix;
         current.view_in<givm::execution_state::card_selection>().select({});
         REQUIRE(advance(current, library, current_table, random) == givm::execution_state::finished);
-        CHECK(log.active == std::vector{ first, second, second, third });
+        CHECK(log.active == std::vector{ first, second, third });
         CHECK(current_table[givm::player_id{ 0 }].state().active_character == third);
         CHECK(current_table[givm::player_id{ 0 }].hand_card_count() == 1);
         CHECK(current_table[givm::player_id{ 0 }].deck_card_count() == 0);

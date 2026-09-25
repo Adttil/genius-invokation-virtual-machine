@@ -31,11 +31,11 @@ struct set_active_character;
 
 执行时，若该玩家当前出战角色具有 `control_immunity` 附属，则忽略此次设置，不产生变更通知或观察现场。没有出战角色时，动态输入仍可指定初始角色。此限制针对本命令；玩家在行动选择中[主动切换](../../executor/execution_view/action_selection/switch_active_character.md)不受免控保护限制。
 
-设置后发出 [`active_character_changed`](../events/active_character_changed.md)，响应者能够读取新的出战角色。
+目标与当前出战角色相同时，本命令不产生效果、变更通知或观察现场。实际改变出战角色后发出 [`active_character_changed`](../events/active_character_changed.md)，响应者能够读取新的出战角色。
 
 实际切换至另一角色时，原出战角色上所有支持 [`prepared_skill_effect`](../events/prepared_skill_effect.md) 的附属一起标记为离场，再按附属顺序逐个完成 [`attachment_removed`](../events/attachment_removed.md) 通知，最后处理 `active_character_changed`。被免控阻止、没有存活目标或重复设置同一角色时，不清除这些准备技能附属。
 
-以 [`compile_mode::observed`](../../executor/compile_mode.md) 编译时，写入新出战角色前先返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)提供目标角色，牌桌上仍保留原出战角色及其准备技能附属；随后推进才实际切换、清除这些附属并处理通知。未被免控阻止且目标本就是该方的出战角色时，不产生此观察现场，规则事件仍照常处理。
+以 [`compile_mode::observed`](../../executor/compile_mode.md) 编译时，写入新出战角色前先返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)提供目标角色，牌桌上仍保留原出战角色及其准备技能附属；随后推进才实际切换、清除这些附属并处理通知。
 
 ## 示例
 
