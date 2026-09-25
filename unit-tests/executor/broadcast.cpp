@@ -75,7 +75,7 @@ namespace
                 CHECK(context.table()[givm::character_id{ givm::player_id{ 0 }, 0 }].state().aura == givm::element_aura::hydro);
             data.handlers->push_back(self.character().id());
             if(data.terminal) return context.invoke(data.entry);
-            return context.invoke(data.entry, givm::element_application{
+            return context.invoke(data.entry, givm::apply_element_input{
                 .source = self.id(), .target = { givm::player_id{ 0 }, 0 }, .element = givm::element::hydro });
         }
     };
@@ -115,7 +115,7 @@ namespace
             givm::handle_context& context)
         {
             data.drawn->push_back(event.card);
-            return context.invoke(data.selection_entry, std::span<const unsigned char>{});
+            return context.invoke(data.selection_entry, std::span<const givm::any_command_input>{});
         }
     };
     struct context_source
@@ -173,7 +173,7 @@ namespace
             {
             case 0: return {};
             case 1: return context.invoke(data.empty);
-            case 2: return context.invoke(data.change_active, givm::active_character_changed{ .current = self.character().id() });
+            case 2: return context.invoke(data.change_active, givm::set_active_character_input{ .current = self.character().id() });
             default: return context.invoke(data.draw);
             }
         }
@@ -181,7 +181,7 @@ namespace
                                           givm::card_drawn&, givm::handle_context& context)
         {
             ++*data.nested_responses;
-            return context.invoke(data.empty, std::span<const unsigned char>{});
+            return context.invoke(data.empty, std::span<const givm::any_command_input>{});
         }
     };
 

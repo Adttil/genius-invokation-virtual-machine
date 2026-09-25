@@ -33,4 +33,4 @@ struct fixed_damage
 
 处理每段描述时才解析来源和目标，找不到来源或存活目标时跳过该段。目标位置落在战败角色时，先循环向后寻找存活角色，再按范围选择该角色、其他角色或全部角色。范围目标按循环顺序逐个结算，仍属于同一伤害组；定位和展开规则见 [`relative_character_target`](../events/relative_character_target.md)。
 
-本方由 [`table_state::self_player`](../../table/table_state.md) 确定，根流程使用固定伤害前须显式设置有效本方。需要精确的技能、召唤物或卡牌来源时，应通过 `invoke` 提交动态 [`damage`](../events/damage.md)；命令不会把来源隐式设为响应实体，也不读取外层事件。
+本方由 [`table_state::self_player`](../../table/table_state.md) 确定，根流程使用固定伤害前须显式设置有效本方。需要精确的技能、召唤物或卡牌来源时，应通过 `invoke` 提交动态 [`damage`](../command_inputs/damage.md)；命令不会把来源隐式设为响应实体，也不读取外层事件。

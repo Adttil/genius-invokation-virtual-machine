@@ -10,6 +10,12 @@ struct heal;
 
 使一个或多个角色接受治疗。先为每个目标广播 [`healing`](../events/healing.md) 并完成实际加血，全部目标完成后，再按目标顺序广播 [`healed`](../events/healed.md) 通知实际恢复值。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`heal_input`](../command_inputs/heal_input.md)，动态模式下的输入类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
@@ -20,7 +26,7 @@ struct heal;
 
 ## 输入
 
-- 默认构造 `heal{}`，接受响应通过 `invoke` 提交的一个 [`healing_application`](../events/healing_application.md)。
+- 默认构造 `heal{}`，接受响应通过 `invoke` 提交的一个 [`heal_input`](../command_inputs/heal_input.md)。
 - 显式指定 `target` 时使用命令中的固定参数，不消费响应输入。
 
 动态输入须指定有效来源和目标；目标可以是精确 `character_id`，也可以是带范围的 [`relative_character_target`](../events/relative_character_target.md)。固定参数在命令执行时分别定位来源和目标；缺少任一角色时跳过命令。来源不会被替换成目标，也不会从外层响应推断；需要精确技能、牌或召唤物来源时应采用动态输入。

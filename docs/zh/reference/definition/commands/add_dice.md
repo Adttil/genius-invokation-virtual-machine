@@ -7,12 +7,20 @@
 ```cpp
 struct add_dice
 {
+    using input_type = add_dice_input;
+
     relative_player player = static_cast<relative_player>(-1);
     dice_counts dice{};
 };
 ```
 
 向一位玩家增加指定种类和数量的元素骰的命令。
+
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`add_dice_input`](../command_inputs/add_dice_input.md)，动态模式下的输入类型 |
 
 ## 成员对象
 
@@ -23,7 +31,7 @@ struct add_dice
 
 ## 注意
 
-默认构造 `add_dice{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`dice_added`](../events/dice_added.md)，包含玩家 ID 和本次增加的各类骰子数量。显式指定 `player` 为 `self` 或 `opponent` 时采用固定模式，不消费响应输入。本方的含义见 [`relative_player`](relative_player.md)；动态输入的玩家 ID 必须有效。
+默认构造 `add_dice{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`add_dice_input`](../command_inputs/add_dice_input.md)，包含玩家 ID 和本次增加的各类骰子数量。显式指定 `player` 为 `self` 或 `opponent` 时采用固定模式，不消费响应输入。本方的含义见 [`relative_player`](relative_player.md)；动态输入的玩家 ID 必须有效。
 
 一次性增加全部指定骰子，然后全场广播一次 `dice_added`。事件记录本次增加量；响应读取牌桌时可以看到增加后的骰子。全部数量为零时无效果，也不广播。
 
@@ -85,5 +93,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`dice_added`](../events/dice_added.md) | 产骰的动态输入和增加完成后的通知 |
+| [`dice_added`](../events/dice_added.md) | 元素骰增加完成后的通知 |
 | [`dice_counts`](../../enums/dice_counts.md) | 各类元素骰的数量 |

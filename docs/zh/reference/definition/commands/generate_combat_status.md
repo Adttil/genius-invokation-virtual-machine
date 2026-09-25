@@ -9,6 +9,8 @@
 ```cpp
 struct generate_combat_status
 {
+    using input_type = generate_combat_status_input;
+
     relative_player player = relative_player::self;
     definition_id<combat_status_view> definition{};
     combat_status_state state{
@@ -18,9 +20,15 @@ struct generate_combat_status
 };
 ```
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`generate_combat_status_input`](../command_inputs/generate_combat_status_input.md)，动态模式下的输入类型 |
+
 ## 输入
 
-- 默认构造 `generate_combat_status{}` 使用动态模式，由 `invoke` 提交一个 [combat_status_generation](../events/combat_status_generation.md)。
+- 默认构造 `generate_combat_status{}` 使用动态模式，由 `invoke` 提交一个 [generate_combat_status_input](../command_inputs/generate_combat_status_input.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定的一方。
 
 `player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入明确指定目标玩家和定义，两者须合法。

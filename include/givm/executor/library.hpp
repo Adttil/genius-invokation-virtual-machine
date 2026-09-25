@@ -47,20 +47,23 @@ namespace givm::detail
         execution_position round_entry;
     };
 
-#ifndef NDEBUG
-    constexpr std::size_t input_size(const round_program_begin&) noexcept { return 0; }
-    constexpr std::size_t input_size(const round_program_repeat&) noexcept { return 0; }
-#endif
-
     template<class TSequence>
-    inline std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode)
+    inline std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode
+#ifndef NDEBUG
+        , std::vector<std::size_t>* input_markers = nullptr
+#endif
+    )
     {
-        std::size_t inputs_size = 0;
+        std::size_t inputs_count = 0;
         const auto append_command = [&](const auto& command)
         {
 #ifndef NDEBUG
-            const auto size = input_size(command);
-            inputs_size += (size + max_alignment - 1) / max_alignment * max_alignment;
+            const auto marker = input_marker(command);
+            if(marker != size_t(-1))
+            {
+                ++inputs_count;
+                if(input_markers) input_markers->push_back(marker);
+            }
 #endif
             compile(writer, command, mode);
         };
@@ -91,7 +94,7 @@ namespace givm::detail
                 (append(get<I>(std::forward<TSequence>(commands))), ...);
             }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TSequence>>>{});
         }
-        return inputs_size;
+        return inputs_count;
     }
 }
 
@@ -137,10 +140,17 @@ namespace givm
         {
             program_entry result{ program_.size() };
             detail::program_writer writer{ program_ };
-            [[maybe_unused]] const auto inputs_size =
-                detail::append_commands(writer, std::forward<TCommands>(commands), mode_);
 #ifndef NDEBUG
-            result.inputs_size_ = inputs_size;
+            result.inputs_begin_ = input_markers_.size();
+#endif
+            [[maybe_unused]] const auto inputs_count =
+                detail::append_commands(writer, std::forward<TCommands>(commands), mode_
+#ifndef NDEBUG
+                    , &input_markers_
+#endif
+                );
+#ifndef NDEBUG
+            result.inputs_count_ = inputs_count;
 #endif
             writer.write(detail::execute_fn{ detail::execute_return });
             return result;
@@ -152,8 +162,14 @@ namespace givm
             detail::program_bytes& program,
             const detail::definition_source_declarations& declarations,
             compile_mode mode
+#ifndef NDEBUG
+            , std::vector<std::size_t>& input_markers
+#endif
         )
         : id_map_{ id_map }, program_{ program }, declarations_{ declarations }, mode_{ mode }
+#ifndef NDEBUG
+        , input_markers_{ input_markers }
+#endif
         {}
 
         static bool contains(const std::vector<std::string_view>& values, std::string_view value)
@@ -166,6 +182,9 @@ namespace givm
         const detail::definition_source_declarations& declarations_;
 
         compile_mode mode_;
+#ifndef NDEBUG
+        std::vector<std::size_t>& input_markers_;
+#endif
 
         friend class definition_library;
     };
@@ -177,7 +196,11 @@ namespace givm
 
     public:
         definition_library(const definition_library& other)
-        : program_{ other.program_ }, tag_names_{ other.tag_names_ },
+        : program_{ other.program_ },
+#ifndef NDEBUG
+          input_markers_{ other.input_markers_ },
+#endif
+          tag_names_{ other.tag_names_ },
           equipment_tags_{ other.equipment_tags_ }, skill_tags_{ other.skill_tags_ }, control_tag_{ other.control_tag_ },
           control_immunity_tag_{ other.control_immunity_tag_ }, dendro_core_id_{ other.dendro_core_id_ },
           catalyzing_field_id_{ other.catalyzing_field_id_ }, burning_flame_id_{ other.burning_flame_id_ },
@@ -580,7 +603,11 @@ namespace givm
         {
             const auto declarations = source.declarations();
             auto& bucket = bucket_for<TDefinitionType>();
-            definition_compile_context context{ id_map, program_, declarations, mode };
+            definition_compile_context context{ id_map, program_, declarations, mode
+#ifndef NDEBUG
+                , input_markers_
+#endif
+            };
             definition_data data = source.compile(context);
 
             bucket.names.push_back(source.name());
@@ -705,10 +732,10 @@ namespace givm
 
             definition_library library{ id_map, sources };
             detail::program_writer writer{ library.program_ };
-            [[maybe_unused]] const auto initialization_inputs_size =
+            [[maybe_unused]] const auto initialization_inputs_count =
                 detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode);
 #ifndef NDEBUG
-            if(initialization_inputs_size != 0)
+            if(initialization_inputs_count != 0)
             {
                 throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
             }
@@ -716,10 +743,10 @@ namespace givm
             const detail::execution_position round_start = writer.position();
             detail::append_commands(writer, std::tuple{ detail::round_program_begin{} }, mode);
             const detail::execution_position round_entry = writer.position();
-            [[maybe_unused]] const auto round_inputs_size =
+            [[maybe_unused]] const auto round_inputs_count =
                 detail::append_commands(writer, std::forward<TRoundSequence>(round_program), mode);
 #ifndef NDEBUG
-            if(round_inputs_size != 0)
+            if(round_inputs_count != 0)
             {
                 throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
             }
@@ -737,6 +764,9 @@ namespace givm
 
     private:
         detail::program_bytes program_;
+#ifndef NDEBUG
+        std::vector<std::size_t> input_markers_;
+#endif
         std::vector<std::string_view> tag_names_;
         std::array<tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
         std::array<tag_id, 3> skill_tags_{};

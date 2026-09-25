@@ -172,7 +172,7 @@ namespace
             {
                 return {};
             }
-            return context.invoke(givm::substack_t{}, event.target.index == 1 ? data.first_payment : data.second_payment, std::span<const unsigned char>{});
+            return context.invoke(givm::substack_t{}, event.target.index == 1 ? data.first_payment : data.second_payment, std::span<const givm::any_command_input>{});
         }
     };
 

@@ -19,7 +19,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&)
     {
-        combat_status_addition input;
+        add_combat_status_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, add_combat_status>(library);
@@ -32,8 +32,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<combat_status_addition>());
-            context.stack().pop<combat_status_addition>();
+            input = get<0>(context.stack().top<add_combat_status_input>());
+            context.stack().pop<add_combat_status_input>();
             context.enter_next();
         }
         input.state = clamp_combat_status_state(

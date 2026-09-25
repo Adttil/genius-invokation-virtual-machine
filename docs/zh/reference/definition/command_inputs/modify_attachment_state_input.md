@@ -1,13 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **attachment_state_modification**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **modify_attachment_state_input**
 
-# givm::attachment_state_modification
+# givm::modify_attachment_state_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
 [modify_attachment_state](../commands/modify_attachment_state.md) 的动态输入，指定要修改的角色附属实体以及本次变化。
 
 ```cpp
-struct attachment_state_modification
+struct modify_attachment_state_input
 {
     attachment_id attachment;
     std::int64_t count{};

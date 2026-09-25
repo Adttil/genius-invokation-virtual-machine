@@ -212,7 +212,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, card_table, random);
+            auto response = execution_context::make_handle_context(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
@@ -264,7 +264,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, card_table, random);
+            auto response = execution_context::make_handle_context(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
@@ -317,7 +317,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, card_table, random);
+            auto response = execution_context::make_handle_context(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
@@ -369,7 +369,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, card_table, random);
+            auto response = execution_context::make_handle_context(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
@@ -816,8 +816,8 @@ namespace givm::detail
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
-                auto invoke = context.make_program_invoker();
-                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                const auto prepared = context.copy_program_inputs(
+                    entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
                 return context.enter(prepared);
             }
@@ -998,8 +998,8 @@ namespace givm::detail
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
-                auto invoke = context.make_program_invoker();
-                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                const auto prepared = context.copy_program_inputs(
+                    entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
                 return context.enter(prepared);
             }
@@ -1146,8 +1146,8 @@ namespace givm::detail
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
-                auto invoke = context.make_program_invoker();
-                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                const auto prepared = context.copy_program_inputs(
+                    entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
                 return context.enter(prepared);
             }
@@ -1241,8 +1241,8 @@ namespace givm::detail
                 auto& stack = context.stack();
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
-                auto invoke = context.make_program_invoker();
-                const auto prepared = invoke(entry, std::span<const unsigned char>{ stack.data() + offset, size });
+                const auto prepared = context.copy_program_inputs(
+                    entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
                 return context.enter(prepared);
             }

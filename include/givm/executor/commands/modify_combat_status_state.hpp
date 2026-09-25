@@ -13,7 +13,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        combat_status_state_modification input;
+        modify_combat_status_state_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, modify_combat_status_state>(library);
@@ -26,8 +26,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<combat_status_state_modification>());
-            context.stack().pop<combat_status_state_modification>();
+            input = get<0>(context.stack().top<modify_combat_status_state_input>());
+            context.stack().pop<modify_combat_status_state_input>();
             context.enter_next();
         }
 
@@ -50,7 +50,7 @@ namespace givm::detail
             add_saturated(current.round_usages, input.round_usages, limit.round_usages)
         };
         return change_combat_status_state(library, table, context, random,
-            combat_status_state_change{ input.status, state });
+            set_combat_status_state_input{ input.status, state });
     }
 
     inline void compile(program_writer& writer, const givm::modify_combat_status_state& command, compile_mode)

@@ -7,6 +7,8 @@
 ```cpp
 struct set_skill_state
 {
+    using input_type = set_skill_state_input;
+
     relative_character_target character{};
     definition_id<skill_view> definition{};
     skill_state state{};
@@ -14,6 +16,12 @@ struct set_skill_state
 ```
 
 技能状态的赋值命令，用于记录技能定义自行解释的计数。
+
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`set_skill_state_input`](../command_inputs/set_skill_state_input.md)，动态模式下的输入类型 |
 
 ## 成员对象
 
@@ -25,7 +33,7 @@ struct set_skill_state
 
 ## 注意
 
-默认构造 `set_skill_state{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`skill_state_change`](../events/skill_state_change.md)，指定实际技能实体及新状态。
+默认构造 `set_skill_state{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`set_skill_state_input`](../command_inputs/set_skill_state_input.md)，指定实际技能实体及新状态。
 
 显式指定 `definition` 时使用固定模式，不消费响应输入。命令执行时按 `character` 定位角色，在其技能中选择首个有效、定义 ID 匹配的技能；角色与技能都必须存在。`character.selection` 必须为 `character_selection::character`。
 
@@ -37,5 +45,5 @@ struct set_skill_state
 
 | | |
 | --- | --- |
-| [`skill_state_change`](../events/skill_state_change.md) | 技能状态赋值的动态输入 |
+| [`set_skill_state_input`](../command_inputs/set_skill_state_input.md) | 技能状态赋值的动态输入 |
 | [`skill_state`](../../table/skill_state.md) | 技能的计数状态 |

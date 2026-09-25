@@ -120,19 +120,19 @@ namespace
             case mutation_kind::skill:
                 for(const auto skill : context.table()[log.target].skills())
                     if(skill.definition_id() == data.skill)
-                        return context.invoke(data.effect, givm::skill_state_change{ skill.id(), { log.value } });
+                        return context.invoke(data.effect, givm::set_skill_state_input{ skill.id(), { log.value } });
                 FAIL("the target must own the mutable skill");
                 return {};
             case mutation_kind::assign:
-                return context.invoke(data.effect, givm::energy_change{ log.target, log.value });
+                return context.invoke(data.effect, givm::set_energy_input{ log.target, log.value });
             case mutation_kind::modify:
-                return context.invoke(data.effect, givm::energy_modification{ log.target, log.delta });
+                return context.invoke(data.effect, givm::modify_energy_input{ log.target, log.delta });
             case mutation_kind::sequence:
-                return context.invoke(data.effect, givm::energy_change{ log.target, 2 },
-                    givm::energy_modification{ log.target, std::numeric_limits<std::int64_t>::max() },
-                    givm::energy_modification{ log.target, -1 },
-                    givm::energy_modification{ log.target, std::numeric_limits<std::int64_t>::min() },
-                    givm::energy_modification{ log.target, 2 });
+                return context.invoke(data.effect, givm::set_energy_input{ log.target, 2 },
+                    givm::modify_energy_input{ log.target, std::numeric_limits<std::int64_t>::max() },
+                    givm::modify_energy_input{ log.target, -1 },
+                    givm::modify_energy_input{ log.target, std::numeric_limits<std::int64_t>::min() },
+                    givm::modify_energy_input{ log.target, 2 });
             case mutation_kind::use_skill:
                 return context.invoke(data.effect);
             }

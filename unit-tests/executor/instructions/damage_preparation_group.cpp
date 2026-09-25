@@ -60,7 +60,7 @@ namespace
                 .nested = context.add_program(std::tuple{ givm::deal_damage{} }), .input_count = inputs.size() };
             if(not inputs.empty())
             {
-                result.entry = context.add_program(std::tuple{ givm::deal_damage{ .input_count = inputs.size() } });
+                result.entry = context.add_program(std::tuple{ givm::deal_damage{} });
                 std::ranges::copy(inputs, result.inputs.begin());
             }
             return result;
@@ -72,8 +72,8 @@ namespace
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             givm::test_event&, givm::handle_context& context)
         {
-            return data.input_count == 1 ? context.invoke(data.entry, data.inputs[0])
-                : context.invoke(data.entry, data.inputs[0], data.inputs[1]);
+            return context.invoke(data.entry,
+                givm::deal_damage_input{ std::span<const givm::damage>{ data.inputs }.first(data.input_count) });
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             givm::damage_preparation& event, givm::handle_context&)
@@ -113,8 +113,8 @@ namespace
         {
             if(data.log->nested_phase != current_phase || data.log->nested_invoked) return {};
             data.log->nested_invoked = true;
-            return context.invoke(data.nested, givm::damage{
-                .source = source, .target = current, .value = 3, .type = givm::damage_type::physical });
+            return context.invoke(data.nested, givm::deal_damage_input{ std::array{ givm::damage{
+                .source = source, .target = current, .value = 3, .type = givm::damage_type::physical } } });
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             givm::character_will_be_defeated& event, givm::handle_context&)

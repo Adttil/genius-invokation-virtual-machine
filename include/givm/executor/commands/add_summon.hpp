@@ -19,7 +19,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&)
     {
-        summon_addition input;
+        add_summon_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, add_summon>(library);
@@ -32,8 +32,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<summon_addition>());
-            context.stack().pop<summon_addition>();
+            input = get<0>(context.stack().top<add_summon_input>());
+            context.stack().pop<add_summon_input>();
             context.enter_next();
         }
         const auto player = std::as_const(table)[input.player];

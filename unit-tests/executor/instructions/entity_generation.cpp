@@ -28,17 +28,17 @@ namespace
         using state = givm::summon_state;
         using query = givm::summon_state_limit;
         using generate = givm::summon;
-        using generation = givm::summoning;
+        using generation = givm::summon_input;
         using regeneration = givm::resummoning;
         using add = givm::add_summon;
-        using addition = givm::summon_addition;
+        using addition = givm::add_summon_input;
         using set = givm::set_summon_state;
         using modify = givm::modify_summon_state;
-        using modification = givm::summon_state_modification;
-        using change = givm::summon_state_change;
+        using modification = givm::modify_summon_state_input;
+        using change = givm::set_summon_state_input;
         using changed = givm::summon_state_changed;
         using remove = givm::remove_summon;
-        using removal = givm::summon_removal;
+        using removal = givm::remove_summon_input;
         using removed = givm::summon_removed;
 
         static id removed_id(const removed& event) { return event.summon; }
@@ -56,17 +56,17 @@ namespace
         using state = givm::combat_status_state;
         using query = givm::combat_status_state_limit;
         using generate = givm::generate_combat_status;
-        using generation = givm::combat_status_generation;
+        using generation = givm::generate_combat_status_input;
         using regeneration = givm::combat_status_regeneration;
         using add = givm::add_combat_status;
-        using addition = givm::combat_status_addition;
+        using addition = givm::add_combat_status_input;
         using set = givm::set_combat_status_state;
         using modify = givm::modify_combat_status_state;
-        using modification = givm::combat_status_state_modification;
-        using change = givm::combat_status_state_change;
+        using modification = givm::modify_combat_status_state_input;
+        using change = givm::set_combat_status_state_input;
         using changed = givm::combat_status_state_changed;
         using remove = givm::remove_combat_status;
-        using removal = givm::combat_status_removal;
+        using removal = givm::remove_combat_status_input;
         using removed = givm::combat_status_removed;
 
         static id removed_id(const removed& event) { return event.status; }
@@ -84,17 +84,17 @@ namespace
         using state = givm::attachment_state;
         using query = givm::attachment_state_limit;
         using generate = givm::attach;
-        using generation = givm::attachment_application;
+        using generation = givm::attach_input;
         using regeneration = givm::attachment_reapplication;
         using add = givm::add_attachment;
-        using addition = givm::attachment_addition;
+        using addition = givm::add_attachment_input;
         using set = givm::set_attachment_state;
         using modify = givm::modify_attachment_state;
-        using modification = givm::attachment_state_modification;
-        using change = givm::attachment_state_change;
+        using modification = givm::modify_attachment_state_input;
+        using change = givm::set_attachment_state_input;
         using changed = givm::attachment_state_changed;
         using remove = givm::remove_attachment;
-        using removal = givm::attachment_removal;
+        using removal = givm::remove_attachment_input;
         using removed = givm::attachment_removed;
 
         static id removed_id(const removed& event) { return event.attachment; }

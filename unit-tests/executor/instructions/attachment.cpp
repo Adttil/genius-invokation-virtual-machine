@@ -186,8 +186,8 @@ namespace
         static givm::program_entry handle(const definition_type& data, const givm::hand_card_view&, givm::card_effect& event, givm::handle_context& context)
         {
             const auto target = std::get<givm::character_id>(event.targets[0]);
-            if(data.remove) return context.invoke(data.effect, givm::attachment_removal{ context.table()[target].get(givm::equipment_type::weapon).id() });
-            return context.invoke(data.effect, givm::attachment_addition{
+            if(data.remove) return context.invoke(data.effect, givm::remove_attachment_input{ context.table()[target].get(givm::equipment_type::weapon).id() });
+            return context.invoke(data.effect, givm::add_attachment_input{
                 .target = target, .definition = data.equipment, .state = { 9 }
             });
         }
@@ -313,8 +313,8 @@ namespace
             if(data.log->calls++ == 0)
             {
                 return context.invoke(data.add,
-                    givm::attachment_addition{ .target = target, .definition = data.attachment, .state = { 3 } },
-                    givm::attachment_addition{ .target = target, .definition = data.attachment, .state = { 5 } });
+                    givm::add_attachment_input{ .target = target, .definition = data.attachment, .state = { 3 } },
+                    givm::add_attachment_input{ .target = target, .definition = data.attachment, .state = { 5 } });
             }
             for(const auto attachment : table[equipped_character].attachments())
                 data.log->added.push_back(attachment.id());
@@ -323,7 +323,7 @@ namespace
             for(const auto attachment : table[target].attachments())
             {
                 if(attachment.state().count == 3)
-                    return context.invoke(data.remove, givm::attachment_removal{ attachment.id() });
+                    return context.invoke(data.remove, givm::remove_attachment_input{ attachment.id() });
             }
             FAIL("first dynamic attachment is missing");
             return {};

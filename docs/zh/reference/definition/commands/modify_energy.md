@@ -10,6 +10,12 @@ struct modify_energy;
 
 按有符号增量修改角色充能的命令，用于获得或消耗充能。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`modify_energy_input`](../command_inputs/modify_energy_input.md)，动态模式下的输入类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
@@ -19,7 +25,7 @@ struct modify_energy;
 
 ## 注意
 
-默认构造 `modify_energy{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`energy_modification`](../events/energy_modification.md)。显式指定 `target` 时采用固定模式，不消费响应输入。
+默认构造 `modify_energy{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`modify_energy_input`](../command_inputs/modify_energy_input.md)。显式指定 `target` 时采用固定模式，不消费响应输入。
 
 固定模式在命令执行时按相对位置定位角色，`target.selection` 必须为 `character_selection::character`；没有有效目标时跳过命令。允许目标为已战败但未离场的角色，不会因为角色战败而顺延到其他角色。动态输入必须指定实际存在的有效角色。
 
@@ -33,5 +39,5 @@ struct modify_energy;
 
 | | |
 | --- | --- |
-| [`energy_modification`](../events/energy_modification.md) | 按增量修改充能的动态输入 |
+| [`modify_energy_input`](../command_inputs/modify_energy_input.md) | 按增量修改充能的动态输入 |
 | [`set_energy`](set_energy.md) | 充能赋值命令及执行示例 |

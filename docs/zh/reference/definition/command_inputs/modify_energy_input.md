@@ -1,11 +1,11 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **energy_modification**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **modify_energy_input**
 
-# givm::energy_modification
+# givm::modify_energy_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
 ```cpp
-struct energy_modification
+struct modify_energy_input
 {
     character_id target;
     std::int64_t delta{};

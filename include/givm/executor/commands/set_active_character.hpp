@@ -140,8 +140,9 @@ namespace givm::detail
     inline execution_state prepare_active_character_change_from_input(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        const auto event = get<0>(context.stack().top<active_character_changed>());
-        context.stack().pop<active_character_changed>();
+        const auto input = get<0>(context.stack().top<set_active_character_input>());
+        context.stack().pop<set_active_character_input>();
+        const active_character_changed event{ input.current };
         GIVM_ASSERT(static_cast<bool>(table[event.current]));
         const auto removal_resume = context.position() + sizeof(execute_fn);
         const auto broadcast_resume = removal_resume + (Observed ? 2 : 1) * sizeof(execute_fn);

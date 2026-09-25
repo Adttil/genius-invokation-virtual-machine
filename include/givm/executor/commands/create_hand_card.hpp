@@ -21,7 +21,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        hand_card_creation input;
+        create_hand_card_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, create_hand_card>(library);
@@ -34,8 +34,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<hand_card_creation>());
-            context.stack().pop<hand_card_creation>();
+            input = get<0>(context.stack().top<create_hand_card_input>());
+            context.stack().pop<create_hand_card_input>();
             context.enter_next();
         }
 

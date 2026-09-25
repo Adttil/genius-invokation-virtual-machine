@@ -58,10 +58,10 @@ namespace
                                          givm::skill_effect& event, givm::handle_context& context)
         {
             data.log->effects.push_back(event.flags);
-            return context.invoke(data.damage, givm::damage{
+            return context.invoke(data.damage, givm::deal_damage_input{ std::array{ givm::damage{
                 .source = self.id(), .target = givm::relative_character_target{ givm::relative_player::opponent },
                 .value = 1, .type = givm::damage_type::physical, .flags = event.flags.to_damage_flags()
-            });
+            } } });
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
                                          givm::after_damage& event, givm::handle_context&)

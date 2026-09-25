@@ -19,7 +19,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&)
     {
-        support_addition input;
+        add_support_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, add_support>(library);
@@ -32,8 +32,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<support_addition>());
-            context.stack().pop<support_addition>();
+            input = get<0>(context.stack().top<add_support_input>());
+            context.stack().pop<add_support_input>();
             context.enter_next();
         }
 

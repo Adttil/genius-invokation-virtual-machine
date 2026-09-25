@@ -91,10 +91,10 @@ namespace
             {
                 data.log->action_taken = true;
                 if(data.log->change_current)
-                    return context.invoke(data.change, givm::active_character_changed{ .current = target(1) });
-                return context.invoke(data.nested, givm::damage{
+                    return context.invoke(data.change, givm::set_active_character_input{ .current = target(1) });
+                return context.invoke(data.nested, givm::deal_damage_input{ std::array{ givm::damage{
                     .source = attacker, .target = target(0), .value = 1, .type = givm::damage_type::pyro
-                });
+                } } });
             }
             return {};
         }

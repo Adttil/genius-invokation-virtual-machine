@@ -69,7 +69,7 @@ executor ----------------> table
 
 table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 
-definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者可以仅包含 `definition.hpp` 保存入口与初始事件；实际调用 `add_program` 或 `handle_context` 成员时包含 `givm.hpp`，取得完整实现。source 适配仅传递 `handle_context&`，因此同样可以前置声明，保持单向依赖。
+definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者可以仅包含 `definition.hpp` 保存入口与命令输入；实际调用 `add_program` 或 `handle_context` 成员时包含 `givm.hpp`，取得完整实现。source 适配仅传递 `handle_context&`，因此同样可以前置声明，保持单向依赖。
 
 源库提供登记、名称查找、按类别遍历 source view 和建立 ID 映射的能力，不提供成员编译函数。成员 `sources.make_issued_id_map(...)` 使用登记时保留的声明信息完成选择、依赖闭包和 ID 分配；executor 中的非成员 `compile(sources, ..., initialization_program, round_program, mode)` 调用这个成员取得映射，再通过 source view 构建完整定义库。`source.compile(context)` 仍是单项定义源协议，不与整库编译入口混淆。
 

@@ -1,13 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **combat_status_addition**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **add_combat_status_input**
 
-# givm::combat_status_addition
+# givm::add_combat_status_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
 [add_combat_status](../commands/add_combat_status.md) 的动态输入，指定本次出战状态的目标、定义和状态。
 
 ```cpp
-struct combat_status_addition
+struct add_combat_status_input
 {
     player_id player;
     definition_id<combat_status_view> definition;

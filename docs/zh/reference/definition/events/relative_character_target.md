@@ -37,6 +37,6 @@ struct relative_character_target
 
 ## 作用范围
 
-固定伤害、动态伤害及治疗使用本类型作为目标时，均由本类型的 `selection` 确定范围。动态 [`damage`](damage.md) 使用精确角色 ID 时，才由其自身的 `selection` 成员确定范围。作为来源或传给只接受单角色的命令时，使用默认的 `character`。
+固定伤害、动态伤害及治疗使用本类型作为目标时，均由本类型的 `selection` 确定范围。动态 [`damage`](../command_inputs/damage.md) 使用精确角色 ID 时，才由其自身的 `selection` 成员确定范围。作为来源或传给只接受单角色的命令时，使用默认的 `character`。
 
-参见 [`damage`](damage.md)、[`set_active_character`](../commands/set_active_character.md)、[`heal`](../commands/heal.md)。
+参见 [`damage`](../command_inputs/damage.md)、[`set_active_character`](../commands/set_active_character.md)、[`heal`](../commands/heal.md)。

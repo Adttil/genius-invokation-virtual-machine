@@ -8,7 +8,7 @@
 struct active_character_changed;
 ```
 
-出战角色设置完成后的通知。响应者可以通过新的出战角色找到对应玩家。它也可作为默认构造的 [`set_active_character{}`](../commands/set_active_character.md) 所需的初始输入。
+出战角色设置完成后的通知。响应者可以通过新的出战角色找到对应玩家。默认构造的 [`set_active_character{}`](../commands/set_active_character.md) 通过本事件的别名 [`set_active_character_input`](../command_inputs/set_active_character_input.md) 提供目标。
 
 重复设置当前出战角色不产生本通知；首次设置出战角色仍会产生通知。
 

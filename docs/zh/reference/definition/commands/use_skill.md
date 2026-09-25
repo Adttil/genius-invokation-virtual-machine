@@ -9,14 +9,22 @@
 ```cpp
 struct use_skill
 {
+    using input_type = use_skill_input;
+
     relative_player player = relative_player::self;
     definition_id<skill_view> definition{};
 };
 ```
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`use_skill_input`](../command_inputs/use_skill_input.md)，动态模式下的输入类型 |
+
 ## 输入
 
-- 默认构造 `use_skill{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`skill_effect`](../events/skill_effect.md)，明确指定技能实体、技能性质及目标。
+- 默认构造 `use_skill{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`use_skill_input`](../command_inputs/use_skill_input.md)，明确指定技能实体、技能性质及目标。
 - 显式指定 `definition` 时使用固定模式，不消费响应输入。在命令执行时，使用 `player` 指定一方的当前出战角色上首个匹配定义的技能。`player` 默认选择本方，沿用 [`relative_player`](relative_player.md) 的含义。
 
 固定模式下，若该方尚未指定出战角色，或其出战角色没有匹配定义的技能，本命令无效果，也不发送技能使用前后的通知。命令不会创建技能或借用后台角色的技能。

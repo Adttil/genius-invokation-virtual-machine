@@ -144,7 +144,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        healing_application input;
+        heal_input input;
         std::optional<character_id> anchor;
         character_selection selection;
         if constexpr(Fixed)
@@ -159,8 +159,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<healing_application>());
-            context.stack().pop<healing_application>();
+            input = get<0>(context.stack().top<heal_input>());
+            context.stack().pop<heal_input>();
             context.enter_next();
             if(const auto* id = std::get_if<character_id>(&input.target))
             {

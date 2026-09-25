@@ -59,7 +59,7 @@ namespace
                 givm::draw_cards{ .count = 1 }
             }), context.add_program(std::tuple{
                 givm::deal_damage{ .damages = nested_damage },
-                givm::deal_damage{ .input_count = 2 },
+                givm::deal_damage{},
                 givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent }
             }), health };
         }
@@ -85,11 +85,11 @@ namespace
             CHECK(context.table().state().self_player == second);
             // The relative target uses this responding player's side. The exact ID does not.
             return context.invoke(data.nested,
-                givm::damage{ .source = first_character,
+                givm::deal_damage_input{ std::array{ givm::damage{ .source = first_character,
                     .target = givm::relative_character_target{ givm::relative_player::self },
                     .value = 1, .type = givm::damage_type::physical },
                 givm::damage{ .source = first_character, .target = second_character,
-                    .value = 1, .type = givm::damage_type::physical });
+                    .value = 1, .type = givm::damage_type::physical } } });
         }
         static givm::program_entry handle(const definition_type&, const givm::character_view& self,
             givm::damage_preparation& event, givm::handle_context& context)

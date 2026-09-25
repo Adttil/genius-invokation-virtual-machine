@@ -238,7 +238,7 @@ program_entry add_program(TCommands&& commands);
 
 `commands` 可为异构 tuple-like、同构 input range，或者包含 `any_command` 的范围；编译时逐项消费，不保存调用方序列或元素引用。入口不绑定外层事件类型，所需输入由具体命令值按执行顺序确定；不消费响应输入的命令不占输入位置，编译后入口的输入数量、类型和顺序固定。
 
-响应源通过 `context.invoke` 准备一次调用的完整输入。命令正常完成时消费自己的输入并清理临时状态；固定命令不消费输入。程序末尾自动返回，定义源不手工加入返回操作。输入类型和顺序由定义源保证，不保存用于匹配的类型表。debug 编译累计程序所需输入的总字节数并随入口保存，调用时只比较总长，不要求源提供类型元信息；Release 移除这项数据和检查。
+响应源通过 `context.invoke` 准备一次调用的完整输入。每条动态命令消费一个由 `input_type` 指定的输入帧，固定模式不占输入位置；程序末尾自动返回。debug 编译在独立 vector 中追加输入类型标记，每个动态命令一个，入口保存起点和数量。调用写入前检查数量、具体类型与顺序；数组长度不参与类型匹配。Release 移除标记与检查。输入类型列表从命令的 `input_type` 自动生成，仅固定命令不参与；字段相符的事件可显式别名复用。动态适配器提交 `any_command_input` 序列，由 C++ 包装提供同样的检查，无需脚本自行处理元数据。
 
 编译上下文不公开程序容器、入口数值或内部连接指令。详见[固定程序模型](fixed_program.md)。
 
@@ -324,7 +324,7 @@ static program_entry handle(
         return {};
     }
     event.value -= absorbed;
-    return context.invoke(definition.absorption, combat_status_state_modification{
+    return context.invoke(definition.absorption, modify_combat_status_state_input{
         .status = self.id(),
         .count = -static_cast<std::int64_t>(absorbed)
     });
@@ -370,7 +370,7 @@ bool can_handle() const;
 
 Lua 等动态来源通过声明 `is_dynamic = true` 的 C++ adapter 接入。adapter 保留与静态 source 相同的 `handle`、`query`、名称、标签、依赖和编译接口，并提供按源对象判断的 `can_handle`、`can_query`；脚本侧可以直接提供回调集合，不必复制 C++ 模板协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
 
-adapter 把定义的固定命令序列交给 `add_program`。每个程序所需输入的数量、类型和顺序由命令序列确定；响应时计算输入值，再提交对应的完整参数段。C++ 调用可以逐项传初始事件，动态 adapter 可以用 `span<const unsigned char>` 提交已经按该入口准备好的输入字节，不需要逐项恢复 C++ 类型或附带类型元信息。命令实现不因外层事件和实体类别组合而复制。
+adapter 把定义的固定命令序列交给 `add_program`。每个程序所需输入对象的数量、类型和顺序由命令序列确定；响应时计算输入值与各数组的内容。C++ 调用逐项提交专用输入对象，动态 adapter 使用 `span<const any_command_input>` 提交同样的对象序列。C++ 包装承担复制和 debug 匹配检查，脚本不需要理解字节布局。命令实现不因外层事件和实体类别组合而复制。
 
 ## 注册与生命周期
 

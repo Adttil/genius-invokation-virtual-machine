@@ -183,7 +183,7 @@ namespace
         {
             data.log->events.push_back("card-effect");
             if(data.dynamic)
-                return context.invoke(data.effect, givm::skill_effect{
+                return context.invoke(data.effect, givm::use_skill_input{
                     .skill = data.log->skill, .flags = data.log->flags, .targets = event.targets
                 });
             return context.invoke(data.effect);

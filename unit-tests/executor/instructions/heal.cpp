@@ -66,10 +66,10 @@ namespace
             if(data.log->dynamic)
             {
                 if(data.log->relative_input)
-                    return context.invoke(data.heal, givm::healing_application{ patient,
+                    return context.invoke(data.heal, givm::heal_input{ patient,
                         givm::relative_character_target{ givm::relative_player::self,
                             data.log->target_offset, data.log->selection }, data.log->value });
-                return context.invoke(data.heal, givm::healing_application{ patient, patient, data.log->value });
+                return context.invoke(data.heal, givm::heal_input{ patient, patient, data.log->value });
             }
             return context.invoke(data.heal);
         }

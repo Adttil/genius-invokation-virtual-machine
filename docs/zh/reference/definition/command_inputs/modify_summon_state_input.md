@@ -1,13 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **summon_state_modification**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **modify_summon_state_input**
 
-# givm::summon_state_modification
+# givm::modify_summon_state_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
 [modify_summon_state](../commands/modify_summon_state.md) 的动态输入，指定要修改的召唤物以及本次变化。
 
 ```cpp
-struct summon_state_modification
+struct modify_summon_state_input
 {
     summon_id summon;
     std::int64_t value{};

@@ -8,7 +8,7 @@
 struct skill_effect;
 ```
 
-执行所选技能自身效果时，提供这项技能及其目标。技能定义通过响应中的 `invoke` 提交入口以实现技能效果。本类型也用作 [`use_skill{}`](../commands/use_skill.md) 的动态输入。
+执行所选技能自身效果时，提供这项技能及其目标。技能定义通过响应中的 `invoke` 提交入口以实现技能效果。[`use_skill{}`](../commands/use_skill.md) 通过本事件的别名 [`use_skill_input`](../command_inputs/use_skill_input.md) 提交参数。
 
 ## 成员对象
 

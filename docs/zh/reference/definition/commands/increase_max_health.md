@@ -10,6 +10,12 @@ struct increase_max_health;
 
 增加一个角色的生命上限，并恢复相同数量的生命。完成后只发送 [`healed`](../events/healed.md) 通知，不经过 [`healing`](../events/healing.md) 治疗量修饰，也不产生额外的生命上限变更事件。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`increase_max_health_input`](../command_inputs/increase_max_health_input.md)，动态模式下的输入类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
@@ -20,7 +26,7 @@ struct increase_max_health;
 
 ## 输入
 
-- 默认构造 `increase_max_health{}`，消费响应通过 `invoke` 提交的一个 [`healing`](../events/healing.md)，读取其中的来源、目标和增加量；该输入不作为 `healing` 广播。
+- 默认构造 `increase_max_health{}`，消费响应通过 `invoke` 提交的一个 [`increase_max_health_input`](../command_inputs/increase_max_health_input.md)，读取其中的来源、目标和增加量；该输入不作为 `healing` 广播。
 - 显式指定 `target` 时使用命令中的固定参数，不消费响应输入。
 
 动态输入须指定有效角色。固定参数在命令执行时分别定位来源和目标；缺少任一角色时跳过命令。来源不会被替换成目标，也不会从外层响应推断；需要精确技能、牌或召唤物来源时应采用动态输入。

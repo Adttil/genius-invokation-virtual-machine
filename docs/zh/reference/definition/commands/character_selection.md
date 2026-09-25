@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/definition.hpp>`。
 
-指定伤害或治疗在定位角色后选择哪些角色。相对目标通过 [`relative_character_target`](../events/relative_character_target.md) 的 `selection` 成员提供；动态伤害使用精确角色 ID 时，由 [`damage::selection`](../events/damage.md) 提供。
+指定伤害或治疗在定位角色后选择哪些角色。相对目标通过 [`relative_character_target`](../events/relative_character_target.md) 的 `selection` 成员提供；动态伤害使用精确角色 ID 时，由 [`damage::selection`](../command_inputs/damage.md) 提供。
 
 ```cpp
 enum class character_selection : std::uint8_t

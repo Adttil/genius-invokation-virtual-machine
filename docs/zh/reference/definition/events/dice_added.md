@@ -12,7 +12,7 @@ struct dice_added
 };
 ```
 
-[`add_dice`](../commands/add_dice.md) 的动态输入，也是元素骰增加完成后的通知。
+元素骰增加完成后的通知，由 [`add_dice`](../commands/add_dice.md) 发送。
 
 ## 成员对象
 
@@ -23,7 +23,7 @@ struct dice_added
 
 ## 注意
 
-响应可通过 `invoke` 将此事件提交给默认构造的 `add_dice{}`。命令一次性增加全部指定骰子后，全场广播一次本事件，再继续后续命令。`dice` 是本次增加量，不是玩家增加后的骰子总量；全部数量为零时不广播。
+命令一次性增加全部指定骰子后，全场广播一次本事件，再继续后续命令。`dice` 是本次增加量，不是玩家增加后的骰子总量；全部数量为零时不广播。动态命令通过本事件的别名 [`add_dice_input`](../command_inputs/add_dice_input.md) 提交参数。
 
 投骰和元素调和不发送此通知。
 

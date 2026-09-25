@@ -57,7 +57,7 @@ handler 不能通过 `context.table()` 修改持久状态，持久副作用由�
 
 `prepare_broadcast` 在调用时完成目标列表采样；`continue_broadcast` 不重新采样。调用前推进游标，调用阶段检查实体是否仍有效，不重新扫描全体订阅关系。
 
-响应者 self 与事件 target 可以不同。出战状态护盾的 handler 自行把 self ID 写入 `combat_status_state_modification`，后续相对修改命令不再读取广播保存的响应者。
+响应者 self 与事件 target 可以不同。出战状态护盾的 handler 自行把 self ID 写入 `modify_combat_status_state_input`，后续相对修改命令不再读取广播保存的响应者。
 
 `continue_broadcast` 区分广播结束与已经提交响应程序。全部响应者走完后，领域命令继续事件后处理并清理广播；进入响应程序时立即交还调度。每次恢复重新取得所需引用。
 

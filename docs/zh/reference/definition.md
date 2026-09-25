@@ -36,6 +36,7 @@
 |  |  |
 | --- | --- |
 | [`any_command`](definition/any_command.md) | 核心命令 variant |
+| [`any_command_input`](definition/any_command_input.md) | 核心命令输入 variant |
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
@@ -51,6 +52,10 @@
 ## [命令](definition/commands.md)
 
 组合游戏流程和实体响应效果的核心操作。
+
+## [命令输入](definition/command_inputs.md)
+
+响应提交的动态参数，以及运行时确定长度的输入数组。
 
 ## [事件](definition/events.md)
 

@@ -148,8 +148,8 @@ namespace
         {
             if(self.id().index != 0) return {};
             if(data.dynamic)
-                return context.invoke(data.entry, givm::active_character_changed{ { player, 0 } },
-                    givm::active_character_changed{ { player, 1 } }, givm::active_character_changed{ { player, 1 } });
+                return context.invoke(data.entry, givm::set_active_character_input{ { player, 0 } },
+                    givm::set_active_character_input{ { player, 1 } }, givm::set_active_character_input{ { player, 1 } });
             return context.invoke(data.entry);
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view& self,

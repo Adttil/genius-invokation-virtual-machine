@@ -55,7 +55,7 @@ namespace
             --event.requirement.dice_requirement.any;
             data.log->events.push_back("quote");
             return context.invoke(givm::substack_t{}, data.payment,
-                givm::attachment_state_modification{ .attachment = self.id(), .count = -1 });
+                givm::modify_attachment_state_input{ .attachment = self.id(), .count = -1 });
         }
         static givm::program_entry handle(const definition_type& data, const givm::attachment_view&,
                                          givm::technique_will_be_used& event, givm::handle_context&)

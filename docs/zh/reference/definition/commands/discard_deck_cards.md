@@ -10,6 +10,12 @@ struct discard_deck_cards;
 
 从指定玩家的牌堆顶舍弃至多 `count` 张牌。牌堆不足时舍弃剩余全部牌。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`discard_deck_cards_input`](../command_inputs/discard_deck_cards_input.md)，动态模式下的输入类型 |
+
 ## 成员
 
 | | |
@@ -17,7 +23,7 @@ struct discard_deck_cards;
 | `count` | 要舍弃的牌数。 |
 | `player` | 相对于命令执行时本方的玩家，默认 `relative_player::self`。 |
 
-指定 `count` 时使用固定参数，如 `discard_deck_cards{ .count = 2 }`。默认构造 `discard_deck_cards{}` 时，消费响应通过 `invoke` 提交的一个 [`deck_card_discard`](../events/deck_card_discard.md)。
+指定 `count` 时使用固定参数，如 `discard_deck_cards{ .count = 2 }`。默认构造 `discard_deck_cards{}` 时，消费响应通过 `invoke` 提交的一个 [`discard_deck_cards_input`](../command_inputs/discard_deck_cards_input.md)。
 
 ## 结算
 

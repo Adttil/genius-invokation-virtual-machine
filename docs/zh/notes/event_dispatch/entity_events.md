@@ -24,7 +24,7 @@
 
 ## 添加、替换与移除附件
 
-默认构造的 `add_attachment{}` 消费响应明确提交的 `attachment_addition`，由输入提供目标、定义和初始状态。显式提供 `definition` 时使用固定参数，不消费输入，在执行时定位 `player` 指定一方的出战角色，再进入相同结算阶段。两种方式的初始状态都逐字段限制到定义上限，参数来源在编译时确定，不读取原响应事件。装备类别由 attachment 定义的 `weapon`、`artifact`、`talent`、`technique` 标签决定，这些类别标签互斥；没有类别标签时是普通附件。
+默认构造的 `add_attachment{}` 消费响应明确提交的 `add_attachment_input`，由输入提供目标、定义和初始状态。显式提供 `definition` 时使用固定参数，不消费输入，在执行时定位 `player` 指定一方的出战角色，再进入相同结算阶段。两种方式的初始状态都逐字段限制到定义上限，参数来源在编译时确定，不读取原响应事件。装备类别由 attachment 定义的 `weapon`、`artifact`、`talent`、`technique` 标签决定，这些类别标签互斥；没有类别标签时是普通附件。
 
 普通附件独立追加。同类装备已有占用者时，先删除旧实体，再采样并完成 `attachment_removed`；最后创建新装备，不发送添加完成事件。删除只标记失效，保留旧信息，并清除仍指向自身的装备索引。
 
@@ -42,9 +42,9 @@ table 内部的角色 handle 保留两个添加重载：`add(definition, state)`
 
 | 命令 | 动态输入 | 已有实体的定向通知 |
 | --- | --- | --- |
-| `summon` | `summoning` | `resummoning` |
-| `generate_combat_status` | `combat_status_generation` | `combat_status_regeneration` |
-| `attach` | `attachment_application` | `attachment_reapplication` |
+| `summon` | `summon_input` | `resummoning` |
+| `generate_combat_status` | `generate_combat_status_input` | `combat_status_regeneration` |
+| `attach` | `attach_input` | `attachment_reapplication` |
 
 `add_summon`、`add_combat_status` 和 `add_attachment` 直接添加，不进行同定义实体判断，避免重复生成响应中的追加再次进入生成处理。新建实体没有全场的添加完成通知；只有重复生成和自身状态变化使用定向通知，离场后按类别全场广播 `summon_removed`、`combat_status_removed` 或 `attachment_removed`。
 
@@ -64,7 +64,7 @@ table 内部的角色 handle 保留两个添加重载：`add(definition, state)`
 
 attachment 与 combat_status 分别记录层数 `count` 和每回合剩余次数 `round_usages`。修改后仅向自身发送相应的 `state_changed`，由定义决定零层数时是否离场；回合次数的重置同样由定义响应回合事件后提交修改命令，执行器不统一重置。
 
-`set_*_state` 以绝对值覆盖状态，逐字段限制到定义上限。`modify_*_state` 接受 `std::int64_t` 增量：召唤物为 `value`、`usages`，两类状态为 `count`、`round_usages`。动态输入分别为 `summon_state_modification`、`combat_status_state_modification` 和 `attachment_state_modification`。相对修改在命令实际执行时读取当前值，再把数学上的“当前值 + 增量”饱和到 `[0, 定义上限]`，避免无符号下溢或加法溢出；零增量保留相应字段。扣层和次数消耗统一用负增量表达，不再提供专用的出战状态扣层命令。
+`set_*_state` 以绝对值覆盖状态，逐字段限制到定义上限。`modify_*_state` 接受 `std::int64_t` 增量：召唤物为 `value`、`usages`，两类状态为 `count`、`round_usages`。动态输入分别为 `modify_summon_state_input`、`modify_combat_status_state_input` 和 `modify_attachment_state_input`。相对修改在命令实际执行时读取当前值，再把数学上的“当前值 + 增量”饱和到 `[0, 定义上限]`，避免无符号下溢或加法溢出；零增量保留相应字段。扣层和次数消耗统一用负增量表达，不再提供专用的出战状态扣层命令。
 
 定向通知不收集全场实体，只调用一个 handle。子程序返回后修改命令才结束；实体可能已经被响应删除，因此收尾不继续读取实体。通知的旧值和新值属于本次写入的快照。直接 table state 赋值只属于存储操作，通知由领域命令执行。
 

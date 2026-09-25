@@ -61,7 +61,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log,
-                context.add_program(std::tuple{ givm::deal_damage{ .input_count = 2 } }),
+                context.add_program(std::tuple{ givm::deal_damage{} }),
                 context.add_program(std::tuple{ givm::deal_damage{} }),
                 context.add_program(std::tuple{
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .element = givm::element::none },
@@ -82,8 +82,8 @@ namespace
             givm::test_event&, givm::handle_context& context)
         {
             return context.invoke(data.pair,
-                givm::damage{ .source = attacker, .target = victim(0), .value = 2, .type = givm::damage_type::physical },
-                givm::damage{ .source = attacker, .target = victim(1), .value = 3, .type = givm::damage_type::physical });
+                givm::deal_damage_input{ std::array{ givm::damage{ .source = attacker, .target = victim(0), .value = 2, .type = givm::damage_type::physical },
+                givm::damage{ .source = attacker, .target = victim(1), .value = 3, .type = givm::damage_type::physical } } });
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             givm::damage_preparation& event, givm::handle_context&)
@@ -99,8 +99,8 @@ namespace
             if(data.log->nested && !data.log->nested_invoked && event.target == victim(0))
             {
                 data.log->nested_invoked = true;
-                return context.invoke(data.single, givm::damage{
-                    .source = attacker, .target = victim(2), .value = 4, .type = givm::damage_type::physical });
+                return context.invoke(data.single, givm::deal_damage_input{ std::array{ givm::damage{
+                    .source = attacker, .target = victim(2), .value = 4, .type = givm::damage_type::physical } } });
             }
             return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
         }
@@ -142,8 +142,8 @@ namespace
             record_health(*data.log, context.table());
             data.log->after_second_aura.push_back(context.table()[victim(1)].state().aura);
             if(data.log->nested_after_first && event.target == victim(0))
-                return context.invoke(data.single, givm::damage{
-                    .source = attacker, .target = victim(2), .value = 4, .type = givm::damage_type::physical });
+                return context.invoke(data.single, givm::deal_damage_input{ std::array{ givm::damage{
+                    .source = attacker, .target = victim(2), .value = 4, .type = givm::damage_type::physical } } });
             if(data.log->change_aura_after_first && event.target == victim(0))
                 return context.invoke(data.change_aura);
             return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
@@ -215,8 +215,8 @@ namespace
             givm::test_event&, givm::handle_context& context)
         {
             return context.invoke(data.setup,
-                givm::attachment_addition{ .target = self.id(), .definition = data.ordinary },
-                givm::attachment_addition{ .target = self.id(), .definition = data.artifact });
+                givm::add_attachment_input{ .target = self.id(), .definition = data.ordinary },
+                givm::add_attachment_input{ .target = self.id(), .definition = data.artifact });
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
             givm::after_damage& event, givm::handle_context&)

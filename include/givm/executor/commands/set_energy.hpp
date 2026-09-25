@@ -14,7 +14,7 @@ namespace givm::detail
     inline execution_state execute_energy_change(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn&)
     {
-        energy_change input;
+        set_energy_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, set_energy>(library);
@@ -25,8 +25,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<energy_change>());
-            context.stack().pop<energy_change>();
+            input = get<0>(context.stack().top<set_energy_input>());
+            context.stack().pop<set_energy_input>();
             context.enter_next();
         }
         GIVM_ASSERT(table[input.target].is_valid());

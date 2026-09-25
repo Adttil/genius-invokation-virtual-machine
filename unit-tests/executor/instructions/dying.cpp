@@ -48,7 +48,7 @@ namespace
             CHECK(self.is_valid());
             data.log->order.push_back(2);
             if(not data.log->revive) return {};
-            return context.invoke(data.entry, givm::healing_application{ .source = self.id(), .target = event.target, .value = 2 });
+            return context.invoke(data.entry, givm::heal_input{ .source = self.id(), .target = event.target, .value = 2 });
         }
         static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
             givm::after_damage&, givm::handle_context&)
@@ -83,7 +83,7 @@ namespace
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,
             givm::test_event&, givm::handle_context& context)
         {
-            return context.invoke(data.attach, givm::attachment_application{
+            return context.invoke(data.attach, givm::attach_input{
                 .target = victim, .definition = data.attachment, .state = { 1 } });
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,

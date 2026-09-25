@@ -8,7 +8,7 @@ namespace givm::detail
 {
     inline program_entry prepare_summoning(
         const definition_library& library, unrestricted_table& table, execution_context& context,
-        random_fn& random, summoning input, execution_position resume)
+        random_fn& random, summon_input input, execution_position resume)
     {
         const auto definition = library[input.definition];
         input.state = clamp_summon_state(input.state, definition.query(summon_state_limit{}));
@@ -48,7 +48,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        summoning input;
+        summon_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, summon>(library);
@@ -61,8 +61,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<summoning>());
-            context.stack().pop<summoning>();
+            input = get<0>(context.stack().top<summon_input>());
+            context.stack().pop<summon_input>();
             context.enter_next();
         }
 

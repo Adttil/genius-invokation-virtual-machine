@@ -108,10 +108,10 @@ namespace givm::detail
         }
         else
         {
-            const auto input = get<0>(context.stack().top<deck_card_discard>());
+            const auto input = get<0>(context.stack().top<discard_deck_cards_input>());
             player = input.player;
             requested_count = input.count;
-            context.stack().pop<deck_card_discard>();
+            context.stack().pop<discard_deck_cards_input>();
             context.enter_next();
         }
         auto player_entity = table[player];

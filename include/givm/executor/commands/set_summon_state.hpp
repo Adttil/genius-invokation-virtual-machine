@@ -16,7 +16,7 @@ namespace givm::detail
 
     inline execution_state change_summon_state(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random, const summon_state_change& input)
+        execution_context& context, random_fn& random, const set_summon_state_input& input)
     {
         summon_state_changed event{ table[input.summon].state(), input.state };
         table[input.summon].state() = input.state;
@@ -40,7 +40,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        summon_state_change input;
+        set_summon_state_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, set_summon_state>(library);
@@ -51,8 +51,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<summon_state_change>());
-            context.stack().pop<summon_state_change>();
+            input = get<0>(context.stack().top<set_summon_state_input>());
+            context.stack().pop<set_summon_state_input>();
             context.enter_next();
         }
 

@@ -1,11 +1,11 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **skill_state_change**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **set_skill_state_input**
 
-# givm::skill_state_change
+# givm::set_skill_state_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
 ```cpp
-struct skill_state_change
+struct set_skill_state_input
 {
     skill_id skill;
     skill_state state;

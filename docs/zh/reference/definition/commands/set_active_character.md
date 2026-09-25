@@ -10,6 +10,12 @@ struct set_active_character;
 
 直接设置出战角色的命令。它用于规则强制的切换，不经过主动切换的费用计算。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`set_active_character_input`](../command_inputs/set_active_character_input.md)，动态模式下的输入类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
@@ -20,7 +26,7 @@ struct set_active_character;
 
 通过构造命令选择目标的提供方式：
 
-- 默认构造 `set_active_character{}` 使用动态输入，消费响应通过 `invoke` 提交的一个 [`active_character_changed`](../events/active_character_changed.md)，以其中的 `current` 为目标。
+- 默认构造 `set_active_character{}` 使用动态输入，消费响应通过 `invoke` 提交的一个 [`set_active_character_input`](../command_inputs/set_active_character_input.md)，以其中的 `current` 为目标。
 - 显式指定 `target` 时，使用该固定目标，不消费响应输入。
 
 动态输入须指定牌桌上的有效存活角色。固定目标在命令执行时定位，跳过已战败角色；没有存活目标时跳过命令。命令不读取外层响应事件或响应者；动态目标的提交示例见 [`handle_context::invoke`](../../executor/handle_context/invoke.md#示例)。

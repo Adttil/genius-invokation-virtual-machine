@@ -7,25 +7,31 @@
 ```cpp
 struct deal_damage
 {
+    using input_type = deal_damage_input;
+
     std::span<const fixed_damage> damages{};
-    std::size_t input_count = 1;
 };
 ```
 
 完成一组伤害。先为整组确定属性、元素反应及派生伤害，并推进元素附着；再逐段计算数值、扣除生命、处理击倒与默认反应实体生成；最后处理超载切人及反应后、伤害后响应。
+
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`deal_damage_input`](../command_inputs/deal_damage_input.md)，动态模式下的输入类型 |
 
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `damages` | `std::span<const fixed_damage>` | 编译时提供的固定伤害描述；非空时不消费响应输入 |
-| `input_count` | `std::size_t` | `damages` 为空时消费的动态伤害描述数量，默认为 1 |
 
 ## 输入
 
-默认构造 `deal_damage{}` 消费响应通过 `invoke` 提交的一个 [`damage`](../events/damage.md)。`input_count` 必须大于零；指定 `input_count = 2` 时，响应依次提交两个 `damage`，例如 `return context.invoke(entry, first, second);`。这些描述属于同一组，按提交顺序处理。
+默认构造 `deal_damage{}` 消费响应通过 `invoke` 提交的一个 [`deal_damage_input`](../command_inputs/deal_damage_input.md)。其 `damages` 包含本次全部 [`damage`](../command_inputs/damage.md) 描述，数量可在响应时决定；空数组不产生伤害。这些描述属于同一组，按数组顺序处理。`invoke` 复制数组内容，返回后不再借用原数组。
 
-非空 `damages` 的内容在编译该命令时复制，所引用的数组只需保持有效至相应 `add_program` 或整体 `compile` 返回。执行时不借用原数组；此时 `input_count` 不参与结算。
+非空 `damages` 的内容在编译该命令时复制，所引用的数组只需保持有效至相应 `add_program` 或整体 `compile` 返回。执行时不借用原数组。
 
 [`fixed_damage`](fixed_damage.md) 以位置描述来源和目标，不保存对局实体 ID。先以当前效果的本方或对方确定玩家，再在准备这一条初始描述时解析出战位置，因此能表达出战角色、下一个角色、上一个角色，以及定位角色以外的其他角色或全部角色。作用范围由 [`character_selection`](character_selection.md) 指定。本方取自 [`table_state::self_player`](../../table/table_state.md)，根流程使用相对描述时须显式设置有效本方。需要保留具体技能、召唤物或卡牌来源时，使用动态 `damage` 输入；固定命令不会把来源隐式设为响应实体。
 

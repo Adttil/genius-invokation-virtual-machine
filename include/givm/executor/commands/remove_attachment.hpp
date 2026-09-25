@@ -47,8 +47,8 @@ namespace givm::detail
         }
         else
         {
-            attachment = get<0>(context.stack().top<attachment_removal>()).attachment;
-            context.stack().pop<attachment_removal>();
+            attachment = get<0>(context.stack().top<remove_attachment_input>()).attachment;
+            context.stack().pop<remove_attachment_input>();
             context.enter_next();
         }
         const bool valid = static_cast<bool>(table[attachment]);

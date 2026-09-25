@@ -69,11 +69,11 @@ namespace
             if(data.log->nested_after_first && not data.log->nested_invoked)
             {
                 data.log->nested_invoked = true;
-                return context.invoke(data.nested, givm::damage{
+                return context.invoke(data.nested, givm::deal_damage_input{ std::array{ givm::damage{
                     .source = givm::character_id{ data.log->source_player, 0 },
                     .target = givm::character_id{ other_player(data.log->source_player), 0 },
                     .value = 1, .type = givm::damage_type::dendro
-                });
+                } } });
             }
             return {};
         }
@@ -128,7 +128,7 @@ namespace
             givm::combat_status_regeneration& event, givm::handle_context& context)
         {
             ++data.log->repeated;
-            return context.invoke(data.repeat, givm::combat_status_state_change{ .status = self.id(), .state = event.state });
+            return context.invoke(data.repeat, givm::set_combat_status_state_input{ .status = self.id(), .state = event.state });
         }
     };
 

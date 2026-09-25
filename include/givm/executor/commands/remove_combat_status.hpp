@@ -40,8 +40,8 @@ namespace givm::detail
         }
         else
         {
-            status = get<0>(context.stack().top<combat_status_removal>()).status;
-            context.stack().pop<combat_status_removal>();
+            status = get<0>(context.stack().top<remove_combat_status_input>()).status;
+            context.stack().pop<remove_combat_status_input>();
             context.enter_next();
         }
         const bool valid = static_cast<bool>(table[status]);

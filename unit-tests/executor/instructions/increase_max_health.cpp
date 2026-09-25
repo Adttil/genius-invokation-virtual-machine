@@ -51,7 +51,7 @@ namespace
             givm::test_event&, givm::handle_context& context)
         {
             if(data.log->dynamic)
-                return context.invoke(data.increase, givm::healing{ target, target, data.log->value });
+                return context.invoke(data.increase, givm::increase_max_health_input{ target, target, data.log->value });
             return context.invoke(data.increase);
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view&,

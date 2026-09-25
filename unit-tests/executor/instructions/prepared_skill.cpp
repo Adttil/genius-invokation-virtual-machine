@@ -69,10 +69,10 @@ namespace
             data.log->events.push_back("effect:" + std::string{ data.name });
             data.log->effects.push_back(self.id());
             event.speed = data.speed;
-            return context.invoke(data.effect, givm::damage{
+            return context.invoke(data.effect, givm::deal_damage_input{ std::array{ givm::damage{
                 .source = self.id(), .target = givm::relative_character_target{ givm::relative_player::opponent },
                 .value = self.state().count, .type = givm::damage_type::physical,
-                .flags = givm::damage_flag_bits::prepared_skill });
+                .flags = givm::damage_flag_bits::prepared_skill } } });
         }
     };
 

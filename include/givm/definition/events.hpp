@@ -108,18 +108,6 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(changing_energy);
     };
 
-    struct energy_change
-    {
-        character_id target;
-        std::uint32_t value;
-    };
-
-    struct energy_modification
-    {
-        character_id target;
-        std::int64_t delta{};
-    };
-
     struct energy_changed
     {
         const character_id target;
@@ -178,12 +166,6 @@ namespace givm
     };
 
     // Card-zone and candidate events.
-    struct hand_card_creation
-    {
-        player_id player;
-        definition_id<card_definition> definition;
-    };
-
     struct hand_card_added
     {
         const hand_card_id card;
@@ -200,13 +182,6 @@ namespace givm
     {
         const hand_card_id card;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(hand_card_discard_effect);
-    };
-
-    struct deck_card_discard
-    {
-        const player_id player;
-        const std::uint32_t count;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(deck_card_discard);
     };
 
     struct deck_card_discard_effect
@@ -288,12 +263,6 @@ namespace givm
 
     // Skill events.
     using skill_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
-
-    struct skill_state_change
-    {
-        skill_id skill;
-        skill_state state;
-    };
 
     struct skill_effect
     {
@@ -379,18 +348,6 @@ namespace givm
 
     using damage_target = std::variant<character_id, relative_character_target>;
 
-    struct damage
-    {
-        damage_source_id source;
-        damage_target target;
-        character_selection selection = character_selection::character;
-        std::uint32_t value;
-        std::uint16_t multiplier_numerator = 1;
-        std::uint16_t multiplier_denominator = 1;
-        damage_type type;
-        damage_flags flags;
-    };
-
     struct damage_preparation
     {
         damage_source_id source;
@@ -449,13 +406,6 @@ namespace givm
 
     using healing_target = std::variant<character_id, relative_character_target>;
 
-    struct healing_application
-    {
-        effect_source_id source;
-        healing_target target;
-        std::uint32_t value;
-    };
-
     struct healing
     {
         const effect_source_id source;
@@ -476,14 +426,6 @@ namespace givm
     using element_application_source_id =
         std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
                      combat_status_id, character_id, skill_id, attachment_id>;
-
-    struct element_application
-    {
-        element_application_source_id source;
-        character_id target;
-        element element;
-        element_application_cause cause = element_application_cause::effect;
-    };
 
     struct elemental_reaction_will_occur
     {
@@ -525,36 +467,11 @@ namespace givm
     };
 
     // Entity events.
-    struct support_addition
-    {
-        player_id player;
-        definition_id<support_view> definition;
-        support_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
-    };
-
-    struct support_state_change
-    {
-        support_id support;
-        support_state state;
-    };
-
-    struct support_state_modification
-    {
-        support_id support;
-        std::int64_t count{};
-        std::int64_t round_usages{};
-    };
-
     struct support_state_changed
     {
         const support_state previous;
         const support_state current;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(support_state_changed);
-    };
-
-    struct support_removal
-    {
-        support_id support;
     };
 
     struct support_removed
@@ -563,37 +480,10 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(support_removed);
     };
 
-    struct summoning
-    {
-        player_id player;
-        definition_id<summon_view> definition;
-        summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
-    };
-
-    struct summon_addition
-    {
-        player_id player;
-        definition_id<summon_view> definition;
-        summon_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
-    };
-
     struct resummoning
     {
         const summon_state state;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(resummoning);
-    };
-
-    struct summon_state_change
-    {
-        summon_id summon;
-        summon_state state;
-    };
-
-    struct summon_state_modification
-    {
-        summon_id summon;
-        std::int64_t value{};
-        std::int64_t usages{};
     };
 
     struct summon_state_changed
@@ -603,48 +493,16 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(summon_state_changed);
     };
 
-    struct summon_removal
-    {
-        summon_id summon;
-    };
-
     struct summon_removed
     {
         const summon_id summon;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(summon_removed);
     };
 
-    struct combat_status_generation
-    {
-        player_id player;
-        definition_id<combat_status_view> definition;
-        combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
-    };
-
-    struct combat_status_addition
-    {
-        player_id player;
-        definition_id<combat_status_view> definition;
-        combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
-    };
-
     struct combat_status_regeneration
     {
         const combat_status_state state;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(combat_status_regeneration);
-    };
-
-    struct combat_status_state_change
-    {
-        combat_status_id status;
-        combat_status_state state;
-    };
-
-    struct combat_status_state_modification
-    {
-        combat_status_id status;
-        std::int64_t count{};
-        std::int64_t round_usages{};
     };
 
     struct combat_status_state_changed
@@ -654,22 +512,10 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(combat_status_state_changed);
     };
 
-    struct combat_status_removal
-    {
-        combat_status_id status;
-    };
-
     struct combat_status_removed
     {
         const combat_status_id status;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(combat_status_removed);
-    };
-
-    struct attachment_application
-    {
-        character_id target;
-        definition_id<attachment_view> definition;
-        attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
     struct attachment_reapplication
@@ -678,36 +524,11 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_reapplication);
     };
 
-    struct attachment_state_change
-    {
-        attachment_id attachment;
-        attachment_state state;
-    };
-
-    struct attachment_state_modification
-    {
-        attachment_id attachment;
-        std::int64_t count{};
-        std::int64_t round_usages{};
-    };
-
     struct attachment_state_changed
     {
         const attachment_state previous;
         const attachment_state current;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_state_changed);
-    };
-
-    struct attachment_addition
-    {
-        character_id target;
-        definition_id<attachment_view> definition;
-        attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
-    };
-
-    struct attachment_removal
-    {
-        attachment_id attachment;
     };
 
     struct attachment_removed

@@ -1,13 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **support_state_change**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **set_support_state_input**
 
-# givm::support_state_change
+# givm::set_support_state_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
 [set_support_state](../commands/set_support_state.md) 的动态输入，指定要修改的支援以及本次变化。
 
 ```cpp
-struct support_state_change
+struct set_support_state_input
 {
     support_id support;
     support_state state;

@@ -7,7 +7,7 @@ namespace givm::detail
 {
     inline program_entry prepare_combat_status_generation(
         const definition_library& library, unrestricted_table& table, execution_context& context,
-        random_fn& random, combat_status_generation input, execution_position resume)
+        random_fn& random, generate_combat_status_input input, execution_position resume)
     {
         const auto definition = library[input.definition];
         input.state = clamp_combat_status_state(input.state, definition.query(combat_status_state_limit{}));
@@ -42,7 +42,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        combat_status_generation input;
+        generate_combat_status_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, generate_combat_status>(library);
@@ -55,8 +55,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<combat_status_generation>());
-            context.stack().pop<combat_status_generation>();
+            input = get<0>(context.stack().top<generate_combat_status_input>());
+            context.stack().pop<generate_combat_status_input>();
             context.enter_next();
         }
 

@@ -54,11 +54,11 @@ namespace
         {
             if(data.log->dynamic)
                 return context.invoke(data.effect,
-                    givm::dice_added{ givm::player_id{ 1 }, {} },
-                    givm::dice_added{ givm::player_id{ 0 }, data.log->first },
-                    givm::dice_added{ givm::player_id{ 0 }, {} },
-                    givm::dice_added{ givm::player_id{ 1 }, data.log->last },
-                    givm::dice_added{ givm::player_id{ 1 }, {} });
+                    givm::add_dice_input{ givm::player_id{ 1 }, {} },
+                    givm::add_dice_input{ givm::player_id{ 0 }, data.log->first },
+                    givm::add_dice_input{ givm::player_id{ 0 }, {} },
+                    givm::add_dice_input{ givm::player_id{ 1 }, data.log->last },
+                    givm::add_dice_input{ givm::player_id{ 1 }, {} });
             return context.invoke(data.effect);
         }
         static givm::program_entry handle(const definition_type& data, const givm::support_view&,
@@ -79,7 +79,7 @@ namespace
             {
                 if(data.log->dynamic)
                     return context.invoke(data.nested,
-                        givm::dice_added{ givm::player_id{ 1 }, data.log->nested });
+                        givm::add_dice_input{ givm::player_id{ 1 }, data.log->nested });
                 return context.invoke(data.nested);
             }
             return {};

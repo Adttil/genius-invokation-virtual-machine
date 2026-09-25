@@ -34,10 +34,10 @@ namespace givm::detail
         }
         else
         {
-            const auto& input = get<0>(context.stack().top<dice_added>());
+            const auto& input = get<0>(context.stack().top<add_dice_input>());
             player = input.player;
             dice = input.dice;
-            context.stack().pop<dice_added>();
+            context.stack().pop<add_dice_input>();
             context.enter_next();
             if(dice.total() == 0)
                 return context.enter_next();

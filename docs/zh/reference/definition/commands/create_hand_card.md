@@ -7,12 +7,20 @@
 ```cpp
 struct create_hand_card
 {
+    using input_type = create_hand_card_input;
+
     relative_player player = relative_player::self;
     definition_id<card_definition> definition{};
 };
 ```
 
 直接向一位玩家的手牌中生成一张指定牌的命令。
+
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`create_hand_card_input`](../command_inputs/create_hand_card_input.md)，动态模式下的输入类型 |
 
 ## 成员对象
 
@@ -23,7 +31,7 @@ struct create_hand_card
 
 ## 注意
 
-默认构造 `create_hand_card{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`hand_card_creation`](../events/hand_card_creation.md)。显式指定 `definition` 时采用固定模式，不消费响应输入。动态输入的玩家与定义必须有效。
+默认构造 `create_hand_card{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`create_hand_card_input`](../command_inputs/create_hand_card_input.md)。显式指定 `definition` 时采用固定模式，不消费响应输入。动态输入的玩家与定义必须有效。
 
 命令执行时读取接收玩家当前的 [`player_state::hand_limit`](../../table/player_state.md)。手牌已达到或超过上限时，本次生成无效，不创建实体、不发送通知，也不属于舍弃。
 
@@ -99,6 +107,6 @@ int main()
 
 | | |
 | --- | --- |
-| [`hand_card_creation`](../events/hand_card_creation.md) | 生成手牌的动态输入 |
+| [`create_hand_card_input`](../command_inputs/create_hand_card_input.md) | 生成手牌的动态输入 |
 | [`hand_card_added`](../events/hand_card_added.md) | 非抽牌方式加入手牌后的通知 |
 | [`draw_cards`](draw_cards.md) | 从牌堆抽牌的命令 |

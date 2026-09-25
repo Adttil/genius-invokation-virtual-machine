@@ -435,10 +435,8 @@ namespace givm::detail
             }
         }
         const auto position = get<0>(frame).instructions + damage_end_offset<Observed> * sizeof(execute_fn);
-        const auto input_count = get<0>(frame).input_count;
         context.stack().pop<damage_group, substack_t>();
-        if constexpr(Inputs)
-            for(std::size_t index = 0; index != input_count; ++index) context.stack().pop<damage>();
+        if constexpr(Inputs) context.stack().pop<damage[]>();
         return context.jump(position);
     }
 
@@ -548,10 +546,8 @@ namespace givm::detail
             std::optional<character_id> target;
             if constexpr(Inputs)
             {
-                constexpr auto stride = align(sizeof(damage), max_alignment);
-                constexpr auto padding = align(sizeof(damage_group), max_alignment) - sizeof(damage_group);
-                const auto input_end = reinterpret_cast<const unsigned char*>(&group) - padding;
-                std::memcpy(&input, input_end - index * stride - sizeof(damage), sizeof(damage));
+                const auto [inputs, current] = context.stack().top<givm::frame<damage[]>, givm::frame<damage_group, substack_t>>();
+                input = get<0>(inputs)[index];
                 source = input.source;
                 if(const auto* id = std::get_if<character_id>(&input.target))
                 {
@@ -635,9 +631,18 @@ namespace givm::detail
     inline execution_state prepare_damage_group(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        const auto count = context.instruction_data<1, std::size_t>(library);
-        const auto position = context.position() + instruction_extent<1, std::size_t>
-            + (Inputs ? 0 : count * padded_size<fixed_damage>);
+        std::size_t count;
+        execution_position position;
+        if constexpr(Inputs)
+        {
+            count = get<0>(context.stack().top<damage[]>()).size();
+            position = context.position() + sizeof(execute_fn);
+        }
+        else
+        {
+            count = context.instruction_data<1, std::size_t>(library);
+            position = context.position() + instruction_extent<1, std::size_t> + count * padded_size<fixed_damage>;
+        }
         context.stack().push(damage_group{ .input_count = count, .instructions = position }, substack());
         return continue_damage_group_preparation<Inputs, Observed>(library, table, context, random);
     }
@@ -664,12 +669,7 @@ namespace givm::detail
     inline void compile_damage_group(program_writer& writer, const givm::deal_damage& command)
     {
         writer.write(execute_fn{ prepare_damage_group<Inputs, Observed> });
-        if constexpr(Inputs)
-        {
-            GIVM_ASSERT(command.input_count != 0);
-            writer.write(command.input_count);
-        }
-        else
+        if constexpr(not Inputs)
         {
             writer.write(command.damages.size());
             for(const auto& input : command.damages) writer.write(input);

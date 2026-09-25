@@ -10,6 +10,12 @@ struct apply_element;
 
 元素附着命令。没有反应时更新角色附着；发生反应时提供反应前后两次响应时机。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`apply_element_input`](../command_inputs/apply_element_input.md)，动态模式下的输入类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
@@ -21,7 +27,7 @@ struct apply_element;
 
 ## 输入
 
-默认构造 `apply_element{}` 使用动态输入，消费响应通过 `invoke` 提交的一个 [`element_application`](../events/element_application.md)。显式填写固定目标时不消费输入，执行时解析来源和目标的位置；任一位置不存在时，本次附着无效。固定定位允许生命为零但尚未离场的角色。
+默认构造 `apply_element{}` 使用动态输入，消费响应通过 `invoke` 提交的一个 [`apply_element_input`](../command_inputs/apply_element_input.md)。显式填写固定目标时不消费输入，执行时解析来源和目标的位置；任一位置不存在时，本次附着无效。固定定位允许生命为零但尚未离场的角色。
 
 ## 注意
 

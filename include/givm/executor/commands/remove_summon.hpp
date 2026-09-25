@@ -52,8 +52,8 @@ namespace givm::detail
         }
         else
         {
-            summon = get<0>(context.stack().top<summon_removal>()).summon;
-            context.stack().pop<summon_removal>();
+            summon = get<0>(context.stack().top<remove_summon_input>()).summon;
+            context.stack().pop<remove_summon_input>();
             context.enter_next();
         }
         return remove_summon_and_broadcast(library, table, context, random, summon);

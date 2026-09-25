@@ -9,7 +9,7 @@ namespace givm::detail
 {
     inline std::optional<execution_state> prepare_attachment_application(
         const definition_library& library, unrestricted_table& table, execution_context& context,
-        random_fn& random, attachment_application input, execution_position reapplication_resume,
+        random_fn& random, attach_input input, execution_position reapplication_resume,
         execution_position replacement_resume)
     {
         if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))
@@ -48,7 +48,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        attachment_application input;
+        attach_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, attach>(library);
@@ -59,8 +59,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<attachment_application>());
-            context.stack().pop<attachment_application>();
+            input = get<0>(context.stack().top<attach_input>());
+            context.stack().pop<attach_input>();
             context.enter_next();
         }
         if(const auto state = prepare_attachment_application(library, table, context, random, input,

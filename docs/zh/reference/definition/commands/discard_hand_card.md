@@ -7,6 +7,8 @@
 ```cpp
 struct discard_hand_card
 {
+    using input_type = discard_hand_card_input;
+
     relative_player player = relative_player::self;
     definition_id<card_definition> definition{};
 };
@@ -14,11 +16,17 @@ struct discard_hand_card
 
 舍弃一张手牌，先执行该牌自身的舍弃效果，再发送全场通知。元素调和、打出牌和手牌溢出的移除不属于舍弃。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`discard_hand_card_input`](../command_inputs/discard_hand_card_input.md)，动态模式下的输入类型 |
+
 ## 参数形式
 
 指定 `definition` 时，从 `player` 的有效手牌中选择第一个采用该定义的牌；该牌必须存在。玩家相对于命令执行时的本方确定，见 [relative_player](relative_player.md)。
 
-默认构造 `discard_hand_card{}` 时，消费响应通过 `invoke` 提交的一个 [`hand_card_discard_effect`](../events/hand_card_discard_effect.md)，其中 `card` 必须是有效手牌。
+默认构造 `discard_hand_card{}` 时，消费响应通过 `invoke` 提交的一个 [`discard_hand_card_input`](../command_inputs/discard_hand_card_input.md)，其中 `card` 必须是有效手牌。
 
 ## 结算
 

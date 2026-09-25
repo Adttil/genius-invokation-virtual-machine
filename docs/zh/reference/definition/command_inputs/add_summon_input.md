@@ -1,13 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **summoning**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **add_summon_input**
 
-# givm::summoning
+# givm::add_summon_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
-[summon](../commands/summon.md) 的动态输入，指定本次召唤物的目标、定义和状态。
+[add_summon](../commands/add_summon.md) 的动态输入，指定本次召唤物的目标、定义和状态。
 
 ```cpp
-struct summoning
+struct add_summon_input
 {
     player_id player;
     definition_id<summon_view> definition;

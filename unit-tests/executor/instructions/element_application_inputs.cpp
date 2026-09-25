@@ -63,9 +63,9 @@ namespace
             if(not data.dynamic) return context.invoke(data.application);
             const auto target = (*context.table()[givm::player_id{ 1 }].characters().begin()).id();
             return context.invoke(data.application,
-                givm::element_application{ .source = self.id(), .target = target, .element = givm::element::pyro },
-                givm::element_application{ .source = self.id(), .target = target, .element = givm::element::none },
-                givm::element_application{ .source = self.id(), .target = target, .element = givm::element::cryo });
+                givm::apply_element_input{ .source = self.id(), .target = target, .element = givm::element::pyro },
+                givm::apply_element_input{ .source = self.id(), .target = target, .element = givm::element::none },
+                givm::apply_element_input{ .source = self.id(), .target = target, .element = givm::element::cryo });
         }
 
         static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
@@ -76,8 +76,8 @@ namespace
             CHECK(event.reacted_aura == givm::element_aura::hydro);
             CHECK(context.table()[event.target].state().aura == givm::element_aura::hydro);
             return context.invoke(data.during_reaction,
-                givm::element_application{ .source = self.id(), .target = event.target, .element = givm::element::none },
-                givm::element_application{ .source = self.id(), .target = event.target, .element = givm::element::dendro });
+                givm::apply_element_input{ .source = self.id(), .target = event.target, .element = givm::element::none },
+                givm::apply_element_input{ .source = self.id(), .target = event.target, .element = givm::element::dendro });
         }
 
         static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
@@ -88,7 +88,7 @@ namespace
             CHECK(event.reacted_aura == givm::element_aura::hydro);
             CHECK(context.table()[event.target].state().aura == givm::element_aura::none);
             return context.invoke(data.after_reaction,
-                givm::element_application{ .source = self.id(), .target = event.target, .element = givm::element::electro });
+                givm::apply_element_input{ .source = self.id(), .target = event.target, .element = givm::element::electro });
         }
     };
 

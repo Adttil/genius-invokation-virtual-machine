@@ -10,6 +10,12 @@ struct set_energy;
 
 角色充能的赋值命令，可用于清空充能或将其设置到指定数值。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`set_energy_input`](../command_inputs/set_energy_input.md)，动态模式下的输入类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
@@ -19,7 +25,7 @@ struct set_energy;
 
 ## 注意
 
-默认构造 `set_energy{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`energy_change`](../events/energy_change.md)。显式指定 `target` 时采用固定模式，不消费响应输入。
+默认构造 `set_energy{}` 使用动态模式，由响应通过 `invoke` 提交一个 [`set_energy_input`](../command_inputs/set_energy_input.md)。显式指定 `target` 时采用固定模式，不消费响应输入。
 
 固定模式在命令执行时按相对位置定位角色，`target.selection` 必须为 `character_selection::character`；没有有效目标时跳过命令。允许目标为已战败但未离场的角色，不会因为角色战败而顺延到其他角色。动态输入必须指定实际存在的有效角色。
 
@@ -97,5 +103,5 @@ int main()
 
 | | |
 | --- | --- |
-| [`energy_change`](../events/energy_change.md) | 充能赋值的动态输入 |
+| [`set_energy_input`](../command_inputs/set_energy_input.md) | 充能赋值的动态输入 |
 | [`modify_energy`](modify_energy.md) | 按增量修改充能的命令 |

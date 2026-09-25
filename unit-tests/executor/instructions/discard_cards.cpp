@@ -1,3 +1,4 @@
+#include <array>
 #include <concepts>
 #include <cstdint>
 #include <string_view>
@@ -59,8 +60,8 @@ namespace
             if(not data.log->dynamic) return context.invoke(data.discard);
             const auto hand_card = context.table()[givm::player_id{ 0 }].hand_cards().front().id();
             return context.invoke(data.discard,
-                givm::hand_card_discard_effect{ hand_card },
-                givm::deck_card_discard{ .player = givm::player_id{ 0 }, .count = 2 });
+                givm::discard_hand_card_input{ hand_card },
+                givm::discard_deck_cards_input{ .player = givm::player_id{ 0 }, .count = 2 });
         }
         static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
             givm::hand_card_discard_effect& event, givm::handle_context& context)
@@ -136,8 +137,8 @@ namespace
             data.log->order.push_back('E');
             const auto target = context.table()[other_player(self.player().id())].characters().front().id();
             return context.invoke(data.effect,
-                givm::element_application{ .source = self.id(), .target = target, .element = givm::element::cryo },
-                givm::damage{ .source = self.id(), .target = target, .value = 2, .type = givm::damage_type::physical });
+                givm::apply_element_input{ .source = self.id(), .target = target, .element = givm::element::cryo },
+                givm::deal_damage_input{ std::array{ givm::damage{ .source = self.id(), .target = target, .value = 2, .type = givm::damage_type::physical } } });
         }
     };
 

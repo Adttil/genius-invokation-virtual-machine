@@ -9,6 +9,8 @@
 ```cpp
 struct attach
 {
+    using input_type = attach_input;
+
     relative_player player = relative_player::self;
     definition_id<attachment_view> definition{};
     attachment_state state{
@@ -18,9 +20,15 @@ struct attach
 };
 ```
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`attach_input`](../command_inputs/attach_input.md)，动态模式下的输入类型 |
+
 ## 输入
 
-- 默认构造 `attach{}` 使用动态模式，由 `invoke` 提交一个 [attachment_application](../events/attachment_application.md)。
+- 默认构造 `attach{}` 使用动态模式，由 `invoke` 提交一个 [attach_input](../command_inputs/attach_input.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定一方执行到本命令时的出战角色。
 
 `player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入明确指定目标角色和定义，目标角色必须有效。固定模式的出战角色目标必须有效。

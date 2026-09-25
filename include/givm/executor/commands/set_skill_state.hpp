@@ -32,8 +32,8 @@ namespace givm::detail
         }
         else
         {
-            const auto input = get<0>(context.stack().top<skill_state_change>());
-            context.stack().pop<skill_state_change>();
+            const auto input = get<0>(context.stack().top<set_skill_state_input>());
+            context.stack().pop<set_skill_state_input>();
             GIVM_ASSERT(table[input.skill].is_valid());
             table[input.skill].state() = input.state;
             return context.enter_next();

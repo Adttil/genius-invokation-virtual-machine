@@ -87,8 +87,8 @@ namespace givm::detail
         }
         else
         {
-            const auto effect = get<0>(context.stack().top<skill_effect>());
-            context.stack().pop<skill_effect>();
+            const auto effect = get<0>(context.stack().top<use_skill_input>());
+            context.stack().pop<use_skill_input>();
             context.enter_next();
             GIVM_ASSERT(table[effect.skill.character_id.player_id].state().active_character == effect.skill.character_id);
             prepare_broadcast(library, skill_will_be_used{

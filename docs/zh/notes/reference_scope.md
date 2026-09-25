@@ -4,11 +4,11 @@
 
 ## 公开边界
 
-- 定义源和游戏流程必须使用核心给定的公开命令集合；编译入口检查核心集合，命令所需调用输入由具体命令值决定，编译后入口的输入数量、类型和顺序固定。指令字段供定义源构造，事件字段供响应函数访问，二者都是公开接口，不因采用结构体或参与内部结算而变成仅供实现使用的数据。
+- 定义源和游戏流程必须使用核心给定的公开命令集合；编译入口检查核心集合，命令所需调用输入由具体命令值决定，编译后入口的输入对象数量、类型和顺序固定，帧内数组长度可以动态变化。指令字段供定义源构造，事件字段供响应函数访问，二者都是公开接口，不因采用结构体或参与内部结算而变成仅供实现使用的数据。
 - 牌桌公开 `table`、独立的只读 `xxx_view`、ID、状态值类型和参数。`table` 只提供只读访问及 `clean_up()` 等规定入口；牌组由 `load_deck()` 装载，完整修改操作由内部 `unrestricted_table` 和 `basic_xxx_handle<TStorage>` 提供。`xxx_handle<TStorage>` 是内部类型选择别名，不是公开 view 的定义方式。`card_data`、其余后台 `*_data`、`status_slot`、`invalid_status_index` 和存储辅助对象均不作为独立用户接口。
 - 定义库取指、执行位置与指令类型标识只供内部使用。公开运行接口返回 execution_state，由 view_in 取得相应访问对象；纯通知使用空视图，相关数据直接读取 table。
 - execution_context 与行动选择实现类型位于 `givm::detail` 命名空间，文件按所属功能组织。换牌现场直接保存玩家 ID 与选择位集，公开读写通过 execution_view 的读取方法和参数式输入。executor 不公开栈访问，不维护外部输入槽或完整帧 ABI。utils 中的栈工具可以独立使用。
-- 支付缓存保存入口与参数块的位置、长度，只属于执行器实现；输入通过公开初始事件和 handle_context::invoke 提交，不公开完整缓存布局。
+- 支付缓存保存入口与参数块的位置、长度，只属于执行器实现；输入通过专用命令输入对象和 handle_context::invoke 提交，不公开完整缓存布局。
 - `broadcast.hpp` 中的辅助函数位于 `givm::detail`，不能据此把其广播顺序写成所有事件的强制约定。
 - 旧 `push_selector`、`roll_dice` 和 `process_dice_roll_phase` 已移除，输入与结算由完整 command 负责。
 - `assume_enabled_t`、`assume_enabled` 没有实际调用点；`utils/optional.hpp`、`stable_vector.hpp`、`inplace_vector.hpp` 没有被三个公共入口引用，其中还有未完成的声明或接口。这些遗留文件需另行整理，本轮没有为其建立看似可用的公开 API 页。

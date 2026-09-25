@@ -1,13 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **attachment_addition**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **attach_input**
 
-# givm::attachment_addition
+# givm::attach_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
-[add_attachment](../commands/add_attachment.md) 的动态输入，指定本次角色附属实体的目标、定义和状态。
+[attach](../commands/attach.md) 的动态输入，指定本次角色附属实体的目标、定义和状态。
 
 ```cpp
-struct attachment_addition
+struct attach_input
 {
     character_id target;
     definition_id<attachment_view> definition;

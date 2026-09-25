@@ -217,7 +217,7 @@ namespace givm::detail
     inline execution_state prepare_element_application(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        element_application input;
+        apply_element_input input;
         execution_position position;
         if constexpr(Fixed)
         {
@@ -231,8 +231,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<element_application>());
-            context.stack().pop<element_application>();
+            input = get<0>(context.stack().top<apply_element_input>());
+            context.stack().pop<apply_element_input>();
             position = context.position() + sizeof(execute_fn);
         }
         const auto target = table[input.target];

@@ -47,8 +47,8 @@ namespace givm::detail
         }
         else
         {
-            support = get<0>(context.stack().top<support_removal>()).support;
-            context.stack().pop<support_removal>();
+            support = get<0>(context.stack().top<remove_support_input>()).support;
+            context.stack().pop<remove_support_input>();
             context.enter_next();
         }
         const bool valid = static_cast<bool>(table[support]);

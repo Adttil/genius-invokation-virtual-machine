@@ -52,8 +52,8 @@ namespace givm::detail
         }
         else
         {
-            card = get<0>(context.stack().top<hand_card_discard_effect>()).card;
-            context.stack().pop<hand_card_discard_effect>();
+            card = get<0>(context.stack().top<discard_hand_card_input>()).card;
+            context.stack().pop<discard_hand_card_input>();
             context.enter_next();
         }
         const bool valid = static_cast<bool>(table[card]);

@@ -11,7 +11,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        attachment_state_modification input;
+        modify_attachment_state_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, modify_attachment_state>(library);
@@ -22,8 +22,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<attachment_state_modification>());
-            context.stack().pop<attachment_state_modification>();
+            input = get<0>(context.stack().top<modify_attachment_state_input>());
+            context.stack().pop<modify_attachment_state_input>();
             context.enter_next();
         }
         const auto attachment = table[input.attachment];

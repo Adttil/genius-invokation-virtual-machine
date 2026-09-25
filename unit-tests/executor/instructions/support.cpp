@@ -71,7 +71,7 @@ namespace
             CHECK(self.state().count == event.current.count);
             CHECK(self.state().round_usages == event.current.round_usages);
             if(data.remove && event.current.count == 0)
-                return context.invoke(data.remove, givm::support_removal{ self.id() });
+                return context.invoke(data.remove, givm::remove_support_input{ self.id() });
             return {};
         }
     };
@@ -135,15 +135,15 @@ namespace
             const auto& action = data.log->actions[index];
             if(not data.log->dynamic) return context.invoke(data.actions[index]);
             if(action.kind == operation::add)
-                return context.invoke(data.actions[index], givm::support_addition{ action.player, data.support, action.state });
+                return context.invoke(data.actions[index], givm::add_support_input{ action.player, data.support, action.state });
             auto supports = context.table()[action.player].supports();
             REQUIRE(std::ranges::distance(supports) > static_cast<std::ptrdiff_t>(action.target_index));
             const auto target = (*std::ranges::next(supports.begin(), action.target_index)).id();
             if(action.kind == operation::set)
-                return context.invoke(data.actions[index], givm::support_state_change{ target, action.state });
+                return context.invoke(data.actions[index], givm::set_support_state_input{ target, action.state });
             if(action.kind == operation::modify)
-                return context.invoke(data.actions[index], givm::support_state_modification{ target, action.count, action.round_usages });
-            return context.invoke(data.actions[index], givm::support_removal{ target });
+                return context.invoke(data.actions[index], givm::modify_support_state_input{ target, action.count, action.round_usages });
+            return context.invoke(data.actions[index], givm::remove_support_input{ target });
         }
         static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
             givm::support_removed& event, givm::handle_context& context)
@@ -190,7 +190,7 @@ namespace
         {
             const auto player = self.player().id();
             if(std::ranges::distance(context.table()[player].supports()) >= context.table()[player].state().support_limit)
-                return context.invoke(data.replace, givm::support_removal{ std::get<givm::support_id>(event.targets[0]) });
+                return context.invoke(data.replace, givm::remove_support_input{ std::get<givm::support_id>(event.targets[0]) });
             return context.invoke(data.add);
         }
     };

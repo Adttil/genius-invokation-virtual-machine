@@ -1,13 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **support_addition**
+[givm](../../../reference.md) / [定义](../../definition.md) / [命令输入](../command_inputs.md) / **add_support_input**
 
-# givm::support_addition
+# givm::add_support_input
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/definition/commands.hpp>`
 
 [add_support](../commands/add_support.md) 的动态输入，指定本次支援的目标、定义和状态。
 
 ```cpp
-struct support_addition
+struct add_support_input
 {
     player_id player;
     definition_id<support_view> definition;

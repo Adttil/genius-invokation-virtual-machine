@@ -9,14 +9,22 @@
 ```cpp
 struct remove_combat_status
 {
+    using input_type = remove_combat_status_input;
+
     relative_player player = relative_player::self;
     definition_id<combat_status_view> definition{};
 };
 ```
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`remove_combat_status_input`](../command_inputs/remove_combat_status_input.md)，动态模式下的输入类型 |
+
 ## 输入
 
-- 默认构造 `remove_combat_status{}` 使用动态模式，由 `invoke` 提交一个 [combat_status_removal](../events/combat_status_removal.md)。
+- 默认构造 `remove_combat_status{}` 使用动态模式，由 `invoke` 提交一个 [remove_combat_status_input](../command_inputs/remove_combat_status_input.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定的一方。在该玩家的出战状态中选取首个有效、定义 ID 相同的实体；该实体必须存在。
 
 `player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入直接指定要操作的有效实体。

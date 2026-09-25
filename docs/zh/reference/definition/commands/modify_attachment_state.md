@@ -9,6 +9,8 @@
 ```cpp
 struct modify_attachment_state
 {
+    using input_type = modify_attachment_state_input;
+
     relative_player player = relative_player::self;
     definition_id<attachment_view> definition{};
     std::int64_t count{};
@@ -16,9 +18,15 @@ struct modify_attachment_state
 };
 ```
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`modify_attachment_state_input`](../command_inputs/modify_attachment_state_input.md)，动态模式下的输入类型 |
+
 ## 输入
 
-- 默认构造 `modify_attachment_state{}` 使用动态模式，由 `invoke` 提交一个 [attachment_state_modification](../events/attachment_state_modification.md)。
+- 默认构造 `modify_attachment_state{}` 使用动态模式，由 `invoke` 提交一个 [modify_attachment_state_input](../command_inputs/modify_attachment_state_input.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定一方执行到本命令时的出战角色。在该出战角色的附属实体中选取首个有效、定义 ID 相同的实体；该实体必须存在。
 
 `player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入直接指定要操作的有效实体。固定模式的出战角色目标必须有效。
@@ -31,4 +39,4 @@ struct modify_attachment_state
 
 通知包含修改前和裁剪后的状态；返回的响应程序完整结算后才继续下一条命令。
 
-例如，动态输入 `attachment_state_modification{ .attachment = target, .round_usages = -1 }` 会在本命令实际执行时扣除一次可用次数；另一个字段的增量默认是零。
+例如，动态输入 `modify_attachment_state_input{ .attachment = target, .round_usages = -1 }` 会在本命令实际执行时扣除一次可用次数；另一个字段的增量默认是零。

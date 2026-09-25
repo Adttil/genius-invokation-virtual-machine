@@ -4,7 +4,7 @@
 
 事件描述对局中正在发生或已经完成的事情。实体定义可以响应相关事件，读取通知的数据，或在允许修改的时机调整即将生效的效果。
 
-事件也可用作命令的初始输入，但是否广播由具体命令决定。每次触发可以选择响应实体的范围与顺序，不要求所有事件使用统一的广播顺序。
+事件用于实体响应；动态命令通过其声明的 [命令输入](command_inputs.md) 提交参数。输入类型可以显式复用字段相符的事件类型，复用本身不会增加广播。每次触发可以选择响应实体的范围与顺序，不要求所有事件使用统一的广播顺序。
 
 ## 全场广播
 
@@ -32,7 +32,7 @@
 | [`round_end_declared`](events/round_end_declared.md) | 玩家宣布本回合结束的通知 |
 | [`round_ended`](events/round_ended.md) | 本回合结束的通知 |
 | [`dice_roll_preparation`](events/dice_roll_preparation.md) | 本回合投骰前的准备事件 |
-| [`dice_added`](events/dice_added.md) | 产骰的动态输入和增加完成后的通知 |
+| [`dice_added`](events/dice_added.md) | 元素骰增加完成后的通知 |
 | [`dice_removed`](events/dice_removed.md) | 元素骰移除或支付后的通知 |
 | [`dice_converted`](events/dice_converted.md) | 元素骰种类转换后的通知 |
 
@@ -44,8 +44,6 @@
 | [`secret_points_changed`](events/secret_points_changed.md) | 秘传点数变化后的通知 |
 | [`changing_energy`](events/changing_energy.md) | 角色充能变化前的调整事件 |
 | [`energy_changed`](events/energy_changed.md) | 角色充能变化后的通知 |
-| [`energy_change`](events/energy_change.md) | 角色充能赋值的动态输入 |
-| [`energy_modification`](events/energy_modification.md) | 按增量修改角色充能的动态输入 |
 | [`calculating_card_payment`](events/calculating_card_payment.md) | 打出手牌时的支付计算事件 |
 | [`calculating_skill_payment`](events/calculating_skill_payment.md) | 使用技能时的支付计算事件 |
 | [`calculating_switch_payment`](events/calculating_switch_payment.md) | 切换出战角色时的支付计算事件 |
@@ -61,11 +59,9 @@
 
 | | |
 | --- | --- |
-| [`hand_card_creation`](events/hand_card_creation.md) | 生成手牌的动态输入 |
 | [`hand_card_added`](events/hand_card_added.md) | 非抽牌方式加入手牌后的通知 |
 | [`card_drawn`](events/card_drawn.md) | 一张牌抽取完成后的通知 |
 | [`hand_card_discard_effect`](events/hand_card_discard_effect.md) | 仅向手牌自身发送的舍弃效果事件 |
-| [`deck_card_discard`](events/deck_card_discard.md) | 批量舍弃牌堆顶卡牌的动态输入 |
 | [`deck_card_discard_effect`](events/deck_card_discard_effect.md) | 仅向牌堆牌自身发送的舍弃效果事件 |
 | [`hand_card_discarded`](events/hand_card_discarded.md) | 手牌自身舍弃效果完成后的全场通知 |
 | [`deck_card_discarded`](events/deck_card_discarded.md) | 牌堆牌自身舍弃效果完成后的全场通知 |
@@ -78,23 +74,19 @@
 | [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |
 | [`skill_effect`](events/skill_effect.md) | 执行所选技能自身效果 |
 | [`skill_used`](events/skill_used.md) | 技能使用完成后的通知 |
-| [`skill_state_change`](events/skill_state_change.md) | 技能状态赋值的动态输入 |
 | [`prepared_skill_effect`](events/prepared_skill_effect.md) | 消耗准备技能附属并执行其自身效果 |
 
 ## 伤害、治疗与元素
 
 | | |
 | --- | --- |
-| [`damage`](events/damage.md) | 单体或范围伤害的初始描述 |
 | [`relative_character_target`](events/relative_character_target.md) | 按出战位置的有符号偏移定位角色 |
 | [`damage_preparation`](events/damage_preparation.md) | 伤害来源、目标、元素与标志的属性修饰 |
 | [`damage_calculation`](events/damage_calculation.md) | 伤害计算事件 |
 | [`damage_effect`](events/damage_effect.md) | 扣除生命前的伤害结算事件 |
 | [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
-| [`healing_application`](events/healing_application.md) | 单角色或范围治疗的动态输入 |
 | [`healing`](events/healing.md) | 角色恢复生命前的治疗调整事件 |
 | [`healed`](events/healed.md) | 角色治疗完成后的通知 |
-| [`element_application`](events/element_application.md) | 直接附着的动态输入 |
 | [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 反应判定后选择替代效果的事件 |
 | [`after_elemental_reaction`](events/after_elemental_reaction.md) | 元素反应处理完成后的通知 |
 
@@ -106,35 +98,16 @@
 | [`character_will_be_defeated`](events/character_will_be_defeated.md) | 角色被击倒前的事件 |
 | [`character_defeated`](events/character_defeated.md) | 角色被击倒后的通知 |
 | [`support_removed`](events/support_removed.md) | 支援移除后向其他有效实体广播的通知 |
-| [`support_addition`](events/support_addition.md) | [add_support](commands/add_support.md) 的动态输入 |
-| [`support_state_change`](events/support_state_change.md) | [set_support_state](commands/set_support_state.md) 的动态输入 |
-| [`support_state_modification`](events/support_state_modification.md) | [modify_support_state](commands/modify_support_state.md) 的动态输入 |
 | [`support_state_changed`](events/support_state_changed.md) | 支援状态修改后的自身通知 |
-| [`support_removal`](events/support_removal.md) | [remove_support](commands/remove_support.md) 的动态输入 |
 | [`summon_removed`](events/summon_removed.md) | 召唤物移除后向其他有效实体广播的通知 |
 | [`combat_status_removed`](events/combat_status_removed.md) | 出战状态移除后向其他有效实体广播的通知 |
 | [`attachment_removed`](events/attachment_removed.md) | 角色附属实体或装备移除后向其他有效实体广播的通知 |
-| [`summoning`](events/summoning.md) | [summon](commands/summon.md) 的动态输入 |
 | [`resummoning`](events/resummoning.md) | 仅向已有召唤物发送的重复请求 |
-| [`summon_addition`](events/summon_addition.md) | [add_summon](commands/add_summon.md) 的动态输入 |
-| [`summon_state_change`](events/summon_state_change.md) | [set_summon_state](commands/set_summon_state.md) 的动态输入 |
-| [`summon_state_modification`](events/summon_state_modification.md) | [modify_summon_state](commands/modify_summon_state.md) 的动态输入 |
 | [`summon_state_changed`](events/summon_state_changed.md) | 状态修改后的自身通知 |
-| [`summon_removal`](events/summon_removal.md) | [remove_summon](commands/remove_summon.md) 的动态输入 |
-| [`combat_status_generation`](events/combat_status_generation.md) | [generate_combat_status](commands/generate_combat_status.md) 的动态输入 |
 | [`combat_status_regeneration`](events/combat_status_regeneration.md) | 仅向已有出战状态发送的重复请求 |
-| [`combat_status_addition`](events/combat_status_addition.md) | [add_combat_status](commands/add_combat_status.md) 的动态输入 |
-| [`combat_status_state_change`](events/combat_status_state_change.md) | [set_combat_status_state](commands/set_combat_status_state.md) 的动态输入 |
-| [`combat_status_state_modification`](events/combat_status_state_modification.md) | [modify_combat_status_state](commands/modify_combat_status_state.md) 的动态输入 |
 | [`combat_status_state_changed`](events/combat_status_state_changed.md) | 状态修改后的自身通知 |
-| [`combat_status_removal`](events/combat_status_removal.md) | [remove_combat_status](commands/remove_combat_status.md) 的动态输入 |
-| [`attachment_application`](events/attachment_application.md) | [attach](commands/attach.md) 的动态输入 |
 | [`attachment_reapplication`](events/attachment_reapplication.md) | 仅向已有角色附属实体发送的重复请求 |
-| [`attachment_addition`](events/attachment_addition.md) | [add_attachment](commands/add_attachment.md) 的动态输入 |
-| [`attachment_state_change`](events/attachment_state_change.md) | [set_attachment_state](commands/set_attachment_state.md) 的动态输入 |
-| [`attachment_state_modification`](events/attachment_state_modification.md) | [modify_attachment_state](commands/modify_attachment_state.md) 的动态输入 |
 | [`attachment_state_changed`](events/attachment_state_changed.md) | 状态修改后的自身通知 |
-| [`attachment_removal`](events/attachment_removal.md) | [remove_attachment](commands/remove_attachment.md) 的动态输入 |
 
 ## 标识类型别名
 

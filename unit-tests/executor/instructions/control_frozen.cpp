@@ -91,9 +91,9 @@ namespace
                 return {};
             }
             return context.invoke(data.dynamic_operations,
-                givm::attachment_application{ .target = actor, .definition = data.control, .state = { 1 } },
-                givm::attachment_addition{ .target = actor, .definition = data.control, .state = { 1 } },
-                givm::active_character_changed{ .current = ally });
+                givm::attach_input{ .target = actor, .definition = data.control, .state = { 1 } },
+                givm::add_attachment_input{ .target = actor, .definition = data.control, .state = { 1 } },
+                givm::set_active_character_input{ .current = ally });
         }
         static givm::program_entry handle(const definition_type&, const givm::skill_view&,
             givm::cost_of_switch& event, givm::handle_context&)

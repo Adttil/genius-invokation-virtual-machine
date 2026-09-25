@@ -10,7 +10,7 @@ namespace givm::detail
     inline execution_state execute_max_health_increase(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        const auto input = [&]() -> std::optional<healing>
+        const auto input = [&]() -> std::optional<increase_max_health_input>
         {
             if constexpr(Fixed)
             {
@@ -19,12 +19,12 @@ namespace givm::detail
                 const auto source = resolve_character_target<false>(table, command.source);
                 const auto target = resolve_character_target<false>(table, command.target);
                 if(not source || not target) return std::nullopt;
-                return healing{ *source, *target, command.value };
+                return increase_max_health_input{ *source, *target, command.value };
             }
             else
             {
-                const auto event = get<0>(context.stack().top<healing>());
-                context.stack().pop<healing>();
+                const auto event = get<0>(context.stack().top<increase_max_health_input>());
+                context.stack().pop<increase_max_health_input>();
                 context.enter_next();
                 return event;
             }

@@ -1,6 +1,7 @@
 #ifndef GIVM_EXECUTOR_HANDLE_CONTEXT_HPP
 #define GIVM_EXECUTOR_HANDLE_CONTEXT_HPP
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <span>
@@ -15,72 +16,101 @@
 #include "../utils/stack.hpp"
 #include "random_fn.hpp"
 
+namespace givm::detail
+{
+    template<class T>
+    concept command_input = requires { command_input_types::index_of<std::remove_cvref_t<T>>(); };
+
+    template<command_input T>
+    constexpr auto command_input_members(const T& input) noexcept
+    {
+        return std::tie(input);
+    }
+
+    inline auto command_input_members(const deal_damage_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<damage>(input.damages) };
+    }
+
+    template<class TDestination, command_input T>
+    inline void push_command_input(TDestination& destination, const T& input)
+    {
+        std::apply([&](const auto&... members) { destination.push(members...); }, command_input_members(input));
+    }
+}
+
 namespace givm
 {
     class program_invoker
     {
     public:
-        program_entry operator()(program_entry entry, std::span<const unsigned char> inputs)
+        program_entry operator()(program_entry entry, std::span<const any_command_input> inputs)
         {
-            return invoke_bytes<false>(entry, inputs);
+            return invoke_sequence<false>(entry, inputs);
         }
 
-        program_entry operator()(substack_t, program_entry entry, std::span<const unsigned char> inputs)
+        program_entry operator()(substack_t, program_entry entry, std::span<const any_command_input> inputs)
         {
-            return invoke_bytes<true>(entry, inputs);
+            return invoke_sequence<true>(entry, inputs);
         }
 
-        template<class... T>
-        requires ((std::is_trivially_copyable_v<T> && ...)
-            && (not std::is_convertible_v<T, std::span<const unsigned char>> && ...))
+        template<detail::command_input... T>
         program_entry operator()(program_entry entry, T... inputs)
         {
             return invoke_values<false>(entry, inputs...);
         }
 
-        template<class... T>
-        requires ((std::is_trivially_copyable_v<T> && ...)
-            && (not std::is_convertible_v<T, std::span<const unsigned char>> && ...))
+        template<detail::command_input... T>
         program_entry operator()(substack_t, program_entry entry, T... inputs)
         {
             return invoke_values<true>(entry, inputs...);
         }
 
     private:
+#ifndef NDEBUG
+        template<class TMarker>
+        void validate_inputs(program_entry entry, std::size_t count, TMarker marker) const
+        {
+            if(entry.inputs_count_ != count)
+                throw std::invalid_argument{ "program input count does not match the entry" };
+            for(std::size_t index = 0; index != count; ++index)
+            {
+                if(input_markers_[entry.inputs_begin_ + index] != marker(index))
+                    throw std::invalid_argument{ "program input type does not match the entry" };
+            }
+        }
+#endif
+
+        // Payment caches contain complete frames already checked by the original invoke.
+        program_entry copy_inputs(program_entry entry, std::span<const unsigned char> inputs)
+        {
+            const auto offset = stack_.size();
+            for(std::size_t bytes = 0; bytes < inputs.size(); bytes += max_alignment)
+                stack_.push<unsigned char[max_alignment]>();
+            if(not inputs.empty())
+                std::memcpy(stack_.data() + offset, inputs.data(), inputs.size());
+            return entry;
+        }
+
         template<bool InSubstack>
-        program_entry invoke_bytes(program_entry entry, std::span<const unsigned char> inputs)
+        program_entry invoke_sequence(program_entry entry, std::span<const any_command_input> inputs)
         {
 #ifndef NDEBUG
-            if(entry.inputs_size_ != inputs.size())
-            {
-                throw std::invalid_argument{ "program input byte size does not match the entry" };
-            }
+            validate_inputs(entry, inputs.size(), [&](std::size_t index) { return inputs[index].index(); });
 #endif
+            const auto push = [&](auto& destination)
+            {
+                for(auto iter = inputs.rbegin(); iter != inputs.rend(); ++iter)
+                    std::visit([&](const auto& input) { detail::push_command_input(destination, input); }, *iter);
+            };
             if constexpr(InSubstack)
             {
-                if(not inputs.empty())
-                {
-                    const auto destination = get<0>(stack_.top<substack_t>());
-                    const auto& first = get<0>(destination.push<unsigned char[max_alignment]>());
-                    const auto offset = static_cast<std::size_t>(first - stack_.data());
-                    for(std::size_t bytes = max_alignment; bytes < inputs.size(); bytes += max_alignment)
-                    {
-                        destination.push<unsigned char[max_alignment]>();
-                    }
-                    std::memcpy(stack_.data() + offset, inputs.data(), inputs.size());
-                }
+                auto destination = get<0>(stack_.top<substack_t>());
+                push(destination);
             }
             else
             {
-                const auto offset = stack_.size();
-                for(std::size_t bytes = 0; bytes < inputs.size(); bytes += max_alignment)
-                {
-                    stack_.push<unsigned char[max_alignment]>();
-                }
-                if(not inputs.empty())
-                {
-                    std::memcpy(stack_.data() + offset, inputs.data(), inputs.size());
-                }
+                push(stack_);
             }
             return entry;
         }
@@ -88,42 +118,49 @@ namespace givm
         template<bool InSubstack, class... T>
         program_entry invoke_values(program_entry entry, const T&... inputs)
         {
-            static_assert(((alignof(T) <= max_alignment) && ...));
 #ifndef NDEBUG
-            constexpr auto inputs_size = (0uz + ... + ((sizeof(T) + max_alignment - 1)
-                / max_alignment * max_alignment));
-            if(entry.inputs_size_ != inputs_size)
-            {
-                throw std::invalid_argument{ "program input byte size does not match the entry" };
-            }
+            constexpr std::array<std::size_t, sizeof...(T)> markers{ detail::command_input_types::index_of<T>()... };
+            validate_inputs(entry, markers.size(), [&](std::size_t index) { return markers[index]; });
 #endif
-            // The by-value inputs remain valid while pushing can relocate the stack.
+            // Scalar inputs are copied before a push can relocate the stack.
+            // Ranges borrowed by an input must remain valid until their contents have been copied.
             const auto values = std::forward_as_tuple(inputs...);
-            if constexpr(InSubstack)
+            const auto push = [&]<class TDestination>(TDestination& destination)
             {
-                const auto destination = get<0>(stack_.top<substack_t>());
                 [&]<std::size_t... I>(std::index_sequence<I...>)
                 {
-                    (destination.push(std::get<sizeof...(T) - 1 - I>(values)), ...);
+                    (detail::push_command_input(destination, std::get<sizeof...(T) - 1 - I>(values)), ...);
                 }(std::index_sequence_for<T...>{});
+            };
+            if constexpr(InSubstack)
+            {
+                auto destination = get<0>(stack_.top<substack_t>());
+                push(destination);
             }
             else
             {
-                [&]<std::size_t... I>(std::index_sequence<I...>)
-                {
-                    (stack_.push(std::get<sizeof...(T) - 1 - I>(values)), ...);
-                }(std::index_sequence_for<T...>{});
+                push(stack_);
             }
             return entry;
         }
 
         friend class detail::execution_context;
 
-        explicit program_invoker(frame_stack& stack) noexcept
+        explicit program_invoker(frame_stack& stack
+#ifndef NDEBUG
+            , std::span<const std::size_t> input_markers
+#endif
+        ) noexcept
         : stack_{ stack }
+#ifndef NDEBUG
+        , input_markers_{ input_markers }
+#endif
         {}
 
         frame_stack& stack_;
+#ifndef NDEBUG
+        std::span<const std::size_t> input_markers_;
+#endif
     };
 
     class handle_context
@@ -133,25 +170,23 @@ namespace givm
 
         std::uint32_t random() const { return random_(); }
 
-        program_entry invoke(program_entry entry, std::span<const unsigned char> inputs)
+        program_entry invoke(program_entry entry, std::span<const any_command_input> inputs)
         {
             return invoker_(entry, inputs);
         }
 
-        program_entry invoke(substack_t tag, program_entry entry, std::span<const unsigned char> inputs)
+        program_entry invoke(substack_t tag, program_entry entry, std::span<const any_command_input> inputs)
         {
             return invoker_(tag, entry, inputs);
         }
 
-        template<class... T>
-        requires (not std::is_convertible_v<T, std::span<const unsigned char>> && ...)
+        template<detail::command_input... T>
         program_entry invoke(program_entry entry, T&&... inputs)
         {
             return invoker_(entry, std::forward<T>(inputs)...);
         }
 
-        template<class... T>
-        requires (not std::is_convertible_v<T, std::span<const unsigned char>> && ...)
+        template<detail::command_input... T>
         program_entry invoke(substack_t tag, program_entry entry, T&&... inputs)
         {
             return invoker_(tag, entry, std::forward<T>(inputs)...);

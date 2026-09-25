@@ -49,14 +49,14 @@ namespace givm::genshin_impact
                 return {};
             constexpr auto maximum = std::numeric_limits<std::uint32_t>::max();
             event.value = event.value > maximum - 2 ? maximum : event.value + 2;
-            return context.invoke(definition.remove, attachment_removal{ attachment.id() });
+            return context.invoke(definition.remove, remove_attachment_input{ attachment.id() });
         }
 
         static program_entry handle(
             const definition_type& definition, const attachment_view& attachment,
             round_started&, handle_context& context)
         {
-            return context.invoke(definition.remove, attachment_removal{ attachment.id() });
+            return context.invoke(definition.remove, remove_attachment_input{ attachment.id() });
         }
     };
 
@@ -118,7 +118,7 @@ namespace givm::genshin_impact
             constexpr auto maximum = std::numeric_limits<std::uint32_t>::max();
             event.value = event.value > maximum - 2 ? maximum : event.value + 2;
             return context.invoke(definition.consume,
-                combat_status_state_modification{ .status = status.id(), .count = -1 });
+                modify_combat_status_state_input{ .status = status.id(), .count = -1 });
         }
 
         static program_entry handle(
@@ -126,7 +126,7 @@ namespace givm::genshin_impact
             combat_status_regeneration& event, handle_context& context)
         {
             return context.invoke(definition.refresh,
-                combat_status_state_change{ .status = status.id(), .state = event.state });
+                set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
         static program_entry handle(
@@ -135,7 +135,7 @@ namespace givm::genshin_impact
         {
             if(event.current.count != 0)
                 return {};
-            return context.invoke(definition.remove, combat_status_removal{ status.id() });
+            return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
         }
     };
 
@@ -197,7 +197,7 @@ namespace givm::genshin_impact
             if(event.value != std::numeric_limits<std::uint32_t>::max())
                 ++event.value;
             return context.invoke(definition.consume,
-                combat_status_state_modification{ .status = status.id(), .count = -1 });
+                modify_combat_status_state_input{ .status = status.id(), .count = -1 });
         }
 
         static program_entry handle(
@@ -205,7 +205,7 @@ namespace givm::genshin_impact
             combat_status_regeneration& event, handle_context& context)
         {
             return context.invoke(definition.refresh,
-                combat_status_state_change{ .status = status.id(), .state = event.state });
+                set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
         static program_entry handle(
@@ -214,7 +214,7 @@ namespace givm::genshin_impact
         {
             if(event.current.count != 0)
                 return {};
-            return context.invoke(definition.remove, combat_status_removal{ status.id() });
+            return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
         }
     };
 
@@ -276,7 +276,7 @@ namespace givm::genshin_impact
             if(event.value != std::numeric_limits<std::uint32_t>::max())
                 ++event.value;
             return context.invoke(definition.consume,
-                combat_status_state_modification{ .status = status.id(), .count = -1 });
+                modify_combat_status_state_input{ .status = status.id(), .count = -1 });
         }
 
         static program_entry handle(
@@ -284,7 +284,7 @@ namespace givm::genshin_impact
             combat_status_regeneration& event, handle_context& context)
         {
             return context.invoke(definition.refresh,
-                combat_status_state_change{ .status = status.id(), .state = event.state });
+                set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
         static program_entry handle(
@@ -293,7 +293,7 @@ namespace givm::genshin_impact
         {
             if(event.current.count != 0)
                 return {};
-            return context.invoke(definition.remove, combat_status_removal{ status.id() });
+            return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
         }
     };
 
@@ -333,7 +333,7 @@ namespace givm::genshin_impact
             resummoning& event, handle_context& context)
         {
             return context.invoke(definition.accumulate,
-                summon_state_modification{ .summon = summon.id(), .usages = event.state.usages });
+                modify_summon_state_input{ .summon = summon.id(), .usages = event.state.usages });
         }
 
         static program_entry handle(
@@ -342,7 +342,7 @@ namespace givm::genshin_impact
         {
             if(event.current.usages != 0)
                 return {};
-            return context.invoke(definition.remove, summon_removal{ summon.id() });
+            return context.invoke(definition.remove, remove_summon_input{ summon.id() });
         }
 
         static program_entry handle(
@@ -352,14 +352,14 @@ namespace givm::genshin_impact
             if(summon.state().usages == 0)
                 return {};
             return context.invoke(definition.end_phase,
-                damage{
+                deal_damage_input{ std::array{ damage{
                     .source = summon.id(),
                     .target = relative_character_target{ relative_player::opponent },
                     .value = summon.state().value,
                     .type = damage_type::pyro,
                     .flags = damage_flag_bits::combat_damage
-                },
-                summon_state_modification{ .summon = summon.id(), .usages = -1 });
+                } } },
+                modify_summon_state_input{ .summon = summon.id(), .usages = -1 });
         }
     };
 

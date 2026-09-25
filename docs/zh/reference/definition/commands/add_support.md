@@ -9,6 +9,8 @@
 ```cpp
 struct add_support
 {
+    using input_type = add_support_input;
+
     relative_player player = relative_player::self;
     definition_id<support_view> definition{};
     support_state state{
@@ -18,9 +20,15 @@ struct add_support
 };
 ```
 
+## 成员类型
+
+| | |
+| --- | --- |
+| `input_type` | [`add_support_input`](../command_inputs/add_support_input.md)，动态模式下的输入类型 |
+
 ## 输入
 
-- 默认构造 `add_support{}` 使用动态模式，由 `invoke` 提交一个 [support_addition](../events/support_addition.md)。
+- 默认构造 `add_support{}` 使用动态模式，由 `invoke` 提交一个 [add_support_input](../command_inputs/add_support_input.md)。
 - `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定的一方。
 
 `player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入明确指定目标玩家和定义，两者须合法。

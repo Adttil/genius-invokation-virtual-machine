@@ -13,7 +13,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        support_state_modification input;
+        modify_support_state_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, modify_support_state>(library);
@@ -24,8 +24,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<support_state_modification>());
-            context.stack().pop<support_state_modification>();
+            input = get<0>(context.stack().top<modify_support_state_input>());
+            context.stack().pop<modify_support_state_input>();
             context.enter_next();
         }
 
@@ -47,7 +47,7 @@ namespace givm::detail
             add_saturated(current.count, input.count, limit.count),
             add_saturated(current.round_usages, input.round_usages, limit.round_usages)
         };
-        return change_support_state(library, table, context, random, support_state_change{ input.support, state });
+        return change_support_state(library, table, context, random, set_support_state_input{ input.support, state });
     }
 
     inline void compile(program_writer& writer, const givm::modify_support_state& command, compile_mode)

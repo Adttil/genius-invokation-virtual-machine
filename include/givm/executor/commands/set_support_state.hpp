@@ -16,7 +16,7 @@ namespace givm::detail
 
     inline execution_state change_support_state(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random, const support_state_change& input)
+        execution_context& context, random_fn& random, const set_support_state_input& input)
     {
         support_state_changed event{ table[input.support].state(), input.state };
         table[input.support].state() = input.state;
@@ -40,7 +40,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        support_state_change input;
+        set_support_state_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, set_support_state>(library);
@@ -51,8 +51,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<support_state_change>());
-            context.stack().pop<support_state_change>();
+            input = get<0>(context.stack().top<set_support_state_input>());
+            context.stack().pop<set_support_state_input>();
             context.enter_next();
         }
         const bool valid = static_cast<bool>(table[input.support]);

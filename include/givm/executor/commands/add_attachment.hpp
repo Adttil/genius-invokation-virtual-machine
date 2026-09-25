@@ -20,7 +20,7 @@ namespace givm::detail
 
     inline std::optional<execution_state> prepare_attachment_addition(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random, attachment_addition input, execution_position resume)
+        execution_context& context, random_fn& random, add_attachment_input input, execution_position resume)
     {
         const auto character = table[input.target];
         const auto type = library.equipment_type(input.definition);
@@ -49,8 +49,8 @@ namespace givm::detail
             return continue_execution;
         const auto resume = get<1>(context.stack().top<attachment_removed, response_return>()).position;
         pop_broadcast<attachment_removed>(context);
-        const auto input = get<0>(context.stack().top<attachment_addition>());
-        context.stack().pop<attachment_addition>();
+        const auto input = get<0>(context.stack().top<add_attachment_input>());
+        context.stack().pop<add_attachment_input>();
         // Removal responses can add immunity or install another equipment.
         if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))
             return std::nullopt;
@@ -70,7 +70,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        attachment_addition input;
+        add_attachment_input input;
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, add_attachment>(library);
@@ -84,8 +84,8 @@ namespace givm::detail
         }
         else
         {
-            input = get<0>(context.stack().top<attachment_addition>());
-            context.stack().pop<attachment_addition>();
+            input = get<0>(context.stack().top<add_attachment_input>());
+            context.stack().pop<add_attachment_input>();
             context.enter_next();
         }
         if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))

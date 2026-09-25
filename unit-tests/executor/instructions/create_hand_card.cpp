@@ -68,8 +68,8 @@ namespace
         {
             if(data.log->dynamic)
                 return context.invoke(data.create,
-                    givm::hand_card_creation{ .player = givm::player_id{ 0 }, .definition = data.card },
-                    givm::hand_card_creation{ .player = givm::player_id{ 0 }, .definition = data.card });
+                    givm::create_hand_card_input{ .player = givm::player_id{ 0 }, .definition = data.card },
+                    givm::create_hand_card_input{ .player = givm::player_id{ 0 }, .definition = data.card });
             return context.invoke(data.create);
         }
         template<class TEvent>
@@ -89,7 +89,7 @@ namespace
             {
                 if(data.log->dynamic)
                     return context.invoke(data.nested,
-                        givm::hand_card_creation{ .player = givm::player_id{ 1 }, .definition = data.card });
+                        givm::create_hand_card_input{ .player = givm::player_id{ 1 }, .definition = data.card });
                 return context.invoke(data.nested);
             }
             return {};
