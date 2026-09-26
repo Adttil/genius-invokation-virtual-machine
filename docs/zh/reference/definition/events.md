@@ -131,7 +131,6 @@
 
 | | |
 | --- | --- |
-| [`test_event`](events/test_event.md) | 事件响应的测试通知 |
 
 ## 特技
 

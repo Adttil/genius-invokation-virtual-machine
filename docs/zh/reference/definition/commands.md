@@ -83,7 +83,6 @@
 
 | | |
 | --- | --- |
-| [`test_command`](commands/test_command.md) | 事件响应的测试命令 |
 
 ## 参阅
 

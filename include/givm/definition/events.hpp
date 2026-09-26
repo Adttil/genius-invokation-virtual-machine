@@ -25,10 +25,6 @@ namespace givm
     // For bug in Clang22锛歨ttps://github.com/llvm/llvm-project/issues/59624
 #define GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(type) type& operator=(const type&) = delete
 
-    struct test_event
-    {
-    };
-
     struct history_summary_initialization
     {
     };

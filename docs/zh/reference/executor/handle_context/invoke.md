@@ -81,7 +81,7 @@ struct passive_skill_source
 
     static givm::program_entry handle(
         const givm::program_entry& entry, const givm::skill_view& self,
-        givm::test_event&, givm::handle_context& context)
+        givm::round_started&, givm::handle_context& context)
     {
         const std::array damages{
             givm::damage{ .source = self.id(), .target = self.character().id(),
@@ -127,7 +127,7 @@ int main()
     sources.add(source);
     sources.add(character);
     const auto [library, ids] = compile(sources,
-        std::tuple{ givm::test_command{}, givm::end_game{ .result = givm::game_result::both_loss } },
+        std::tuple{ givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
     load_deck(table, library, givm::linked_deck{

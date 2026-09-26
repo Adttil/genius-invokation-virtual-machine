@@ -576,9 +576,6 @@ namespace givm
         std::uint32_t value{};
     };
 
-    struct test_command
-    {
-    };
 }
 
 namespace givm::detail
@@ -628,8 +625,7 @@ namespace givm::detail
         deal_damage,
         apply_element,
         heal,
-        increase_max_health,
-        test_command>;
+        increase_max_health>;
 
     using command_input_types = decltype([]<class... T>(type_list<T...>)
     {

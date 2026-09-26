@@ -1,9 +1,4 @@
-file(
-    GLOB_RECURSE givm_unit_test_sources
-    CONFIGURE_DEPENDS
-    "*.cpp"
-)
-add_executable(givm_unit_tests ${givm_unit_test_sources})
+add_executable(givm_unit_tests tests.cpp)
 target_link_libraries(
     givm_unit_tests
     PRIVATE

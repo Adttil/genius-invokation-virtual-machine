@@ -12,7 +12,6 @@ namespace givm
     template<>
     struct subscribed_events<history_summary_definition> : type_list<
         struct history_summary_initialization,
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -46,7 +45,6 @@ namespace givm
 
     template<>
     struct subscribed_events<hand_card_status_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -75,7 +73,6 @@ namespace givm
 
     template<>
     struct subscribed_events<hand_card_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -107,7 +104,6 @@ namespace givm
     template<>
     struct subscribed_events<deck_card_view> : type_list<
         struct deck_card_discard_effect,
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -129,7 +125,6 @@ namespace givm
 
     template<>
     struct subscribed_events<deck_card_status_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -151,7 +146,6 @@ namespace givm
 
     template<>
     struct subscribed_events<support_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -206,7 +200,6 @@ namespace givm
 
     template<>
     struct subscribed_events<summon_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -261,7 +254,6 @@ namespace givm
 
     template<>
     struct subscribed_events<combat_status_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -320,7 +312,6 @@ namespace givm
 
     template<>
     struct subscribed_events<skill_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -375,7 +366,6 @@ namespace givm
 
     template<>
     struct subscribed_events<attachment_view> : type_list<
-        struct test_event,
         struct action_phase_started,
         struct battle_started,
         struct round_started,

@@ -2,6 +2,7 @@
 #define GIVM_TABLE_UNRESTRICTED_TABLE_HPP
 
 #include <concepts>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <optional>
@@ -59,14 +60,16 @@ namespace givm::detail
 
         constexpr unrestricted_table& operator=(const unrestricted_table& other)
         {
-            // A fresh byte array starts the copied field lifetimes, even when the
-            // two tables use different history layouts. Other vectors reuse capacity.
-            auto history = other.storage_.history_summaries;
+            if(this == &other) return *this;
             storage_.state = other.storage_.state;
             storage_.player_datas[0] = other.storage_.player_datas[0];
             storage_.player_datas[1] = other.storage_.player_datas[1];
             storage_.status_slots = other.storage_.status_slots;
-            storage_.history_summaries = std::move(history);
+            auto& history = storage_.history_summaries;
+            const auto& source = other.storage_.history_summaries;
+            history.resize(source.size());
+            // memcpy starts the copied field lifetimes even when the layouts differ.
+            if(not history.empty()) std::memcpy(history.data(), source.data(), history.size());
             return *this;
         }
 
