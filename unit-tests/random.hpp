@@ -16,6 +16,9 @@
 
 namespace givm_test::root::random
 {
+constexpr std::array<std::size_t, 3> draw_positions_3{ 0, 1, 2 };
+constexpr std::array<std::size_t, 4> draw_positions_4{ 0, 1, 2, 3 };
+
 namespace
 {
     struct random_tape
@@ -94,8 +97,8 @@ TEST_CASE("initial replacements assign random values by player and selected card
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
-            givm::draw_cards{ .count = 3 },
-            givm::draw_cards{ .count = 3, .player = givm::relative_player::opponent },
+            givm::draw_cards{ .positions = draw_positions_3 },
+            givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_3 },
             givm::replace_cards_both{}, givm::end_game{ givm::game_result::both_loss }
         },
         std::tuple{}, alpha, beta, gamma, delta, epsilon
@@ -152,7 +155,7 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
         const auto [library, ids] = givm::test::compile_definitions_with_program(
             mode,
             std::tuple{
-                givm::draw_cards{ .count = 4 },
+                givm::draw_cards{ .positions = draw_positions_4 },
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
                 givm::end_game{ givm::game_result::both_loss }
             },

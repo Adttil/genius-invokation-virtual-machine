@@ -1,3 +1,4 @@
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <tuple>
@@ -12,6 +13,8 @@
 
 namespace givm_test::root::table
 {
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     std::vector<givm::definition_id<givm::card_definition>> hand_definitions(givm::player_view player)
@@ -43,8 +46,8 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     const auto [library, id_map] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
-            givm::draw_cards{ .count = 2 },
-            givm::draw_cards{ .count = 2, .player = givm::relative_player::opponent },
+            givm::draw_cards{ .positions = draw_positions_2 },
+            givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_2 },
             givm::start_round{}
         },
         std::tuple{ givm::end_game{ givm::game_result::both_loss } },

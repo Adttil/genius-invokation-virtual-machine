@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <concepts>
 #include <cstdint>
@@ -15,6 +16,8 @@
 
 namespace givm_test::executor_instructions::create_hand_card
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     struct created_card_source
@@ -62,7 +65,7 @@ namespace
                 : givm::create_hand_card{ .definition = card };
             return { log, card,
                 context.add_program(std::tuple{ create,
-                    givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent }, create }),
+                    givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 }, create }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
         }
         static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
@@ -151,7 +154,7 @@ namespace
             return { context.add_program(std::tuple{
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = first },
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = second },
-                givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent },
+                givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 },
                 givm::create_hand_card{ .player = givm::relative_player::opponent,
                     .definition = context.resolve_id<givm::card_definition>("CreatedCard") } }) };
         }

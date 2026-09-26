@@ -20,6 +20,8 @@ struct card_drawn;
 
 抽牌只对实际进入手牌的牌发出本通知，不额外发送 [`hand_card_added`](hand_card_added.md)。需要响应任意方式加入手牌的定义，应同时响应这两种事件；由抽牌触发时只在本次 `card_drawn` 广播中响应一次。
 
+[`draw_cards`](../commands/draw_cards.md) 先完成整批抽取，再按指定顺序逐张结算本通知；首张牌的响应开始时，本批其余牌也已离开牌堆。
+
 ## 示例
 
 ```cpp

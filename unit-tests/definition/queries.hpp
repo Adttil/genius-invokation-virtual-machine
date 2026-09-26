@@ -1,3 +1,4 @@
+#include <array>
 #include "../test_source_library.hpp"
 
 #include <cstddef>
@@ -16,6 +17,9 @@
 
 namespace givm_test::definition::queries
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     struct query_counts
@@ -212,7 +216,7 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
     const dynamic_card_source validation_source{ { "CustomValidation", &counts, 7, 10 }, false, true };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
-        std::tuple{ givm::draw_cards{ .count = 2 }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_2 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, initial_source, validation_source);
     const auto initial_id = ids.get_id<givm::card_definition>(initial_source.name());
     const auto validation_id = ids.get_id<givm::card_definition>(validation_source.name());
@@ -340,8 +344,8 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
     const auto [library, ids] = compile(sources, std::tuple{
         givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = first_id },
         givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = second_id },
-        givm::draw_cards{ .count = 1 },
-        givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent },
+        givm::draw_cards{ .positions = draw_positions_1 },
+        givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 },
         givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::normal);
     REQUIRE(ids.get_id<givm::card_definition>(first.name()) == first_id);
@@ -386,7 +390,7 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
     const queried_card_source source{ "RemainingDeckCard", &counts, 1, 2 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
-        std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
     const auto id = ids.get_id<givm::card_definition>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -416,7 +420,7 @@ TEST_CASE("missing queries use their operation specific defaults", "[definition]
     const givm::test::named_definition_source<givm::character_view> character_source{ "DefaultQueryCharacter" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
-        std::tuple{ givm::draw_cards{ .count = 1 }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, card_source, character_source);
     const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
     const auto character_definition = ids.get_id<givm::character_view>(character_source.name());

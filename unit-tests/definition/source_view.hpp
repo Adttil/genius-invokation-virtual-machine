@@ -19,6 +19,8 @@
 
 namespace givm_test::definition::source_view
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     struct dependency_observation
@@ -159,11 +161,11 @@ namespace
             observation->resolved_support = support;
 
             const auto first_entry = context.add_program(std::tuple{
-                givm::draw_cards{ .count = 0 },
+                givm::shuffle_deck{ .player = givm::player_id{ 0 } },
                 givm::shuffle_deck{ .player = givm::player_id{ 0 } }
             });
             const auto second_entry = context.add_program(
-                std::vector{ givm::draw_cards{ .count = 0 } }
+                std::vector{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } }
             );
             observation->first_event_entry_set = bool{ first_entry };
             observation->second_event_entry_set = bool{ second_entry };
@@ -198,8 +200,8 @@ namespace
             observation->onpay_compiled = true;
             using instruction_type = givm::any_command;
             const auto entry = context.add_program(std::vector{
-                instruction_type{ givm::draw_cards{ .count = 0 } },
-                instruction_type{ givm::draw_cards{ .count = 0 } }
+                instruction_type{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
+                instruction_type{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } }
             });
             observation->onpay_entry_set = bool{ entry };
             return { .observation = observation, .onpay_entry = entry };
@@ -334,7 +336,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
 
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, alpha, beta));
-    const auto program = std::tuple{ givm::draw_cards{ .count = 1 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const auto program = std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 

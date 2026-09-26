@@ -158,7 +158,7 @@ namespace givm::detail
         writer.write(execute_fn{ &prepare_card_selection });
         writer.write(command);
         writer.write(execute_fn{ &apply_card_selection });
-        writer.write(execute_fn{ &broadcast_drawn_card });
+        writer.write(execute_fn{ &broadcast_drawn_card<false> });
     }
 }
 

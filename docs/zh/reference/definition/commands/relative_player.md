@@ -32,6 +32,8 @@ enum class relative_player : std::uint8_t
 ## 示例
 
 ```cpp
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -41,7 +43,8 @@ enum class relative_player : std::uint8_t
 
 int main()
 {
-    givm::draw_cards instruction{ .count = 2, .player = givm::relative_player::opponent };
+    constexpr std::array<std::size_t, 2> draw_positions{ 0, 1 };
+    givm::draw_cards instruction{ .player = givm::relative_player::opponent, .positions = draw_positions };
     std::println("为另一方抽牌: {}", instruction.player == givm::relative_player::opponent);
 }
 ```

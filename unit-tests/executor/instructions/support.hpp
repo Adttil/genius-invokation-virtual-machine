@@ -18,6 +18,8 @@
 
 namespace givm_test::executor_instructions::support
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     using values = std::array<std::uint32_t, 2>;
@@ -205,7 +207,7 @@ namespace
         for(std::size_t index = 0; index < log.actions.size(); ++index) commands.emplace_back(givm::start_round{});
         if(play_card)
         {
-            commands.emplace_back(givm::draw_cards{ .count = 1 });
+            commands.emplace_back(givm::draw_cards{ .positions = draw_positions_1 });
             commands.emplace_back(givm::begin_action{});
         }
         commands.emplace_back(givm::end_game{ givm::game_result::both_loss });

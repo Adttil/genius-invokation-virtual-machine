@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <concepts>
 #include <cstdint>
@@ -18,6 +19,8 @@
 
 namespace givm_test::executor::program_inputs
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     struct input_log
@@ -46,7 +49,7 @@ namespace
                 givm::set_active_character{},
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
                 givm::set_active_character{},
-                givm::draw_cards{ .count = 1 },
+                givm::draw_cards{ .positions = draw_positions_1 },
                 givm::set_active_character{}
             };
             const auto main = runtime_commands
@@ -54,7 +57,7 @@ namespace
                     givm::set_active_character{},
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
                     givm::set_active_character{},
-                    givm::draw_cards{ .count = 1 },
+                    givm::draw_cards{ .positions = draw_positions_1 },
                     givm::set_active_character{}
                 })
                 : context.add_program(commands);

@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -14,6 +15,8 @@
 
 namespace givm_test::executor_instructions::self_player
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     constexpr givm::player_id first{ 0 };
@@ -54,15 +57,15 @@ namespace
                 .target = { givm::relative_player::opponent },
                 .value = 2, .type = givm::damage_type::physical } };
             return { log, context.add_program(std::tuple{
-                givm::draw_cards{ .count = 1 },
+                givm::draw_cards{ .positions = draw_positions_1 },
                 givm::heal{ .source = { givm::relative_player::self },
                     .target = { givm::relative_player::self }, .value = 3 },
                 givm::deal_damage{ .damages = outer_damage },
-                givm::draw_cards{ .count = 1 }
+                givm::draw_cards{ .positions = draw_positions_1 }
             }), context.add_program(std::tuple{
                 givm::deal_damage{ .damages = nested_damage },
                 givm::deal_damage{},
-                givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent }
+                givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 }
             }), health };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
@@ -154,7 +157,7 @@ namespace
         std::string_view name() const { return "OtherPlayerPayment"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+            return { log, context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {

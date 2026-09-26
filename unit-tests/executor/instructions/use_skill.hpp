@@ -17,6 +17,8 @@
 
 namespace givm_test::executor_instructions::use_skill
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     using skill_targets = std::array<givm::skill_target_id, 2>;
@@ -72,7 +74,7 @@ namespace
         {
             return { log, { .dice_requirement = { .any = dice }, .energy = energy,
                 .energy_tag = energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag) },
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
         }
         static givm::action_cost_requirement query(const definition_type& data, const givm::skill_initial_cost&)
         {
@@ -172,11 +174,11 @@ namespace
                 context.resolve_id<givm::skill_view>("PassiveSkill"),
                 context.resolve_id<givm::skill_view>("UntargetedSkill"),
                 context.add_program(
-                    std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                    std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
                 context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
                 energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag)
             };
@@ -329,13 +331,13 @@ namespace
         return result;
     }
 
-    auto setup(std::uint32_t cards = 0)
+    auto setup(std::span<const std::size_t> positions = {})
     {
-        return std::tuple{
-            givm::draw_cards{ .count = cards },
-            givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
-            givm::begin_action{}
-        };
+        std::vector<givm::any_command> commands;
+        if(not positions.empty()) commands.emplace_back(givm::draw_cards{ .positions = positions });
+        commands.emplace_back(givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } });
+        commands.emplace_back(givm::begin_action{});
+        return commands;
     }
 
     givm::execution_state advance(givm::executor& target, const givm::definition_library& library,
@@ -610,7 +612,7 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     const givm::test::initialized_character_source plain;
     const energy_card_source card{ &log, dice, 2, "Resolve" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
-        mode, setup(1), std::tuple{}, active, passive, untargeted, owner, plain, card);
+        mode, setup(draw_positions_1), std::tuple{}, active, passive, untargeted, owner, plain, card);
     log.switch_energy_tag = ids.get_tag_id("Resolve");
     CHECK(library[ids.get_id<givm::card_definition>(card.name())].query(givm::card_initial_state{}).cost.energy_tag
         == log.switch_energy_tag);
@@ -692,7 +694,7 @@ TEST_CASE("action payments distinguish energy tags without consuming resources",
     const givm::test::initialized_character_source plain;
     const energy_card_source card{ &log, 1, energy, cost_tag };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
-        mode, setup(1), std::tuple{}, active, passive, untargeted, owner, plain, card);
+        mode, setup(draw_positions_1), std::tuple{}, active, passive, untargeted, owner, plain, card);
     log.switch_energy_tag = cost_tag.empty() ? givm::tag_id{} : ids.get_tag_id(cost_tag);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -772,7 +774,7 @@ TEST_CASE("card energy validation follows dice requirement and ownership checks"
     const givm::test::initialized_character_source character;
     const energy_card_source card{ &log, 1, 1 };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
-        givm::compile_mode::normal, setup(1), std::tuple{}, character, card);
+        givm::compile_mode::normal, setup(draw_positions_1), std::tuple{}, character, card);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto character_id = ids.get_id<givm::character_view>(character.name());

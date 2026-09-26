@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -12,6 +13,8 @@
 
 namespace givm_test::executor_instructions::attack_flags
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     constexpr auto combined_flags = givm::skill_flag_bits::charged_attack | givm::skill_flag_bits::plunging_attack;
@@ -128,7 +131,7 @@ namespace
         return givm::test::compile_definitions_with_program(mode, std::tuple{
             givm::select_active_character_both{},
             givm::start_dice_roll_phase{ .count = dice, .reroll_count = { 0, 0 } },
-            givm::draw_cards{ .count = 1 }, givm::begin_action{}
+            givm::draw_cards{ .positions = draw_positions_1 }, givm::begin_action{}
         }, std::tuple{}, attack_source{ &log, true }, attack_source{ &log, false }, attack_character{}, card);
     }
 

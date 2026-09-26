@@ -51,10 +51,17 @@ namespace givm
     {
     };
 
+    struct draw_cards_input
+    {
+        std::span<const deck_card_id> cards;
+    };
+
     struct draw_cards
     {
-        std::uint32_t count;
+        using input_type = draw_cards_input;
+
         relative_player player = relative_player::self;
+        std::span<const std::size_t> positions{};
     };
 
     struct create_hand_card_input
@@ -660,6 +667,11 @@ namespace givm::detail
     constexpr size_t input_marker(const create_hand_card& command) noexcept
     {
         return not command.definition ? command_input_types::index_of<create_hand_card::input_type>() : size_t(-1);
+    }
+
+    constexpr size_t input_marker(const draw_cards& command) noexcept
+    {
+        return command.positions.empty() ? command_input_types::index_of<draw_cards::input_type>() : size_t(-1);
     }
 
     constexpr size_t input_marker(const discard_hand_card& command) noexcept

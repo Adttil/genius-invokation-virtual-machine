@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -13,6 +14,8 @@
 
 namespace givm_test::executor::target_validation
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     struct tagged_target_card_source
@@ -98,7 +101,7 @@ TEST_CASE("action target queries can inspect target definition tags", "[action][
     const tagged_target_character_source tagged;
     const givm::test::initialized_character_source untagged;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, std::tuple{
-        givm::draw_cards{ .count = 1 }, givm::begin_action{}
+        givm::draw_cards{ .positions = draw_positions_1 }, givm::begin_action{}
     }, std::tuple{}, card, skill, tagged, untagged);
     const auto tagged_id = ids.get_id<givm::character_view>(tagged.name());
     const auto untagged_id = ids.get_id<givm::character_view>(untagged.name());

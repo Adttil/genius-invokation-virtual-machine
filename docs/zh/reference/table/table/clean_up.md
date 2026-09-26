@@ -24,6 +24,8 @@ constexpr void clean_up() noexcept;
 ## 示例
 
 ```cpp
+#include <array>
+#include <cstddef>
 #include <bitset>
 #include <cstdint>
 #include <print>
@@ -53,9 +55,10 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     sources.add(first, second);
+    constexpr std::array<std::size_t, 1> draw_positions{ 0 };
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::draw_cards{ .count = 1 }, givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent }, givm::replace_cards{ .player = givm::player_id{ 0 } } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions }, givm::replace_cards{ .player = givm::player_id{ 0 } } },
         std::tuple{}, givm::compile_mode::normal);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto a = ids.get_id<givm::card_definition>("first");

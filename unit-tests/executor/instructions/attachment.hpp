@@ -18,6 +18,8 @@
 
 namespace givm_test::executor_instructions::attachment
 {
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     constexpr givm::character_id equipped_character{ givm::player_id{ 0 }, 0 };
@@ -218,7 +220,7 @@ namespace
         untagged_state.allowed_weapon_types.set(givm::weapon_type::sword);
         return givm::test::compile_definitions_with_program(mode,
             std::tuple{
-                givm::draw_cards{ .count = 2 }, givm::begin_action{}, givm::end_game{ givm::game_result::both_loss }
+                givm::draw_cards{ .positions = draw_positions_2 }, givm::begin_action{}, givm::end_game{ givm::game_result::both_loss }
             }, std::tuple{},
             givm::test::with_passive_skill(equipment_character_source{ &log, prepare_equipment }), tagged_character_source{ "Blocked", false },
             tagged_character_source{ "Reserve", true }, givm::test::initialized_character_source{ "Untagged", untagged_state },

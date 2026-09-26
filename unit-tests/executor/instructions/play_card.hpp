@@ -19,6 +19,9 @@
 
 namespace givm_test::executor_instructions::play_card
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     using card_targets = std::array<givm::card_target_id, 2>;
@@ -80,7 +83,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, cost, speed, single_target, optional_targets,
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {
@@ -159,11 +162,11 @@ namespace
             return {
                 log,
                 context.add_program(
-                    std::tuple{ givm::draw_cards{ .count = 1 } }),
+                    std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
                 context.add_program(
-                    std::tuple{ givm::draw_cards{ .count = 2 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }),
+                    std::tuple{ givm::draw_cards{ .positions = draw_positions_2 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
                 context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } })
             };
         }
@@ -256,10 +259,10 @@ namespace
         return result;
     }
 
-    auto setup(std::uint32_t cards)
+    auto setup(std::span<const std::size_t> positions)
     {
         return std::tuple{
-            givm::draw_cards{ .count = cards },
+            givm::draw_cards{ .positions = positions },
             givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
             givm::begin_action{}
         };
@@ -286,7 +289,7 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> filler{ "PlayFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
-        mode, setup(2), std::tuple{}, first_source, second_source, observer, character, filler);
+        mode, setup(draw_positions_2), std::tuple{}, first_source, second_source, observer, character, filler);
     const auto filler_id = ids.get_id<givm::card_definition>(filler.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -365,7 +368,7 @@ TEST_CASE("card target queries advance one step at a time and default to no targ
     const givm::test::initialized_character_source character;
     const untargeted_card_source plain{ &log };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
-        mode, setup(2), std::tuple{}, source, observer, character, plain);
+        mode, setup(draw_positions_2), std::tuple{}, source, observer, character, plain);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
@@ -470,7 +473,7 @@ TEST_CASE("optional targets may finish or continue and target spans ignore entri
     const auto observer = givm::test::with_passive_skill(play_observer_source{ &log });
     const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
-        mode, setup(1), std::tuple{}, source, observer, character);
+        mode, setup(draw_positions_1), std::tuple{}, source, observer, character);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
@@ -537,7 +540,7 @@ TEST_CASE("card payment and broadcasts resume in order after removal even when i
     const givm::test::initialized_character_source character;
     const givm::test::named_definition_source<givm::card_definition> filler{ "NestedFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
-        mode, setup(1), std::tuple{}, source, observer, character, filler);
+        mode, setup(draw_positions_1), std::tuple{}, source, observer, character, filler);
     const auto card_definition = ids.get_id<givm::card_definition>(source.name());
     const auto filler_definition = ids.get_id<givm::card_definition>(filler.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 }, .hand_limit = 4 },

@@ -7,6 +7,7 @@
 ```cpp
 using any_command_input = std::variant<
     set_active_character_input,
+    draw_cards_input,
     create_hand_card_input,
     discard_hand_card_input,
     discard_deck_cards_input,

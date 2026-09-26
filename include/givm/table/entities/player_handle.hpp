@@ -284,6 +284,39 @@ namespace givm::detail
             return result;
         }
 
+        // Batch extraction leaves the order unchanged until compact_deck_card_order().
+        // No event responses may run between extracting cards and compacting the order.
+        constexpr card_data take_deck_card(deck_card_id card_id) const requires is_mutable
+        {
+            GIVM_ASSERT(card_id.player_id == id());
+            GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
+            auto& source = storage_.data->deck_card_datas[card_id.index];
+            GIVM_ASSERT((source.definition_and_flags & deck_card_erased_mask) == 0);
+            card_data result = std::move(source);
+            source.definition_and_flags = static_cast<size_t>(-1);
+            source.first_status = invalid_status_index;
+            source.last_status = invalid_status_index;
+            return result;
+        }
+
+        constexpr void discard_deck_card(deck_card_id card_id) const requires is_mutable
+        {
+            GIVM_ASSERT(card_id.player_id == id());
+            GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
+            auto& source = storage_.data->deck_card_datas[card_id.index];
+            GIVM_ASSERT((source.definition_and_flags & deck_card_erased_mask) == 0);
+            detail::erase_statuses(*storage_.table, source);
+            source.definition_and_flags |= deck_card_erased_mask;
+        }
+
+        constexpr void compact_deck_card_order() const requires is_mutable
+        {
+            std::erase_if(storage_.data->deck_card_order, [&](size_t slot)
+            {
+                return (storage_.data->deck_card_datas[slot].definition_and_flags & deck_card_erased_mask) != 0;
+            });
+        }
+
         template<class TConsume>
         constexpr void take_deck_cards(
             std::span<const size_t> descending_indices, TConsume&& consume

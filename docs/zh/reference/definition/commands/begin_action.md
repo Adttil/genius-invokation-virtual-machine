@@ -47,6 +47,8 @@ struct begin_action;
 ## 示例
 
 ```cpp
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -87,9 +89,10 @@ int main()
     };
     sources.add(source);
     sources.add(card);
+    constexpr std::array<std::size_t, 1> draw_positions{ 0 };
     const auto [library, ids] = compile(
         sources,
-        std::tuple{ givm::select_active_character_both{}, givm::draw_cards{ .count = 1 }, givm::begin_action{} },
+        std::tuple{ givm::select_active_character_both{}, givm::draw_cards{ .positions = draw_positions }, givm::begin_action{} },
         std::tuple{}, givm::compile_mode::normal);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");

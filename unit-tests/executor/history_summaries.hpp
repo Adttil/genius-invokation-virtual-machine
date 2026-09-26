@@ -20,6 +20,8 @@
 
 namespace givm_test::executor::history_summaries
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     constexpr std::string_view mixed_name = "MixedHistory";
@@ -697,7 +699,7 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(driver, future, summary, initial, first, second, character));
     const auto [library, ids] = compile(sources,
-        std::tuple{ givm::draw_cards{ .count = 1 }, givm::start_round{}, givm::begin_action{} }, std::tuple{}, mode);
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::begin_action{} }, std::tuple{}, mode);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };

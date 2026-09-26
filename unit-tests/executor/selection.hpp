@@ -1,3 +1,4 @@
+#include <array>
 #include "../test_source_library.hpp"
 
 #include <bitset>
@@ -16,6 +17,8 @@
 
 namespace givm_test::executor::selection
 {
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     struct counting_random
@@ -47,8 +50,8 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
-            givm::draw_cards{ .count = 2 },
-            givm::draw_cards{ .count = 2, .player = givm::relative_player::opponent },
+            givm::draw_cards{ .positions = draw_positions_2 },
+            givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_2 },
             givm::replace_cards_both{},
             givm::end_game{ givm::game_result::both_loss }
         },
@@ -110,12 +113,14 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
 TEST_CASE("card selections cover their highest bit when the hand reaches or exceeds the mask capacity", "[execution-view][selection][cards]")
 {
     const auto hand_count = GENERATE(givm::selection_capacity, givm::selection_capacity + 1);
+    std::vector<std::size_t> positions(hand_count);
+    for(std::size_t index = 0; index < positions.size(); ++index) positions[index] = index;
     const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
     const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
-            givm::draw_cards{ .count = static_cast<std::uint32_t>(hand_count) },
+            givm::draw_cards{ .positions = positions },
             givm::replace_cards{ .player = givm::player_id{ 0 } },
             givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, alpha, beta

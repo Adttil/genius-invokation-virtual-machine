@@ -15,8 +15,7 @@ namespace givm_test::executor::library
 TEST_CASE("initialization and round programs accept tuple-like and range forms", "[executor][library]")
 {
     const auto initialization = std::tuple{
-        givm::start_round{},
-        givm::draw_cards{ .count = 0 }
+        givm::start_round{}
     };
     const std::vector round{ givm::end_game{ givm::game_result::player_0_win } };
 

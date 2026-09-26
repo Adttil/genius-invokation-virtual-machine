@@ -37,6 +37,11 @@ namespace givm::detail
         return std::tuple{ dynamic_array<hand_card_id>(input.cards) };
     }
 
+    inline auto command_input_members(const draw_cards_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<deck_card_id>(input.cards) };
+    }
+
     inline auto command_input_members(const set_summon_state_input& input) noexcept
     {
         return std::tuple{ dynamic_array<set_summon_state_input::change>(input.changes) };

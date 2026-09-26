@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ranges>
+#include <span>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -16,6 +17,10 @@
 
 namespace givm_test::executor_instructions::entity_observation
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+constexpr std::array<std::size_t, 5> draw_positions_5{ 0, 1, 2, 3, 4 };
+
 namespace
 {
     struct counting_random
@@ -323,9 +328,9 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
         return givm::test::compile_definitions_with_program(
             mode,
             std::tuple{
-                givm::draw_cards{ .count = static_cast<std::uint32_t>(initial_hand_count), .player = givm::relative_player::self },
-                givm::draw_cards{ .count = 5, .player = givm::relative_player::self },
-                givm::draw_cards{ .count = 1, .player = givm::relative_player::self },
+                givm::draw_cards{ .positions = std::span{ draw_positions_2 }.first(initial_hand_count) },
+                givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_5 },
+                givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_1 },
                 givm::end_game{ .result = givm::game_result::both_loss }
             },
             std::tuple{}, observer_source, card_source
@@ -554,9 +559,9 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
-            givm::draw_cards{ .count = 2 },
+            givm::draw_cards{ .positions = draw_positions_2 },
             givm::replace_cards{ .player = givm::player_id{ 0 } },
-            givm::draw_cards{ .count = 1 },
+            givm::draw_cards{ .positions = draw_positions_1 },
             givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, observer, first, second
     );

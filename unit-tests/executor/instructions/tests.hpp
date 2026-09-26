@@ -10,6 +10,7 @@
 #include "damage_preparation_group.hpp"
 #include "deal_damage.hpp"
 #include "discard_cards.hpp"
+#include "draw_cards.hpp"
 #include "dying.hpp"
 #include "element_application_inputs.hpp"
 #include "elemental_tuning.hpp"

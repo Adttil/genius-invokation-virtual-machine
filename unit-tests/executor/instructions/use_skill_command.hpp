@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <cstdint>
 #include <ranges>
@@ -14,6 +15,8 @@
 
 namespace givm_test::executor_instructions::use_skill_command
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     constexpr givm::player_id owner{ 0 };
@@ -45,7 +48,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::tuple{
-                givm::draw_cards{ .count = 1 }, givm::replace_cards{ owner }
+                givm::draw_cards{ .positions = draw_positions_1 }, givm::replace_cards{ owner }
             }) };
         }
         static givm::action_cost_requirement query(const definition_type&, const givm::skill_initial_cost&)
@@ -73,7 +76,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::tuple{ givm::replace_cards{ owner } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 }, givm::replace_cards{ owner } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::replace_cards{ owner } }) };
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
             givm::skill_will_be_used& event, givm::handle_context& context)
@@ -174,7 +177,7 @@ namespace
                 .player = givm::relative_player::opponent,
                 .definition = context.resolve_id<givm::skill_view>("CommandSkill")
             };
-            return { log, context.add_program(std::tuple{ command, givm::draw_cards{ .count = 1 } }), dynamic };
+            return { log, context.add_program(std::tuple{ command, givm::draw_cards{ .positions = draw_positions_1 } }), dynamic };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {
@@ -219,7 +222,7 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
     const command_card_source card{ &log, dynamic };
     const givm::test::named_definition_source<givm::card_definition> filler{ "CommandFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, std::tuple{
-        givm::draw_cards{ .count = 1 },
+        givm::draw_cards{ .positions = draw_positions_1 },
         givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
         givm::begin_action{}
     }, std::tuple{}, skill, observer, own_character, other_character, card, filler);
@@ -298,7 +301,7 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     const command_card_source card{ &log, false };
     const givm::test::named_definition_source<givm::card_definition> filler{ "CommandFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, std::tuple{
-        givm::draw_cards{ .count = 1 },
+        givm::draw_cards{ .positions = draw_positions_1 },
         givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
         givm::begin_action{}
     }, std::tuple{}, skill, observer, own_character, other_character, standby_character, card, filler);

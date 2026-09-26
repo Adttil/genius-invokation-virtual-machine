@@ -1,3 +1,4 @@
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -16,6 +17,9 @@
 
 namespace givm_test::executor_instructions::begin_action
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     static_assert(std::is_const_v<decltype(givm::cost_of_switch::target)>);
@@ -55,7 +59,7 @@ namespace
                 });
             else if(draw_payment)
                 payment = context.add_program(std::tuple{
-                    givm::draw_cards{ .count = 1 }
+                    givm::draw_cards{ .positions = draw_positions_1 }
                 });
             return { log, speed, payment, free_switch };
         }
@@ -135,10 +139,10 @@ namespace
                 control,
                 initial_dice,
                 context.add_program(std::tuple{
-                    givm::draw_cards{ .count = 1 }
+                    givm::draw_cards{ .positions = draw_positions_1 }
                 }),
                 context.add_program(std::tuple{
-                    givm::draw_cards{ .count = 2 }
+                    givm::draw_cards{ .positions = draw_positions_2 }
                 })
             };
         }

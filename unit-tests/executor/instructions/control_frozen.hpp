@@ -16,6 +16,8 @@
 
 namespace givm_test::executor_instructions::control_frozen
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     constexpr givm::character_id actor{ givm::player_id{ 0 }, 0 };
@@ -249,7 +251,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
             commands.emplace_back(givm::add_attachment{ .definition = control, .state = { 1 } });
             commands.emplace_back(givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } });
         }
-        commands.emplace_back(givm::draw_cards{ .count = 1 });
+        commands.emplace_back(givm::draw_cards{ .positions = draw_positions_1 });
         commands.emplace_back(givm::begin_action{});
         commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return commands;

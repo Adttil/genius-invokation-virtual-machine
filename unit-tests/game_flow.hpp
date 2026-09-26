@@ -14,6 +14,9 @@
 
 namespace givm_test::root::game_flow
 {
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+constexpr std::array<std::size_t, 5> draw_positions_5{ 0, 1, 2, 3, 4 };
+
 namespace
 {
     struct test_card_definition_source
@@ -159,8 +162,8 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const auto initialization = std::tuple{
         givm::shuffle_deck{ .player = givm::player_id{ 0 } },
         givm::shuffle_deck{ .player = givm::player_id{ 1 } },
-        givm::draw_cards{ .count = 5, .player = givm::relative_player::self },
-        givm::draw_cards{ .count = 5, .player = givm::relative_player::opponent },
+        givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_5 },
+        givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_5 },
         givm::replace_cards_both{},
         givm::select_active_character_both{}
     };
@@ -170,8 +173,8 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
         givm::start_round{},
         givm::begin_action{},
         givm::end_round{},
-        givm::draw_cards{ .count = 2, .player = givm::relative_player::self },
-        givm::draw_cards{ .count = 2, .player = givm::relative_player::opponent }
+        givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_2 },
+        givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_2 }
     };
     const auto [library, id_map] = compile(source_library, initialization, round, givm::compile_mode::normal);
     std::array<std::string_view, 10> card_names;
@@ -283,8 +286,8 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     REQUIRE(sources.add(card_source, character_source));
     const auto [library, id_map] = compile(sources,
         std::tuple{
-            givm::draw_cards{ .count = 5, .player = givm::relative_player::self },
-            givm::draw_cards{ .count = 5, .player = givm::relative_player::opponent },
+            givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_5 },
+            givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_5 },
             givm::replace_cards_both{},
             givm::select_active_character_both{},
             givm::begin_action{}

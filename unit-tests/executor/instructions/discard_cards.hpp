@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <concepts>
 #include <cstdint>
@@ -14,6 +15,11 @@
 
 namespace givm_test::executor_instructions::discard_cards
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+constexpr std::array<std::size_t, 3> draw_positions_3{ 0, 1, 2 };
+constexpr std::array<std::size_t, 5> draw_positions_5{ 0, 1, 2, 3, 4 };
+
 namespace
 {
     struct discard_log
@@ -49,7 +55,7 @@ namespace
                         .definition = context.resolve_id<givm::card_definition>(name()) },
                     givm::discard_deck_cards{ .count = 2, .player = givm::relative_player::opponent } });
             return { log, discard, context.add_program(std::tuple{
-                givm::replace_cards{ givm::player_id{ 1 } }, givm::draw_cards{ .count = 1 } }),
+                givm::replace_cards{ givm::player_id{ 1 } }, givm::draw_cards{ .positions = draw_positions_1 } }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } } }) };
         }
         static givm::card_state query(const definition_type&, const givm::card_initial_state&)
@@ -201,7 +207,7 @@ TEST_CASE("discard batches leave together then run each effect and notification 
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const discard_source source{ &log };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::draw_cards{ .count = 2 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_2 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
     const auto card = ids.get_id<givm::card_definition>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -287,7 +293,7 @@ TEST_CASE("overflow removes cards without invoking discard effects or notificati
     discard_log log{};
     const discard_source source{ &log };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::draw_cards{ .count = 3 }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_3 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
     const auto card = ids.get_id<givm::card_definition>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 1 } };
@@ -462,7 +468,7 @@ TEST_CASE("hand discard selects a batch once and resolves every card before the 
     const hand_discard_batch_driver driver{ &log };
     const givm::test::named_definition_source<givm::card_definition> absent{ "BatchAbsentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::draw_cards{ .count = 5 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_5 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, first, second, absent, driver);
     const auto first_id = ids.get_id<givm::card_definition>(first.name());
     const auto second_id = ids.get_id<givm::card_definition>(second.name());
@@ -508,7 +514,7 @@ TEST_CASE("fixed hand discard with no matching definition is a no-op", "[discard
     const hand_discard_batch_driver driver{ &log };
     const givm::test::named_definition_source<givm::card_definition> absent{ "BatchAbsentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::draw_cards{ .count = 2 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_2 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, card, absent, driver);
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };

@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <array>
 #include <concepts>
 #include <cstdint>
@@ -12,6 +13,9 @@
 
 namespace givm_test::executor_instructions::elemental_tuning
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     struct tuning_opponent_source
@@ -91,7 +95,7 @@ namespace
         {
             return { log, element,
                 context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
         {
@@ -151,7 +155,7 @@ namespace
     auto setup()
     {
         return std::tuple{
-            givm::draw_cards{ .count = 2 },
+            givm::draw_cards{ .positions = draw_positions_2 },
             givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } },
             givm::begin_action{}
         };

@@ -1,3 +1,5 @@
+#include <cstddef>
+#include <array>
 #include <cstdint>
 #include <string_view>
 #include <tuple>
@@ -12,6 +14,8 @@
 
 namespace givm_test::table::removed_entities
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+
 namespace
 {
     void check_removed_card(
@@ -58,7 +62,7 @@ namespace
             return {
                 log,
                 draws
-                    ? context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } })
+                    ? context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } })
                     : givm::program_entry::null()
             };
         }
@@ -97,7 +101,7 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
-            givm::draw_cards{ .count = 1 },
+            givm::draw_cards{ .positions = draw_positions_1 },
             givm::start_round{},
             givm::start_round{},
             givm::end_game{ givm::game_result::both_loss }

@@ -1,3 +1,4 @@
+#include <cstddef>
 #include "../test_source_library.hpp"
 
 #include <array>
@@ -16,6 +17,9 @@
 
 namespace givm_test::executor::broadcast
 {
+constexpr std::array<std::size_t, 1> draw_positions_1{ 0 };
+constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
+
 namespace
 {
     struct character_source
@@ -97,7 +101,7 @@ namespace
         {
             return {
                 drawn,
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 2 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_2 } }),
                 context.add_program(std::tuple{
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
                     givm::replace_cards{ .player = givm::player_id{ 0 } }
@@ -133,7 +137,7 @@ namespace
         std::string_view name() const noexcept { return "HandleContext"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { samples, context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+            return { samples, context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
                            givm::round_started&, givm::handle_context& context)
@@ -165,7 +169,7 @@ namespace
             return { handlers, nested_responses,
                 context.add_program(std::tuple{}),
                 context.add_program(std::tuple{ givm::set_active_character{} }),
-                context.add_program(std::tuple{ givm::draw_cards{ .count = 1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
                                           givm::round_started&, givm::handle_context& context)
@@ -342,7 +346,7 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
         mode,
         std::tuple{
             givm::start_round{},
-            givm::draw_cards{ .count = 1 },
+            givm::draw_cards{ .positions = draw_positions_1 },
             givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, source, character, card
     );
@@ -412,7 +416,7 @@ TEST_CASE("consecutive broadcasts mix missing empty and parameterized response p
     const character_source character{ "MixedCharacter", source.name() };
     const givm::test::named_definition_source<givm::card_definition> card{ "MixedResponseCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::start_round{}, givm::draw_cards{ .count = 1 },
+        std::tuple{ givm::start_round{}, givm::start_round{}, givm::draw_cards{ .positions = draw_positions_1 },
                     givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
@@ -457,8 +461,8 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     const order_source<givm::combat_status_view> status{ &log, "CombatStatus" };
     const order_source<givm::summon_view> summon{ &log, "Summon" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::draw_cards{ .count = 1 },
-            givm::draw_cards{ .count = 1, .player = givm::relative_player::opponent },
+        std::tuple{ givm::start_round{}, givm::draw_cards{ .positions = draw_positions_1 },
+            givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 },
             givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         skill, character, card, ordinary_a, ordinary_b, weapon, artifact, talent, technique, status, summon);
     const auto character_id = ids.get_id<givm::character_view>(character.name());
