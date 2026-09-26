@@ -71,7 +71,7 @@ int main()
     givm::table table{ { .self_player = givm::player_id{ 1 } } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     const auto& self = table[givm::player_id{ 1 }].state().dice;
     const auto& opponent = table[givm::player_id{ 0 }].state().dice;

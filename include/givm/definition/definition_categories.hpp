@@ -21,6 +21,9 @@ namespace givm
         deck_card_status_view
     >{};
 
+    template<>
+    struct views_of_definition<history_summary_definition> : type_list<>{};
+
     using definition_types = type_list<
         card_definition,
         status_definition,
@@ -29,7 +32,8 @@ namespace givm
         combat_status_view,
         character_view,
         skill_view,
-        attachment_view
+        attachment_view,
+        history_summary_definition
     >;
 }
 

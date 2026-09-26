@@ -34,6 +34,7 @@
 | `character_dependencies()` / `character_dependencies_by_tag()` | 返回所依赖的角色定义名称或标签筛选条件 |
 | `skill_dependencies()` / `skill_dependencies_by_tag()` | 返回所依赖的技能定义名称或标签筛选条件 |
 | `attachment_dependencies()` / `attachment_dependencies_by_tag()` | 返回所依赖的角色附着实体定义名称或标签筛选条件 |
+| `history_summary_dependencies()` / `history_summary_dependencies_by_tag()` | 返回所依赖的历史摘要定义名称或标签筛选条件 |
 
 `*_dependencies()` 列出名称，`*_dependencies_by_tag()` 列出形如 `治疗 & !料理` 的筛选表达式。每种查询须使用相应的声明：名称依赖通过 `resolve_id` 查询，标签依赖通过 `resolve_tag` 查询，筛选依赖通过 `resolve_ids_by_tag` 查询。只声明名称依赖不会顺带授权标签查询，反之亦然。
 
@@ -101,6 +102,8 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 
 ## 动态定义源
 
+本节及前述事件响应、查询签名用于场上实体的定义源。[历史摘要](history_summary.md)采用独立的 `layout` 与只读事件 `handle`，初始化也通过仅摘要订阅的 `history_summary_initialization` 响应完成，不提供普通查询；动态摘要的能力判断为 `can_handle<Event>()`。
+
 未声明 `is_dynamic` 或声明为 `static constexpr bool is_dynamic = false;` 时，定义源按上述静态规则提供响应与查询，不调用 `can_handle` 或 `can_query`。Lua 等动态来源的适配器可以声明以下成员，按每个源对象实际提供的能力选择响应与查询：
 
 ```cpp
@@ -125,6 +128,12 @@ bool can_query() const;
 能力判断在编译定义库时对具体源对象进行。若返回 `true` 却没有匹配的实现，编译定义库抛出 `std::invalid_argument`；已有实现返回类型错误则属于 C++ 编译错误。能力判断须与源实际提供的实现一致。查询选定后仍遵守空参数查询求值一次、非空参数查询按本次参数求值的规则。
 
 游戏运行期间不再调用源对象的能力判断。定义库公开的 [`can_handle`](../executor/definition_library/can_handle.md) 查询返回本次编译确定的响应能力。
+
+## 历史摘要
+
+依赖过去事件的规则可以声明 `history_summary_definition` 类别的摘要源。摘要字段在编译定义库时确定，在 [`executor::start`](../executor/executor/start.md) 中通过初始化事件设定初值，通常先完成双方 [`load_deck`](../executor/load_deck.md)。普通实体对某次通知的全部响应及效果完成后，才更新订阅它的摘要；这些普通响应读取的摘要尚未包含本次通知，但可以包含先完成的嵌套通知。费用预览和检查不会改变摘要。
+
+摘要无需借用场上实体，也不会因相关卡牌尚未进入手牌而遗漏记录。需要摘要的实体定义声明相应依赖，在 `compile` 中通过 `resolve_history_field<T>(summary, field)` 取得读取键，再以 `context.table()[key]` 读取。完整协议、字段类型及示例见[历史摘要](history_summary.md)。
 
 ## 示例
 

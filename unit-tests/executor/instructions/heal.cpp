@@ -133,7 +133,7 @@ TEST_CASE("range healing applies every target before healed notifications", "[he
         { .active_character = patient } };
     load_healing(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     const auto anchor = log.target_offset == 0 ? patient : other;
@@ -170,7 +170,7 @@ TEST_CASE("healing modifies the request then reports actual recovery including z
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
     load_healing(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     const auto actual = std::min(log.value + log.bonus, 10 - log.initial_health);
@@ -190,7 +190,7 @@ TEST_CASE("range healing excludes defeated characters and permits an empty range
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = patient } };
     load_healing(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(table[other].state().health == 0);
@@ -222,7 +222,7 @@ TEST_CASE("healing broadcasts resume and copy before and after recovery", "[heal
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
     load_healing(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
     CHECK(table[patient].state().health == 4);
@@ -257,7 +257,7 @@ TEST_CASE("range healing resumes and copies during calculations and notification
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = patient } };
     load_healing(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
 
     REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);

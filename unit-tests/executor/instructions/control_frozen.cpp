@@ -258,7 +258,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
     CHECK(library.is_control(ids.get_id<givm::attachment_view>("Control")));
@@ -309,7 +309,7 @@ TEST_CASE("control immunity prevents overload switching without suppressing its 
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     for(;;)
     {
@@ -351,7 +351,7 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     std::size_t observations = 0;
     for(;;)
@@ -400,7 +400,7 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     auto state = advance(executor, library, table, random);
     if(observed)
@@ -460,7 +460,7 @@ TEST_CASE("a lethal frozen reaction does not attach control to the defeated char
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(table[target].state().health == 0);
@@ -490,7 +490,7 @@ TEST_CASE("round start responses wait for both rerolls and resume independently 
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     auto state = advance(executor, library, table, random);
     if(observed)
@@ -550,7 +550,7 @@ TEST_CASE("exceeding the round limit prevents rolling and round start responses"
     load_scenario(table, library, ids);
     log.library = &library;
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     auto state = advance(executor, library, table, random);
     if(observed)

@@ -28,6 +28,12 @@ namespace givm
             return static_cast<const detail::unrestricted_table&>(*this).players();
         }
 
+        template<class T>
+        decltype(auto) operator[](history_value_key<T> key) const noexcept
+        {
+            return static_cast<const detail::unrestricted_table&>(*this)[key];
+        }
+
         constexpr auto operator[](player_id id) const
         {
             return static_cast<const detail::unrestricted_table&>(*this)[id];

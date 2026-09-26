@@ -410,7 +410,7 @@ namespace
             { .characters = { ids.template get_id<givm::character_view>(character.name()),
                 ids.template get_id<givm::character_view>(character.name()) } });
         givm::executor executor;
-        executor.enter_entry(library);
+        executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
         auto state = executor.step(library, table, random);
         while(state == givm::execution_state::active_character_changed)

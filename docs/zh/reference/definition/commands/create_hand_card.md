@@ -83,7 +83,7 @@ int main()
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     const auto player = table[givm::player_id{ 0 }];
     const auto card = *player.hand_cards().begin();

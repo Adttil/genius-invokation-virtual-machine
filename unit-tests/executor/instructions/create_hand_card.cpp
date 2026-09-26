@@ -174,7 +174,7 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
     load_deck(table, library, { .cards = { card } },
         { .cards = { ids.get_id<givm::card_definition>("CreationDriver") } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     std::size_t pauses = 0;
     for(;;)
@@ -219,7 +219,7 @@ TEST_CASE("draw and general hand entry responders share attachment order", "[cre
             .characters = { ids.get_id<givm::character_view>("Character") } },
         { .cards = { ids.get_id<givm::card_definition>("EntryOrderDriver") } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(log.responses == (log.reverse ? std::vector<char>{ 'A', 'D', 'A' } : std::vector<char>{ 'D', 'A', 'A' }));

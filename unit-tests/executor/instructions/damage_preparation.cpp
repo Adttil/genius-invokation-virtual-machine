@@ -196,7 +196,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
         { .characters = { ids.get_id<givm::character_view>(target.name()), ids.get_id<givm::character_view>(reserve.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     std::vector<givm::elemental_reaction> observed_reactions;
     std::size_t pauses = 0;
@@ -261,7 +261,7 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
         { .characters = { target_id, target_id } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
     executor.view_in<givm::execution_state::card_selection>().select({});

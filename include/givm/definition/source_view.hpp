@@ -16,6 +16,7 @@
 #include "subscribed_events.hpp"
 #include "supported_queries.hpp"
 #include "definition_categories.hpp"
+#include "history_summary.hpp"
 
 namespace givm
 {
@@ -36,6 +37,19 @@ namespace givm
 
 namespace givm::detail
 {
+    template<class TEvent>
+    using history_handle_fn_t = void (*)(const definition_data&, history_summary_state,
+        const TEvent&, const table&, const definition_library&);
+
+    template<class... TEvents>
+    using history_handle_getters = std::tuple<history_handle_fn_t<TEvents>(*)(const void*)...>;
+
+    struct history_source_functions
+    {
+        history_summary_layout(*layout)(const void*, const definition_compile_context&);
+        subscribed_events<history_summary_definition>::apply<history_handle_getters> handles;
+    };
+
     template<class TQuery>
     using query_fn_t = TQuery::result_t (*)(const definition_data&, const TQuery&);
 
@@ -126,6 +140,12 @@ namespace givm::detail
             if constexpr(requires { source.skill_dependencies(); }) return source.skill_dependencies();
             else return std::array<std::string_view, 0>{};
         }
+        else if constexpr(std::same_as<TCategory, history_summary_definition>)
+        {
+            if constexpr(requires { source.history_summary_dependencies(); })
+                return source.history_summary_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
         else
         {
             static_assert(std::same_as<TCategory, attachment_view>);
@@ -178,6 +198,12 @@ namespace givm::detail
         {
             if constexpr(requires { source.skill_dependencies_by_tag(); })
                 return source.skill_dependencies_by_tag();
+            else return std::array<std::string_view, 0>{};
+        }
+        else if constexpr(std::same_as<TCategory, history_summary_definition>)
+        {
+            if constexpr(requires { source.history_summary_dependencies_by_tag(); })
+                return source.history_summary_dependencies_by_tag();
             else return std::array<std::string_view, 0>{};
         }
         else
@@ -307,6 +333,13 @@ namespace givm
             [[no_unique_address]]
 #endif
             query_fn_getter_tuple_t query_fn_getters;
+#ifdef _MSC_VER
+            [[msvc::no_unique_address]]
+#else
+            [[no_unique_address]]
+#endif
+            std::conditional_t<std::same_as<TCategory, history_summary_definition>,
+                detail::history_source_functions, std::tuple<>> history;
         };
 
         definition_data compile(definition_compile_context& context) const
@@ -379,8 +412,62 @@ namespace givm
                 ),
                 .query_fn_getters = make_query_fn_getters<TSource>(
                     std::make_index_sequence<supported_queries<TCategory>::size()>{}
-                )
+                ),
+                .history = make_history_functions<TSource>()
             };
+        }
+
+        template<class TSource, class TEvent>
+        static detail::history_handle_fn_t<TEvent> make_history_handle(const TSource& source)
+        {
+            if constexpr(detail::is_dynamic_source<TSource>)
+            {
+                static_assert(std::same_as<decltype(source.template can_handle<TEvent>()), bool>);
+                if(not source.template can_handle<TEvent>()) return nullptr;
+            }
+            using definition_type = detail::definition_for_source_t<TSource>;
+            if constexpr(requires(const definition_type& definition, history_summary_state state,
+                const TEvent& event, const table& card_table, const definition_library& library)
+            {
+                TSource::handle(definition, state, event, card_table, library);
+            })
+            {
+                static_assert(std::same_as<decltype(TSource::handle(std::declval<const definition_type&>(),
+                    std::declval<history_summary_state>(), std::declval<const TEvent&>(),
+                    std::declval<const table&>(), std::declval<const definition_library&>())), void>);
+                return +[](const definition_data& data, history_summary_state state,
+                    const TEvent& event, const table& card_table, const definition_library& library)
+                {
+                    TSource::handle(std::any_cast<const definition_type&>(data), state, event, card_table, library);
+                };
+            }
+            else if constexpr(detail::is_dynamic_source<TSource>)
+                throw std::invalid_argument{ "dynamic source enables an unavailable history handler" };
+            else return nullptr;
+        }
+
+        template<class TSource>
+        static constexpr auto make_history_functions()
+        {
+            if constexpr(not std::same_as<TCategory, history_summary_definition>) return std::tuple<>{};
+            else
+            {
+                return detail::history_source_functions{
+                    .layout = +[](const void* source, const definition_compile_context& context)
+                    {
+                        return history_summary_layout{ static_cast<const TSource*>(source)->layout(context) };
+                    },
+                    .handles = []<class... TEvents>(type_list<TEvents...>)
+                    {
+                        return detail::history_handle_getters<TEvents...>{
+                            (+[](const void* source)
+                            {
+                                return make_history_handle<TSource, TEvents>(*static_cast<const TSource*>(source));
+                            })...
+                        };
+                    }(typename subscribed_events<history_summary_definition>::template apply<type_list>{})
+                };
+            }
         }
 
         template<class TSource>

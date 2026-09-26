@@ -23,7 +23,7 @@ TEST_CASE("initialization and round programs accept tuple-like and range forms",
     auto random = []() -> std::uint32_t { return 0; };
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(table.state().round_number == 1);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
@@ -31,7 +31,7 @@ TEST_CASE("initialization and round programs accept tuple-like and range forms",
     const givm::definition_selection selection{};
     const auto [selected_library, selected_id_map] = compile(sources, selection, initialization, round, givm::compile_mode::normal);
     givm::table selected_table{ { .self_player = givm::player_id{ 0 } } };
-    executor.enter_entry(selected_library);
+    executor.start(selected_library, selected_table);
     REQUIRE(executor.step(selected_library, selected_table, random) == givm::execution_state::finished);
     CHECK(selected_table.state().round_number == 1);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);

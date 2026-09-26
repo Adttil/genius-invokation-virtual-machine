@@ -391,7 +391,7 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     CHECK(table[skills[3]].definition_id() == ids.get_id<givm::skill_view>(untargeted.name()));
     CHECK(log.passive_responses == 0);
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(log.initial_skill_indices == std::vector<std::size_t>{ 0, 1, 2, 3 });
@@ -442,7 +442,7 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
         { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
         { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
@@ -499,7 +499,7 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
         { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
         { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
@@ -553,7 +553,7 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
         .cards = { card, card, card, card, card, card }, .characters = { ids.get_id<givm::character_view>(owner.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     log.record = true;
@@ -619,7 +619,7 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
         .characters = { ids.get_id<givm::character_view>(owner.name()), ids.get_id<givm::character_view>(plain.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
@@ -699,7 +699,7 @@ TEST_CASE("action payments distinguish energy tags without consuming resources",
         .characters = { ids.get_id<givm::character_view>(owner.name()), ids.get_id<givm::character_view>(plain.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto calls = random.calls;
@@ -744,7 +744,7 @@ TEST_CASE("entering a character loads its indexed initial skills without deck in
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(enter.name()) } }, {});
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     const auto character = *table[givm::player_id{ 1 }].characters().begin();
@@ -778,7 +778,7 @@ TEST_CASE("card energy validation follows dice requirement and ownership checks"
         .cards = { ids.get_id<givm::card_definition>(card.name()) }, .characters = { character_id }
     }, { .characters = { character_id } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();

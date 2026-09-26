@@ -63,7 +63,7 @@ int main()
     givm::table table{ { .max_rounds = 0 } };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     std::println("牌堆数量: {}", table[givm::player_id{ 0 }].deck_card_count());
     std::println("插入指定牌: {}", table[givm::player_id{ 0 }].deck_card_definition(0).value() == card.value());

@@ -136,7 +136,7 @@ int main()
 
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     const givm::character_id selected{ givm::player_id{ 0 }, 0 };
     std::println("已按响应输入选择出战: {}", table[givm::player_id{ 0 }].state().active_character == selected);

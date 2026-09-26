@@ -92,7 +92,7 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("HealthIncreaseSource") } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     const auto result = executor.step(library, table, random);
     REQUIRE(result == (log.pause ? givm::execution_state::card_selection : givm::execution_state::finished));

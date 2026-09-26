@@ -54,23 +54,24 @@ namespace givm::detail
     inline constexpr std::size_t damage_calculation_offset = 2;
     inline constexpr std::size_t damage_effect_offset = 3;
     inline constexpr std::size_t damage_dying_offset = 4;
-    inline constexpr std::size_t damage_health_resume_offset = 5;
+    inline constexpr std::size_t damage_defeated_offset = 5;
+    inline constexpr std::size_t damage_health_resume_offset = 6;
     template<bool Observed>
-    inline constexpr std::size_t damage_entity_resume_offset = 5 + Observed;
+    inline constexpr std::size_t damage_entity_resume_offset = 6 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_attachment_resume_offset = 6 + Observed;
+    inline constexpr std::size_t damage_attachment_resume_offset = 7 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_removal_offset = 7 + Observed;
+    inline constexpr std::size_t damage_overloaded_removal_offset = 8 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_observation_offset = 8 + Observed;
+    inline constexpr std::size_t damage_overloaded_observation_offset = 9 + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_broadcast_offset = 8 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_broadcast_offset = 9 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_reaction_offset = 9 + 2 * Observed;
+    inline constexpr std::size_t damage_after_reaction_offset = 10 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_damage_offset = 10 + 2 * Observed;
+    inline constexpr std::size_t damage_after_damage_offset = 11 + 2 * Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_end_offset = 11 + 2 * Observed;
+    inline constexpr std::size_t damage_end_offset = 12 + 2 * Observed;
 
     inline damage_record& damage_record_at(damage_group& group, std::size_t index) noexcept
     {
@@ -186,6 +187,15 @@ namespace givm::detail
     }
 
     template<bool Observed>
+    inline std::optional<execution_state> continue_damage_defeated(
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    {
+        if(not continue_broadcast<character_defeated>(library, table, context, random)) return continue_execution;
+        pop_broadcast<character_defeated>(context);
+        return finish_group_damage<Observed>(library, table, context, random);
+    }
+
+    template<bool Observed>
     inline std::optional<execution_state> continue_damage_dying(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
@@ -204,6 +214,10 @@ namespace givm::detail
             for(const auto attachment : character.attachments()) attachment.erase();
             character.state().energy = 0;
             character.state().aura = element_aura::none;
+            const auto& group = get<0>(context.stack().top<damage_group, substack_t>());
+            const auto position = group.instructions + damage_defeated_offset * sizeof(execute_fn);
+            prepare_broadcast(library, character_defeated{ .target = id }, table, context.stack(), position);
+            return continue_damage_defeated<Observed>(library, table, context, random);
         }
         return finish_group_damage<Observed>(library, table, context, random);
     }
@@ -655,6 +669,7 @@ namespace givm::detail
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_calculation<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_effect<Observed>> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_dying<Observed>> });
+        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_defeated<Observed>> });
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_health_observation<Inputs> });
         writer.write(execute_fn{ resume_damage_entity_generation<Inputs, Observed> });
         writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_attachment_replacement> });

@@ -13,15 +13,16 @@ using definition_types = type_list<
     combat_status_view,
     character_view,
     skill_view,
-    attachment_view
+    attachment_view,
+    history_summary_definition
 >;
 ```
 
-定义系统支持的全部实体定义类别。编写通用的定义管理操作，或按类别填写对局选择时，可以通过这份类型列表枚举与定位各类别。
+定义系统支持的全部定义类别，包括场上实体与历史摘要。编写通用的定义管理操作，或按类别填写对局选择时，可以通过这份类型列表枚举与定位各类别。
 
 ## 注意
 
-成员操作继承自 [`type_list`](../utils/type_list.md)。卡牌与卡牌状态各自包含手牌和牌堆两种实体形态，其他类别对应各自的只读 view。
+成员操作继承自 [`type_list`](../utils/type_list.md)。卡牌与卡牌状态各自包含手牌和牌堆两种实体形态，其他实体类别对应各自的只读 view。[`history_summary_definition`](history_summary.md) 不对应场上实体，其状态由摘要更新函数访问，配套牌桌提供只读字段访问。
 
 ## 示例
 

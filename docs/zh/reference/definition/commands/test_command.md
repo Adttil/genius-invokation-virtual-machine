@@ -84,7 +84,7 @@ int main()
     }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     std::println("收到事件次数: {}", count);
 }

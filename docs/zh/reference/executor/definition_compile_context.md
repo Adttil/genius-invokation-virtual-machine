@@ -18,10 +18,15 @@ class definition_compile_context;
 | [`resolve_tag`](definition_compile_context/resolve_tag.md) | 取得已声明使用的标签 ID |
 | [`resolve_ids_by_tag`](definition_compile_context/resolve_ids_by_tag.md) | 取得已声明筛选条件匹配的定义 |
 | [`add_program`](definition_compile_context/add_program.md) | 登记一段效果并取得入口 |
+| [`definition_count<Category>()`](../definition/history_summary.md#定义源协议) | 取得最终编译集合内指定类别的定义数量 |
+| [`history_field<T>(name)`](../definition/history_summary.md#定义源协议) | 取得当前摘要自身字段的访问键 |
+| [`resolve_history_field<T>(summary, name)`](../definition/history_summary.md#定义源协议) | 取得已声明依赖的摘要字段读取键 |
 
 ## 注意
 
 由 [`givm::compile`](compile.md) 在调用定义源的 `compile` 时提供，只在本次编译调用中使用。依赖须通过[定义源协议](../definition/source_protocol.md)提前声明。
+
+历史摘要的 `layout` 也接收只读编译上下文，此时可以查询最终定义数量，但不能取得字段键。所有摘要字段描述完成后才调用定义的 `compile`；此时 `history_field<T>` 返回摘要自身使用的 `history_field_key<T>`，`resolve_history_field<T>` 返回通过牌桌读取的 `history_value_key<T>`。数组字段使用 `T[]`。省略模板参数的重载返回 `dynamic_history_field`，供脚本适配器按描述的类型选择对应键。字段名称、类型、数组形态或声明依赖不符时抛出 `std::invalid_argument`。
 
 ## 示例
 

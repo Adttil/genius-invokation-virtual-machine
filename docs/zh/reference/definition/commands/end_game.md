@@ -49,7 +49,7 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
 
-    execution.enter_entry(library);
+    execution.start(library, table);
     std::println("普通推进到终局: {}",
         execution.step(library, table, random) == givm::execution_state::finished);
     std::println("玩家 0 获胜: {}",
@@ -60,7 +60,7 @@ int main()
         sources,
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } },
         std::tuple{}, givm::compile_mode::observed);
-    execution.enter_entry(observed_library);
+    execution.start(observed_library, table);
     std::println("观察推进到终局: {}",
         execution.step(observed_library, table, random) == givm::execution_state::finished);
 }

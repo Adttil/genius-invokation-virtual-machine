@@ -140,7 +140,7 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     REQUIRE(target.step(library, table, random)
         == givm::execution_state::finished);

@@ -201,13 +201,14 @@ namespace givm
         constexpr executor& operator=(executor&&) noexcept = default;
         constexpr ~executor() = default;
 
-        constexpr void enter_entry(const definition_library& library)
+        void start(const definition_library& library, table& card_table)
         {
             context_.stack_.clear();
             context_.position_ = library.entry();
 #ifndef NDEBUG
             last_state_ = detail::continue_execution;
 #endif
+            library.initialize_history(card_table);
         }
 
         template<class TRandom>

@@ -42,6 +42,7 @@ class definition_library;
 | [`can_handle`](definition_library/can_handle.md) | 检查定义能否响应事件 |
 | [`handle`](definition_library/handle.md) | 请求定义响应事件 |
 | [`query`](definition_library/query.md) | 取得定义的规则信息或检查结果 |
+| [`history_field<T>(summary_id, name)`](../definition/history_summary.md#更新与读取) | 取得牌桌历史字段的读取键 |
 | [`dendro_core_id`](definition_library/dendro_core_id.md) | 取得默认草原核定义 ID |
 | [`catalyzing_field_id`](definition_library/catalyzing_field_id.md) | 取得默认激化领域定义 ID |
 | [`burning_flame_id`](definition_library/burning_flame_id.md) | 取得默认燃烧烈焰定义 ID |
@@ -50,6 +51,8 @@ class definition_library;
 ## 注意
 
 通过 [`compile`](compile.md) 创建。配套 ID 与程序入口应始终用于产生它们的定义库；定义视图的使用期不能超出定义库的生命期。牌桌不持有定义库，执行时由调用方显式传入配套的库。名称和标签的字符存储仍须保持有效。
+
+`history_field<T>` 的摘要 ID 为 `definition_id<history_summary_definition>`；返回 `history_value_key<T>`，可通过配套牌桌的 `table[key]` 读取。数组使用 `T[]`。省略模板参数时返回 `dynamic_history_field`，供动态适配器选择字段类型。字段不存在或模板参数与字段的类型、数组形态不符时抛出 `std::invalid_argument`。详见[历史摘要](../definition/history_summary.md)。
 
 ## 示例
 

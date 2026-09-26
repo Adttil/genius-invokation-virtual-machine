@@ -41,7 +41,7 @@ execution_state step(
 
 每次推进须使用与建立当前现场时相同的编译产物。牌桌与执行器都不保存定义库指针；调用方负责保持程序现场、实体定义 ID 和所传定义库相匹配。
 
-首次推进前须由 [`enter_entry`](enter_entry.md) 准备开始，或取得有效执行器的副本。`finished` 不能继续执行。
+首次推进前须由 [`start`](start.md) 准备开始，或取得有效执行器的副本。`finished` 不能继续执行。
 
 从任何输入现场继续推进前，都须通过相应视图提交合法输入。空选择也是输入，例如保留全部手牌或放弃剩余重投机会，仍须显式提交。查询、费用预览和合法性检查都不代替提交。
 
@@ -106,7 +106,7 @@ int main()
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(
         givm::character_id{ givm::player_id{ 0 }, 0 });

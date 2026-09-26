@@ -206,6 +206,8 @@ namespace givm::detail
                 return false;
             }
         }
+        if constexpr(requires { subscribed_events<history_summary_definition>::template index_of<TEvent>(); })
+            library.record_history(event, table);
         return true;
     }
 

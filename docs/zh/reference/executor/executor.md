@@ -17,7 +17,7 @@ class executor;
 | | |
 | --- | --- |
 | [`(构造函数)`](executor/constructor.md) | 构造一个`executor` |
-| [`enter_entry`](executor/enter_entry.md) | 准备按照定义库的流程开始对局 |
+| [`start`](executor/start.md) | 准备按照定义库的流程开始对局 |
 | [`step`](executor/step.md) | 推进至编译模式要求报告的下一处现场 |
 | [`view_in`](executor/view_in.md) | 取得指定种类的当前执行现场视图 |
 
@@ -49,7 +49,7 @@ int main()
 
     givm::executor execution{};
 
-    execution.enter_entry(library);
+    execution.start(library, table);
     const auto state = execution.step(library, table, random);
 
     std::println("终局时的回合数: {}", table.state().round_number);

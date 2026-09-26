@@ -53,10 +53,49 @@ namespace givm::detail
         : storage_{ .state = state, .player_datas = { { .state = player0 }, { .state = player1 } } }
         {}
 
+        constexpr unrestricted_table(const unrestricted_table&) = default;
+        constexpr unrestricted_table(unrestricted_table&&) noexcept = default;
+        constexpr unrestricted_table& operator=(unrestricted_table&&) noexcept = default;
+
+        constexpr unrestricted_table& operator=(const unrestricted_table& other)
+        {
+            // A fresh byte array starts the copied field lifetimes, even when the
+            // two tables use different history layouts. Other vectors reuse capacity.
+            auto history = other.storage_.history_summaries;
+            storage_.state = other.storage_.state;
+            storage_.player_datas[0] = other.storage_.player_datas[0];
+            storage_.player_datas[1] = other.storage_.player_datas[1];
+            storage_.status_slots = other.storage_.status_slots;
+            storage_.history_summaries = std::move(history);
+            return *this;
+        }
+
         template<class Self>
         constexpr auto& state(this Self& self) noexcept
         {
             return detail::table_accessor::storage_of(self).state;
+        }
+
+        void reset_history(std::size_t size)
+        {
+            auto& history = storage_.history_summaries;
+            history = std::remove_reference_t<decltype(history)>(size);
+        }
+
+        history_summary_state history_summary(std::size_t offset, std::size_t size) noexcept
+        {
+            auto& history = storage_.history_summaries;
+            GIVM_ASSERT(offset <= history.size() && size <= history.size() - offset);
+            auto* begin = history.data();
+            if(begin) begin += offset;
+            return history_summary_state{ begin, size };
+        }
+
+        template<class Self, class T>
+        decltype(auto) operator[](this Self& self, history_value_key<T> key) noexcept
+        {
+            auto& history = detail::table_accessor::storage_of(self).history_summaries;
+            return detail::access_history_value<T>(history.data(), history.size(), key.offset(), key.count());
         }
 
         template<class Self>

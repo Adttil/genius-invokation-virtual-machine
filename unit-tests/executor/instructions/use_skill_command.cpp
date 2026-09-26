@@ -235,7 +235,7 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
     log.targets = dynamic ? std::array<givm::skill_target_id, 2>{ enemy, actor }
         : std::array<givm::skill_target_id, 2>{};
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
@@ -312,7 +312,7 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     log.skill = (*table[standby].skills().begin()).id();
     log.flags = givm::skill_flag_bits::normal_attack;
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();

@@ -183,7 +183,7 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     };
     load_deck(table, library, deck, deck);
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     increasing_random random;
 
 
@@ -297,7 +297,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 10 }, { .hand_limit = 10 } };
     load_deck(table, library, deck, deck);
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     increasing_random random;
 
     REQUIRE(target.step(library, table, random) == givm::execution_state::initial_card_selection);

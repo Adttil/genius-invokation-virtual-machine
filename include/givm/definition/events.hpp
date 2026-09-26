@@ -29,6 +29,10 @@ namespace givm
     {
     };
 
+    struct history_summary_initialization
+    {
+    };
+
     // Round-flow events.
     struct action_phase_started
     {

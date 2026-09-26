@@ -156,7 +156,7 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
         .characters = { ids.get_id<givm::character_view>(source.name()), plain_id, plain_id }
     }, {});
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::card_selection);
     const givm::character_id first{ givm::player_id{ 0 }, 1 };
@@ -195,7 +195,7 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     load_deck(table, library, { .characters = { source_id, source_id, plain_id } }, { .characters = { plain_id } });
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
     log.active.clear();
@@ -319,7 +319,7 @@ TEST_CASE("dynamic damage array inputs retain their contents through cached and 
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(source.name()), plain_id } }, { .characters = { plain_id } });
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     const auto advance_array = [&](givm::executor& current, givm::table& current_table)
     {
@@ -483,7 +483,7 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
         .characters = { ids.get_id<givm::character_view>(source.name()), plain_id }
     }, { .characters = { plain_id } });
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     if(cached)
     {

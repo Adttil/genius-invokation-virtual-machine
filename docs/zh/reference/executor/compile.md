@@ -106,7 +106,7 @@ int main()
     givm::table table{ { .max_rounds = 2 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     std::println("终局时的回合数: {}", table.state().round_number);
     std::println("以双败结束: {}", execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
@@ -125,4 +125,4 @@ int main()
 |  |  |
 | --- | --- |
 | [`definition_source_library::make_issued_id_map`](../definition/definition_source_library/make_issued_id_map.md) | 在编译前取得配套 ID |
-| [`executor::enter_entry`](executor/enter_entry.md) | 开始执行一场游戏 |
+| [`executor::start`](executor/start.md) | 开始执行一场游戏 |

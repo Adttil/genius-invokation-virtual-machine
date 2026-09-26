@@ -106,7 +106,7 @@ TEST_CASE("action target queries can inspect target definition tags", "[action][
         { .cards = { ids.get_id<givm::card_definition>(card.name()) }, .characters = { tagged_id, untagged_id } },
         { .characters = { untagged_id } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = []() -> std::uint32_t { return 0; };
     auto state = executor.step(library, table, random);
     while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started)

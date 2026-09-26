@@ -251,7 +251,7 @@ TEST_CASE("support capacity counts duplicate definitions and removal releases a 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(givm::player_state{}.support_limit == 4);
     const auto remaining = support_ids(table);
@@ -293,7 +293,7 @@ TEST_CASE("support state changes preserve packed dice and saturate without delet
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     const auto supports = support_ids(table);
     REQUIRE(supports.size() == 2);
@@ -323,7 +323,7 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     const auto before = support_ids(table);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
@@ -384,7 +384,7 @@ TEST_CASE("support definitions can remove themselves through a resumable state c
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
     const auto waiting = support_ids(table);
     REQUIRE(waiting.size() == 1);

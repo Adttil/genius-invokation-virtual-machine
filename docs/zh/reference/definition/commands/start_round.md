@@ -46,7 +46,7 @@ int main()
     givm::table table{ { .max_rounds = 2 } };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     std::println("回合数: {}", table.state().round_number);
     std::println("超过上限后双败: {}", execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);

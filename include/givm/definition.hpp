@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_HPP
 
 #include "definition/program_entry.hpp"
+#include "definition/history_summary.hpp"
 #include "definition/events.hpp"
 #include "definition/queries.hpp"
 #include "definition/commands.hpp"

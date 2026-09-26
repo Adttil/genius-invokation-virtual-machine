@@ -215,7 +215,7 @@ namespace
         const auto energy_tag = table[active].state().energy_tag;
         REQUIRE(energy_tag.is_valid());
         givm::executor executor;
-        executor.enter_entry(library);
+        executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
         REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
         CHECK(log.energy_notifications == 0);

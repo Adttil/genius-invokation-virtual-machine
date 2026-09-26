@@ -28,7 +28,7 @@ TEST_CASE("executor repeats the round program and reports round boundaries", "[e
     );
     givm::table table{ givm::table_state{ .max_rounds = 2 } };
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
 
     if(observed) for(std::uint32_t round = 1; round <= 3; ++round)
@@ -59,7 +59,7 @@ TEST_CASE("terminal results survive copies and entering another game replaces th
     );
     givm::table table;
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
 
     REQUIRE(target.step(library, table, random)
@@ -67,7 +67,7 @@ TEST_CASE("terminal results survive copies and entering another game replaces th
     CHECK(target.view_in<givm::execution_state::finished>().result() == result);
     CHECK(table.state().round_number == 0);
     auto copy = target;
-    target.enter_entry(second.library);
+    target.start(second.library, table);
     REQUIRE(target.step(second.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
@@ -88,11 +88,11 @@ TEST_CASE("executor uses the explicitly supplied library with an independent tab
     givm::executor target;
     zero_random random;
 
-    target.enter_entry(first.library);
+    target.start(first.library, table);
     REQUIRE(target.step(first.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
-    target.enter_entry(second.library);
+    target.start(second.library, table);
     REQUIRE(target.step(second.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);

@@ -61,7 +61,7 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, givm::linked_deck{ .cards = { a, b } }, {});
         givm::executor execution;
-        execution.enter_entry(library);
+        execution.start(library, table);
         random_tape random{ { value } };
         REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
         CHECK(random.consumed == 1);
@@ -74,7 +74,7 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, givm::linked_deck{ .cards = cards }, {});
         givm::executor execution;
-        execution.enter_entry(library);
+        execution.start(library, table);
         random_tape random;
         REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
         CHECK(random.consumed == 0);
@@ -107,7 +107,7 @@ TEST_CASE("initial replacements assign random values by player and selected card
     const givm::linked_deck deck{ .cards = { a, b, c, d, e } };
     load_deck(initial_table, library, deck, deck);
     givm::executor initial_execution;
-    initial_execution.enter_entry(library);
+    initial_execution.start(library, initial_table);
     random_tape random{ { 0u, 0xaaaaaaaau, 0xffffffffu, 0xffffffffu, 0x55555555u, 0u } };
     REQUIRE(initial_execution.step(library, initial_table, random) == givm::execution_state::initial_card_selection);
     REQUIRE(random.consumed == 6);
@@ -164,7 +164,7 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, { .cards = { a, d, c, e, c, b, a } }, {});
         givm::executor execution;
-        execution.enter_entry(library);
+        execution.start(library, table);
         random_tape random{ { 0u, 0xffffffffu, 0x80000000u } };
         REQUIRE(execution.step(library, table, random) == givm::execution_state::card_selection);
         CHECK(random.consumed == 0);
@@ -194,7 +194,7 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     // Player 0 receives dice 1,2,3,4,5,6,7,0,1,2, then 3,4,... .
     // The high two bits do not represent a die; player 1 starts its own sequence.
     random_tape random{ std::vector<std::uint32_t>(12, 0u) };

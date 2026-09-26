@@ -68,6 +68,12 @@ namespace givm
             return name_to_ids_[definition_types::template index_of<TDefinition>()].contains(name);
         }
 
+        template<class TDefinition>
+        size_t definition_count() const noexcept
+        {
+            return tag_masks_[definition_types::template index_of<TDefinition>()].size();
+        }
+
         bool has_tag(std::string_view name) const
         {
             return tag_to_id_.contains(name);

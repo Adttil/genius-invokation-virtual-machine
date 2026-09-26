@@ -59,7 +59,7 @@ TEST_CASE("table views track execution changes while copies own their state", "[
 
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(player.hand_card_count() == 2);
     CHECK(player.deck_card_count() == 1);

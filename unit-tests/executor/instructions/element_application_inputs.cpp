@@ -120,7 +120,7 @@ TEST_CASE("element application inputs resume nested responses with the same resu
         { .characters = { ids.get_id<givm::character_view>(target.name()) } });
     const auto target_id = (*table[givm::player_id{ 1 }].characters().begin()).id();
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     auto state = executor.step(library, table, random);
     REQUIRE(state == givm::execution_state::card_selection);

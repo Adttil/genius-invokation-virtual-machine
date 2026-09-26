@@ -174,7 +174,7 @@ TEST_CASE("normal attack previews preserve prepayment charged and plunging flags
     const auto [library, ids] = compile_attacks(mode, log);
     auto table = attack_table(library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     auto action = executor.view_in<givm::execution_state::action_selection>();
     const auto flags = action.calculate_skill_cost(library, table, 0).flags;
@@ -209,7 +209,7 @@ TEST_CASE("charged attack uses even dice counts including zero and ignores non-n
     const auto [library, ids] = compile_attacks(givm::compile_mode::normal, log, dice);
     auto table = attack_table(library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
     CHECK(action.calculate_skill_cost(library, table, 0).flags.contains(givm::skill_flag_bits::charged_attack) == (dice % 2 == 0));
@@ -228,7 +228,7 @@ TEST_CASE("only final combat speed consumes plunging opportunity and effects may
     const auto [library, ids] = compile_attacks(mode, log, 6, attack_card{ fast, switch_character });
     auto table = attack_table(library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     executor.view_in<givm::execution_state::action_selection>().play_card(library, table, 0, {});
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
@@ -246,7 +246,7 @@ TEST_CASE("skill speed modifiers take effect before consuming the plunging oppor
     const auto [library, ids] = compile_attacks(mode, log);
     auto table = attack_table(library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 3;
@@ -262,7 +262,7 @@ TEST_CASE("setting the already active character does not renew plunging opportun
     const auto [library, ids] = compile_attacks(mode, log, 6, attack_card{ false, true, 0 });
     auto table = attack_table(library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     executor.view_in<givm::execution_state::action_selection>().play_card(library, table, 0, {});
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
@@ -281,7 +281,7 @@ TEST_CASE("initial character choices grant plunging opportunities and library co
     CHECK(library.skill_flags(ids.get_id<givm::skill_view>("Normal")).contains(givm::skill_flag_bits::normal_attack));
     auto table = attack_table(library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table, false) == givm::execution_state::initial_active_character_selection);
     executor.view_in<givm::execution_state::initial_active_character_selection>().select({ givm::player_id{ 0 }, 1 });
     REQUIRE(advance(executor, library, table, false) == givm::execution_state::remaining_active_character_selection);

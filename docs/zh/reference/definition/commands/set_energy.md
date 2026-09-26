@@ -80,7 +80,7 @@ int main()
     const givm::character_id target{ givm::player_id{ 0 }, 0 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(target);
     execution.step(library, table, random);

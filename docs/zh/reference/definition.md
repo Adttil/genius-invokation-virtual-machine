@@ -15,6 +15,8 @@
 | [`definition_source_library`](definition/definition_source_library.md) | 可供编译的定义源集合 |
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
 | [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
+| [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |
+| [`history_field_descriptor`](definition/history_summary.md#类) | 历史摘要字段的描述 |
 
 ### 名称、ID 与标签
 
@@ -64,3 +66,7 @@
 ## [查询](definition/queries.md)
 
 角色初始状态、卡牌初始费用与当前行动参数的合法性等规则信息。
+
+## [历史摘要](definition/history_summary.md)
+
+按定义依赖选择的累计历史，在通知开始时更新，供效果和上层读取。

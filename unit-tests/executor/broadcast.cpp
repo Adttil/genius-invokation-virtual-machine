@@ -286,7 +286,7 @@ TEST_CASE("handle context exposes the current table random source and invocation
         std::uint32_t operator()() noexcept { return next++; }
     } random;
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
     CHECK(samples == std::vector<std::uint32_t>{ 17, 18 });
     CHECK(random.next == 19);
@@ -313,7 +313,7 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
         ids.get_id<givm::character_view>(first_character.name()), ids.get_id<givm::character_view>(second_character.name())
     } }, {});
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     REQUIRE(target.step(library, table, random)
         == givm::execution_state::finished);
@@ -351,7 +351,7 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
         .characters = { ids.get_id<givm::character_view>(character.name()) }
     }, {});
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::card_selection);
     REQUIRE(drawn.size() == 1);
@@ -420,7 +420,7 @@ TEST_CASE("consecutive broadcasts mix missing empty and parameterized response p
         .characters = { character_id, character_id, character_id, character_id }
     }, {});
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     auto state = execution.step(library, table, random);
     while(state == givm::execution_state::active_character_changed)
@@ -468,7 +468,7 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 2 } } };
     load_deck(table, library, deck, deck);
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     zero_random random;
     const auto next_selection = [&]
     {

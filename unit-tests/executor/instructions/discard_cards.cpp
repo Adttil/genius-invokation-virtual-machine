@@ -205,7 +205,7 @@ TEST_CASE("discard batches leave together then run each effect and notification 
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { card, card, card, card, card, card, card } }, { .cards = { card } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     std::size_t pauses = 0;
     std::vector<givm::deck_card_id> observed_cards;
     for(;;)
@@ -263,7 +263,7 @@ TEST_CASE("deck discard count is capped and empty batches have no observation", 
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, {}, { .cards = { card, card } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     std::size_t observations = 0;
     while(advance(executor, library, table) == givm::execution_state::deck_cards_discarded)
     {
@@ -291,7 +291,7 @@ TEST_CASE("overflow removes cards without invoking discard effects or notificati
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 1 } };
     load_deck(table, library, { .cards = { card, card, card } }, { .cards = { card } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(log.order.empty());
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 1);
@@ -313,7 +313,7 @@ TEST_CASE("discarded deck cards remain valid effect sources through damage and n
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
     const auto target = table[givm::player_id{ 1 }].characters().front().id();
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     for(;;)
     {
@@ -468,7 +468,7 @@ TEST_CASE("hand discard selects a batch once and resolves every card before the 
     load_deck(table, library, { .cards = { first_id, second_id, first_id, second_id, first_id } },
         { .cards = { ids.get_id<givm::card_definition>(driver.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     std::size_t pauses = 0;
     for(;;)
     {
@@ -513,7 +513,7 @@ TEST_CASE("fixed hand discard with no matching definition is a no-op", "[discard
     load_deck(table, library, { .cards = { card_id, card_id } },
         { .cards = { ids.get_id<givm::card_definition>(driver.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     CHECK(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(log.selected.empty());
     CHECK(log.order.empty());

@@ -226,7 +226,7 @@ TEST_CASE("the final reaction replacement tag reaches every damage stage and pre
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Reserve" });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     std::size_t observed_damage = 0;
     for(;;)
@@ -274,7 +274,7 @@ TEST_CASE("a damage group overloads only once after all hits and ignores standby
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Defeated", "Reserve" });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     std::size_t observed_hits = 0;
     for(;;)
@@ -323,7 +323,7 @@ TEST_CASE("overload follows the current active character after death or nested r
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Reserve", "Reserve" });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     for(;;)
     {
@@ -357,7 +357,7 @@ TEST_CASE("copied overload switch responses resume before group completion exact
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Reserve" });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     for(;;)
     {
@@ -403,7 +403,7 @@ TEST_CASE("overload from element application respects missing alternatives and g
     if(kind == scenario::application) load_scenario(table, library, ids, { "Front", "Reserve" });
     else load_scenario(table, library, ids, { "Front" });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     std::size_t overload_observations = 0;
     for(;;)

@@ -87,7 +87,7 @@ int main()
     givm::table table{ { .max_rounds = 0 } };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     // 该随机源使首次投骰全部为万能骰，双方各重投一颗。
     givm::dice_counts selected{};

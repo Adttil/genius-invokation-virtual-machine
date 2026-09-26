@@ -286,7 +286,7 @@ TEST_CASE("prepared attachments consume consecutive action opportunities in orde
     });
     auto table = make_table(log, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(log.events == std::vector<std::string>{ "removed:FastPreparation", "effect:FastPreparation", "damage:FastPreparation",
         "removed:CombatPreparation", "effect:CombatPreparation", "damage:CombatPreparation" });
@@ -319,7 +319,7 @@ TEST_CASE("control preserves a prepared attachment through declarations until th
     }, round);
     auto table = make_table(log, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(executor.view_in<givm::execution_state::action_selection>().is_controlled(library, table));
     CHECK(log.effects.empty());
@@ -375,7 +375,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
     });
     auto table = make_table(log, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto state = advance(executor, library, table);
     if(choice == scenario::voluntary)
     {
@@ -409,7 +409,7 @@ TEST_CASE("prepared effects resume after a removal response and copying the susp
     });
     auto table = make_table(log, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
     CHECK(log.effects.empty());
     REQUIRE(log.removed.size() == 1);
@@ -445,7 +445,7 @@ TEST_CASE("switch cancellation resumes remaining removal notifications independe
     });
     auto table = make_table(log, library, ids);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     if(observed)
     {
         zero_random random;

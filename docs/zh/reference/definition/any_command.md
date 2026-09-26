@@ -42,7 +42,7 @@ int main()
     givm::table table{ { .max_rounds = 1 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     std::println("初始化操作数量: {}", initialization.size());
     std::println("终局时的回合数: {}", table.state().round_number);

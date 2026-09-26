@@ -65,7 +65,7 @@ int main()
         givm::linked_deck{ .cards = { b, a } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     std::bitset<givm::selection_capacity> selected{};
     selected.set(0);

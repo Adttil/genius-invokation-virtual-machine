@@ -52,7 +52,7 @@ TEST_CASE("fixed character positions use signed offsets and circular living targ
     const auto defeated = ids.get_id<givm::character_view>("Defeated");
     load_deck(table, library, { .characters = { alive, defeated, alive } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     if(mode == givm::compile_mode::observed)
     {
@@ -82,7 +82,7 @@ TEST_CASE("fixed healing and maximum health increases can locate a defeated char
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("Alive"),
         ids.get_id<givm::character_view>("Defeated") } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     const auto& state = table[givm::character_id{ player, 1 }].state();
@@ -106,7 +106,7 @@ TEST_CASE("fixed character commands skip effects without an active character", "
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("Alive") } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     REQUIRE_FALSE(table[player].state().active_character.has_value());
@@ -176,7 +176,7 @@ TEST_CASE("switch notifications prioritize the new active character in both comp
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
     load_deck(table, library, { .characters = { character, character } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     if(mode == givm::compile_mode::observed)
     {

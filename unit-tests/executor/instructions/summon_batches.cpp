@@ -153,7 +153,7 @@ namespace
             { .summon_limit = 8 } };
         load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(driver.name()) } }, {});
         givm::executor executor;
-        executor.enter_entry(library);
+        executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
         REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
         CHECK(log.phase == 2);

@@ -4,9 +4,11 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <limits>
 #include <ranges>
 #include <stdexcept>
 #include <span>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -24,6 +26,34 @@
 
 namespace givm::detail
 {
+    struct compiled_history_field
+    {
+        std::string name;
+        dynamic_history_field field;
+    };
+
+    struct compiled_history_summary
+    {
+        std::size_t offset{};
+        std::size_t size{};
+        std::vector<compiled_history_field> fields;
+
+        dynamic_history_field find(std::string_view name) const
+        {
+            const auto found = std::ranges::find(fields, name, &compiled_history_field::name);
+            if(found == fields.end()) throw std::invalid_argument{ "unknown history field" };
+            return found->field;
+        }
+    };
+
+    template<class T>
+    inline void validate_history_field(const dynamic_history_field& field)
+    {
+        if(field.type != history_value_type_of<std::remove_extent_t<T>>
+            || field.is_array != std::is_unbounded_array_v<T>)
+            throw std::invalid_argument{ "history field type does not match its declaration" };
+    }
+
     struct response_return
     {
         player_id previous_player;
@@ -104,6 +134,46 @@ namespace givm
     {
     public:
         template<class TCategory>
+        std::size_t definition_count() const noexcept
+        {
+            return id_map_.definition_count<TCategory>();
+        }
+
+        dynamic_history_field history_field(std::string_view name) const
+        {
+            if(not history_layouts_ready_ || not own_history_)
+                throw std::invalid_argument{ "history fields are unavailable in this compilation phase" };
+            return history_layouts_[own_history_.value()].find(name);
+        }
+
+        template<class T>
+        history_field_key<T> history_field(std::string_view name) const
+        {
+            const auto field = history_field(name);
+            detail::validate_history_field<T>(field);
+            return history_field_key<T>{ field.offset, field.count };
+        }
+
+        dynamic_history_field resolve_history_field(std::string_view summary, std::string_view name) const
+        {
+            if(not history_layouts_ready_)
+                throw std::invalid_argument{ "history layouts have not been compiled" };
+            const auto id = resolve_id<history_summary_definition>(summary);
+            const auto& layout = history_layouts_[id.value()];
+            auto field = layout.find(name);
+            field.offset += layout.offset;
+            return field;
+        }
+
+        template<class T>
+        history_value_key<T> resolve_history_field(std::string_view summary, std::string_view name) const
+        {
+            const auto field = resolve_history_field(summary, name);
+            detail::validate_history_field<T>(field);
+            return history_value_key<T>{ field.offset, field.count };
+        }
+
+        template<class TCategory>
         definition_id<TCategory> resolve_id(std::string_view name) const
         {
             const auto& declared = declarations_.dependencies[definition_types::index_of<TCategory>()];
@@ -161,12 +231,16 @@ namespace givm
             const issued_id_map& id_map,
             detail::program_bytes& program,
             const detail::definition_source_declarations& declarations,
-            compile_mode mode
+            compile_mode mode,
+            std::span<const detail::compiled_history_summary> history_layouts,
+            definition_id<history_summary_definition> own_history,
+            bool history_layouts_ready
 #ifndef NDEBUG
             , std::vector<std::size_t>& input_markers
 #endif
         )
-        : id_map_{ id_map }, program_{ program }, declarations_{ declarations }, mode_{ mode }
+        : id_map_{ id_map }, program_{ program }, declarations_{ declarations }, mode_{ mode },
+          history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }
 #ifndef NDEBUG
         , input_markers_{ input_markers }
 #endif
@@ -182,6 +256,9 @@ namespace givm
         const detail::definition_source_declarations& declarations_;
 
         compile_mode mode_;
+        std::span<const detail::compiled_history_summary> history_layouts_;
+        definition_id<history_summary_definition> own_history_;
+        bool history_layouts_ready_;
 #ifndef NDEBUG
         std::vector<std::size_t>& input_markers_;
 #endif
@@ -205,7 +282,9 @@ namespace givm
           control_immunity_tag_{ other.control_immunity_tag_ },
           remove_at_zero_usages_tag_{ other.remove_at_zero_usages_tag_ }, dendro_core_id_{ other.dendro_core_id_ },
           catalyzing_field_id_{ other.catalyzing_field_id_ }, burning_flame_id_{ other.burning_flame_id_ },
-          frozen_id_{ other.frozen_id_ }, buckets_{ other.buckets_ }
+          frozen_id_{ other.frozen_id_ }, buckets_{ other.buckets_ },
+          history_layouts_{ other.history_layouts_ }, history_size_{ other.history_size_ },
+          history_handlers_{ other.history_handlers_ }
         {
             detail::finalize_program(program_);
         }
@@ -370,6 +449,22 @@ namespace givm
         }
 
     public:
+        dynamic_history_field history_field(definition_id<history_summary_definition> id, std::string_view name) const
+        {
+            const auto& layout = history_layouts_[id.value()];
+            auto field = layout.find(name);
+            field.offset += layout.offset;
+            return field;
+        }
+
+        template<class T>
+        history_value_key<T> history_field(definition_id<history_summary_definition> id, std::string_view name) const
+        {
+            const auto field = history_field(id, name);
+            detail::validate_history_field<T>(field);
+            return history_value_key<T>{ field.offset, field.count };
+        }
+
         template<class TDefinitionType>
         std::string_view name(definition_id<TDefinitionType> id) const
         {
@@ -496,6 +591,16 @@ namespace givm
     private:
         using definition_type_list = definition_types;
 
+        template<class TEvent>
+        struct history_handler
+        {
+            std::size_t index;
+            detail::history_handle_fn_t<TEvent> function;
+        };
+
+        template<class... TEvents>
+        using history_handler_lists = std::tuple<std::vector<history_handler<TEvents>>...>;
+
         template<class TView, class TSequence>
         struct handle_fn_vectors_impl;
 
@@ -593,6 +698,32 @@ namespace givm
             return (std::get<index_of<TDefinitionType>()>(self.buckets_));
         }
 
+        void initialize_history(table& card_table) const
+        {
+            auto& writable = static_cast<detail::unrestricted_table&>(card_table);
+            writable.reset_history(history_size_);
+            record_history(history_summary_initialization{}, writable);
+        }
+
+    public:
+        template<class TEvent>
+        void record_history(const TEvent& event, detail::unrestricted_table& card_table) const
+        {
+            if constexpr(requires { subscribed_events<history_summary_definition>::template index_of<TEvent>(); })
+            {
+                const auto& handlers = std::get<subscribed_events<history_summary_definition>::template index_of<TEvent>()>(
+                    history_handlers_);
+                const auto& definitions = bucket_for<history_summary_definition>().data;
+                for(const auto& handler : handlers)
+                {
+                    const auto& layout = history_layouts_[handler.index];
+                    handler.function(definitions[handler.index], card_table.history_summary(layout.offset, layout.size),
+                        event, static_cast<const table&>(card_table), *this);
+                }
+            }
+        }
+
+    private:
         template<class TEvent, class TView, class TDefinitionType>
         handle_fn_t<TView, TEvent> get_handle_fn(definition_id<TDefinitionType> id) const noexcept
         {
@@ -611,7 +742,10 @@ namespace givm
         {
             const auto declarations = source.declarations();
             auto& bucket = bucket_for<TDefinitionType>();
-            definition_compile_context context{ id_map, program_, declarations, mode
+            definition_id<history_summary_definition> own_history;
+            if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
+                own_history = id_map.get_id<history_summary_definition>(source.name());
+            definition_compile_context context{ id_map, program_, declarations, mode, history_layouts_, own_history, true
 #ifndef NDEBUG
                 , input_markers_
 #endif
@@ -621,6 +755,15 @@ namespace givm
             bucket.names.push_back(source.name());
             bucket.data.push_back(std::move(data));
             bucket.tags.push_back(make_tag_mask(declarations.tags, id_map));
+            if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
+            {
+                subscribed_events<history_summary_definition>::each([&]<class TEvent>
+                {
+                    constexpr auto index = subscribed_events<history_summary_definition>::template index_of<TEvent>();
+                    if(const auto handler = std::get<index>(source.rtti_->history.handles)(source.source_))
+                        std::get<index>(history_handlers_).push_back({ own_history.value(), handler });
+                });
+            }
             append_handle_fns(bucket, source,
                               std::make_index_sequence<views_of_definition<TDefinitionType>::size()>{});
             if constexpr(supported_queries<TDefinitionType>::size() != 0)
@@ -639,6 +782,51 @@ namespace givm
                         queries.push_back(query_fn);
                     }
                 });
+            }
+        }
+
+        void prepare_history_layouts(const definition_source_library& sources, const issued_id_map& ids, compile_mode mode)
+        {
+            history_layouts_.resize(ids.definition_count<history_summary_definition>());
+            for(const auto source : sources.source_views<history_summary_definition>())
+            {
+                if(not ids.has<history_summary_definition>(source.name())) continue;
+                const auto id = ids.get_id<history_summary_definition>(source.name());
+                const auto declarations = source.declarations();
+                definition_compile_context context{ ids, program_, declarations, mode, history_layouts_, id, false
+#ifndef NDEBUG
+                    , input_markers_
+#endif
+                };
+                auto& layout = history_layouts_[id.value()];
+                for(auto&& member : source.rtti_->history.layout(source.source_, context))
+                {
+                    const auto size = detail::history_value_size(member.type);
+                    const auto alignment = detail::history_value_alignment(member.type);
+                    if(size == 0 || (not member.is_array && member.count != 1) || member.name.empty()
+                        || std::ranges::find(layout.fields, member.name, &detail::compiled_history_field::name) != layout.fields.end())
+                        throw std::invalid_argument{ "invalid or duplicate history field declaration" };
+                    constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+                    if(layout.size > maximum - (alignment - 1))
+                        throw std::length_error{ "history summary layout is too large" };
+                    const auto offset = (layout.size + alignment - 1) & ~(alignment - 1);
+                    if(member.count > (maximum - offset) / size)
+                        throw std::length_error{ "history summary array is too large" };
+                    layout.fields.push_back({ std::move(member.name),
+                        { member.type, member.is_array, offset, member.count } });
+                    layout.size = offset + size * member.count;
+                }
+            }
+            for(auto& layout : history_layouts_)
+            {
+                constexpr auto alignment = alignof(std::max_align_t);
+                constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+                if(history_size_ > maximum - (alignment - 1))
+                    throw std::length_error{ "history storage is too large" };
+                layout.offset = (history_size_ + alignment - 1) & ~(alignment - 1);
+                if(layout.size > maximum - layout.offset)
+                    throw std::length_error{ "history storage is too large" };
+                history_size_ = layout.offset + layout.size;
             }
         }
 
@@ -739,6 +927,7 @@ namespace givm
             };
 
             definition_library library{ id_map, sources };
+            library.prepare_history_layouts(sources, id_map, mode);
             detail::program_writer writer{ library.program_ };
             [[maybe_unused]] const auto initialization_inputs_count =
                 detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode);
@@ -786,6 +975,9 @@ namespace givm
         definition_id<summon_view> burning_flame_id_;
         definition_id<attachment_view> frozen_id_;
         bucket_tuple buckets_;
+        std::vector<detail::compiled_history_summary> history_layouts_;
+        std::size_t history_size_{};
+        subscribed_events<history_summary_definition>::apply<history_handler_lists> history_handlers_;
     };
 
     template<class TInitializationSequence, class TRoundSequence>

@@ -68,7 +68,7 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
     givm::table table{ givm::table_state{ .max_rounds = 2 } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     counting_random random;
     const auto first_state = executor.step(library, table, random);
     REQUIRE(first_state == (observed ? givm::execution_state::round_started : givm::execution_state::card_selection));
@@ -148,7 +148,7 @@ TEST_CASE("start round commands only broadcast and never count rounds clear dice
     givm::table table{ givm::table_state{ .max_rounds = 0 } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     counting_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);

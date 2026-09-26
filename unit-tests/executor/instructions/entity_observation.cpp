@@ -253,12 +253,12 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     auto normal_table = table;
     counting_random normal_random;
     givm::executor normal;
-    normal.enter_entry(normal_compilation.library);
+    normal.start(normal_compilation.library, normal_table);
     REQUIRE(normal.step(normal_compilation.library, normal_table, normal_random) == givm::execution_state::finished);
 
     counting_random random;
     givm::executor observed;
-    observed.enter_entry(library);
+    observed.start(library, table);
     REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
     auto characters = table[givm::player_id{ 1 }].characters();
     REQUIRE(std::ranges::distance(characters) == 1);
@@ -295,13 +295,13 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
     auto normal_table = table;
     counting_random random;
     givm::executor normal;
-    normal.enter_entry(normal_compilation.library);
+    normal.start(normal_compilation.library, normal_table);
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     REQUIRE(handler_calls == 1);
     handler_calls = 0;
 
     givm::executor observed;
-    observed.enter_entry(library);
+    observed.start(library, table);
     REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
     CHECK(handler_calls == 1);
     CHECK(random.calls == 0);
@@ -341,13 +341,13 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     auto normal_table = table;
     counting_random random;
     givm::executor normal;
-    normal.enter_entry(normal_compilation.library);
+    normal.start(normal_compilation.library, normal_table);
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     log.drawn.clear();
     log.card_counts_at_drawn.clear();
 
     givm::executor observed;
-    observed.enter_entry(library);
+    observed.start(library, table);
     REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
     CHECK(player.deck_card_count() == 0);
     CHECK(player.hand_card_count() == 2);
@@ -389,13 +389,13 @@ TEST_CASE("single-player active-character observation precedes the table update 
     auto normal_table = table;
     counting_random random;
     givm::executor normal;
-    normal.enter_entry(normal_compilation.library);
+    normal.start(normal_compilation.library, normal_table);
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     const auto normal_events = log.active;
     log.active.clear();
 
     givm::executor observed;
-    observed.enter_entry(library);
+    observed.start(library, table);
     REQUIRE(observed.step(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
     const auto view = observed.view_in<givm::execution_state::active_character_changed>();
@@ -428,7 +428,7 @@ TEST_CASE("initial active choices update both players before either response", "
         { .characters = { character, character } });
 
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::initial_active_character_selection);
     const givm::character_id first_choice{ first_player, 1 };
@@ -509,14 +509,14 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(response.name()), character } }, {});
     auto normal_table = table;
     givm::executor normal;
-    normal.enter_entry(normal_compilation.library);
+    normal.start(normal_compilation.library, normal_table);
     counting_random random;
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     CHECK(log.active == std::vector{ next, previous });
     log.active.clear();
 
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
     CHECK(target.view_in<givm::execution_state::active_character_changed>().character() == next);
@@ -565,7 +565,7 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
         { .cards = { second_id, second_id, second_id, second_id, first_id, first_id } },
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     std::size_t response_pauses = 0;
     const auto step_until_input = [&]

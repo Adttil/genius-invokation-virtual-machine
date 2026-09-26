@@ -59,7 +59,7 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     const givm::linked_deck deck{ .cards = { a, b, c } };
     load_deck(table, library, deck, deck);
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     counting_random random;
     REQUIRE(execution.step(library, table, random) == givm::execution_state::initial_card_selection);
     const auto prepared_random_count = random.calls;
@@ -126,7 +126,7 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = static_cast<std::uint32_t>(hand_count) }, { .hand_limit = static_cast<std::uint32_t>(hand_count) } };
     load_deck(table, library, deck, {});
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     counting_random random;
     REQUIRE(execution.step(library, table, random) == givm::execution_state::card_selection);
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == hand_count);
@@ -164,7 +164,7 @@ TEST_CASE("initial character checks validate ownership and existence without req
     REQUIRE(table[first_choice].state().health == 0);
     REQUIRE(table[second_choice].state().health == 0);
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     counting_random random;
     REQUIRE(execution.step(library, table, random) == givm::execution_state::initial_active_character_selection);
     const auto initial = execution.view_in<givm::execution_state::initial_active_character_selection>();
@@ -228,7 +228,7 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     counting_random random;
     REQUIRE(execution.step(library, table, random) == givm::execution_state::dice_selection);
     const auto prepared_random_count = random.calls;

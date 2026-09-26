@@ -226,7 +226,7 @@ TEST_CASE("action and round observations precede their handlers and ended player
         { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } },
         { .characters = { plain, plain } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     reach_action_start(target, library, table, random);
     CHECK(log.opportunities.empty());
@@ -304,7 +304,7 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     const auto plain = ids.get_id<givm::character_view>(character.name());
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } }, { .characters = { plain } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     if(observed) reach_action_start(target, library, table, random);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
@@ -359,7 +359,7 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
         .characters = { active_in_middle ? dead : alive, active_in_middle ? alive : dead, living_standby ? alive : dead }
     }, { .characters = { alive } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
@@ -394,7 +394,7 @@ TEST_CASE("automatic round advancement is observed before its limit check and di
     );
     givm::table table{ givm::table_state{ .max_rounds = exceeds_limit ? 0u : 1u } };
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     if(observed)
     {
@@ -429,7 +429,7 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
         .characters = { ids.get_id<givm::character_view>(observer.name()), plain }
     }, { .characters = { plain } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     if(observed) reach_action_start(target, library, table, random);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
@@ -496,7 +496,7 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
         .characters = { ids.get_id<givm::character_view>(source.name()), plain, plain }
     }, { .characters = { ids.get_id<givm::character_view>(empty_source.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     if(observed) reach_action_start(target, library, table, random);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
@@ -593,7 +593,7 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
         .characters = { ids.get_id<givm::character_view>(source.name()), plain }
     }, { .characters = { plain } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     if(observed) reach_action_start(target, library, table, random);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
@@ -675,7 +675,7 @@ TEST_CASE("repeated quote reads retain the cached payment response", "[begin_act
         .characters = { ids.get_id<givm::character_view>(source.name()), plain }
     }, { .characters = { plain } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     if(observed) reach_action_start(target, library, table, random);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);

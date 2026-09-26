@@ -187,7 +187,7 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { victim_id, victim_id } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
@@ -239,14 +239,14 @@ TEST_CASE("damage observation follows aura preparation and copies resume indepen
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
     auto normal_table = table;
     givm::executor normal;
-    normal.enter_entry(normal_compilation.library);
+    normal.start(normal_compilation.library, normal_table);
     zero_random random;
     REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     const auto normal_order = log.order;
     log.order.clear();
 
     givm::executor observed;
-    observed.enter_entry(library);
+    observed.start(library, table);
     REQUIRE(observed.step(library, table, random) == givm::execution_state::health_reduced);
     const auto health = observed.view_in<givm::execution_state::health_reduced>();
     const auto expected_damage = initial_aura == givm::element_aura::cryo ? 4u : 2u;
@@ -305,7 +305,7 @@ TEST_CASE("lethal damage reports overkill and ends the game before later instruc
         damaged_player == givm::player_id{ 0 } ? defending_deck : attacking_deck,
         damaged_player == givm::player_id{ 1 } ? defending_deck : attacking_deck);
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     auto state = target.step(library, table, random);
     if(observed)
@@ -349,7 +349,7 @@ TEST_CASE("zero damage skips health observation and preserves element applicatio
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     zero_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
     CHECK(table[damaged].state().health == 10);

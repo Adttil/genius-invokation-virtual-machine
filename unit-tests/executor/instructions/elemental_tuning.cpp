@@ -182,7 +182,7 @@ TEST_CASE("elemental tuning shares card candidates and validates card attributes
         .characters = { ids.get_id<givm::character_view>(character.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(opponent.name()) } });
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.card_count() == 2);
@@ -226,7 +226,7 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
         .characters = { ids.get_id<givm::character_view>(character.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(opponent.name()) } });
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     const auto selected_card = action.card_id(0);

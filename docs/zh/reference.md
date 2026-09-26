@@ -24,6 +24,7 @@
 | [`any_command_input`](reference/definition/any_command_input.md) | 核心命令输入 variant |
 | [事件](reference/definition/events.md) | 可响应的游戏事件 |
 | [查询](reference/definition/queries.md) | 定义提供的规则信息与检查结果 |
+| [历史摘要](reference/definition/history_summary.md) | 按定义依赖选择、随通知更新的对局记录 |
 
 ## [牌桌](reference/table.md)
 

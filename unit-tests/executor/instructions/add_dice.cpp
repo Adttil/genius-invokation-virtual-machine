@@ -108,7 +108,7 @@ TEST_CASE("adding dice updates all types before notifying and resumes nested eff
     givm::table table{ { .self_player = givm::player_id{ 1 } },
         { .dice = log.expected[0] }, { .dice = log.expected[1] } };
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     std::size_t pauses = 0;
     for(;;)

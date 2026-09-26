@@ -344,7 +344,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     const auto [library, ids] = compile_equipment_scenario(mode, log, true);
     auto table = load_equipment_scenario(library, ids);
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const std::vector<std::string> initial_order{ "Weapon", "Artifact", "Talent", "Technique", "OrdinaryA", "OrdinaryB" };
     CHECK(log.responders == initial_order);
@@ -434,7 +434,7 @@ TEST_CASE("equipment replacement handles a nested replacement in the removal bro
     const auto [library, ids] = compile_equipment_scenario(mode, log, true);
     auto table = load_equipment_scenario(library, ids);
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     log.events.clear();
     log.add_during_removal = true;
@@ -462,7 +462,7 @@ TEST_CASE("equipment card input selects a reserve character without changing the
     const auto [library, ids] = compile_equipment_scenario(mode, log, false);
     auto table = load_equipment_scenario(library, ids);
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     const auto index = card_index(action, table, ids.get_id<givm::card_definition>("EquipWeaponCard"));
@@ -496,7 +496,7 @@ TEST_CASE("a non-card response supplies multiple attachment inputs and removes o
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("DynamicAttachmentCharacter") } },
         { .characters = { ids.get_id<givm::character_view>("LowerHealth"), ids.get_id<givm::character_view>("HigherHealth") } });
     givm::executor execution;
-    execution.enter_entry(library);
+    execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::finished);
     CHECK(log.calls == 2);
     REQUIRE(log.added.size() == 3);

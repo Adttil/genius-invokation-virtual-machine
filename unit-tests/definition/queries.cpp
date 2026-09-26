@@ -224,7 +224,7 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { initial_id, validation_id } }, {});
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = []() -> std::uint32_t { return 0; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == 2);
@@ -363,7 +363,7 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
     CHECK(counts.initial_cost == 2);
 
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = []() -> std::uint32_t { return 0; };
     REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
     for(const auto player : table.players())
@@ -391,7 +391,7 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
     load_deck(table, library, { .cards = { id, id, id } }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor first_draw;
-    first_draw.enter_entry(library);
+    first_draw.start(library, table);
     REQUIRE(first_draw.step(library, table, random) == givm::execution_state::finished);
     const auto card = (*table[givm::player_id{ 0 }].hand_cards().begin()).id();
     CHECK(counts.target_validation == 0);
@@ -400,7 +400,7 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
     CHECK(counts.target_validation == 1);
 
     givm::executor second_draw;
-    second_draw.enter_entry(library);
+    second_draw.start(library, table);
     REQUIRE(second_draw.step(library, table, random) == givm::execution_state::finished);
     CHECK(library[id].query(givm::card_target_validation{ table[card], table, library, {}, 0 })
         == givm::target_validation::invalid);
@@ -433,7 +433,7 @@ TEST_CASE("missing queries use their operation specific defaults", "[definition]
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { card_definition } }, {});
     givm::executor draw;
-    draw.enter_entry(library);
+    draw.start(library, table);
     auto random = []() -> std::uint32_t { return 0; };
     REQUIRE(draw.step(library, table, random) == givm::execution_state::finished);
     const auto card = *table[givm::player_id{ 0 }].hand_cards().begin();

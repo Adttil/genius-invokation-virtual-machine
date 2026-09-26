@@ -49,7 +49,7 @@ struct deal_damage
 
 数值响应结束后，仅在替代标签为空时加入默认反应加伤，再应用倍率，最后进入减伤与护盾阶段。非空标签同时取消默认派生伤害、实体生成和超载切人；附着消耗始终按原始反应处理。替代反应仍被视为发生了原始反应，响应者可在后续已有事件中根据标签完成替代效果。
 
-扣血使角色生命降至零时，先全局广播 [`character_will_be_defeated`](../events/character_will_be_defeated.md)。濒死角色的技能和尚未清除的附属仍可响应，响应提交的治疗程序可以恢复其生命。全部响应及其程序结束后，以角色的实际生命为准：若已经恢复至非零，保留附属和充能；若仍为零，才根据双方是否仍有存活角色判断胜负。若已终局，则直接结束，不再清理该角色的 attachment 与充能，也不再处理剩余默认反应效果、剩余伤害或完成通知；准备阶段已经完成的附着不回退。若对局继续，才删除其全部 attachment、清空充能与元素附着，再继续本组结算。已删除的 attachment 不参与后续广播。
+扣血使角色生命降至零时，先全局广播 [`character_will_be_defeated`](../events/character_will_be_defeated.md)。濒死角色的技能和尚未清除的附属仍可响应，响应提交的治疗程序可以恢复其生命。全部响应及其程序结束后，以角色的实际生命为准：若已经恢复至非零，保留附属和充能，不发送击倒通知；若仍为零，才根据双方是否仍有存活角色判断胜负。若已终局，则直接结束，不再清理该角色的 attachment 与充能，也不再发送击倒通知或处理剩余默认反应效果、剩余伤害及完成通知；准备阶段已经完成的附着不回退。若对局继续，才删除其全部 attachment、清空充能与元素附着，全局广播 [`character_defeated`](../events/character_defeated.md)，待响应全部结束后继续本组结算。已删除的 attachment 不参与后续广播。
 
 初始描述按顺序准备。范围目标按其规定的角色顺序展开；反应派生伤害紧接引发它的伤害，先于原本排在后面的伤害。例如初始为 A、B，A 派生 a、b，实际扣血顺序是 A、a、b、B；派生伤害再次引起反应时沿用同一规则。
 
@@ -134,7 +134,7 @@ int main()
     const givm::character_id other{ givm::player_id{ 1 }, 1 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.enter_entry(library);
+    execution.start(library, table);
     execution.step(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(
         givm::character_id{ givm::player_id{ 0 }, 0 });

@@ -10,6 +10,41 @@ namespace givm
     struct subscribed_events;
 
     template<>
+    struct subscribed_events<history_summary_definition> : type_list<
+        struct history_summary_initialization,
+        struct test_event,
+        struct action_phase_started,
+        struct battle_started,
+        struct round_started,
+        struct before_action,
+        struct round_end_declared,
+        struct round_ended,
+        struct dice_added,
+        struct dice_removed,
+        struct dice_converted,
+        struct secret_points_changed,
+        struct energy_changed,
+        struct hand_card_added,
+        struct card_drawn,
+        struct hand_card_discarded,
+        struct deck_card_discarded,
+        struct card_candidate_chosen,
+        struct elemental_tuning_completed,
+        struct card_played,
+        struct active_character_changed,
+        struct skill_used,
+        struct technique_used,
+        struct after_damage,
+        struct healed,
+        struct after_elemental_reaction,
+        struct character_defeated,
+        struct support_removed,
+        struct summon_removed,
+        struct combat_status_removed,
+        struct attachment_removed
+    >{};
+
+    template<>
     struct subscribed_events<hand_card_status_view> : type_list<
         struct test_event,
         struct action_phase_started,

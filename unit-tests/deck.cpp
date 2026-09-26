@@ -160,7 +160,7 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     REQUIRE(original_ids.size() == 4);
 
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     sequence_random random{
         .values = { std::numeric_limits<std::uint32_t>::max(), 0, std::uint32_t{ 0x80000000u } }
     };

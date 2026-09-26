@@ -23,6 +23,8 @@ struct subscribed_events;
 
 角色不订阅事件。角色定义提供初始状态、初始技能组和分类标签；被动能力应定义为角色持有的技能，由该技能响应事件。
 
+另外，`subscribed_events<history_summary_definition>` 提供[历史摘要](history_summary.md)的事件集合。它包含仅摘要响应的 [`history_summary_initialization`](events/history_summary_initialization.md) 和用于记录已发生事实的通知事件；摘要没有实体 view，其 `handle` 签名见历史摘要协议。
+
 
 ## 支持的实体形态
 

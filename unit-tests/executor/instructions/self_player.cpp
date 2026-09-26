@@ -201,7 +201,7 @@ TEST_CASE("response programs resolve relative players and restore their caller a
             .characters = { ids.get_id<givm::character_view>(second_source.name()) } });
     CHECK(table.state().self_player == no_self);
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     if(observed)
     {
         auto random = [] { return std::uint32_t{ 0 }; };
@@ -239,7 +239,7 @@ TEST_CASE("cost preview preserves the caller while cached payment executes on it
     load_deck(table, library, { .cards = { card_id }, .characters = { character_id, character_id } },
         { .cards = { card_id }, .characters = { ids.get_id<givm::character_view>(responder.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     if(observed) REQUIRE(executor.step(library, table, random) == givm::execution_state::action_started);
     REQUIRE(executor.step(library, table, random) == givm::execution_state::action_selection);

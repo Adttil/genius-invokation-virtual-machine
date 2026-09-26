@@ -294,7 +294,7 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
         .characters = { ids.get_id<givm::character_view>(observer.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
@@ -371,7 +371,7 @@ TEST_CASE("card target queries advance one step at a time and default to no targ
         .characters = { ids.get_id<givm::character_view>(observer.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
@@ -476,7 +476,7 @@ TEST_CASE("optional targets may finish or continue and target spans ignore entri
         .characters = { ids.get_id<givm::character_view>(observer.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
@@ -545,7 +545,7 @@ TEST_CASE("card payment and broadcasts resume in order after removal even when i
         .characters = { ids.get_id<givm::character_view>(observer.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
     givm::executor target;
-    target.enter_entry(library);
+    target.start(library, table);
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();

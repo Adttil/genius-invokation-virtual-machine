@@ -67,7 +67,7 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     load_deck(table, library, { .characters = { character_id } }, { .characters = { character_id } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     zero_random random;
     REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 2);

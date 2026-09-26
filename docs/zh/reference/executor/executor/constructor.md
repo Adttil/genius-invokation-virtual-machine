@@ -13,7 +13,7 @@ constexpr executor(executor&& other) noexcept;     // (3)
 
 构造执行器。
 
-1. 构造空执行器。开始执行前需要调用 [`enter_entry`](enter_entry.md)。
+1. 构造空执行器。开始执行前需要调用 [`start`](start.md)。
 2. 复制 `other` 的对局进度和临时结算。两个执行器分别拥有各自的现场，随后推进其中一个不会改变另一个的执行状态。
 3. 从 `other` 移动执行状态。
 
@@ -56,7 +56,7 @@ int main()
     givm::table table{ { .max_rounds = 1 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.enter_entry(library);
+    execution.start(library, table);
     givm::table branch_table{ table };
     givm::executor branch{ execution };
     branch.step(library, branch_table, random);
@@ -77,4 +77,4 @@ int main()
 
 | | |
 | --- | --- |
-| [`enter_entry`](enter_entry.md) | 建立从定义库入口开始的执行状态 |
+| [`start`](start.md) | 建立从定义库入口开始的执行状态 |

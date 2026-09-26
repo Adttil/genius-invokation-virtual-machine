@@ -200,7 +200,7 @@ TEST_CASE("numeric conditions read the original aura even after the whole group 
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(bare.name()), ids.get_id<givm::character_view>(burning.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
     CHECK(log.original_auras == std::vector{ givm::element_aura::none, givm::element_aura::pyro });
     CHECK(log.current_auras == std::vector{ givm::element_aura::pyro, givm::element_aura::pyro });
@@ -231,7 +231,7 @@ TEST_CASE("a reaction prepared for a later defeated target retains its secondary
         { .characters = { ids.get_id<givm::character_view>(water.name()), ids.get_id<givm::character_view>(electro.name()),
             ids.get_id<givm::character_view>(fragile.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
     CHECK(log.reactions == std::vector{ givm::elemental_reaction::swirl,
         givm::elemental_reaction::electro_charged, givm::elemental_reaction::electro_charged });
@@ -286,7 +286,7 @@ TEST_CASE("each original wind description prepares once while its range and reac
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { water_id, other_id, other_id } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
     CHECK(targets_at(log, phase::preparation) == (range ? std::vector<std::size_t>{ 0 } : std::vector<std::size_t>{ 0, 1 }));
     CHECK(targets_at(log, phase::reaction) == (range ? std::vector<std::size_t>{ 0, 1, 2 } : std::vector<std::size_t>{ 0, 1 }));
@@ -320,7 +320,7 @@ TEST_CASE("defeat clears aura applied while preparing a later skipped hit", "[de
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(fragile.name()), ids.get_id<givm::character_view>(reserve.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
     CHECK(targets_at(log, phase::preparation) == std::vector<std::size_t>{ 0, 0 });
     CHECK(log.current_auras == std::vector{ givm::element_aura::pyro });
@@ -353,7 +353,7 @@ TEST_CASE("damage resumes past a target defeated by its own numeric or shield re
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(fragile.name()), ids.get_id<givm::character_view>(reserve.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
     CHECK(log.dying == std::vector<std::size_t>{ 0 });
     CHECK(targets_at(log, phase::completion) == std::vector<std::size_t>{ 0, 1 });

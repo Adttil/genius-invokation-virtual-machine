@@ -70,6 +70,11 @@
 | [`status_state`](table/status_state.md) | 卡牌状态在对局中使用的计数状态 |
 | [`card_state`](table/card_state.md) | 卡牌自身的费用及是否允许元素调和 |
 | [`action_cost_requirement`](table/action_cost_requirement.md) | 行动的骰子、充能费用与速度 |
+| [`history_summary_state`](definition/history_summary.md#更新与读取) | 一项历史摘要的可写状态视图 |
+| [`history_field_key`](definition/history_summary.md#类) | 摘要自身字段的访问键 |
+| [`history_value_key`](definition/history_summary.md#类) | 牌桌历史字段的读取键 |
+
+历史摘要由配套定义库决定，在 [`executor::start`](executor/executor/start.md) 时通过初始化事件准备，通常先装载双方牌组；上层和效果通过 `table[key]` 读取标量或数组。摘要随牌桌独立复制，只有摘要自身的事件处理函数能够修改其字段。详见[历史摘要](definition/history_summary.md)。
 
 ## 类型别名
 

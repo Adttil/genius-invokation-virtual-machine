@@ -132,7 +132,7 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
         { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
     givm::executor executor;
-    executor.enter_entry(library);
+    executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.has_technique());
