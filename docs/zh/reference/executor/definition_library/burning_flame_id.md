@@ -8,7 +8,7 @@
 definition_id<summon_view> burning_flame_id() const noexcept;
 ```
 
-取得默认元素反应所采用的燃烧烈焰定义。该定义由[源库构造时](../../definition/definition_source_library/constructor.md)传入的源决定，可以是随库提供的版本，也可以是自定义版本。
+取得默认元素反应所采用的燃烧烈焰定义。该定义由编译时的 [`basic_definition_sources`](../../definition/basic_definition_sources.md) 的 `burning_flame` 指定，可以是随库提供的版本，也可以是自定义版本。
 
 ## 返回值
 
@@ -28,14 +28,15 @@ definition_id<summon_view> burning_flame_id() const noexcept;
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     const auto [library, ids] = compile(
-        sources, givm::definition_selection{}, std::tuple{},
+        sources, basics, givm::definition_selection{}, std::tuple{},
         std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
     const auto id = library.burning_flame_id();
     std::println("采用指定的燃烧烈焰源: {}", id == ids.get_id<givm::summon_view>(

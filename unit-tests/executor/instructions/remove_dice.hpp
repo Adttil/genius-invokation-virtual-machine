@@ -146,8 +146,8 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
     const removed_dice_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared_ids = sources.make_issued_id_map();
-    const auto [library, ids] = compile(sources,
+    const auto prepared_ids = sources.make_issued_id_map(givm_test::basic_sources);
+    const auto [library, ids] = compile(sources, givm_test::basic_sources,
         std::tuple{ givm::add_support{ .player = givm::relative_player::self,
             .definition = prepared_ids.get_id<givm::support_view>("RemovedDice") },
             givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, mode);
@@ -190,10 +190,10 @@ TEST_CASE("successive end-round collectors choose dice from the updated pool", "
     const collector_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared_ids = sources.make_issued_id_map();
+    const auto prepared_ids = sources.make_issued_id_map(givm_test::basic_sources);
     const givm::add_support add{ .player = givm::relative_player::self,
         .definition = prepared_ids.get_id<givm::support_view>("DiceCollector"), .state = {} };
-    const auto [library, ids] = compile(sources,
+    const auto [library, ids] = compile(sources, givm_test::basic_sources,
         std::tuple{ add, add, givm::end_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, mode);
     givm::dice_counts initial;
     initial[givm::elemental_dice::hydro] = 1;

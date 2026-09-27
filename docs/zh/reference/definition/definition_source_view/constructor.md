@@ -6,6 +6,7 @@
 
 ```cpp
 template<class TSource>
+    requires std::same_as<typename TSource::definition_category, TCategory>
 constexpr definition_source_view(const TSource& source);
 ```
 

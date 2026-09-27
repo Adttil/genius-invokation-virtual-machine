@@ -13,6 +13,7 @@
 |  |  |
 | --- | --- |
 | [`definition_source_library`](definition/definition_source_library.md) | 可供编译的定义源集合 |
+| [`basic_definition_sources`](definition/basic_definition_sources.md) | 默认元素反应的基础定义源配置 |
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
 | [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
 | [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |

@@ -65,16 +65,17 @@ struct card_source
 int main()
 {
     const card_source source{};
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     sources.add(source);
-    const auto issued = sources.make_issued_id_map();
+    const auto issued = sources.make_issued_id_map(basics);
     const auto definition = issued.get_id<givm::card_definition>("生成示例牌");
-    const auto [library, ids] = compile(sources,
+    const auto [library, ids] = compile(sources, basics,
         std::tuple{
             givm::create_hand_card{ .definition = definition },
             givm::end_game{ .result = givm::game_result::both_loss }

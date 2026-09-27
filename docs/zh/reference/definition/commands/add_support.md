@@ -73,16 +73,17 @@ struct support_source
 int main()
 {
     support_source support{};
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     sources.add(support);
-    const auto issued = sources.make_issued_id_map();
+    const auto issued = sources.make_issued_id_map(basics);
     const auto id = issued.get_id<givm::support_view>("support");
-    const auto [library, ids] = compile(sources,
+    const auto [library, ids] = compile(sources, basics,
         std::array{
             givm::add_support{ .definition = id },
             givm::add_support{ .definition = id },

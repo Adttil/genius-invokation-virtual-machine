@@ -60,15 +60,16 @@ struct character_source
 int main()
 {
     const character_source source{};
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     sources.add(source);
     const auto [library, ids] = compile(
-        sources, std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
+        sources, basics, std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
     const auto id = ids.get_id<givm::character_view>("角色");
     const auto state = library.query(id, givm::character_initial_state{});
     std::println("初始生命: {}", state.health);

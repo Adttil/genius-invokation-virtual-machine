@@ -185,7 +185,7 @@ TEST_CASE("empty queries cache each compiled definition and survive library copi
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second));
     CHECK(counts.initial_cost == 0);
-    const auto [library, ids] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     const auto first_id = ids.get_id<givm::card_definition>(first.name());
     const auto second_id = ids.get_id<givm::card_definition>(second.name());
     REQUIRE(counts.initial_cost == 2);
@@ -281,12 +281,12 @@ TEST_CASE("dynamic queries only require an implementation when enabled", "[defin
     REQUIRE(sources.add(source));
     if(enabled)
     {
-        REQUIRE_THROWS_AS(compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
+        REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
             std::invalid_argument);
     }
     else
     {
-        const auto [library, ids] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+        const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
         const auto id = ids.get_id<givm::card_definition>(source.name());
         CHECK(library[id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
     }
@@ -338,10 +338,10 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
     const queried_card_source second{ "TunableCard", &counts, 3, 0 };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second));
-    const auto prepared_ids = sources.make_issued_id_map();
+    const auto prepared_ids = sources.make_issued_id_map(givm_test::basic_sources);
     const auto first_id = prepared_ids.get_id<givm::card_definition>(first.name());
     const auto second_id = prepared_ids.get_id<givm::card_definition>(second.name());
-    const auto [library, ids] = compile(sources, std::tuple{
+    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{
         givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = first_id },
         givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = second_id },
         givm::draw_cards{ .positions = draw_positions_1 },

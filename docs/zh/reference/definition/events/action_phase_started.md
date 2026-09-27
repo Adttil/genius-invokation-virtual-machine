@@ -47,15 +47,16 @@ int main()
 {
     int count = 0;
     observer_source source{ &count };
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     sources.add(source);
     const auto [library, ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     const auto id = ids.get_id<givm::skill_view>("observer");
     std::println("提供此事件的响应: {}", library.can_handle<givm::action_phase_started, givm::skill_view>(id));

@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/basic_definitions.hpp>`，也可通过 `<givm/givm.hpp>` 使用。
 
-`givm::genshin_impact` 提供原神各版本的草原核、激化领域、燃烧烈焰和冻结规则，供调用方选择元素反应所关联的实体。它们实现各自的增伤、消耗和离场效果，可以直接用于[构造定义源库](definition/definition_source_library/constructor.md)。
+`givm::genshin_impact` 提供原神各版本的草原核、激化领域、燃烧烈焰和冻结规则，供调用方选择元素反应所关联的实体。它们实现各自的增伤、消耗和离场效果，可以组成 [`basic_definition_sources`](definition/basic_definition_sources.md) 传给编译函数。
 
 ## 定义源对象
 
@@ -16,7 +16,7 @@
 | `burning_flame_3_3_0` | `burning_flame-3.3.0-genshin_impact` | `summon_view` |
 | `frozen_3_3_0` | `frozen-3.3.0-genshin_impact` | `attachment_view` |
 
-这些对象具有静态生命周期，可直接传入源库。调用方可以选择激化领域的不同版本，也可以用自己的定义源替代任何一项。源库按构造参数确定其用途，不从上述名称推断用途。
+这些对象具有静态生命周期，可直接用于基础定义配置。调用方可以选择激化领域的不同版本，也可以用自己的定义源替代任何一项。配置的成员名称确定其用途，不从定义名称推断用途；不同对局可以让同一个源库配合不同配置编译。
 
 版本后缀表示采用的规则版本。激化领域在 3.4 中从三次改为两次，参见 [3.4 官方更新说明](https://genshin.hoyoverse.com/en/news/detail/105081)及其[完整转载](https://www.gematsu.com/2023/01/genshin-impact-version-3-4-update-now-available)。
 
@@ -58,14 +58,15 @@
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     const auto [library, ids] = compile(
-        sources, std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
+        sources, basics, std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
     std::println("激化领域定义: {}", library.name(library.catalyzing_field_id()));
 }
 ```

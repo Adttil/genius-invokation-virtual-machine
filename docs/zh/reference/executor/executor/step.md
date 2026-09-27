@@ -76,12 +76,13 @@ struct character_source
 int main()
 {
     character_source source{};
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     sources.add(source);
     const std::array damages{
         givm::fixed_damage{
@@ -90,7 +91,7 @@ int main()
             .value = 999, .type = givm::damage_type::physical, .flags = {} }
     };
     const auto [library, ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{
             givm::select_active_character_both{},
             givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::self, 1 } },

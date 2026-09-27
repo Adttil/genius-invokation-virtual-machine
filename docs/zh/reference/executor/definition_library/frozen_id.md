@@ -8,7 +8,7 @@
 definition_id<attachment_view> frozen_id() const noexcept;
 ```
 
-取得默认冻结反应所采用的角色附属定义。该定义由[源库构造时](../../definition/definition_source_library/constructor.md)的第四个参数指定，可以是随库提供的版本，也可以是自定义版本。
+取得默认冻结反应所采用的角色附属定义。该定义由编译时的 [`basic_definition_sources`](../../definition/basic_definition_sources.md) 的 `frozen` 指定，可以是随库提供的版本，也可以是自定义版本。
 
 ## 返回值
 

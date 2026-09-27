@@ -59,16 +59,17 @@ struct example_source
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     const example_source<givm::card_definition> card_source{};
     const example_source<givm::character_view> character_source{};
     sources.add(card_source, character_source);
-    const auto [library, id_map] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, id_map] = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
     givm::linked_deck deck{};
     deck.cards.push_back(id_map.get_id<givm::card_definition>("示例"));

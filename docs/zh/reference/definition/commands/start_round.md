@@ -30,14 +30,15 @@ struct start_round;
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     const auto [library, ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{},
         std::tuple{
             givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } },

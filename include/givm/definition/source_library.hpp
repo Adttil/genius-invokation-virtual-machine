@@ -25,24 +25,29 @@ namespace givm
 {
     using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
 
+    struct basic_definition_sources
+    {
+        definition_source_view<combat_status_view> dendro_core;
+        definition_source_view<combat_status_view> catalyzing_field;
+        definition_source_view<summon_view> burning_flame;
+        definition_source_view<attachment_view> frozen;
+    };
+
     class definition_source_library
     {
     public:
         static constexpr size_t definition_count = definition_types::size();
 
-        template<class TDendroCore, class TCatalyzingField, class TBurningFlame, class TFrozen, class... TOtherSources>
-            requires std::same_as<typename TDendroCore::definition_category, combat_status_view>
-                && std::same_as<typename TCatalyzingField::definition_category, combat_status_view>
-                && std::same_as<typename TBurningFlame::definition_category, summon_view>
-                && std::same_as<typename TFrozen::definition_category, attachment_view>
-        definition_source_library(const TDendroCore& dendro_core, const TCatalyzingField& catalyzing_field,
-            const TBurningFlame& burning_flame, const TFrozen& frozen, const TOtherSources&... other_sources)
-        : dendro_core_name_{ dendro_core.name() }, catalyzing_field_name_{ catalyzing_field.name() },
-          burning_flame_name_{ burning_flame.name() }, frozen_name_{ frozen.name() }
+        definition_source_library() = default;
+
+        template<class... TSources>
+            requires (sizeof...(TSources) != 0)
+                && (not std::same_as<std::remove_cvref_t<TSources>, definition_source_library> && ...)
+        explicit definition_source_library(const TSources&... sources)
         {
-            if(not add(dendro_core, catalyzing_field, burning_flame, frozen, other_sources...))
+            if(not add(sources...))
             {
-                throw std::invalid_argument{ "invalid reaction definition sources or dependencies" };
+                throw std::invalid_argument{ "invalid definition sources or dependencies" };
             }
         }
 
@@ -53,6 +58,7 @@ namespace givm
 
         bool add(const definition_source_library& library)
         {
+            if(this == &library) return true;
             if(has_name_conflict(library))
             {
                 return false;
@@ -139,14 +145,16 @@ namespace givm
                 });
         }
 
-        issued_id_map make_issued_id_map() const
+        issued_id_map make_issued_id_map(const basic_definition_sources& basics) const
         {
-            return make_issued_id_map(make_full_selection());
+            const auto sources = with_basic_definitions(basics);
+            return sources.make_issued_id_map(sources.make_full_selection());
         }
 
-        issued_id_map make_issued_id_map(const definition_selection& selection) const
+        issued_id_map make_issued_id_map(const basic_definition_sources& basics, const definition_selection& selection) const
         {
-            return make_issued_id_map(resolve_selection(selection));
+            const auto sources = with_basic_definitions(basics);
+            return sources.make_issued_id_map(sources.resolve_selection(selection, basics));
         }
 
     private:
@@ -215,8 +223,7 @@ namespace givm
                 if(const auto found = bucket.name_to_index.find(entry.name); found != bucket.name_to_index.end())
                 {
                     const auto& existing = bucket.entries[found->second];
-                    if((is_reaction_source<I>(entry.name) || library.is_reaction_source<I>(entry.name))
-                        && existing.source.source_ == entry.source.source_
+                    if(existing.source.source_ == entry.source.source_
                         && existing.source.rtti_ == entry.source.rtti_)
                     {
                         continue;
@@ -225,19 +232,6 @@ namespace givm
                 }
             }
             return false;
-        }
-
-        template<size_t I>
-        bool is_reaction_source(std::string_view name) const noexcept
-        {
-            if constexpr(I == index_of<combat_status_view>())
-                return name == dendro_core_name_ || name == catalyzing_field_name_;
-            else if constexpr(I == index_of<summon_view>())
-                return name == burning_flame_name_;
-            else if constexpr(I == index_of<attachment_view>())
-                return name == frozen_name_;
-            else
-                return false;
         }
 
         bool has_name_conflict(const definition_source_library& library) const
@@ -427,6 +421,44 @@ namespace givm
             }(std::make_index_sequence<definition_count>{});
         }
 
+        definition_source_library with_basic_definitions(const basic_definition_sources& basics) const
+        {
+            auto sources = *this;
+            pending_tuple pending;
+            pending_names_type pending_names;
+            const auto prepare = [&]<class TCategory>(const definition_source_view<TCategory>& source)
+            {
+                constexpr auto index = index_of<TCategory>();
+                const auto name = source.name();
+                const auto& bucket = sources.bucket_for<TCategory>();
+                if(const auto found = bucket.name_to_index.find(name); found != bucket.name_to_index.end())
+                {
+                    const auto existing = bucket.entries[found->second].source;
+                    if(existing.source_ != source.source_ || existing.rtti_ != source.rtti_)
+                        throw std::invalid_argument{ "conflicting basic definition source" };
+                    return;
+                }
+                auto& entries = std::get<index>(pending);
+                const auto found = std::ranges::find(entries, name, &entry<TCategory>::name);
+                if(found != entries.end())
+                {
+                    if(found->source.source_ != source.source_ || found->source.rtti_ != source.rtti_)
+                        throw std::invalid_argument{ "conflicting basic definition source" };
+                    return;
+                }
+                pending_names[index].insert(name);
+                entries.push_back({ .source = source, .name = name, .declarations = source.declarations() });
+            };
+            prepare(basics.dendro_core);
+            prepare(basics.catalyzing_field);
+            prepare(basics.burning_flame);
+            prepare(basics.frozen);
+            if(not sources.check_pending_dependencies(pending, pending_names))
+                throw std::invalid_argument{ "missing basic definition dependency" };
+            sources.commit_pending(pending);
+            return sources;
+        }
+
         selection_mask make_empty_selection() const
         {
             selection_mask selected;
@@ -447,15 +479,15 @@ namespace givm
             return selected;
         }
 
-        selection_mask resolve_selection(const definition_selection& selection) const
+        selection_mask resolve_selection(const definition_selection& selection, const basic_definition_sources& basics) const
         {
             auto selected = make_empty_selection();
             std::vector<queue_item> queue;
 
-            enqueue_name<index_of<combat_status_view>()>(dendro_core_name_, selected, queue);
-            enqueue_name<index_of<combat_status_view>()>(catalyzing_field_name_, selected, queue);
-            enqueue_name<index_of<summon_view>()>(burning_flame_name_, selected, queue);
-            enqueue_name<index_of<attachment_view>()>(frozen_name_, selected, queue);
+            enqueue_name<index_of<combat_status_view>()>(basics.dendro_core.name(), selected, queue);
+            enqueue_name<index_of<combat_status_view>()>(basics.catalyzing_field.name(), selected, queue);
+            enqueue_name<index_of<summon_view>()>(basics.burning_flame.name(), selected, queue);
+            enqueue_name<index_of<attachment_view>()>(basics.frozen.name(), selected, queue);
 
             [&]<size_t...I>(std::index_sequence<I...>)
             {
@@ -740,10 +772,6 @@ namespace givm
             return indices;
         }
 
-        std::string_view dendro_core_name_;
-        std::string_view catalyzing_field_name_;
-        std::string_view burning_flame_name_;
-        std::string_view frozen_name_;
         bucket_tuple buckets_;
 
         friend class definition_library;

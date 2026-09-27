@@ -81,7 +81,7 @@ TEST_CASE("query parameters and defaults are available without executor headers"
 
 TEST_CASE("definition sources can be registered and enumerated without executor headers", "[definition][source_library]")
 {
-    STATIC_REQUIRE_FALSE(std::is_default_constructible_v<givm::definition_source_library>);
+    STATIC_REQUIRE(std::is_default_constructible_v<givm::definition_source_library>);
     const named_source<givm::card_definition> card{ "Card" };
     const named_source<givm::card_definition> another_card{ "Another card" };
     const named_source<givm::status_definition> status{ "Status" };
@@ -100,30 +100,35 @@ TEST_CASE("definition sources can be registered and enumerated without executor 
     check_sources<givm::card_definition>(sources, { "Another card", "Card" });
     check_sources<givm::status_definition>(sources, { "Status" });
     check_sources<givm::support_view>(sources, { "Support" });
-    check_sources<givm::summon_view>(sources, { "Summon", "TestBurningFlame" });
-    check_sources<givm::combat_status_view>(sources, { "Combat status", "TestCatalyzingField", "TestDendroCore" });
+    check_sources<givm::summon_view>(sources, { "Summon" });
+    check_sources<givm::combat_status_view>(sources, { "Combat status" });
     check_sources<givm::character_view>(sources, { "Character" });
     check_sources<givm::skill_view>(sources, { "Skill" });
-    check_sources<givm::attachment_view>(sources, { "Attachment", "TestFrozen" });
+    check_sources<givm::attachment_view>(sources, { "Attachment" });
 
-    const auto ids = sources.make_issued_id_map();
+    const auto ids = sources.make_issued_id_map(givm_test::basic_sources);
     CHECK(ids.has<givm::card_definition>("Another card"));
     CHECK(ids.has<givm::character_view>("Character"));
     CHECK(ids.has<givm::attachment_view>("Attachment"));
 }
 
-TEST_CASE("reaction definitions can be bound without executor headers", "[definition][source_library]")
+TEST_CASE("reaction definitions can be selected without changing the source collection", "[definition][source_library]")
 {
     const named_source<givm::combat_status_view> core{ "Custom core" };
     const named_source<givm::combat_status_view> field{ "Custom field" };
     const named_source<givm::summon_view> flame{ "Custom flame" };
-    const givm::definition_source_library sources{ core, field, flame, givm_test::frozen };
+    const givm::basic_definition_sources basics{
+        core, field,
+        flame, givm_test::frozen };
+    const givm::definition_source_library sources{};
 
-    check_sources<givm::combat_status_view>(sources, { "Custom core", "Custom field" });
-    check_sources<givm::summon_view>(sources, { "Custom flame" });
-    const auto ids = sources.make_issued_id_map(givm::definition_selection{});
+    check_sources<givm::combat_status_view>(sources, {});
+    check_sources<givm::summon_view>(sources, {});
+    const auto ids = sources.make_issued_id_map(basics, givm::definition_selection{});
     CHECK(ids.has<givm::combat_status_view>(core.name()));
     CHECK(ids.has<givm::combat_status_view>(field.name()));
     CHECK(ids.has<givm::summon_view>(flame.name()));
+    check_sources<givm::combat_status_view>(sources, {});
+    check_sources<givm::summon_view>(sources, {});
 }
 }

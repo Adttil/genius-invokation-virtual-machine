@@ -227,7 +227,7 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     using check_result = givm::dice_selection_validation;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     auto sources = givm_test::make_source_library();
-    const auto [library, ids] = compile(sources,
+    const auto [library, ids] = compile(sources, givm_test::basic_sources,
         std::tuple{
             givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 1, 2 } },
             givm::end_game{ givm::game_result::both_loss }

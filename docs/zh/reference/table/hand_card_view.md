@@ -54,16 +54,17 @@ struct example_source
 int main()
 {
     example_source source{};
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     sources.add(source);
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
     const auto [library, ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{ { .self_player = givm::player_id{ 0 } } };

@@ -54,13 +54,14 @@ struct reroll_dice
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
-    const auto [library, ids] = compile(sources,
+    givm::definition_source_library sources{};
+    const auto [library, ids] = compile(sources, basics,
         std::tuple{
             givm::reroll_dice{ .player = givm::relative_player::self, .reroll_count = 2 },
             givm::end_game{ .result = givm::game_result::both_loss }

@@ -102,8 +102,8 @@ TEST_CASE("adding dice updates all types before notifying and resumes nested eff
     const added_dice_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared_ids = sources.make_issued_id_map();
-    const auto [library, ids] = compile(sources,
+    const auto prepared_ids = sources.make_issued_id_map(givm_test::basic_sources);
+    const auto [library, ids] = compile(sources, givm_test::basic_sources,
         std::tuple{ givm::add_support{ .player = givm::relative_player::self,
             .definition = prepared_ids.get_id<givm::support_view>("AddedDice") },
             givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, mode);

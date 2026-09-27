@@ -337,7 +337,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, alpha, beta));
     const auto program = std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
+    const auto [library, id_map] = compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -365,7 +365,7 @@ TEST_CASE("definition compile context rejects undeclared dependency queries", "[
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(source));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    REQUIRE_THROWS_AS(compile(source_library, program, program, givm::compile_mode::normal), std::invalid_argument);
+    REQUIRE_THROWS_AS(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal), std::invalid_argument);
 }
 
 TEST_CASE("compiled definitions expose only enabled source handlers", "[source_view]")
@@ -376,7 +376,7 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(enabled, disabled));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
+    const auto [library, id_map] = compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
 
     CHECK(library[id_map.get_id<givm::support_view>(enabled.name())].can_handle<givm::round_started, givm::support_view>());
     CHECK_FALSE(
@@ -394,7 +394,7 @@ TEST_CASE("static handler availability depends on the implementation alone", "[s
     const explicitly_static_handler_source explicit_source{ { "ExplicitStatic", &capability_checks } };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(implicit_source, explicit_source));
-    const auto [library, ids] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
 
     CHECK(library[ids.get_id<givm::support_view>(implicit_source.name())]
         .can_handle<givm::round_started, givm::support_view>());
@@ -410,7 +410,7 @@ TEST_CASE("dynamic sources cannot enable a missing handler implementation", "[so
     const missing_dynamic_handler_source source{ { "MissingDynamicHandler", true } };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    REQUIRE_THROWS_AS(compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
+    REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
         std::invalid_argument);
 }
 
@@ -423,7 +423,7 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, support));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, program, program, givm::compile_mode::normal);
+    const auto [library, id_map] = compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
 
     CHECK(observation.event_compiled);
     CHECK(observation.onpay_compiled);
@@ -448,9 +448,9 @@ TEST_CASE("root programs reject commands that consume invocation inputs", "[sour
     const auto check = [&](const auto& invalid)
     {
         if(initialization)
-            REQUIRE_THROWS_AS(compile(sources, invalid, valid, mode), std::invalid_argument);
+            REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, invalid, valid, mode), std::invalid_argument);
         else
-            REQUIRE_THROWS_AS(compile(sources, valid, invalid, mode), std::invalid_argument);
+            REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, valid, invalid, mode), std::invalid_argument);
     };
     if(runtime_commands)
         check(std::vector<givm::any_command>{ givm::set_active_character{} });

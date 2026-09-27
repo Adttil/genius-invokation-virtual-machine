@@ -18,9 +18,9 @@ bool add(const TFirstSource& first, const TSecondSource& second,
 
 登记一批可供对局使用的定义源。一次调用中的源可以按名称相互依赖，适合一起加入某张卡牌及其生成的状态、召唤物等相关定义。
 
-(1) 不添加内容。(2) 合并另一个源库，保留接收方构造时选定的四个默认反应定义。(3) 登记一个源。(4) 一起登记多个源。名称在各定义类别内必须唯一。
+(1) 不添加内容。(2) 合并另一个源库。(3) 登记一个源。(4) 一起登记多个源。名称在各定义类别内必须唯一。
 
-合并源库时，同名项若是同一个源对象，且被任意一方选为默认反应定义，则跳过该重复项。因此使用相同默认源的库可以直接合并。其他同类别重名仍视为冲突，包括名称相同但源对象不同的情况；直接调用 (3)、(4) 重复登记也仍会失败。
+合并源库时，同类别同名项若引用相同源对象，且使用相同的定义源适配方式，则跳过重复项。其余同类别重名视为冲突，包括名称相同但源对象不同的情况。动态源以其 C++ 适配对象为身份，不会自动识别不同包装是否引用同一脚本定义。直接调用 (3)、(4) 重复登记仍会失败。
 
 ## 模板参数
 
@@ -37,7 +37,7 @@ bool add(const TFirstSource& first, const TSecondSource& second,
 
 ## 返回值
 
-全部登记成功时返回 `true`。同类别名称冲突，或按名称声明的依赖不在已有源和本次新增源中时，返回 `false`，不登记本次的任何源。(1) 始终返回 `true`。
+全部登记成功时返回 `true`。同类别名称冲突时返回 `false`，不登记本次的任何源。(3)、(4) 还会检查按名称声明的依赖是否在已有源或本次新增源中，缺失时同样整体失败。(2) 合并已登记的库时只检查名称冲突，不重新读取或验证依赖。(1) 始终返回 `true`；将库合并到自身也返回 `true`。
 
 ## 注意
 
@@ -65,12 +65,7 @@ int main()
 {
     const card_source potion{ "恢复药剂" };
     const card_source food{ "恢复料理" };
-    givm::definition_source_library sources{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0
-    };
+    givm::definition_source_library sources{};
     std::println("批量登记成功: {}", sources.add(potion, food));
     std::println("重复登记成功: {}", sources.add(potion));
     std::println("恢复料理仍存在: {}", sources.has<givm::card_definition>("恢复料理"));

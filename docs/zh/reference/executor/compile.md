@@ -8,6 +8,7 @@
 template<class TInitializationSequence, class TRoundSequence>
 auto compile(
     const definition_source_library& sources,
+    const basic_definition_sources& basics,
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
     compile_mode mode
@@ -16,6 +17,7 @@ auto compile(
 template<class TInitializationSequence, class TRoundSequence>
 auto compile(
     const definition_source_library& sources,
+    const basic_definition_sources& basics,
     const definition_selection& selection,
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
@@ -25,7 +27,7 @@ auto compile(
 
 准备一场对局要使用的实体定义和对局流程。初始化部分只进行一次，随后自动推进回合并反复执行回合部分，直到流程主动暂停或结束对局。
 
-(1) 使用全部已登记定义。(2) 从指定定义和源库构造时选定的四个默认反应定义出发，自动包含直接和间接依赖的定义。其余定义不会编译。
+(1) 使用全部已登记定义及 `basics` 中的四个默认反应定义。(2) 从指定定义和 `basics` 中的四个默认反应定义出发，自动包含直接和间接依赖的定义。其余定义不会编译。两种重载均不修改源库。
 
 ## 模板参数
 
@@ -39,6 +41,7 @@ auto compile(
 |  |  |
 | --- | --- |
 | `sources` | 已登记本场可用定义的源库 |
+| `basics` | [`basic_definition_sources`](../definition/basic_definition_sources.md)，本场规则采用的四个默认反应源 |
 | `selection` | 各类别首先选择的定义名称 |
 | `initialization_program` | 对局开始时依次执行的命令 |
 | `round_program` | 每回合依次执行的命令 |
@@ -72,9 +75,11 @@ auto compile(
 
 |  |  |
 | --- | --- |
-| `std::invalid_argument` | 选择了未知定义，定义源编译时查询了未声明的依赖，或动态定义源声明支持某项响应或查询却缺少对应实现；未定义 `NDEBUG` 时，初始化或回合流程需要响应输入也会抛出 |
+| `std::invalid_argument` | 选择了未知定义，基础源名称冲突或依赖缺失，定义源编译时查询了未声明的依赖，或动态定义源声明支持某项响应或查询却缺少对应实现；未定义 `NDEBUG` 时，初始化或回合流程需要响应输入也会抛出 |
 
 ## 注意
+
+基础定义不必事先登记到 `sources`，它们及其依赖参与本次编译的选择与 ID 分配。需要在编译前取得 ID 时，调用 [`sources.make_issued_id_map(basics, ...)`](../definition/definition_source_library/make_issued_id_map.md)，并与本次编译使用相同的源库内容、基础定义配置及选择范围。
 
 两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。空回合流程也会自动推进回合，直至超过牌桌配置的上限而结束。定义源的编译操作抛出的异常继续向调用者传播。
 
@@ -93,14 +98,15 @@ auto compile(
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     const auto [library, ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal
     );
     givm::table table{ { .max_rounds = 2 } };

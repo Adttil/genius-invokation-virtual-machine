@@ -172,11 +172,10 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
     const reaction_observer observer{ &log };
     const givm::test::initialized_character_source victim{ "ReactionTarget",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::electro } };
-    givm::definition_source_library sources{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
-    };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+    givm::definition_source_library sources{ source_definition, observer, victim };
     const givm::character_id source{ player, 0 };
     const givm::character_id first{ other_player(player), 0 };
     const givm::character_id second{ other_player(player), 1 };
@@ -198,7 +197,7 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
     commands.emplace_back(givm::deal_damage{ .damages = group });
     commands.emplace_back(givm::deal_damage{ .damages = next });
     commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
-    const auto [library, ids] = compile(sources, commands, std::tuple{},
+    const auto [library, ids] = compile(sources, basics, commands, std::tuple{},
         observed ? givm::compile_mode::observed : givm::compile_mode::normal);
     const givm::linked_deck source_deck{ .characters = { ids.get_id<givm::character_view>(source_definition.name()) } };
     const auto target_id = ids.get_id<givm::character_view>(victim.name());
@@ -251,11 +250,10 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
     reaction_log log;
     const reaction_observer observer{ &log };
     const givm::test::initialized_character_source victim{ "ReactionTarget", { .max_health = 30, .health = 30 } };
-    givm::definition_source_library sources{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
-    };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+    givm::definition_source_library sources{ source_definition, observer, victim };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
     const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::dendro } };
@@ -268,7 +266,7 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
         else commands.emplace_back(givm::deal_damage{ .damages = damages });
     }
     commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
-    const auto [library, ids] = compile(sources, commands, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = compile(sources, basics, commands, std::tuple{}, givm::compile_mode::normal);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -310,15 +308,14 @@ TEST_CASE("reaction replacement suppresses default numbers and entities while co
     const reaction_observer observer{ &log };
     const givm::test::initialized_character_source victim{ "ReactionTarget",
         { .max_health = 30, .health = 30, .aura = reaction_aura(reaction) } };
-    givm::definition_source_library sources{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
-    };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+    givm::definition_source_library sources{ source_definition, observer, victim };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
     const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::dendro } };
-    const auto [library, ids] = compile(sources, std::tuple{ givm::deal_damage{ .damages = damages },
+    const auto [library, ids] = compile(sources, basics, std::tuple{ givm::deal_damage{ .damages = damages },
         givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -340,13 +337,12 @@ TEST_CASE("a self-applied reaction creates its entity for the affected player's 
 {
     const givm::test::initialized_character_source target_definition{ "SelfApplicationTarget",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::hydro } };
-    givm::definition_source_library sources{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, target_definition
-    };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+    givm::definition_source_library sources{ target_definition };
     constexpr givm::character_id self{ givm::player_id{ 0 }, 0 };
-    const auto [library, ids] = compile(sources, std::tuple{
+    const auto [library, ids] = compile(sources, basics, std::tuple{
         givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::self, 0 }, .element = givm::element::dendro },
         givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::normal);
@@ -373,18 +369,17 @@ TEST_CASE("the first damage completion can use a field produced by a later hit",
     const reaction_observer observer{ &log };
     const givm::test::initialized_character_source victim{ "ReactionTarget",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::electro } };
-    givm::definition_source_library sources{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
-    };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+    givm::definition_source_library sources{ source_definition, observer, victim };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
     const std::array damages{
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::dendro }
     };
-    const auto [library, ids] = compile(sources, std::tuple_cat(select_fronts(), std::tuple{
+    const auto [library, ids] = compile(sources, basics, std::tuple_cat(select_fronts(), std::tuple{
         givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss }
     }), std::tuple{}, givm::compile_mode::normal);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
@@ -413,14 +408,13 @@ TEST_CASE("burning flame finishes its damage before exhausting and broadcasting 
     const reaction_observer observer{ &log };
     const givm::test::initialized_character_source victim{ "ReactionTarget",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::pyro } };
-    givm::definition_source_library sources{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim
-    };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+    givm::definition_source_library sources{ source_definition, observer, victim };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
-    const auto [library, ids] = compile(sources, std::tuple_cat(select_fronts(), std::tuple{
+    const auto [library, ids] = compile(sources, basics, std::tuple_cat(select_fronts(), std::tuple{
         givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::dendro },
         givm::end_round{}, givm::end_game{ givm::game_result::both_loss }
     }), std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal);
@@ -473,8 +467,10 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     const pausing_field field{ &log };
     const givm::test::initialized_character_source victim{ "ReactionTarget",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::electro } };
-    givm::definition_source_library sources{ givm::genshin_impact::dendro_core_3_3_0,
-        field, givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, source_definition, observer, victim };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, field,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+    givm::definition_source_library sources{ source_definition, observer, victim };
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id first{ givm::player_id{ 1 }, 0 };
     constexpr givm::character_id second{ givm::player_id{ 1 }, 1 };
@@ -483,7 +479,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 1, .type = givm::damage_type::dendro },
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical }
     };
-    const auto [library, ids] = compile(sources, std::tuple{ givm::deal_damage{ .damages = damages },
+    const auto [library, ids] = compile(sources, basics, std::tuple{ givm::deal_damage{ .damages = damages },
         givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::observed);
     const auto target_id = ids.get_id<givm::character_view>(victim.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },

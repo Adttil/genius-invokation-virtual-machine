@@ -38,13 +38,14 @@ friend constexpr bool operator==(player_id, player_id) = default;
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
-    const auto [library, id_map] = compile(sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    givm::definition_source_library sources{};
+    const auto [library, id_map] = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
     const givm::player_id id{ 1 };
     std::println("目标玩家: {}", table[id].id().index);

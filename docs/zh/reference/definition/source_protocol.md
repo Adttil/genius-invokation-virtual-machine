@@ -44,7 +44,9 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 
 附属的 `control` 标签表示控制状态，例如冻结、石化、眩晕或水泡；`control_immunity` 表示阻止施加控制附属及效果引发的切人。控制查询检查当前仍在场的附属，移除其中一个不会解除其他实体提供的控制。免控不解除已经存在的控制，也不妨碍玩家在行动选择时主动切换。具体入口见 [`is_controlled`](../executor/definition_library/is_controlled.md)、[`is_control_immune`](../executor/definition_library/is_control_immune.md) 与 [`attach`](commands/attach.md)。标签只声明分类；到期移除等行为仍由定义响应实现。
 
-当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会保留源库构造时选定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
+当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
+
+需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`，不需要声明具体版本的名称依赖。普通定义的按名、标签或筛选查询仍须声明相应依赖。源库只负责登记集合，构造及普通 `add` 时仍验证普通名称依赖；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
 
 ## 事件响应
 
@@ -166,15 +168,16 @@ struct passive_skill_source
 int main()
 {
     const passive_skill_source source{};
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     sources.add(source);
     const auto [library, ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
     const auto id = ids.get_id<givm::skill_view>("重投助手");

@@ -387,14 +387,16 @@ bool definition_source_library::add(const TSource& source);
 
 `add` 保存 source 的非拥有引用。返回 `true` 表示添加成功；同类别重名或依赖不满足时返回 `false`。source 对象必须在保存它的 `definition_source_library` 使用期间保持存活；编译库、ID 映射以及编译后配置借用的名称、标签或其他对象须分别覆盖对应使用期。
 
-同时添加多个 source 的重载是原子的：它允许同一批 source 互相依赖，任一名称或依赖检查失败时整批都不加入。源库之间也可以合并。合并遇到同名项时，只有它们指向同一 source 对象且任意一方将它选为默认反应定义，才跳过该重复项；其他同类别名称冲突仍拒绝整次合并。合并不改变接收方原先选定的默认反应定义。
+同时添加多个 source 的重载是原子的：它允许同一批 source 互相依赖，任一名称或依赖检查失败时整批都不加入。源库之间也可以合并。合并只检查名称冲突，不重新读取或验证依赖；同类别同名项指向同一 source 对象且适配表相同时跳过重复项，其他冲突仍拒绝整次合并。动态源以 C++ adapter 对象为身份，不自动识别不同包装是否引用同一脚本定义。
 
-源库构造时必须依次提供草原核、激化领域、燃烧烈焰和冻结的 source，前两者属于 combat status，第三者属于 summon，第四者属于 attachment；还可一起传入这些 source 依赖的其他 source，整批按 `add` 的规则登记。绑定来自调用方传入的源对象，不通过固定名称、标签或版本字符串识别。
+源库是普通定义源集合，可以默认构造或一次登记若干 source。四个反应定义由独立的 `basic_definition_sources` 配置：草原核与激化领域使用 combat status source view，燃烧烈焰使用 summon source view，冻结使用 attachment source view。`compile` 和 `make_issued_id_map` 显式接收同一配置，临时并入四个基础源而不修改原源库；所需其他依赖须由源库或四个基础源满足。绑定来自调用方配置的源对象，不通过固定名称、标签或版本字符串识别。普通 source 的按名依赖仍在构造和 `add` 时验证。
+
+单项定义编译通过 context 的 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()` 引用本次配置的基础定义，无须声明具体版本的名称依赖。context 与最终 definition library 使用同一组已解析 ID。
 
 整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition。四个默认反应定义始终属于选择根，与显式选中的定义一起求依赖闭包。源库提供 source view 遍历和成员 `make_issued_id_map`；后者利用登记时保留的声明信息完成选择、依赖闭包和 ID 分配。executor 中的非成员 `compile` 调用这个成员取得映射，再通过 source view 完成最终编译。初始化程序、回合程序与 `compile_mode` 必须在同一次编译中提供；所有响应程序继承该编译模式。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
 
 ```cpp
-auto [library, id_map] = compile(source_library, initialization_program, round_program, givm::compile_mode::normal);
+auto [library, id_map] = compile(source_library, basics, initialization_program, round_program, givm::compile_mode::normal);
 ```
 
 `initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束。初始化完成和每轮回合程序完成时自动递增回合数，检查牌桌参数 `max_rounds`，未超限则清空骰子并开始下一轮命令。观察模式在递增后、上限检查前报告 `round_started`；回合程序中的 `start_round` 仅负责显式广播规则通知，应位于投骰命令之后。空回合程序也会自动推进至超限终局；普通响应子程序不推进回合。两者都由不消费响应输入的公开命令值组成；支持固定参数和消费输入两种方式的命令须选择固定参数。`compile(...)` 不提供省略这两段程序的重载。
@@ -407,7 +409,7 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 [`compile` 的返回值](../reference/executor/compile.md#返回值)类型未指定。其 `library` 成员是编译后的游戏规则，`id_map` 成员是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。两者对应同一个定义集合和 ID 分配结果，也可以按该顺序结构化绑定；对局运行时只需要 `library`。
 
-当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `source_library.make_issued_id_map(...)`。提前生成映射与随后 `compile(source_library, ...)` 必须使用相同的定义集合、标签声明及选择范围；生成映射后改变源库或选择范围可能改变 ID 分配。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
+当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `source_library.make_issued_id_map(basics, ...)`。提前生成映射与随后 `compile(source_library, basics, ...)` 必须使用相同的基础定义配置、定义集合、标签声明及选择范围；生成映射后改变任一项都可能改变 ID 分配。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
 
 名称、标签和依赖声明在登记后保持不变。ID 准备复用源库登记时保留的声明数据；最终编译仍会通过 source view 读取元数据，每次返回的 input range 只消费一次，多次调用必须提供相同内容。编译器按配套 ID 装配定义，不能把源库的遍历顺序直接当成 ID 顺序。
 

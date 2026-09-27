@@ -26,6 +26,14 @@
 
 namespace givm::detail
 {
+    struct basic_definition_ids
+    {
+        definition_id<combat_status_view> dendro_core;
+        definition_id<combat_status_view> catalyzing_field;
+        definition_id<summon_view> burning_flame;
+        definition_id<attachment_view> frozen;
+    };
+
     struct compiled_history_field
     {
         std::string name;
@@ -133,6 +141,26 @@ namespace givm
     class definition_compile_context
     {
     public:
+        definition_id<combat_status_view> dendro_core_id() const noexcept
+        {
+            return basic_ids_.dendro_core;
+        }
+
+        definition_id<combat_status_view> catalyzing_field_id() const noexcept
+        {
+            return basic_ids_.catalyzing_field;
+        }
+
+        definition_id<summon_view> burning_flame_id() const noexcept
+        {
+            return basic_ids_.burning_flame;
+        }
+
+        definition_id<attachment_view> frozen_id() const noexcept
+        {
+            return basic_ids_.frozen;
+        }
+
         template<class TCategory>
         std::size_t definition_count() const noexcept
         {
@@ -229,6 +257,7 @@ namespace givm
     private:
         definition_compile_context(
             const issued_id_map& id_map,
+            const detail::basic_definition_ids& basic_ids,
             detail::program_bytes& program,
             const detail::definition_source_declarations& declarations,
             compile_mode mode,
@@ -239,7 +268,7 @@ namespace givm
             , std::vector<std::size_t>& input_markers
 #endif
         )
-        : id_map_{ id_map }, program_{ program }, declarations_{ declarations }, mode_{ mode },
+        : id_map_{ id_map }, basic_ids_{ basic_ids }, program_{ program }, declarations_{ declarations }, mode_{ mode },
           history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }
 #ifndef NDEBUG
         , input_markers_{ input_markers }
@@ -252,6 +281,7 @@ namespace givm
         }
 
         const issued_id_map& id_map_;
+        const detail::basic_definition_ids& basic_ids_;
         detail::program_bytes& program_;
         const detail::definition_source_declarations& declarations_;
 
@@ -280,9 +310,8 @@ namespace givm
           tag_names_{ other.tag_names_ },
           equipment_tags_{ other.equipment_tags_ }, skill_tags_{ other.skill_tags_ }, control_tag_{ other.control_tag_ },
           control_immunity_tag_{ other.control_immunity_tag_ },
-          remove_at_zero_usages_tag_{ other.remove_at_zero_usages_tag_ }, dendro_core_id_{ other.dendro_core_id_ },
-          catalyzing_field_id_{ other.catalyzing_field_id_ }, burning_flame_id_{ other.burning_flame_id_ },
-          frozen_id_{ other.frozen_id_ }, buckets_{ other.buckets_ },
+          remove_at_zero_usages_tag_{ other.remove_at_zero_usages_tag_ }, basic_ids_{ other.basic_ids_ },
+          buckets_{ other.buckets_ },
           history_layouts_{ other.history_layouts_ }, history_size_{ other.history_size_ },
           history_handlers_{ other.history_handlers_ }
         {
@@ -308,22 +337,22 @@ namespace givm
 
         definition_id<combat_status_view> dendro_core_id() const noexcept
         {
-            return dendro_core_id_;
+            return basic_ids_.dendro_core;
         }
 
         definition_id<combat_status_view> catalyzing_field_id() const noexcept
         {
-            return catalyzing_field_id_;
+            return basic_ids_.catalyzing_field;
         }
 
         definition_id<summon_view> burning_flame_id() const noexcept
         {
-            return burning_flame_id_;
+            return basic_ids_.burning_flame;
         }
 
         definition_id<attachment_view> frozen_id() const noexcept
         {
-            return frozen_id_;
+            return basic_ids_.frozen;
         }
 
         template<class TDefinitionType>
@@ -660,12 +689,13 @@ namespace givm
 
         using bucket_tuple = definition_type_list::apply<bucket_tuple_for>;
 
-        definition_library(const issued_id_map& id_map, const definition_source_library& sources)
+        definition_library(const issued_id_map& id_map, const basic_definition_sources& basics)
         : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end()),
-          dendro_core_id_{ id_map.get_id<combat_status_view>(sources.dendro_core_name_) },
-          catalyzing_field_id_{ id_map.get_id<combat_status_view>(sources.catalyzing_field_name_) },
-          burning_flame_id_{ id_map.get_id<summon_view>(sources.burning_flame_name_) },
-          frozen_id_{ id_map.get_id<attachment_view>(sources.frozen_name_) }
+          basic_ids_{
+              id_map.get_id<combat_status_view>(basics.dendro_core.name()),
+              id_map.get_id<combat_status_view>(basics.catalyzing_field.name()),
+              id_map.get_id<summon_view>(basics.burning_flame.name()),
+              id_map.get_id<attachment_view>(basics.frozen.name()) }
         {
             constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
                 "weapon", "artifact", "talent", "technique"
@@ -745,7 +775,7 @@ namespace givm
             definition_id<history_summary_definition> own_history;
             if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
                 own_history = id_map.get_id<history_summary_definition>(source.name());
-            definition_compile_context context{ id_map, program_, declarations, mode, history_layouts_, own_history, true
+            definition_compile_context context{ id_map, basic_ids_, program_, declarations, mode, history_layouts_, own_history, true
 #ifndef NDEBUG
                 , input_markers_
 #endif
@@ -793,7 +823,7 @@ namespace givm
                 if(not ids.has<history_summary_definition>(source.name())) continue;
                 const auto id = ids.get_id<history_summary_definition>(source.name());
                 const auto declarations = source.declarations();
-                definition_compile_context context{ ids, program_, declarations, mode, history_layouts_, id, false
+                definition_compile_context context{ ids, basic_ids_, program_, declarations, mode, history_layouts_, id, false
 #ifndef NDEBUG
                     , input_markers_
 #endif
@@ -914,6 +944,39 @@ namespace givm
         template<class TInitializationSequence, class TRoundSequence>
         static auto compile(
             const definition_source_library& sources,
+            const basic_definition_sources& basics,
+            TInitializationSequence&& initialization_program,
+            TRoundSequence&& round_program,
+            compile_mode mode)
+        {
+            const auto selected_sources = sources.with_basic_definitions(basics);
+            return compile_prepared(selected_sources, basics,
+                selected_sources.make_issued_id_map(selected_sources.make_full_selection()),
+                std::forward<TInitializationSequence>(initialization_program),
+                std::forward<TRoundSequence>(round_program), mode);
+        }
+
+        template<class TInitializationSequence, class TRoundSequence>
+        static auto compile(
+            const definition_source_library& sources,
+            const basic_definition_sources& basics,
+            const definition_selection& selection,
+            TInitializationSequence&& initialization_program,
+            TRoundSequence&& round_program,
+            compile_mode mode)
+        {
+            const auto selected_sources = sources.with_basic_definitions(basics);
+            return compile_prepared(selected_sources, basics,
+                selected_sources.make_issued_id_map(selected_sources.resolve_selection(selection, basics)),
+                std::forward<TInitializationSequence>(initialization_program),
+                std::forward<TRoundSequence>(round_program), mode);
+        }
+
+    private:
+        template<class TInitializationSequence, class TRoundSequence>
+        static auto compile_prepared(
+            const definition_source_library& sources,
+            const basic_definition_sources& basics,
             issued_id_map id_map,
             TInitializationSequence&& initialization_program,
             TRoundSequence&& round_program,
@@ -926,7 +989,7 @@ namespace givm
                 issued_id_map id_map;
             };
 
-            definition_library library{ id_map, sources };
+            definition_library library{ id_map, basics };
             library.prepare_history_layouts(sources, id_map, mode);
             detail::program_writer writer{ library.program_ };
             [[maybe_unused]] const auto initialization_inputs_count =
@@ -970,10 +1033,7 @@ namespace givm
         tag_id control_tag_{};
         tag_id control_immunity_tag_{};
         tag_id remove_at_zero_usages_tag_{};
-        definition_id<combat_status_view> dendro_core_id_;
-        definition_id<combat_status_view> catalyzing_field_id_;
-        definition_id<summon_view> burning_flame_id_;
-        definition_id<attachment_view> frozen_id_;
+        detail::basic_definition_ids basic_ids_;
         bucket_tuple buckets_;
         std::vector<detail::compiled_history_summary> history_layouts_;
         std::size_t history_size_{};
@@ -983,13 +1043,14 @@ namespace givm
     template<class TInitializationSequence, class TRoundSequence>
     inline auto compile(
         const definition_source_library& sources,
+        const basic_definition_sources& basics,
         TInitializationSequence&& initialization_program,
         TRoundSequence&& round_program,
         compile_mode mode
     )
     {
         return definition_library::compile(
-            sources, sources.make_issued_id_map(),
+            sources, basics,
             std::forward<TInitializationSequence>(initialization_program),
             std::forward<TRoundSequence>(round_program), mode
         );
@@ -998,6 +1059,7 @@ namespace givm
     template<class TInitializationSequence, class TRoundSequence>
     inline auto compile(
         const definition_source_library& sources,
+        const basic_definition_sources& basics,
         const definition_selection& selection,
         TInitializationSequence&& initialization_program,
         TRoundSequence&& round_program,
@@ -1005,7 +1067,7 @@ namespace givm
     )
     {
         return definition_library::compile(
-            sources, sources.make_issued_id_map(selection),
+            sources, basics, selection,
             std::forward<TInitializationSequence>(initialization_program),
             std::forward<TRoundSequence>(round_program), mode
         );

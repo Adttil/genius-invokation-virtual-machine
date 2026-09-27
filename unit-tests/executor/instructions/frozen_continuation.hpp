@@ -48,15 +48,16 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     std::size_t applications = 0;
     const pausing_frozen frozen{ &applications };
     const givm::test::initialized_character_source character{ "Character", { .max_health = 20, .health = 20 } };
-    const givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, frozen, character };
-    const auto prepared_ids = sources.make_issued_id_map();
+        givm::genshin_impact::burning_flame_3_3_0, frozen };
+    const givm::definition_source_library sources{ character };
+    const auto prepared_ids = sources.make_issued_id_map(basics);
     const std::array damages{
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical }
     };
-    const auto [library, ids] = compile(sources, std::tuple{
+    const auto [library, ids] = compile(sources, basics, std::tuple{
         givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } }, givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent, 0 } },
         givm::attach{ .player = givm::relative_player::opponent,
             .definition = prepared_ids.get_id<givm::attachment_view>(frozen.name()) },

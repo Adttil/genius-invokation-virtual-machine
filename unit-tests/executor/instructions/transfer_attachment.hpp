@@ -213,8 +213,8 @@ namespace
         const attachment_source replacement{ &log, "Replacement" };
         const givm::test::initialized_character_source character;
         REQUIRE(sources.add(controller, moving, old, replacement, character));
-        const auto ids = sources.make_issued_id_map();
-        return compile(sources, std::tuple{
+        const auto ids = sources.make_issued_id_map(givm_test::basic_sources);
+        return compile(sources, givm_test::basic_sources, std::tuple{
             givm::add_support{ .definition = ids.get_id<givm::support_view>("TransferController"), .state = {} },
             givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, mode);
@@ -452,8 +452,8 @@ TEST_CASE("fixed attachment state and removal commands retain a zero-health char
     const givm::test::initialized_character_source living;
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(controller, attachment, zero_health, living));
-    const auto prepared = sources.make_issued_id_map();
-    const auto [library, ids] = compile(sources, std::tuple{
+    const auto prepared = sources.make_issued_id_map(givm_test::basic_sources);
+    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{
         givm::add_support{ .definition = prepared.get_id<givm::support_view>(controller.name()) },
         givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, mode);

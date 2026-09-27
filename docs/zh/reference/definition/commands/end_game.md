@@ -35,14 +35,15 @@ struct end_game;
 
 int main()
 {
-    givm::definition_source_library sources{
+    const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
+    givm::definition_source_library sources{};
     const auto [library, ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } },
         std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
@@ -57,7 +58,7 @@ int main()
             == givm::game_result::player_0_win);
 
     const auto [observed_library, observed_ids] = compile(
-        sources,
+        sources, basics,
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } },
         std::tuple{}, givm::compile_mode::observed);
     execution.start(observed_library, table);
