@@ -489,6 +489,20 @@ namespace givm
 
     };
 
+    struct reroll_dice_input
+    {
+        player_id player;
+        std::uint32_t reroll_count = 1;
+    };
+
+    struct reroll_dice
+    {
+        using input_type = reroll_dice_input;
+
+        relative_player player = static_cast<relative_player>(-1);
+        std::uint32_t reroll_count = 1;
+    };
+
     using add_dice_input = dice_added;
 
     struct add_dice
@@ -637,6 +651,7 @@ namespace givm::detail
         end_round,
         end_game,
         start_dice_roll_phase,
+        reroll_dice,
         add_dice,
         remove_dice,
         start_battle,
@@ -804,6 +819,10 @@ namespace givm::detail
     constexpr size_t input_marker(const modify_energy& command) noexcept
     {
         return command.target.offset == std::numeric_limits<std::int32_t>::max() ? command_input_types::index_of<modify_energy::input_type>() : size_t(-1);
+    }
+    constexpr size_t input_marker(const reroll_dice& command) noexcept
+    {
+        return command.player == static_cast<relative_player>(-1) ? command_input_types::index_of<reroll_dice::input_type>() : size_t(-1);
     }
     constexpr size_t input_marker(const add_dice& command) noexcept
     {

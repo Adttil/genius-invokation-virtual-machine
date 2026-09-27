@@ -117,4 +117,5 @@ int main()
 | | |
 | --- | --- |
 | [`dice_roll_preparation`](../events/dice_roll_preparation.md) | 本回合投骰前的准备事件 |
+| [`reroll_dice`](reroll_dice.md) | 指定玩家对现有骰子进行多次重投的命令 |
 | [`round_started`](../events/round_started.md) | 投骰与重投完成后的回合开始通知 |

@@ -29,7 +29,8 @@ class execution_view;
 | [`execution_view<initial_card_selection>`](execution_view/initial_card_selection.md) | 开局首次换牌选择现场的视图 |
 | [`execution_view<initial_active_character_selection>`](execution_view/initial_active_character_selection.md) | 开局首次出战选择现场的视图 |
 | [`execution_view<remaining_active_character_selection>`](execution_view/remaining_active_character_selection.md) | 开局剩余一方出战选择现场的视图 |
-| [`execution_view<dice_selection>`](execution_view/dice_selection.md) | 骰子重投选择现场的视图 |
+| [`execution_view<dice_selection>`](execution_view/dice_selection.md) | 双方投骰阶段的重投选择现场视图 |
+| [`execution_view<dice_reroll_selection>`](execution_view/dice_reroll_selection.md) | 单方重投命令的选择现场视图 |
 | [`execution_view<action_selection>`](execution_view/action_selection.md) | 选择行动的现场视图 |
 | [`execution_view<deck_cards_discarded>`](execution_view/deck_cards_discarded.md) | 整批牌堆牌已经舍弃、效果尚未开始的现场视图 |
 | [`execution_view<health_reduced>`](execution_view/health_reduced.md) | 伤害扣除生命后的现场视图 |

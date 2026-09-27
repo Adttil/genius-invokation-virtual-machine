@@ -9,7 +9,7 @@ template<>
 class execution_view<execution_state::dice_selection>;
 ```
 
-骰子重投选择现场的视图，包含玩家、当前选择及剩余重投机会。
+双方投骰阶段的重投选择现场视图，包含玩家、当前选择及剩余重投机会。
 
 ## 成员函数
 
@@ -31,3 +31,4 @@ class execution_view<execution_state::dice_selection>;
 | | |
 | --- | --- |
 | [`executor::view_in`](../executor/view_in.md) | 取得对应执行现场的视图 |
+| [`execution_view<dice_reroll_selection>`](dice_reroll_selection.md) | 单方重投命令的选择现场视图 |

@@ -21,7 +21,8 @@ enum class execution_state : std::uint8_t
     round_started,
     action_started,
     round_end_declared,
-    round_ending
+    round_ending,
+    dice_reroll_selection
 };
 ```
 
@@ -36,7 +37,7 @@ enum class execution_state : std::uint8_t
 | `initial_card_selection` | 开局尚未接受任何一方换牌选择的现场 |
 | `initial_active_character_selection` | 开局尚未接受任何一方出战角色选择的现场 |
 | `remaining_active_character_selection` | 开局已经接受一方选择、等待另一方选择出战角色的现场 |
-| `dice_selection` | 等待骰子重投选择的现场 |
+| `dice_selection` | 双方投骰阶段等待重投选择的现场 |
 | `action_selection` | 等待选择行动的现场 |
 | `deck_cards_discarded` | 一批牌堆牌全部被舍弃、自身效果尚未开始的现场 |
 | `health_reduced` | 非零伤害扣除生命后的现场 |
@@ -46,6 +47,7 @@ enum class execution_state : std::uint8_t
 | `action_started` | 当前玩家开始一次行动机会的现场 |
 | `round_end_declared` | 当前玩家已经宣布本回合结束、尚未处理相应响应的现场 |
 | `round_ending` | 即将处理回合结束的现场 |
+| `dice_reroll_selection` | 单方重投命令等待指定玩家选择骰子的现场 |
 
 ## 注意
 

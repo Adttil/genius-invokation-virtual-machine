@@ -36,6 +36,7 @@ using any_command_input = std::variant<
     modify_energy_input,
     add_dice_input,
     remove_dice_input,
+    reroll_dice_input,
     deal_damage_input,
     apply_element_input,
     heal_input,

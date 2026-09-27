@@ -13,6 +13,7 @@
 | | |
 | --- | --- |
 | [`draw_cards_input`](command_inputs/draw_cards_input.md) | [`draw_cards`](commands/draw_cards.md) 的动态输入 |
+| [`reroll_dice_input`](command_inputs/reroll_dice_input.md) | [`reroll_dice`](commands/reroll_dice.md) 的动态输入 |
 | [`discard_hand_card_input`](command_inputs/discard_hand_card_input.md) | [`discard_hand_card`](commands/discard_hand_card.md) 的动态输入 |
 | [`add_attachment_input`](command_inputs/add_attachment_input.md) | [`add_attachment`](commands/add_attachment.md) 的动态输入 |
 | [`add_combat_status_input`](command_inputs/add_combat_status_input.md) | [`add_combat_status`](commands/add_combat_status.md) 的动态输入 |

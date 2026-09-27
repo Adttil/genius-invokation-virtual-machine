@@ -25,6 +25,7 @@
 #include "reaction_entities.hpp"
 #include "reaction_replacement_overload.hpp"
 #include "remove_dice.hpp"
+#include "reroll_dice.hpp"
 #include "self_player.hpp"
 #include "skill_state_energy.hpp"
 #include "summon_batches.hpp"

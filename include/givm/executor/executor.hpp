@@ -38,7 +38,8 @@ namespace givm
         round_started,
         action_started,
         round_end_declared,
-        round_ending
+        round_ending,
+        dice_reroll_selection
     };
 
     namespace detail

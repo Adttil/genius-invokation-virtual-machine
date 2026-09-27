@@ -11,6 +11,7 @@
 #include "executor/views/initial_active_character_selection.hpp"
 #include "executor/views/remaining_active_character_selection.hpp"
 #include "executor/views/dice_selection.hpp"
+#include "executor/views/dice_reroll_selection.hpp"
 #include "executor/views/action_selection.hpp"
 #include "executor/views/damage.hpp"
 #include "executor/views/entities.hpp"

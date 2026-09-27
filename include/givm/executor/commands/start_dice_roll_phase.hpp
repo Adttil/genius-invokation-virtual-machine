@@ -3,6 +3,7 @@
 
 #include "../executor.hpp"
 #include "../../definition/commands.hpp"
+#include "reroll_dice.hpp"
 
 #include <array>
 #include <cstddef>
@@ -16,14 +17,6 @@
 
 namespace givm::detail
 {
-    inline constexpr std::uint32_t packed_dice_per_random = 10;
-
-    struct dice_reroll_lane
-    {
-        std::uint32_t remaining = 0;
-        std::uint32_t cursor = 0;
-    };
-
     struct dice_reroll_phase
     {
         std::uint32_t dice_count = 0;
@@ -37,43 +30,6 @@ namespace givm::detail
         player_id player;
         dice_counts selected;
     };
-
-    inline constexpr size_t packed_dice_random_count(size_t dice_count) noexcept
-    {
-        return (dice_count + packed_dice_per_random - 1) / packed_dice_per_random;
-    }
-
-    inline elemental_dice draw_packed_dice(std::span<const std::uint32_t> pool, std::uint32_t& cursor) noexcept
-    {
-        const auto random_index = cursor / packed_dice_per_random;
-        const auto dice_index = cursor % packed_dice_per_random;
-        GIVM_ASSERT(random_index < pool.size());
-        const auto value = pool[random_index] >> (dice_index * 3);
-        ++cursor;
-        return elemental_dice_from_random(value);
-    }
-
-    inline void draw_selected_dice(
-        unrestricted_table& table,
-        player_id player,
-        dice_reroll_lane& lane,
-        std::span<const std::uint32_t> pool,
-        const dice_counts& selected,
-        std::uint32_t selected_count
-    )
-    {
-        auto& state = table[player].state();
-        GIVM_ASSERT(pool.size() * packed_dice_per_random >= static_cast<size_t>(lane.cursor) + selected_count);
-
-        dice_counts drawn;
-        for(std::uint32_t index = 0; index < selected_count; ++index)
-        {
-            ++drawn[draw_packed_dice(pool, lane.cursor)];
-        }
-
-        state.dice -= selected;
-        state.dice += drawn;
-    }
 
     inline void process_reroll_lane(
         unrestricted_table& table,
