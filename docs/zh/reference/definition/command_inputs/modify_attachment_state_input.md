@@ -9,7 +9,7 @@
 ```cpp
 struct modify_attachment_state_input
 {
-    attachment_id attachment;
+    attachment_target attachment;
     std::int64_t count{};
     std::int64_t round_usages{};
 };
@@ -19,7 +19,7 @@ struct modify_attachment_state_input
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `attachment` | `attachment_id` | 要修改的有效实体 |
+| `attachment` | [`attachment_target`](../commands/attachment_target.md) | 要修改的有效实体 ID，或执行时按角色 ID 与装备类别定位的装备 |
 | `count` | `std::int64_t` | 对同名状态字段的增量，默认零 |
 | `round_usages` | `std::int64_t` | 对同名状态字段的增量，默认零 |
 

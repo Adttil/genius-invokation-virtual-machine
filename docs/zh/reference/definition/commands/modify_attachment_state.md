@@ -11,8 +11,7 @@ struct modify_attachment_state
 {
     using input_type = modify_attachment_state_input;
 
-    relative_player player = relative_player::self;
-    definition_id<attachment_view> definition{};
+    relative_attachment_target target{};
     std::int64_t count{};
     std::int64_t round_usages{};
 };
@@ -27,9 +26,9 @@ struct modify_attachment_state
 ## 输入
 
 - 默认构造 `modify_attachment_state{}` 使用动态模式，由 `invoke` 提交一个 [modify_attachment_state_input](../command_inputs/modify_attachment_state_input.md)。
-- `definition` 非空时使用固定模式，不消费响应输入；目标范围为 `player` 指定一方执行到本命令时的出战角色。在该出战角色的附属实体中选取首个有效、定义 ID 相同的实体；该实体必须存在。
+- 在 `target.selector` 中显式指定定义或装备类别时使用固定模式，不消费响应输入。按 `target.character` 的相对位置定位有效角色，不跳过生命值为零的角色，再选取此角色上首个同定义附属实体或当前指定类别装备。
 
-`player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入直接指定要操作的有效实体。固定模式的出战角色目标必须有效。
+动态输入可使用具体附属实体 ID，也可使用角色 ID 与装备类别，在命令执行时定位该角色当前的装备。两种模式均要求相应实体存在；完整定位规则见 [附属实体定位](attachment_target.md)。
 
 ## 结算
 

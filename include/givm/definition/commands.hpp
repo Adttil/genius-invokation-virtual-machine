@@ -16,6 +16,7 @@
 #include "../enums/damage_flags.hpp"
 #include "../enums/damage_type.hpp"
 #include "../enums/element_application_cause.hpp"
+#include "../enums/equipment_type.hpp"
 #include "../enums/game_result.hpp"
 
 namespace givm
@@ -342,9 +343,23 @@ namespace givm
         attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
+    struct equipment_target
+    {
+        character_id character;
+        equipment_type type;
+    };
+
+    using attachment_target = std::variant<attachment_id, equipment_target>;
+
+    struct relative_attachment_target
+    {
+        relative_character_target character{};
+        std::variant<definition_id<attachment_view>, equipment_type> selector{};
+    };
+
     struct set_attachment_state_input
     {
-        attachment_id attachment;
+        attachment_target attachment;
         attachment_state state;
     };
 
@@ -352,14 +367,13 @@ namespace givm
     {
         using input_type = set_attachment_state_input;
 
-        relative_player player = relative_player::self;
-        definition_id<attachment_view> definition{};
+        relative_attachment_target target{};
         attachment_state state{};
     };
 
     struct modify_attachment_state_input
     {
-        attachment_id attachment;
+        attachment_target attachment;
         std::int64_t count{};
         std::int64_t round_usages{};
     };
@@ -368,8 +382,7 @@ namespace givm
     {
         using input_type = modify_attachment_state_input;
 
-        relative_player player = relative_player::self;
-        definition_id<attachment_view> definition{};
+        relative_attachment_target target{};
         std::int64_t count{};
         std::int64_t round_usages{};
     };
@@ -390,17 +403,32 @@ namespace givm
         attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
+    struct transfer_attachment_input
+    {
+        attachment_target attachment;
+        character_id target;
+        bool reset_round_usages = false;
+    };
+
+    struct transfer_attachment
+    {
+        using input_type = transfer_attachment_input;
+
+        relative_attachment_target source{};
+        relative_character_target target{};
+        bool reset_round_usages = false;
+    };
+
     struct remove_attachment_input
     {
-        attachment_id attachment;
+        attachment_target attachment;
     };
 
     struct remove_attachment
     {
         using input_type = remove_attachment_input;
 
-        relative_player player = relative_player::self;
-        definition_id<attachment_view> definition{};
+        relative_attachment_target target{};
     };
 
     struct replace_cards
@@ -639,6 +667,7 @@ namespace givm::detail
         set_attachment_state,
         modify_attachment_state,
         add_attachment,
+        transfer_attachment,
         remove_attachment,
         replace_cards,
         replace_cards_both,
@@ -792,17 +821,26 @@ namespace givm::detail
 
     constexpr size_t input_marker(const set_attachment_state& command) noexcept
     {
-        return not command.definition ? command_input_types::index_of<set_attachment_state::input_type>() : size_t(-1);
+        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        return definition && not *definition ? command_input_types::index_of<set_attachment_state::input_type>() : size_t(-1);
     }
 
     constexpr size_t input_marker(const modify_attachment_state& command) noexcept
     {
-        return not command.definition ? command_input_types::index_of<modify_attachment_state::input_type>() : size_t(-1);
+        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        return definition && not *definition ? command_input_types::index_of<modify_attachment_state::input_type>() : size_t(-1);
+    }
+
+    constexpr size_t input_marker(const transfer_attachment& command) noexcept
+    {
+        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.source.selector);
+        return definition && not *definition ? command_input_types::index_of<transfer_attachment::input_type>() : size_t(-1);
     }
 
     constexpr size_t input_marker(const remove_attachment& command) noexcept
     {
-        return not command.definition ? command_input_types::index_of<remove_attachment::input_type>() : size_t(-1);
+        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        return definition && not *definition ? command_input_types::index_of<remove_attachment::input_type>() : size_t(-1);
     }
     constexpr size_t input_marker(const use_skill& command) noexcept
     {

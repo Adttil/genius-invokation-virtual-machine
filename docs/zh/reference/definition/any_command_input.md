@@ -29,6 +29,7 @@ using any_command_input = std::variant<
     set_attachment_state_input,
     modify_attachment_state_input,
     add_attachment_input,
+    transfer_attachment_input,
     remove_attachment_input,
     use_skill_input,
     set_skill_state_input,

@@ -6,27 +6,40 @@
 
 namespace givm::detail
 {
-    template<bool Fixed>
+    template<class Selector>
+    struct attachment_state_modification_data
+    {
+        fixed_attachment_target<Selector> target;
+        std::int64_t count;
+        std::int64_t round_usages;
+    };
+
+    template<class Selector = void>
     execution_state execute_attachment_state_modification(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        modify_attachment_state_input input;
-        if constexpr(Fixed)
+        attachment_id id;
+        std::int64_t count;
+        std::int64_t round_usages;
+        if constexpr(not std::is_void_v<Selector>)
         {
-            const auto& command = context.instruction_data<1, modify_attachment_state>(library);
-            const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
-            input = { require_attachment(table, player, command.definition), command.count, command.round_usages };
-            context.advance(instruction_extent<1, modify_attachment_state>);
+            const auto& data = context.instruction_data<1, attachment_state_modification_data<Selector>>(library);
+            id = require_attachment(library, table, data.target);
+            count = data.count;
+            round_usages = data.round_usages;
+            context.advance(instruction_extent<1, attachment_state_modification_data<Selector>>);
         }
         else
         {
-            input = get<0>(context.stack().top<modify_attachment_state_input>());
+            const auto& input = get<0>(context.stack().top<modify_attachment_state_input>());
+            id = require_attachment(table, input.attachment);
+            count = input.count;
+            round_usages = input.round_usages;
             context.stack().pop<modify_attachment_state_input>();
             context.enter_next();
         }
-        const auto attachment = table[input.attachment];
+        const auto attachment = table[id];
         const bool valid = static_cast<bool>(attachment);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
@@ -38,21 +51,31 @@ namespace givm::detail
             if(delta > static_cast<std::int64_t>(maximum) - value) return maximum;
             return static_cast<std::uint32_t>(static_cast<std::int64_t>(value) + delta);
         };
-        return change_attachment_state(library, table, context, random, input.attachment, {
-            add(state.count, input.count, limit.count),
-            add(state.round_usages, input.round_usages, limit.round_usages)
+        return change_attachment_state(library, table, context, random, id, {
+            add(state.count, count, limit.count),
+            add(state.round_usages, round_usages, limit.round_usages)
         });
     }
 
     inline void compile(program_writer& writer, const givm::modify_attachment_state& command, compile_mode)
     {
-        if(command.definition)
+        std::visit([&](auto selector)
         {
-            writer.write(execute_fn{ execute_attachment_state_modification<true> });
-            writer.write(command);
-        }
-        else
-            writer.write(execute_fn{ execute_attachment_state_modification<false> });
+            using selector_type = decltype(selector);
+            if constexpr(std::is_same_v<selector_type, definition_id<attachment_view>>)
+            {
+                if(not selector)
+                {
+                    writer.write(execute_fn{ execute_attachment_state_modification<> });
+                    return;
+                }
+            }
+            else GIVM_ASSERT(selector != equipment_type::none);
+            GIVM_ASSERT(command.target.character.selection == character_selection::character);
+            writer.write(execute_fn{ execute_attachment_state_modification<selector_type> });
+            writer.write(attachment_state_modification_data<selector_type>{
+                { command.target.character, selector }, command.count, command.round_usages });
+        }, command.target.selector);
         writer.write(execute_fn{ finish_attachment_state_change });
     }
 }

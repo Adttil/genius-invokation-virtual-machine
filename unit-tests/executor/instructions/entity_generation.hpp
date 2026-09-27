@@ -292,6 +292,24 @@ namespace
                 if constexpr(std::is_same_v<T, summon_traits>)
                     if(action.other_summon && not log->dynamic) definition = result.other_summon;
                 const typename T::state state{ action.state[0], action.state[1] };
+                const auto set = [&]
+                {
+                    if constexpr(std::is_same_v<T, attachment_traits>)
+                        return typename T::set{ { { .player = player, .offset = static_cast<std::int32_t>(action.character_index) }, definition }, state };
+                    else return typename T::set{ player, definition, state };
+                };
+                const auto remove = [&]
+                {
+                    if constexpr(std::is_same_v<T, attachment_traits>)
+                        return typename T::remove{ { { .player = player, .offset = static_cast<std::int32_t>(action.character_index) }, definition } };
+                    else return typename T::remove{ player, definition };
+                };
+                const auto modify = [&](state_deltas delta)
+                {
+                    if constexpr(std::is_same_v<T, attachment_traits>)
+                        return typename T::modify{ { { .player = player, .offset = static_cast<std::int32_t>(action.character_index) }, definition }, delta[0], delta[1] };
+                    else return typename T::modify{ player, definition, delta[0], delta[1] };
+                };
                 switch(action.operation)
                 {
                 case operation::generate:
@@ -301,19 +319,16 @@ namespace
                     result.entries.push_back(context.add_program(std::tuple{ typename T::add{ player, definition, state } }));
                     break;
                 case operation::set:
-                    result.entries.push_back(context.add_program(std::tuple{ typename T::set{ player, definition, state } }));
+                    result.entries.push_back(context.add_program(std::tuple{ set() }));
                     break;
                 case operation::remove:
-                    result.entries.push_back(context.add_program(std::tuple{ typename T::remove{ player, definition } }));
+                    result.entries.push_back(context.add_program(std::tuple{ remove() }));
                     break;
                 case operation::modify:
-                    result.entries.push_back(context.add_program(std::tuple{
-                        typename T::modify{ player, definition, action.delta[0], action.delta[1] } }));
+                    result.entries.push_back(context.add_program(std::tuple{ modify(action.delta) }));
                     break;
                 case operation::modify_twice:
-                    result.entries.push_back(context.add_program(std::tuple{
-                        typename T::modify{ player, definition, action.delta[0], action.delta[1] },
-                        typename T::modify{ player, definition, action.next_delta[0], action.next_delta[1] } }));
+                    result.entries.push_back(context.add_program(std::tuple{ modify(action.delta), modify(action.next_delta) }));
                     break;
                 }
             }

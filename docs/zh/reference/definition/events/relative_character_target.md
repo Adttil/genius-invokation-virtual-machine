@@ -27,11 +27,15 @@ struct relative_character_target
 
 伤害和切换出战角色会从偏移后的位置继续向后循环寻找存活角色；没有存活角色时跳过相应效果。作为基准的出战角色生命已经为 `0` 不妨碍继续定位其他角色。
 
+[`transfer_attachment`](../commands/transfer_attachment.md) 的固定模式也从原角色和目标角色各自的偏移位置向后循环寻找存活角色，只接受 `character` 范围；调用方必须保证能定位到不同的角色，且原角色上存在相应附属实体。
+
 ## 来源和治疗
 
 固定参数中的角色来源允许是已战败但未离场的角色；单角色治疗、增加生命上限、直接附着元素的目标同样允许生命值为 `0`。它们不会因为目标战败而改为另一个存活角色，因此濒死响应仍可通过单角色治疗复活原目标。
 
 [`set_energy`](../commands/set_energy.md)、[`modify_energy`](../commands/modify_energy.md) 与 [`set_skill_state`](../commands/set_skill_state.md) 也按原位置定位，不跳过已战败但未离场的角色；这三个命令只接受 `character` 范围。
+
+附属实体的设置状态、按增量修改和移除命令通过 [`relative_attachment_target`](../commands/attachment_target.md) 使用角色位置，同样不跳过生命值为零但仍有效的角色，只接受 `character` 范围。相应附属实体必须存在，因此濒死响应可以操作该角色尚未移除的附属实体。
 
 范围治疗的 `others` 和 `all` 只选择存活角色。它们先从偏移后的位置向后循环找到存活角色，再从此位置开始按循环顺序处理，`others` 跳过此角色；轮到后续每个角色时判断其是否存活。
 

@@ -9,7 +9,7 @@
 ```cpp
 struct set_attachment_state_input
 {
-    attachment_id attachment;
+    attachment_target attachment;
     attachment_state state;
 };
 ```
@@ -18,5 +18,5 @@ struct set_attachment_state_input
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `attachment` | `attachment_id` | 要修改的有效实体 |
+| `attachment` | [`attachment_target`](../commands/attachment_target.md) | 要修改的有效实体 ID，或执行时按角色 ID 与装备类别定位的装备 |
 | `state` | `attachment_state` | 要设置的完整状态，默认两个字段均为零；执行时裁剪至定义上限 |

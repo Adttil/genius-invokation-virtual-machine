@@ -9,6 +9,13 @@
 
 namespace givm::detail
 {
+    template<class Selector>
+    struct attachment_state_change_data
+    {
+        fixed_attachment_target<Selector> target;
+        attachment_state state;
+    };
+
     inline execution_state finish_attachment_state_change(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
@@ -37,43 +44,55 @@ namespace givm::detail
         return finish_attachment_state_change(library, table, context, random);
     }
 
-    template<bool Fixed>
+    template<class Selector = void>
     execution_state execute_attachment_state_change(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        set_attachment_state_input input;
-        if constexpr(Fixed)
+        attachment_id id;
+        attachment_state state;
+        if constexpr(not std::is_void_v<Selector>)
         {
-            const auto& command = context.instruction_data<1, set_attachment_state>(library);
-            const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
-            input = { require_attachment(table, player, command.definition), command.state };
-            context.advance(instruction_extent<1, set_attachment_state>);
+            const auto& data = context.instruction_data<1, attachment_state_change_data<Selector>>(library);
+            id = require_attachment(library, table, data.target);
+            state = data.state;
+            context.advance(instruction_extent<1, attachment_state_change_data<Selector>>);
         }
         else
         {
-            input = get<0>(context.stack().top<set_attachment_state_input>());
+            const auto& input = get<0>(context.stack().top<set_attachment_state_input>());
+            id = require_attachment(table, input.attachment);
+            state = input.state;
             context.stack().pop<set_attachment_state_input>();
             context.enter_next();
         }
-        const auto attachment = table[input.attachment];
+        const auto attachment = table[id];
         const bool valid = static_cast<bool>(attachment);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
-        input.state = clamp_attachment_state(input.state, library[attachment.definition_id()].query(attachment_state_limit{}));
-        return change_attachment_state(library, table, context, random, input.attachment, input.state);
+        state = clamp_attachment_state(state, library[attachment.definition_id()].query(attachment_state_limit{}));
+        return change_attachment_state(library, table, context, random, id, state);
     }
 
     inline void compile(program_writer& writer, const givm::set_attachment_state& command, compile_mode)
     {
-        if(command.definition)
+        std::visit([&](auto selector)
         {
-            writer.write(execute_fn{ execute_attachment_state_change<true> });
-            writer.write(command);
-        }
-        else
-            writer.write(execute_fn{ execute_attachment_state_change<false> });
+            using selector_type = decltype(selector);
+            if constexpr(std::is_same_v<selector_type, definition_id<attachment_view>>)
+            {
+                if(not selector)
+                {
+                    writer.write(execute_fn{ execute_attachment_state_change<> });
+                    return;
+                }
+            }
+            else GIVM_ASSERT(selector != equipment_type::none);
+            GIVM_ASSERT(command.target.character.selection == character_selection::character);
+            writer.write(execute_fn{ execute_attachment_state_change<selector_type> });
+            writer.write(attachment_state_change_data<selector_type>{
+                { command.target.character, selector }, command.state });
+        }, command.target.selector);
         writer.write(execute_fn{ finish_attachment_state_change });
     }
 }

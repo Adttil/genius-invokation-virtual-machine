@@ -8,7 +8,7 @@
 
 命令是否消费响应输入，由编译时给出的具体命令值决定。每个动态命令要求响应通过 `invoke` 提交一个由其成员类型 `input_type` 指定的 [命令输入](command_inputs.md) 对象；使用固定参数的命令不占输入位置。每个已编译入口所需输入对象的数量、类型和顺序固定，对象中的数组长度可以在响应时决定。仅支持固定模式的命令没有 `input_type`。输入类型可以显式复用事件类型，但命令不借用外层响应事件。相对玩家参数以当前效果的本方为基准。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
 
-`set_active_character{}`、`use_skill{}`、`set_skill_state{}`、`set_energy{}`、`modify_energy{}`、`deal_damage{}`、`apply_element{}`、`heal{}`、`increase_max_health{}`、`create_hand_card{}`、`add_dice{}`、`remove_dice{}`、`reroll_dice{}`，以及实体生成、添加、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。按定义定位实体的命令通过显式指定 `definition` 选择固定模式。
+`set_active_character{}`、`use_skill{}`、`set_skill_state{}`、`set_energy{}`、`modify_energy{}`、`deal_damage{}`、`apply_element{}`、`heal{}`、`increase_max_health{}`、`create_hand_card{}`、`add_dice{}`、`remove_dice{}`、`reroll_dice{}`，以及实体生成、添加、转移、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。角色附属实体的状态修改、移除和转移命令使用 [relative_attachment_target](commands/attachment_target.md) 按定义或装备类别定位；其他按定义定位的命令显式指定 `definition`。
 
 固定效果命令使用角色位置、本方或对方身份、定义 ID，不保存对局中才分配的实体 ID。具体实体 ID 由响应在运行时通过动态输入提交。角色位置在命令执行时解析，仅使用相对于所选一方当前出战角色的有符号偏移。
 
@@ -77,6 +77,7 @@
 | [`remove_combat_status`](commands/remove_combat_status.md) | 移除出战状态并通知离场 |
 | [`attach`](commands/attach.md) | 向角色附属状态或装备，由已有同类实体处理重复请求 |
 | [`add_attachment`](commands/add_attachment.md) | 直接添加独立角色附属实体 |
+| [`transfer_attachment`](commands/transfer_attachment.md) | 保留状态并转移角色附属实体的命令 |
 | [`set_attachment_state`](commands/set_attachment_state.md) | 设置角色附属实体的完整状态 |
 | [`modify_attachment_state`](commands/modify_attachment_state.md) | 按增量修改角色附属实体的状态 |
 | [`remove_attachment`](commands/remove_attachment.md) | 移除角色附属实体并通知离场 |
@@ -93,6 +94,9 @@
 | [`any_command`](any_command.md) | 命令 variant |
 | [`relative_player`](commands/relative_player.md) | 相对于当前效果本方的一方 |
 | [`relative_character_target`](events/relative_character_target.md) | 执行时解析的角色位置 |
+| [`relative_attachment_target`](commands/attachment_target.md) | 按相对角色位置与定义或装备类别定位的附属实体 |
+| [`attachment_target`](commands/attachment_target.md) | 动态输入中的附属实体定位 variant |
+| [`equipment_target`](commands/attachment_target.md) | 按角色 ID 与装备类别定位的当前装备 |
 | [`fixed_damage`](commands/fixed_damage.md) | 固定伤害组中的单段描述 |
 | [`character_selection`](commands/character_selection.md) | 选择定位角色、其他角色或全部角色 |
 | [`action_argument`](../executor/action_argument.md) | 行动输入参数 |

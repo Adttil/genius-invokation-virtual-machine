@@ -9,8 +9,8 @@
 ```cpp
 struct remove_attachment_input
 {
-    attachment_id attachment;
+    attachment_target attachment;
 };
 ```
 
-`attachment` 必须指向有效实体。命令移除实体后，广播 [attachment_removed](../events/attachment_removed.md)。
+[`attachment_target`](../commands/attachment_target.md) 可以指定有效实体 ID，也可以指定角色 ID 与装备类别，在执行时定位该角色当前的装备；相应实体必须存在。命令移除本次定位的实体后，广播 [attachment_removed](../events/attachment_removed.md)，不会继续移除通知响应中新加入的装备。

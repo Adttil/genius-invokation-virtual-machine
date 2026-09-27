@@ -20,3 +20,5 @@ struct attachment_state_limit
 本查询没有参数，结果在编译定义库时保存，运行时直接读取。定义源未提供查询时，[query_default](../query_default.md) 返回两个字段均为 `UINT32_MAX` 的状态。
 
 附属或直接添加时，命令输入 `state` 的各字段默认同样为 `UINT32_MAX`；它们经过普通的上限裁剪取得初值。查询限定上限，调用方仍可显式请求更小的初值。
+
+[`transfer_attachment`](../commands/transfer_attachment.md) 请求恢复本回合可用次数时，直接采用本查询的 `round_usages`，保留 `count`。若定义将多个独立次数编码在 `round_usages` 中，这个值应为各项次数全部恢复后的编码。

@@ -16,6 +16,7 @@
 | [`reroll_dice_input`](command_inputs/reroll_dice_input.md) | [`reroll_dice`](commands/reroll_dice.md) 的动态输入 |
 | [`discard_hand_card_input`](command_inputs/discard_hand_card_input.md) | [`discard_hand_card`](commands/discard_hand_card.md) 的动态输入 |
 | [`add_attachment_input`](command_inputs/add_attachment_input.md) | [`add_attachment`](commands/add_attachment.md) 的动态输入 |
+| [`transfer_attachment_input`](command_inputs/transfer_attachment_input.md) | [`transfer_attachment`](commands/transfer_attachment.md) 的动态输入 |
 | [`add_combat_status_input`](command_inputs/add_combat_status_input.md) | [`add_combat_status`](commands/add_combat_status.md) 的动态输入 |
 | [`add_summon_input`](command_inputs/add_summon_input.md) | [`add_summon`](commands/add_summon.md) 的动态输入 |
 | [`add_support_input`](command_inputs/add_support_input.md) | [`add_support`](commands/add_support.md) 的动态输入 |
@@ -54,3 +55,11 @@
 | [`set_active_character_input`](command_inputs/set_active_character_input.md) | [`set_active_character`](commands/set_active_character.md) 的动态输入 |
 | [`use_skill_input`](command_inputs/use_skill_input.md) | [`use_skill`](commands/use_skill.md) 的动态输入 |
 | [`any_command_input`](any_command_input.md) | 核心命令输入 variant |
+| [`attachment_target`](commands/attachment_target.md) | 附属实体输入中的具体 ID 或装备定位 variant |
+
+## 参阅
+
+| | |
+| --- | --- |
+| [`equipment_target`](commands/attachment_target.md) | 按角色 ID 与装备类别定位的当前装备 |
+| [`relative_attachment_target`](commands/attachment_target.md) | 固定命令中的附属实体定位 |

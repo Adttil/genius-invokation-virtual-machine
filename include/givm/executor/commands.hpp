@@ -44,6 +44,7 @@
 #include "commands/attach.hpp"
 #include "commands/set_attachment_state.hpp"
 #include "commands/modify_attachment_state.hpp"
+#include "commands/transfer_attachment.hpp"
 #include "commands/remove_attachment.hpp"
 #include "commands/apply_element.hpp"
 #include "commands/deal_damage.hpp"

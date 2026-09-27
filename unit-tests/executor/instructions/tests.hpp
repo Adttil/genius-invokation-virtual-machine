@@ -30,6 +30,7 @@
 #include "skill_state_energy.hpp"
 #include "summon_batches.hpp"
 #include "support.hpp"
+#include "transfer_attachment.hpp"
 #include "use_skill.hpp"
 #include "use_skill_command.hpp"
 #include "use_technique.hpp"
