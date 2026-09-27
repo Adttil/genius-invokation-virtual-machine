@@ -48,6 +48,7 @@
 | | |
 | --- | --- |
 | [`add_dice_input`](command_inputs/add_dice_input.md) | [`add_dice`](commands/add_dice.md) 的动态输入 |
+| [`remove_dice_input`](command_inputs/remove_dice_input.md) | [`remove_dice`](commands/remove_dice.md) 的动态输入 |
 | [`increase_max_health_input`](command_inputs/increase_max_health_input.md) | [`increase_max_health`](commands/increase_max_health.md) 的动态输入 |
 | [`set_active_character_input`](command_inputs/set_active_character_input.md) | [`set_active_character`](commands/set_active_character.md) 的动态输入 |
 | [`use_skill_input`](command_inputs/use_skill_input.md) | [`use_skill`](commands/use_skill.md) 的动态输入 |

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "../broadcast.hpp"
+#include "remove_dice.hpp"
 #include "set_active_character.hpp"
 #include "use_skill.hpp"
 #include "../../definition/events.hpp"
@@ -831,20 +832,6 @@ namespace givm::detail
         );
     }
 
-    template<std::size_t From, std::size_t To>
-    inline execution_state broadcast_action_dice_payment(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<dice_removed>(library, table, context, random))
-        {
-            return continue_execution;
-        }
-        pop_broadcast<dice_removed>(context);
-        return jump_to_action_instruction<From, To>(context);
-    }
-
     inline execution_state broadcast_action_dice_energy_payment(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
@@ -1436,7 +1423,7 @@ namespace givm::detail
         writer.write<execute_fn>(&broadcast_before_action<Observed>);
         writer.write<execute_fn>(&execute_action_selection<Observed>);
         writer.write<execute_fn>(&continue_switch_onpay);
-        writer.write<execute_fn>(&broadcast_action_dice_payment<switch_dice_payment_offset, switch_action_offset>);
+        writer.write<execute_fn>(&broadcast_removed_dice<switch_action_offset - switch_dice_payment_offset>);
         writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
         writer.write<execute_fn>(&broadcast_action_energy_payment);
         writer.write<execute_fn>(&execute_switch_action<Observed>);
@@ -1446,7 +1433,7 @@ namespace givm::detail
         }
         writer.write<execute_fn>(&broadcast_switch_action<Observed>);
         writer.write<execute_fn>(&continue_card_onpay<Observed>);
-        writer.write<execute_fn>(&broadcast_action_dice_payment<card_dice_payment_offset<Observed>, prepare_card_play_offset<Observed>>);
+        writer.write<execute_fn>(&broadcast_removed_dice<prepare_card_play_offset<Observed> - card_dice_payment_offset<Observed>>);
         writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
         writer.write<execute_fn>(&broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_card_play);
@@ -1454,7 +1441,7 @@ namespace givm::detail
         writer.write<execute_fn>(&finish_card_effect);
         writer.write<execute_fn>(&broadcast_card_played<Observed>);
         writer.write<execute_fn>(&continue_skill_onpay<Observed>);
-        writer.write<execute_fn>(&broadcast_action_dice_payment<skill_dice_payment_offset<Observed>, prepare_skill_use_offset<Observed>>);
+        writer.write<execute_fn>(&broadcast_removed_dice<prepare_skill_use_offset<Observed> - skill_dice_payment_offset<Observed>>);
         writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
         writer.write<execute_fn>(&broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_skill_use);
@@ -1462,7 +1449,7 @@ namespace givm::detail
         writer.write<execute_fn>(&finish_skill_effect);
         writer.write<execute_fn>(&broadcast_skill_used<Observed>);
         writer.write<execute_fn>(&continue_technique_onpay<Observed>);
-        writer.write<execute_fn>(&broadcast_action_dice_payment<technique_dice_payment_offset<Observed>, prepare_technique_use_offset<Observed>>);
+        writer.write<execute_fn>(&broadcast_removed_dice<prepare_technique_use_offset<Observed> - technique_dice_payment_offset<Observed>>);
         writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
         writer.write<execute_fn>(&broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_technique_use<Observed>);

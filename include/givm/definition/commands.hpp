@@ -499,6 +499,16 @@ namespace givm
         dice_counts dice{};
     };
 
+    using remove_dice_input = dice_removed;
+
+    struct remove_dice
+    {
+        using input_type = remove_dice_input;
+
+        relative_player player = static_cast<relative_player>(-1);
+        dice_counts dice{};
+    };
+
     struct start_battle
     {
     };
@@ -628,6 +638,7 @@ namespace givm::detail
         end_game,
         start_dice_roll_phase,
         add_dice,
+        remove_dice,
         start_battle,
         deal_damage,
         apply_element,
@@ -797,6 +808,10 @@ namespace givm::detail
     constexpr size_t input_marker(const add_dice& command) noexcept
     {
         return command.player == static_cast<relative_player>(-1) ? command_input_types::index_of<add_dice::input_type>() : size_t(-1);
+    }
+    constexpr size_t input_marker(const remove_dice& command) noexcept
+    {
+        return command.player == static_cast<relative_player>(-1) ? command_input_types::index_of<remove_dice::input_type>() : size_t(-1);
     }
     constexpr size_t input_marker(const deal_damage& command) noexcept
     {

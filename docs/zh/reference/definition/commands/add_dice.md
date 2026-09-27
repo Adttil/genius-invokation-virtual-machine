@@ -94,4 +94,5 @@ int main()
 | | |
 | --- | --- |
 | [`dice_added`](../events/dice_added.md) | 元素骰增加完成后的通知 |
+| [`remove_dice`](remove_dice.md) | 扣除指定元素骰的命令 |
 | [`dice_counts`](../../enums/dice_counts.md) | 各类元素骰的数量 |

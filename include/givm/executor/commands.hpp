@@ -23,6 +23,7 @@
 #include "commands/end_game.hpp"
 #include "commands/start_dice_roll_phase.hpp"
 #include "commands/add_dice.hpp"
+#include "commands/remove_dice.hpp"
 #include "commands/start_battle.hpp"
 #include "commands/add_support.hpp"
 #include "commands/set_support_state.hpp"
