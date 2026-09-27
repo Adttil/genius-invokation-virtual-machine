@@ -489,7 +489,7 @@ namespace givm
 
     struct modify_energy_input
     {
-        character_id target;
+        std::span<const character_id> targets;
         std::int64_t delta{};
     };
 

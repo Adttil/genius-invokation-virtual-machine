@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -22,7 +24,7 @@ namespace
     constexpr givm::character_id standby{ givm::player_id{ 0 }, 1 };
     constexpr givm::character_id opponent{ givm::player_id{ 1 }, 0 };
 
-    enum class mutation_kind { skill, assign, modify, sequence, use_skill };
+    enum class mutation_kind { skill, assign, modify, sequence, use_skill, batch_sequence };
 
     struct mutation_log
     {
@@ -40,6 +42,9 @@ namespace
         std::uint32_t energy_notifications = 0;
         std::vector<std::uint32_t> energy_during_effect;
         std::vector<std::uint32_t> energy_after_skill;
+        std::vector<givm::character_id> targets;
+        std::vector<givm::character_id> second_targets;
+        bool runtime_inputs = false;
     };
 
     struct mutable_skill_source
@@ -109,6 +114,10 @@ namespace
             case mutation_kind::use_skill:
                 effect = context.add_program(std::tuple{ givm::use_skill{ .definition = skill } });
                 break;
+            case mutation_kind::batch_sequence:
+                effect = context.add_program(std::tuple{ givm::modify_energy{}, givm::modify_energy{},
+                    givm::modify_energy{}, givm::modify_energy{}, givm::modify_energy{} });
+                break;
             }
             return { log, skill, effect };
         }
@@ -117,6 +126,7 @@ namespace
         {
             const auto& log = *data.log;
             if(not log.dynamic) return context.invoke(data.effect);
+            const auto target = std::span{ &log.target, 1 };
             switch(log.kind)
             {
             case mutation_kind::skill:
@@ -128,15 +138,31 @@ namespace
             case mutation_kind::assign:
                 return context.invoke(data.effect, givm::set_energy_input{ log.target, log.value });
             case mutation_kind::modify:
-                return context.invoke(data.effect, givm::modify_energy_input{ log.target, log.delta });
+                return context.invoke(data.effect, givm::modify_energy_input{ target, log.delta });
             case mutation_kind::sequence:
                 return context.invoke(data.effect, givm::set_energy_input{ log.target, 2 },
-                    givm::modify_energy_input{ log.target, std::numeric_limits<std::int64_t>::max() },
-                    givm::modify_energy_input{ log.target, -1 },
-                    givm::modify_energy_input{ log.target, std::numeric_limits<std::int64_t>::min() },
-                    givm::modify_energy_input{ log.target, 2 });
+                    givm::modify_energy_input{ target, std::numeric_limits<std::int64_t>::max() },
+                    givm::modify_energy_input{ target, -1 },
+                    givm::modify_energy_input{ target, std::numeric_limits<std::int64_t>::min() },
+                    givm::modify_energy_input{ target, 2 });
             case mutation_kind::use_skill:
                 return context.invoke(data.effect);
+            case mutation_kind::batch_sequence:
+            {
+                const std::array inputs{
+                    givm::modify_energy_input{ log.targets, std::numeric_limits<std::int64_t>::max() },
+                    givm::modify_energy_input{ {}, std::numeric_limits<std::int64_t>::min() },
+                    givm::modify_energy_input{ log.second_targets, -1 },
+                    givm::modify_energy_input{ log.targets, std::numeric_limits<std::int64_t>::min() },
+                    givm::modify_energy_input{ log.second_targets, 2 } };
+                if(log.runtime_inputs)
+                {
+                    const std::array<givm::any_command_input, 5> sequence{
+                        inputs[0], inputs[1], inputs[2], inputs[3], inputs[4] };
+                    return context.invoke(data.effect, std::span<const givm::any_command_input>{ sequence });
+                }
+                return context.invoke(data.effect, inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]);
+            }
             }
             return {};
         }
@@ -227,6 +253,39 @@ namespace
             CHECK(table[character].state().max_energy == log.max_energy);
         }
         check(table, ids.get_id<givm::skill_view>("MutableSkill"));
+    }
+
+    template<class Check>
+    inline void check_group_mutation(mutation_log& log, givm::compile_mode mode, bool empty_opponent, Check check)
+    {
+        const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
+            std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+            mutable_skill_source{ &log }, mutation_observer_source{ &log },
+            mutable_character_source{ &log, "Actor", true },
+            mutable_character_source{ &log, "Living" },
+            mutable_character_source{ &log, "Defeated", false, 0 });
+        const auto actor = ids.get_id<givm::character_view>("Actor");
+        const auto living = ids.get_id<givm::character_view>("Living");
+        const auto defeated = ids.get_id<givm::character_view>("Defeated");
+        givm::linked_deck opponent_deck{ .characters = { living, living, defeated, living, living } };
+        if(empty_opponent) opponent_deck.characters.clear();
+        givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = active },
+            { .active_character = log.missing_target or empty_opponent ? std::optional<givm::character_id>{}
+                : givm::character_id{ givm::player_id{ 1 }, 2 } } };
+        load_deck(table, library, { .characters = { actor, living, living, defeated, living } }, opponent_deck);
+        const auto energy_tag = table[active].state().energy_tag;
+        givm::executor executor;
+        executor.start(library, table);
+        auto random = [] { return std::uint32_t{ 0 }; };
+        REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+        CHECK(log.energy_notifications == 0);
+        for(const auto player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
+            for(const auto character : table[player].characters())
+            {
+                CHECK(character.state().energy_tag == energy_tag);
+                CHECK(character.state().max_energy == log.max_energy);
+            }
+        check(table);
     }
 }
 
@@ -320,6 +379,64 @@ TEST_CASE("skills gain energy only through their effect before the skill used no
         CHECK(table[active].state().energy == expected);
         CHECK(log.energy_during_effect == std::vector{ 1u });
         CHECK(log.energy_after_skill == std::vector{ expected });
+    });
+}
+
+TEST_CASE("fixed modify_energy changes living range targets without moving the anchor", "[modify_energy]")
+{
+    const auto [player, offset] = GENERATE(std::pair{ givm::relative_player::self, -2 },
+        std::pair{ givm::relative_player::opponent, 0 }, std::pair{ givm::relative_player::opponent, 7 });
+    const auto selection = GENERATE(givm::character_selection::others, givm::character_selection::all);
+    mutation_log log{ .kind = mutation_kind::modify, .relative = { player, offset, selection }, .delta = 1 };
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    check_group_mutation(log, mode, false, [&](const givm::table& table)
+    {
+        const auto selected_player = player == givm::relative_player::self ? givm::player_id{ 0 } : givm::player_id{ 1 };
+        const auto active_index = player == givm::relative_player::self ? 0 : 2;
+        const auto anchor_index = static_cast<std::size_t>(((active_index + offset) % 5 + 5) % 5);
+        for(const auto owner : { givm::player_id{ 0 }, givm::player_id{ 1 } })
+            for(std::size_t index = 0; index != 5; ++index)
+            {
+                const auto character = table[givm::character_id{ owner, index }];
+                const auto selected = owner == selected_player and character.state().health != 0
+                    and (selection == givm::character_selection::all or index != anchor_index);
+                CHECK(character.state().energy == (selected ? 2 : 1));
+            }
+    });
+}
+
+TEST_CASE("fixed modify_energy ranges skip missing active characters and empty character lists", "[modify_energy]")
+{
+    mutation_log log{ .kind = mutation_kind::modify, .missing_target = true,
+        .relative = { givm::relative_player::opponent, -1,
+            GENERATE(givm::character_selection::others, givm::character_selection::all) }, .delta = 1 };
+    const auto empty_opponent = GENERATE(false, true);
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    check_group_mutation(log, mode, empty_opponent, [&](const givm::table& table)
+    {
+        for(const auto player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
+            for(const auto character : table[player].characters())
+                CHECK(character.state().energy == 1);
+    });
+}
+
+TEST_CASE("dynamic modify_energy batches consume distinct and empty inputs in program order", "[modify_energy]")
+{
+    mutation_log log{ .kind = mutation_kind::batch_sequence, .dynamic = true };
+    log.runtime_inputs = GENERATE(false, true);
+    log.targets = { { givm::player_id{ 0 }, 1 }, { givm::player_id{ 0 }, 4 }, { givm::player_id{ 1 }, 2 } };
+    log.second_targets = { { givm::player_id{ 0 }, 4 }, { givm::player_id{ 1 }, 0 } };
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    check_group_mutation(log, mode, false, [&](const givm::table& table)
+    {
+        for(const auto player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
+            for(std::size_t index = 0; index != 5; ++index)
+            {
+                const auto character = givm::character_id{ player, index };
+                const auto in_first = std::ranges::any_of(log.targets, [&](auto id) { return id == character; });
+                const auto in_second = std::ranges::any_of(log.second_targets, [&](auto id) { return id == character; });
+                CHECK(table[character].state().energy == (in_second ? 2 : in_first ? 0 : 1));
+            }
     });
 }
 }

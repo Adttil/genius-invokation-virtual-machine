@@ -33,7 +33,9 @@ struct relative_character_target
 
 固定参数中的角色来源允许是已战败但未离场的角色；单角色治疗、增加生命上限、直接附着元素的目标同样允许生命值为 `0`。它们不会因为目标战败而改为另一个存活角色，因此濒死响应仍可通过单角色治疗复活原目标。
 
-[`set_energy`](../commands/set_energy.md)、[`modify_energy`](../commands/modify_energy.md) 与 [`set_skill_state`](../commands/set_skill_state.md) 也按原位置定位，不跳过已战败但未离场的角色；这三个命令只接受 `character` 范围。
+[`set_energy`](../commands/set_energy.md) 与 [`set_skill_state`](../commands/set_skill_state.md) 也按原位置定位，不跳过已战败但未离场的角色；这两个命令只接受 `character` 范围。
+
+[`modify_energy`](../commands/modify_energy.md) 的 `character` 同样允许已战败但未离场的角色；`others` 和 `all` 只修改有效存活角色。它的范围锚点始终是循环偏移后的原位置，不会因锚点角色战败而顺延。
 
 附属实体的设置状态、按增量修改和移除命令通过 [`relative_attachment_target`](../commands/attachment_target.md) 使用角色位置，同样不跳过生命值为零但仍有效的角色，只接受 `character` 范围。相应附属实体必须存在，因此濒死响应可以操作该角色尚未移除的附属实体。
 
@@ -41,6 +43,6 @@ struct relative_character_target
 
 ## 作用范围
 
-固定伤害、动态伤害及治疗使用本类型作为目标时，均由本类型的 `selection` 确定范围。动态 [`damage`](../command_inputs/damage.md) 使用精确角色 ID 时，才由其自身的 `selection` 成员确定范围。作为来源或传给只接受单角色的命令时，使用默认的 `character`。
+固定伤害、动态伤害、治疗及固定模式的充能增量修改使用本类型作为目标时，均由本类型的 `selection` 确定范围。动态 [`damage`](../command_inputs/damage.md) 使用精确角色 ID 时，才由其自身的 `selection` 成员确定范围。作为来源或传给只接受单角色的命令时，使用默认的 `character`。
 
 参见 [`damage`](../command_inputs/damage.md)、[`set_active_character`](../commands/set_active_character.md)、[`heal`](../commands/heal.md)。

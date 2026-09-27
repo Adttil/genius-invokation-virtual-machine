@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/definition.hpp>`。
 
-指定伤害或治疗在定位角色后选择哪些角色。相对目标通过 [`relative_character_target`](../events/relative_character_target.md) 的 `selection` 成员提供；动态伤害使用精确角色 ID 时，由 [`damage::selection`](../command_inputs/damage.md) 提供。
+指定伤害、治疗或充能增量修改在定位角色后选择哪些角色。相对目标通过 [`relative_character_target`](../events/relative_character_target.md) 的 `selection` 成员提供；动态伤害使用精确角色 ID 时，由 [`damage::selection`](../command_inputs/damage.md) 提供。
 
 ```cpp
 enum class character_selection : std::uint8_t
@@ -24,3 +24,5 @@ enum class character_selection : std::uint8_t
 伤害按属性修饰后的角色开始的循环顺序展开，每个存活角色最多选择一次；选择 `others` 时跳过此角色。每条伤害分别判定反应、计算数值和扣除生命，属性修饰只对初始描述广播一次。默认反应还可能另外派生同组伤害。
 
 治疗的 `character` 允许选择生命值为 `0` 的角色，`others` 和 `all` 则只治疗存活角色。范围治疗按定位角色开始的循环顺序处理，`others` 跳过此角色，轮到每个角色时判断其是否存活。全部目标的治疗调整和加血完成后，再按相同顺序逐个广播完成通知。
+
+固定模式的 [`modify_energy`](modify_energy.md) 也支持三个范围。`character` 允许选择生命值为零的角色，`others` 和 `all` 只修改有效存活角色；范围锚点是原本指定的位置，不因角色战败而改变。它不广播充能变化通知。

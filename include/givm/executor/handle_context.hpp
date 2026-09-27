@@ -57,6 +57,11 @@ namespace givm::detail
         return std::tuple{ dynamic_array<summon_id>(input.summons) };
     }
 
+    inline auto command_input_members(const modify_energy_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<character_id>(input.targets), input.delta };
+    }
+
     template<class TDestination, command_input T>
     inline void push_command_input(TDestination& destination, const T& input)
     {

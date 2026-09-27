@@ -51,7 +51,7 @@
 | [`use_skill`](commands/use_skill.md) | 直接使用技能并通知，不支付技能费用 |
 | [`set_skill_state`](commands/set_skill_state.md) | 技能完整状态的赋值命令 |
 | [`set_energy`](commands/set_energy.md) | 角色充能的赋值命令 |
-| [`modify_energy`](commands/modify_energy.md) | 按有符号增量修改角色充能的命令 |
+| [`modify_energy`](commands/modify_energy.md) | 按有符号增量修改单角色或多个角色充能的命令 |
 | [`deal_damage`](commands/deal_damage.md) | 完成一组可由范围和元素反应展开的伤害 |
 | [`heal`](commands/heal.md) | 调整治疗量、恢复生命并通知实际恢复值 |
 | [`increase_max_health`](commands/increase_max_health.md) | 增加生命上限，恢复相同数量生命并通知 |
