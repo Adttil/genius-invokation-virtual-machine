@@ -7,14 +7,14 @@ namespace givm
 {
     enum class element : std::uint8_t
     {
-        none,
         cryo,
         hydro,
         pyro,
         electro,
-        anemo,
         geo,
-        dendro
+        dendro,
+        anemo,
+        none
     };
 }
 

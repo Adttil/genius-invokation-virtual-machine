@@ -249,7 +249,7 @@ namespace
     struct counting_random
     {
         std::uint32_t calls = 0;
-        std::uint32_t operator()() noexcept { ++calls; return 0; }
+        std::uint32_t operator()() noexcept { ++calls; return std::to_underlying(givm::elemental_dice::omni); }
     };
 
     givm::dice_counts pay(std::uint8_t count, givm::elemental_dice kind = givm::elemental_dice::omni)

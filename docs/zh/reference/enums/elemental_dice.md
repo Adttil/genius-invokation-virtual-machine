@@ -7,14 +7,14 @@
 ```cpp
 enum class elemental_dice : std::uint8_t
 {
-    omni,
     cryo,
     hydro,
     pyro,
     electro,
-    anemo,
     geo,
-    dendro
+    dendro,
+    anemo,
+    omni
 };
 ```
 
@@ -24,14 +24,16 @@ enum class elemental_dice : std::uint8_t
 
 |  |  |
 | --- | --- |
-| `omni` | 万能元素 |
 | `cryo` | 冰元素 |
 | `hydro` | 水元素 |
 | `pyro` | 火元素 |
 | `electro` | 雷元素 |
-| `anemo` | 风元素 |
 | `geo` | 岩元素 |
 | `dendro` | 草元素 |
+| `anemo` | 风元素 |
+| `omni` | 万能元素 |
+
+枚举按冰、水、火、雷、岩、草、风、万能从零开始连续编号，对应骰子均可使用时的优先顺序。`omni` 始终位于最后，其底层值加一等于骰子种类总数。需要万能元素时应显式使用 `elemental_dice::omni`；值初始化 `elemental_dice{}` 得到冰元素。
 
 ## 示例
 

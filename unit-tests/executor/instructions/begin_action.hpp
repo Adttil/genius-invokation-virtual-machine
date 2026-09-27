@@ -107,7 +107,7 @@ namespace
             return {};
         }
     };
-    struct zero_random { std::uint32_t operator()() const noexcept { return 0; } };
+    struct omni_random { std::uint32_t operator()() const noexcept { return std::to_underlying(givm::elemental_dice::omni); } };
 
     struct quote_control
     {
@@ -188,7 +188,7 @@ namespace
         std::uint32_t operator()() noexcept
         {
             ++calls;
-            return 0;
+            return std::to_underlying(givm::elemental_dice::omni);
         }
     };
 
@@ -233,7 +233,7 @@ TEST_CASE("action and round observations precede their handlers and ended player
         { .characters = { plain, plain } });
     givm::executor target;
     target.start(library, table);
-    zero_random random;
+    omni_random random;
     reach_action_start(target, library, table, random);
     CHECK(log.opportunities.empty());
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
@@ -311,7 +311,7 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } }, { .characters = { plain } });
     givm::executor target;
     target.start(library, table);
-    zero_random random;
+    omni_random random;
     if(observed) reach_action_start(target, library, table, random);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
     CHECK(log.previews == 0);
@@ -366,7 +366,7 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     }, { .characters = { alive } });
     givm::executor target;
     target.start(library, table);
-    zero_random random;
+    omni_random random;
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.switch_target_count() == (living_standby ? 1 : 0));
@@ -401,7 +401,7 @@ TEST_CASE("automatic round advancement is observed before its limit check and di
     givm::table table{ givm::table_state{ .max_rounds = exceeds_limit ? 0u : 1u } };
     givm::executor target;
     target.start(library, table);
-    zero_random random;
+    omni_random random;
     if(observed)
     {
         REQUIRE(target.step(library, table, random) == givm::execution_state::round_started);
@@ -436,7 +436,7 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
     }, { .characters = { plain } });
     givm::executor target;
     target.start(library, table);
-    zero_random random;
+    omni_random random;
     if(observed) reach_action_start(target, library, table, random);
     REQUIRE(target.step(library, table, random) == givm::execution_state::action_selection);
     log.switches.clear();
@@ -582,7 +582,7 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
     using enum givm::elemental_dice;
     using enum givm::switch_payment_validation;
     const bool observed = GENERATE(false, true);
-    const auto inventory = dice({ { omni, 4 }, { pyro, 3 }, { hydro, 2 }, { cryo, 1 }, { electro, 1 } });
+    const auto inventory = dice({ { omni, 4 }, { pyro, 3 }, { hydro, 2 }, { cryo, 1 }, { electro, 1 }, { anemo, 2 } });
     quote_control control{ .replace_requirement = true, .enable_payment = true };
     const auto source = givm::test::with_passive_skill(quote_source{ &control, "PaymentRequirements", inventory });
     const givm::test::initialized_character_source character;
@@ -617,6 +617,12 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
         { "one arbitrary die", { .any = 1 }, dice({ { pyro, 1 } }), valid },
         { "underpayment", { .any = 1 }, {}, requirement_mismatch },
         { "overpayment", { .any = 1 }, dice({ { pyro, 2 } }), requirement_mismatch },
+        { "matching first basic element", { .fixed = dice({ { cryo, 1 } }) }, dice({ { cryo, 1 } }), valid },
+        { "matching last basic element", { .fixed = dice({ { anemo, 2 } }) }, dice({ { anemo, 2 } }), valid },
+        { "omni substitutes for first and last basic elements",
+            { .fixed = dice({ { cryo, 1 }, { anemo, 2 } }) }, dice({ { omni, 3 } }), valid },
+        { "omni completes first basic same-element cost", { .same = 2 }, dice({ { cryo, 1 }, { omni, 1 } }), valid },
+        { "last basic element meets same-element cost", { .same = 2 }, dice({ { anemo, 2 } }), valid },
         { "matching fixed element", { .fixed = dice({ { pyro, 2 } }) }, dice({ { pyro, 2 } }), valid },
         { "omni substitutes for fixed element", { .fixed = dice({ { pyro, 2 } }) }, dice({ { omni, 2 } }), valid },
         { "wrong fixed element", { .fixed = dice({ { pyro, 2 } }) }, dice({ { hydro, 2 } }), requirement_mismatch },

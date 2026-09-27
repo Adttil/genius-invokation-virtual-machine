@@ -195,10 +195,10 @@ namespace
         }
     };
 
-    struct zero_random { std::uint32_t operator()() noexcept { return 0; } };
+    struct omni_random { std::uint32_t operator()() noexcept { return std::to_underlying(givm::elemental_dice::omni); } };
 
     inline givm::execution_state advance(givm::executor& execution, const givm::definition_library& library,
-        givm::table& table, zero_random& random)
+        givm::table& table, omni_random& random)
     {
         auto state = execution.step(library, table, random);
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started)
@@ -241,7 +241,7 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
         : std::array<givm::skill_target_id, 2>{};
     givm::executor execution;
     execution.start(library, table);
-    zero_random random;
+    omni_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.card_count() == 1);
@@ -318,7 +318,7 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     log.flags = givm::skill_flag_bits::normal_attack;
     givm::executor execution;
     execution.start(library, table);
-    zero_random random;
+    omni_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.card_count() == 1);

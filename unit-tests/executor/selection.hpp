@@ -243,13 +243,13 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     const auto player1_dice = table[givm::player_id{ 1 }].state().dice;
     const auto input = execution.view_in<givm::execution_state::dice_selection>();
     givm::dice_counts submitted;
-    submitted[givm::elemental_dice::omni] = 2;
+    submitted[givm::elemental_dice::cryo] = 2;
     givm::dice_counts alternative;
-    alternative[givm::elemental_dice::omni] = 1;
+    alternative[givm::elemental_dice::cryo] = 1;
     givm::dice_counts too_many;
-    too_many[givm::elemental_dice::omni] = 5;
+    too_many[givm::elemental_dice::cryo] = 5;
     givm::dice_counts absent_type;
-    absent_type[givm::elemental_dice::cryo] = 1;
+    absent_type[givm::elemental_dice::omni] = 1;
     input.select(givm::player_id{ 1 }, submitted);
     CHECK(input.selection_validate(table, {}));
     CHECK(input.selection_validate(table, alternative));

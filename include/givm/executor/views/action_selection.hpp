@@ -531,7 +531,7 @@ namespace givm
 
             std::uint32_t required_omni = requirement.fixed[elemental_dice::omni];
             std::uint32_t largest_remaining_group = 0;
-            for(std::uint8_t index = 1; index < 8; ++index)
+            for(std::uint8_t index = 0; index < std::to_underlying(elemental_dice::omni); ++index)
             {
                 const auto dice = static_cast<elemental_dice>(index);
                 const std::uint32_t fixed = requirement.fixed[dice];

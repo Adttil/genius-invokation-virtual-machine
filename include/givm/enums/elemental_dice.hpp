@@ -10,14 +10,14 @@ namespace givm
 {
     enum class elemental_dice : std::uint8_t
     {
-        omni,
         cryo,
         hydro,
         pyro,
         electro,
-        anemo,
         geo,
-        dendro
+        dendro,
+        anemo,
+        omni
     };
 
     constexpr elemental_dice elemental_dice_from_random(std::uint32_t random) noexcept
@@ -76,7 +76,7 @@ namespace givm
         }
 
     private:
-        std::array<std::uint8_t, 8> values_{};
+        std::array<std::uint8_t, std::to_underlying(elemental_dice::omni) + 1> values_{};
     };
 
     struct elemental_dice_requirement
@@ -106,7 +106,7 @@ namespace givm
         friend constexpr elemental_dice_cost operator+(elemental_dice_cost l, elemental_dice_cost r) noexcept
         {
             elemental_dice_cost result;
-            for(int i = 0; i < 8; ++i)
+            for(int i = 0; i <= std::to_underlying(elemental_dice::omni); ++i)
             {
                 result.cost_list_[i] = l.cost_list_[i] + r.cost_list_[i];
             }
@@ -116,7 +116,7 @@ namespace givm
         friend constexpr elemental_dice_cost operator-(elemental_dice_cost l, elemental_dice_cost r) noexcept
         {
             elemental_dice_cost result;
-            for(int i = 0; i < 8; ++i)
+            for(int i = 0; i <= std::to_underlying(elemental_dice::omni); ++i)
             {
                 result.cost_list_[i] = l.cost_list_[i] - r.cost_list_[i];
             }
@@ -126,7 +126,7 @@ namespace givm
         friend constexpr elemental_dice_cost operator*(elemental_dice_cost cost, unsigned char multiplier) noexcept
         {
             elemental_dice_cost result;
-            for(int i = 0; i < 8; ++i)
+            for(int i = 0; i <= std::to_underlying(elemental_dice::omni); ++i)
             {
                 result.cost_list_[i] = cost.cost_list_[i] * multiplier;
             }
@@ -136,7 +136,7 @@ namespace givm
         friend constexpr elemental_dice_cost operator/(elemental_dice_cost cost, unsigned char divisor) noexcept
         {
             elemental_dice_cost result;
-            for(int i = 0; i < 8; ++i)
+            for(int i = 0; i <= std::to_underlying(elemental_dice::omni); ++i)
             {
                 result.cost_list_[i] = cost.cost_list_[i] / divisor;
             }
@@ -146,7 +146,7 @@ namespace givm
         friend constexpr bool operator==(elemental_dice_cost, elemental_dice_cost) = default;
 
     private:
-        unsigned char cost_list_[8];
+        unsigned char cost_list_[std::to_underlying(elemental_dice::omni) + 1];
     };
 
     constexpr elemental_dice_cost operator*(elemental_dice dice, unsigned char count) noexcept

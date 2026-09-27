@@ -6,15 +6,15 @@ namespace givm_test::enums::elemental_dice
 {
 TEST_CASE("random values map to eight elemental dice", "[elemental_dice]")
 {
-    CHECK(givm::elemental_dice_from_random(0) == givm::elemental_dice::omni);
-    CHECK(givm::elemental_dice_from_random(1) == givm::elemental_dice::cryo);
-    CHECK(givm::elemental_dice_from_random(2) == givm::elemental_dice::hydro);
-    CHECK(givm::elemental_dice_from_random(3) == givm::elemental_dice::pyro);
-    CHECK(givm::elemental_dice_from_random(4) == givm::elemental_dice::electro);
-    CHECK(givm::elemental_dice_from_random(5) == givm::elemental_dice::anemo);
-    CHECK(givm::elemental_dice_from_random(6) == givm::elemental_dice::geo);
-    CHECK(givm::elemental_dice_from_random(7) == givm::elemental_dice::dendro);
-    CHECK(givm::elemental_dice_from_random(15) == givm::elemental_dice::dendro);
+    CHECK(givm::elemental_dice_from_random(0) == givm::elemental_dice::cryo);
+    CHECK(givm::elemental_dice_from_random(1) == givm::elemental_dice::hydro);
+    CHECK(givm::elemental_dice_from_random(2) == givm::elemental_dice::pyro);
+    CHECK(givm::elemental_dice_from_random(3) == givm::elemental_dice::electro);
+    CHECK(givm::elemental_dice_from_random(4) == givm::elemental_dice::geo);
+    CHECK(givm::elemental_dice_from_random(5) == givm::elemental_dice::dendro);
+    CHECK(givm::elemental_dice_from_random(6) == givm::elemental_dice::anemo);
+    CHECK(givm::elemental_dice_from_random(7) == givm::elemental_dice::omni);
+    CHECK(givm::elemental_dice_from_random(15) == givm::elemental_dice::omni);
 }
 
 TEST_CASE("dice_counts supports containment and component arithmetic", "[elemental_dice]")

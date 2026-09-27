@@ -209,25 +209,25 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
     random.values.push_back(0x3fffffffu);
     REQUIRE(execution.step(library, table, random) == givm::execution_state::dice_selection);
     REQUIRE(random.consumed == 15);
-    CHECK(table[givm::player_id{ 0 }].state().dice[givm::elemental_dice::omni] == 6);
-    CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::omni] == 6);
+    CHECK(table[givm::player_id{ 0 }].state().dice[givm::elemental_dice::cryo] == 6);
+    CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::cryo] == 6);
 
     random_tape later_random;
     givm::dice_counts player1_selection;
-    player1_selection[givm::elemental_dice::omni] = 2;
+    player1_selection[givm::elemental_dice::cryo] = 2;
     execution.view_in<givm::execution_state::dice_selection>().select(givm::player_id{ 1 }, player1_selection);
     REQUIRE(execution.step(library, table, later_random) == givm::execution_state::dice_selection);
-    CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::omni] == 4);
-    CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::dendro] == 2);
+    CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::cryo] == 4);
+    CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::omni] == 2);
 
     std::array<givm::dice_counts, 3> player0_selections;
-    player0_selections[0][givm::elemental_dice::omni] = 4;
-    player0_selections[1][givm::elemental_dice::omni] = 2;
-    player0_selections[1][givm::elemental_dice::cryo] = 1;
+    player0_selections[0][givm::elemental_dice::cryo] = 4;
+    player0_selections[1][givm::elemental_dice::cryo] = 2;
     player0_selections[1][givm::elemental_dice::hydro] = 1;
-    player0_selections[2][givm::elemental_dice::omni] = 1;
-    player0_selections[2][givm::elemental_dice::pyro] = 1;
+    player0_selections[1][givm::elemental_dice::pyro] = 1;
+    player0_selections[2][givm::elemental_dice::cryo] = 1;
     player0_selections[2][givm::elemental_dice::electro] = 1;
+    player0_selections[2][givm::elemental_dice::geo] = 1;
     for(std::size_t index = 0; index < 2; ++index)
     {
         execution.view_in<givm::execution_state::dice_selection>().select(givm::player_id{ 0 }, player0_selections[index]);
@@ -238,8 +238,8 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
     REQUIRE(execution.step(library, table, later_random) == givm::execution_state::finished);
     CHECK(later_random.consumed == 0);
     givm::dice_counts expected;
-    for(givm::elemental_dice dice : { givm::elemental_dice::cryo, givm::elemental_dice::hydro, givm::elemental_dice::pyro,
-                               givm::elemental_dice::anemo, givm::elemental_dice::geo, givm::elemental_dice::dendro })
+    for(givm::elemental_dice dice : { givm::elemental_dice::hydro, givm::elemental_dice::pyro, givm::elemental_dice::electro,
+                               givm::elemental_dice::dendro, givm::elemental_dice::anemo, givm::elemental_dice::omni })
     {
         ++expected[dice];
     }

@@ -146,7 +146,7 @@ namespace
 
     inline givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table, bool select_initial = true)
     {
-        auto random = []() -> std::uint32_t { return 0; };
+        auto random = []() -> std::uint32_t { return std::to_underlying(givm::elemental_dice::omni); };
         auto state = executor.step(library, table, random);
         if(select_initial && state == givm::execution_state::initial_active_character_selection)
         {

@@ -7,14 +7,14 @@
 ```cpp
 enum class element : std::uint8_t
 {
-    none,
     cryo,
     hydro,
     pyro,
     electro,
-    anemo,
     geo,
-    dendro
+    dendro,
+    anemo,
+    none
 };
 ```
 
@@ -24,14 +24,16 @@ enum class element : std::uint8_t
 
 |  |  |
 | --- | --- |
-| `none` | 无元素 |
 | `cryo` | 冰 |
 | `hydro` | 水 |
 | `pyro` | 火 |
 | `electro` | 雷 |
-| `anemo` | 风 |
 | `geo` | 岩 |
 | `dendro` | 草 |
+| `anemo` | 风 |
+| `none` | 无元素 |
+
+基本元素按冰、水、火、雷、岩、草、风从零开始连续编号。`none` 始终位于最后，其底层值等于基本元素的数量。需要无元素时应显式使用 `element::none`；值初始化 `element{}` 得到冰元素。
 
 ## 示例
 

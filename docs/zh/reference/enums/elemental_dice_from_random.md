@@ -18,7 +18,7 @@ constexpr elemental_dice elemental_dice_from_random(std::uint32_t random) noexce
 
 ## 返回值
 
-`random % 8` 所对应的骰子，依次为万能、冰、水、火、雷、风、岩、草。
+`random % 8` 所对应的骰子，依次为冰、水、火、雷、岩、草、风、万能，与 [`elemental_dice`](elemental_dice.md) 的枚举顺序一致。
 
 ## 示例
 
@@ -29,16 +29,16 @@ constexpr elemental_dice elemental_dice_from_random(std::uint32_t random) noexce
 
 int main()
 {
-    std::println("0 对应万能: {}", givm::elemental_dice_from_random(0) == givm::elemental_dice::omni);
-    std::println("11 对应火: {}", givm::elemental_dice_from_random(11) == givm::elemental_dice::pyro);
+    std::println("7 对应万能: {}", givm::elemental_dice_from_random(7) == givm::elemental_dice::omni);
+    std::println("10 对应火: {}", givm::elemental_dice_from_random(10) == givm::elemental_dice::pyro);
 }
 ```
 
 输出
 
 ```text
-0 对应万能: true
-11 对应火: true
+7 对应万能: true
+10 对应火: true
 ```
 
 ## 参阅

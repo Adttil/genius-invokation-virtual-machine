@@ -110,7 +110,7 @@ namespace
 
     inline givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table)
     {
-        auto random = []() -> std::uint32_t { return 0; };
+        auto random = []() -> std::uint32_t { return std::to_underlying(givm::elemental_dice::omni); };
         auto state = executor.step(library, table, random);
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started)
             state = executor.step(library, table, random);
