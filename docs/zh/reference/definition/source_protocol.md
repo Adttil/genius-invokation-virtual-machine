@@ -6,6 +6,8 @@
 
 源先加入 [`definition_source_library`](definition_source_library.md)，再与本场对局需要的其他源一起编译。源对象不由库拥有，应在源库使用期间保持有效；名称、标签及依赖字符串的字符存储也必须保持有效，编译后名称和标签仍由定义库使用。
 
+可通过 [`make_definition_source_library`](make_definition_source_library.md) 创建库并一次登记多个源，也可向空库或已有库调用 [`add`](definition_source_library/add.md)。两者都通过 `expected` 返回登记结果；失败时可以读取结构化诊断，或使用 [`error_string`](error_string.md) 输出文本。
+
 最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。[`program_entry`](program_entry.md) 由定义模块提供，定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 在执行模块中完整定义；编写需要调用编译上下文的定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开命令和事件。
 
 ## 必需成员
@@ -46,7 +48,7 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 
 当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
 
-需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`，不需要声明具体版本的名称依赖。普通定义的按名、标签或筛选查询仍须声明相应依赖。源库只负责登记集合，构造及普通 `add` 时仍验证普通名称依赖；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
+需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`，不需要声明具体版本的名称依赖。普通定义的按名、标签或筛选查询仍须声明相应依赖。源库默认构造为空集合，普通 [`add`](definition_source_library/add.md) 验证名称冲突及普通名称依赖，并聚合返回结构化诊断；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
 
 ## 事件响应
 
@@ -175,7 +177,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(source);
+    if(not sources.add(source)) return 1;
     const auto [library, ids] = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal

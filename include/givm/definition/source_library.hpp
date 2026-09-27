@@ -3,17 +3,19 @@
 
 #include <algorithm>
 #include <array>
-#include <concepts>
 #include <cstddef>
+#include <expected>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <tuple>
-#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "source_view.hpp"
@@ -24,6 +26,108 @@
 namespace givm
 {
     using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
+
+    struct definition_name
+    {
+        std::size_t category_index;
+        std::string name;
+    };
+
+    struct source_conflict
+    {
+        enum class reason { different_object, different_type };
+
+        definition_name definition;
+        reason cause;
+        std::optional<std::size_t> first_input_index;
+        std::optional<std::size_t> second_input_index;
+    };
+
+    struct source_missing_dependency
+    {
+        definition_name source;
+        std::size_t input_index;
+        definition_name dependency;
+    };
+
+    using source_add_error = std::variant<source_conflict, source_missing_dependency>;
+
+    namespace detail
+    {
+        inline std::string source_definition_name_text(const definition_name& definition)
+        {
+            constexpr auto category_names = []
+            {
+                std::array<std::string_view, definition_types::size()> names{};
+                names[definition_types::index_of<card_definition>()] = "card_definition";
+                names[definition_types::index_of<status_definition>()] = "status_definition";
+                names[definition_types::index_of<support_view>()] = "support_view";
+                names[definition_types::index_of<summon_view>()] = "summon_view";
+                names[definition_types::index_of<combat_status_view>()] = "combat_status_view";
+                names[definition_types::index_of<character_view>()] = "character_view";
+                names[definition_types::index_of<skill_view>()] = "skill_view";
+                names[definition_types::index_of<attachment_view>()] = "attachment_view";
+                names[definition_types::index_of<history_summary_definition>()] = "history_summary_definition";
+                return names;
+            }();
+            const auto category_index = definition.category_index;
+            std::string result = category_index < category_names.size() && not category_names[category_index].empty()
+                ? std::string{ category_names[category_index] }
+                : "category[" + std::to_string(category_index) + "]";
+            result += " \"";
+            for(const auto character : definition.name)
+            {
+                switch(character)
+                {
+                case '\\': result += "\\\\"; break;
+                case '\"': result += "\\\""; break;
+                case '\n': result += "\\n"; break;
+                case '\r': result += "\\r"; break;
+                case '\t': result += "\\t"; break;
+                default: result += character; break;
+                }
+            }
+            result += '\"';
+            return result;
+        }
+
+        inline void append_source_error(std::string& text, const source_conflict& error)
+        {
+            if(not text.empty()) text += '\n';
+            text += "source conflict (";
+            text += error.cause == source_conflict::reason::different_type ? "different_type" : "different_object";
+            text += "): ";
+            text += source_definition_name_text(error.definition);
+            text += "; first: ";
+            text += error.first_input_index ? "input[" + std::to_string(*error.first_input_index) + "]" : "receiver library";
+            text += "; second: ";
+            text += error.second_input_index ? "input[" + std::to_string(*error.second_input_index) + "]" : "incoming library";
+        }
+
+        inline void append_source_error(std::string& text, const source_missing_dependency& error)
+        {
+            if(not text.empty()) text += '\n';
+            text += "missing dependency: ";
+            text += source_definition_name_text(error.source);
+            text += " (input[" + std::to_string(error.input_index) + "]) requires ";
+            text += source_definition_name_text(error.dependency);
+        }
+    }
+
+    inline std::string error_string(const std::vector<source_add_error>& errors)
+    {
+        std::string result;
+        for(const auto& error : errors)
+            std::visit([&](const auto& item) { detail::append_source_error(result, item); }, error);
+        return result;
+    }
+
+    inline std::string error_string(const std::vector<source_conflict>& errors)
+    {
+        std::string result;
+        for(const auto& error : errors) detail::append_source_error(result, error);
+        return result;
+    }
 
     struct basic_definition_sources
     {
@@ -40,86 +144,36 @@ namespace givm
 
         definition_source_library() = default;
 
-        template<class... TSources>
-            requires (sizeof...(TSources) != 0)
-                && (not std::same_as<std::remove_cvref_t<TSources>, definition_source_library> && ...)
-        explicit definition_source_library(const TSources&... sources)
+        std::expected<void, std::vector<source_add_error>> add()
         {
-            if(not add(sources...))
-            {
-                throw std::invalid_argument{ "invalid definition sources or dependencies" };
-            }
+            return {};
         }
 
-        bool add()
+        std::expected<void, std::vector<source_conflict>> add(const definition_source_library& library)
         {
-            return true;
-        }
-
-        bool add(const definition_source_library& library)
-        {
-            if(this == &library) return true;
-            if(has_name_conflict(library))
+            if(this == &library) return {};
+            std::vector<source_conflict> errors;
+            definition_types::each([&]<class TCategory>
             {
-                return false;
-            }
+                collect_bucket_conflicts<definition_types::index_of<TCategory>()>(library, errors);
+            });
+            if(not errors.empty()) return std::unexpected{ std::move(errors) };
 
             append_library(library);
-            return true;
+            return {};
         }
 
         template<class TSource>
-        bool add(const TSource& source)
+        std::expected<void, std::vector<source_add_error>> add(const TSource& source)
         {
-            using source_type = std::remove_cvref_t<TSource>;
-            using definition_category = typename source_type::definition_category;
-            constexpr size_t definition_index = index_of<definition_category>();
-
-            definition_source_view<definition_category> view{ source };
-            const std::string_view name = view.name();
-            auto& bucket = bucket_for<definition_category>();
-            if(bucket.name_to_index.contains(name))
-            {
-                return false;
-            }
-
-            auto declarations = view.declarations();
-            if(not check_single_dependencies<definition_index>(declarations.dependencies, name))
-            {
-                return false;
-            }
-
-            bucket.name_to_index.emplace(name, bucket.entries.size());
-            bucket.entries.push_back({
-                .source = view,
-                .name = name,
-                .declarations = std::move(declarations)
-            });
-            return true;
+            return add_sources(source);
         }
 
         template<class TFirstSource, class TSecondSource, class...TOtherSource>
-        bool add(const TFirstSource& first, const TSecondSource& second, const TOtherSource&...others)
+        std::expected<void, std::vector<source_add_error>> add(
+            const TFirstSource& first, const TSecondSource& second, const TOtherSource&...others)
         {
-            pending_tuple pending;
-            pending_names_type pending_names;
-            bool valid = true;
-
-            prepare_add(pending, pending_names, valid, first);
-            prepare_add(pending, pending_names, valid, second);
-            (prepare_add(pending, pending_names, valid, others), ...);
-            if(not valid)
-            {
-                return false;
-            }
-
-            if(not check_pending_dependencies(pending, pending_names))
-            {
-                return false;
-            }
-
-            commit_pending(pending);
-            return true;
+            return add_sources(first, second, others...);
         }
 
         template<class TDefinitionType>
@@ -159,7 +213,6 @@ namespace givm
 
     private:
         using definition_type_list = definition_types;
-        using dependency_array = detail::definition_dependency_lists;
         using pending_names_type = std::array<std::unordered_set<std::string_view>, definition_count>;
         using selection_mask = std::array<std::vector<bool>, definition_count>;
 
@@ -169,6 +222,15 @@ namespace givm
             definition_source_view<TDefinitionType> source;
             std::string_view name;
             detail::definition_source_declarations declarations;
+        };
+
+        template<class TDefinitionType>
+        struct pending_entry
+        {
+            definition_source_view<TDefinitionType> source;
+            std::string_view name;
+            detail::definition_source_declarations declarations;
+            std::size_t input_index = 0;
         };
 
         template<class TDefinitionType>
@@ -194,10 +256,12 @@ namespace givm
         using bucket_tuple_for = std::tuple<bucket<TDefinition>...>;
 
         template<class...TDefinition>
-        using pending_tuple_for = std::tuple<std::vector<entry<TDefinition>>...>;
+        using pending_tuple_for = std::tuple<std::vector<pending_entry<TDefinition>>...>;
 
         using bucket_tuple = definition_type_list::apply<bucket_tuple_for>;
         using pending_tuple = definition_type_list::apply<pending_tuple_for>;
+        using pending_sources_by_name = std::array<
+            std::unordered_map<std::string_view, std::vector<std::size_t>>, definition_count>;
 
         static constexpr std::string_view whitespace = " \t\n\r\f\v";
         static constexpr std::string_view negation_or_whitespace = "! \t\n\r\f\v";
@@ -215,7 +279,8 @@ namespace givm
         }
 
         template<size_t I>
-        bool has_bucket_name_conflict(const definition_source_library& library) const
+        void collect_bucket_conflicts(
+            const definition_source_library& library, std::vector<source_conflict>& errors) const
         {
             const auto& bucket = std::get<I>(buckets_);
             for(const auto& entry : std::get<I>(library.buckets_).entries)
@@ -228,20 +293,14 @@ namespace givm
                     {
                         continue;
                     }
-                    return true;
+                    errors.push_back({
+                        .definition = { I, std::string{ entry.name } },
+                        .cause = existing.source.rtti_ != entry.source.rtti_
+                            ? source_conflict::reason::different_type
+                            : source_conflict::reason::different_object
+                    });
                 }
             }
-            return false;
-        }
-
-        bool has_name_conflict(const definition_source_library& library) const
-        {
-            bool conflict = false;
-            [&]<size_t...I>(std::index_sequence<I...>)
-            {
-                ((conflict = conflict || has_bucket_name_conflict<I>(library)), ...);
-            }(std::make_index_sequence<definition_count>{});
-            return conflict;
         }
 
         template<size_t I>
@@ -268,90 +327,103 @@ namespace givm
             }(std::make_index_sequence<definition_count>{});
         }
 
-        template<class TSource>
-        void prepare_add(
-            pending_tuple& pending,
-            pending_names_type& pending_names,
-            bool& valid,
-            const TSource& source
-        ) const
+        template<class... TSources>
+        std::expected<void, std::vector<source_add_error>> add_sources(const TSources&... sources)
         {
-            if(not valid)
-            {
-                return;
-            }
-
-            using source_type = std::remove_cvref_t<TSource>;
-            using definition_category = typename source_type::definition_category;
-            constexpr size_t definition_index = index_of<definition_category>();
-
-            definition_source_view<definition_category> view{ source };
-            const std::string_view name = view.name();
-            if(bucket_for<definition_category>().name_to_index.contains(name))
-            {
-                valid = false;
-                return;
-            }
-
-            auto [_, inserted] = pending_names[definition_index].emplace(name);
-            if(not inserted)
-            {
-                valid = false;
-                return;
-            }
-
-            std::get<definition_index>(pending).push_back({
-                .source = view,
-                .name = name,
-                .declarations = view.declarations()
-            });
+            pending_tuple pending;
+            pending_sources_by_name names;
+            std::vector<source_add_error> errors;
+            std::size_t input_index = 0;
+            const std::array indices{
+                prepare_add(pending, names, errors, input_index++, sources)...
+            };
+            input_index = 0;
+            (collect_dependency_errors<typename TSources::definition_category>(
+                pending, names, indices[input_index++], errors), ...);
+            if(not errors.empty()) return std::unexpected{ std::move(errors) };
+            commit_pending(pending);
+            return {};
         }
 
-        template<size_t I>
-        bool dependency_exists(std::string_view name, const pending_names_type& pending_names) const
+        template<class TSource>
+        std::optional<std::size_t> prepare_add(pending_tuple& pending, pending_sources_by_name& names,
+            std::vector<source_add_error>& errors, std::size_t input_index, const TSource& source) const
+        {
+            using category = typename TSource::definition_category;
+            constexpr auto category_index = index_of<category>();
+
+            const definition_source_view<category> view{ source };
+            const auto name = view.name();
+            const auto& bucket = bucket_for<category>();
+            const auto existing = bucket.name_to_index.find(name);
+            const auto same_source = [&](const auto& other)
+            {
+                return other.source_ == view.source_ && other.rtti_ == view.rtti_;
+            };
+            if(existing != bucket.name_to_index.end() && same_source(bucket.entries[existing->second].source))
+                return std::nullopt;
+
+            auto& entries = std::get<category_index>(pending);
+            auto& same_named = names[category_index][name];
+            for(const auto index : same_named)
+            {
+                if(same_source(entries[index].source)) return std::nullopt;
+            }
+
+            if(existing != bucket.name_to_index.end() || not same_named.empty())
+            {
+                const auto previous = existing != bucket.name_to_index.end()
+                    ? bucket.entries[existing->second].source : entries[same_named.front()].source;
+                errors.emplace_back(source_conflict{
+                    .definition = { category_index, std::string{ name } },
+                    .cause = previous.rtti_ != view.rtti_
+                        ? source_conflict::reason::different_type : source_conflict::reason::different_object,
+                    .first_input_index = existing != bucket.name_to_index.end()
+                        ? std::nullopt : std::optional{ entries[same_named.front()].input_index },
+                    .second_input_index = input_index
+                });
+            }
+
+            const auto index = entries.size();
+            same_named.push_back(index);
+            entries.push_back({
+                .source = view,
+                .name = name,
+                .declarations = view.declarations(),
+                .input_index = input_index
+            });
+            return index;
+        }
+
+        template<size_t I, class TPendingNames>
+        bool dependency_exists(std::string_view name, const TPendingNames& pending_names) const
         {
             return std::get<I>(buckets_).name_to_index.contains(name) || pending_names[I].contains(name);
         }
 
-        template<size_t SourceIndex, size_t I>
-        bool single_dependency_exists(std::string_view dependency_name, std::string_view source_name) const
+        template<class TCategory>
+        void collect_dependency_errors(const pending_tuple& pending, const pending_sources_by_name& names,
+            std::optional<std::size_t> index, std::vector<source_add_error>& errors) const
         {
-            if constexpr (SourceIndex == I)
+            if(not index) return;
+            constexpr auto category_index = index_of<TCategory>();
+            const auto& entry = std::get<category_index>(pending)[*index];
+            definition_types::each([&]<class TDependency>
             {
-                return dependency_name == source_name || std::get<I>(buckets_).name_to_index.contains(dependency_name);
-            }
-            else
-            {
-                return std::get<I>(buckets_).name_to_index.contains(dependency_name);
-            }
-        }
-
-        template<size_t SourceIndex, size_t...I>
-        bool check_single_dependencies(
-            const dependency_array& dependencies,
-            std::string_view source_name,
-            std::index_sequence<I...>
-        ) const
-        {
-            bool valid = true;
-                ((valid = valid && std::ranges::all_of(dependencies[I], [&](std::string_view dependency_name)
-            {
-                return single_dependency_exists<SourceIndex, I>(dependency_name, source_name);
-            })), ...);
-            return valid;
-        }
-
-        template<size_t SourceIndex>
-        bool check_single_dependencies(
-            const dependency_array& dependencies,
-            std::string_view source_name
-        ) const
-        {
-            return check_single_dependencies<SourceIndex>(
-                dependencies,
-                source_name,
-                std::make_index_sequence<definition_count>{}
-            );
+                constexpr auto dependency_index = index_of<TDependency>();
+                std::unordered_set<std::string_view> reported;
+                for(const auto name : entry.declarations.dependencies[dependency_index])
+                {
+                    if(not dependency_exists<dependency_index>(name, names) && reported.insert(name).second)
+                    {
+                        errors.emplace_back(source_missing_dependency{
+                            .source = { category_index, std::string{ entry.name } },
+                            .input_index = entry.input_index,
+                            .dependency = { dependency_index, std::string{ name } }
+                        });
+                    }
+                }
+            });
         }
 
         template<class TEntry, size_t...I>
@@ -409,7 +481,7 @@ namespace givm
             for(auto& entry : pending_entries)
             {
                 bucket.name_to_index.emplace(entry.name, bucket.entries.size());
-                bucket.entries.push_back(std::move(entry));
+                bucket.entries.push_back({ entry.source, entry.name, std::move(entry.declarations) });
             }
         }
 
@@ -439,7 +511,7 @@ namespace givm
                     return;
                 }
                 auto& entries = std::get<index>(pending);
-                const auto found = std::ranges::find(entries, name, &entry<TCategory>::name);
+                const auto found = std::ranges::find(entries, name, &pending_entry<TCategory>::name);
                 if(found != entries.end())
                 {
                     if(found->source.source_ != source.source_ || found->source.rtti_ != source.rtti_)
@@ -776,6 +848,15 @@ namespace givm
 
         friend class definition_library;
     };
+
+    template<class... TSources>
+    inline std::expected<definition_source_library, std::vector<source_add_error>> make_definition_source_library(const TSources&... sources)
+    {
+        definition_source_library library;
+        auto result = library.add(sources...);
+        if(not result) return std::unexpected{ std::move(result.error()) };
+        return library;
+    }
 }
 
 #endif

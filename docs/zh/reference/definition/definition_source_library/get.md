@@ -59,7 +59,7 @@ int main()
 {
     const card_source source{};
     givm::definition_source_library sources{};
-    sources.add(source);
+    if(not sources.add(source)) return 1;
     const auto view = sources.get<givm::card_definition>("恢复药剂");
     std::println("定义源名称: {}", view.name());
     std::println("首个标签: {}", view.tags().front());

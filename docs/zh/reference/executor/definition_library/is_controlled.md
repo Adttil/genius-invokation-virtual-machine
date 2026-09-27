@@ -59,7 +59,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(character);
+    if(not sources.add(character)) return 1;
     const auto issued = sources.make_issued_id_map(basics);
     const auto frozen = issued.get_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name());
     const givm::character_id target{ givm::player_id{ 0 }, 0 };

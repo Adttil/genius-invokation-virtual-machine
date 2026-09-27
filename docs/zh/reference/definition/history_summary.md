@@ -152,7 +152,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(summary);
+    if(not sources.add(summary)) return 1;
     const auto [library, ids] = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     givm::table table;
     load_deck(table, library, {}, {});

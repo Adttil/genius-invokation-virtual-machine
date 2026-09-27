@@ -72,7 +72,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(source);
+    if(not sources.add(source)) return 1;
     const auto issued = sources.make_issued_id_map(basics);
     const auto definition = issued.get_id<givm::card_definition>("生成示例牌");
     const auto [library, ids] = compile(sources, basics,

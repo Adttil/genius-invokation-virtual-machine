@@ -56,7 +56,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(first, second);
+    if(not sources.add(first, second)) return 1;
     const auto [library, ids] = compile(
         sources, basics,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },

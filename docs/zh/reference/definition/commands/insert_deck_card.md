@@ -54,7 +54,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(first, second);
+    if(not sources.add(first, second)) return 1;
     const auto issued = sources.make_issued_id_map(basics);
     const auto card = issued.get_id<givm::card_definition>("first");
     const auto [library, ids] = compile(

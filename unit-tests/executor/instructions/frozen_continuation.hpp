@@ -51,7 +51,8 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0, frozen };
-    const givm::definition_source_library sources{ character };
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(character));
     const auto prepared_ids = sources.make_issued_id_map(basics);
     const std::array damages{
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },

@@ -17,6 +17,8 @@
 | --- | --- |
 | [`definition_source_view`](reference/definition/definition_source_view.md) | 定义源的类型擦除视图 |
 | [`definition_source_library`](reference/definition/definition_source_library.md) | 定义源库 |
+| [`make_definition_source_library`](reference/definition/make_definition_source_library.md) | 创建源库并批量登记定义源 |
+| [`error_string`](reference/definition/error_string.md) | 将源库登记或合并诊断转换为文本 |
 | [`basic_definition_sources`](reference/definition/basic_definition_sources.md) | 默认元素反应的基础定义源配置 |
 | [`definition_source_library::make_issued_id_map`](reference/definition/definition_source_library/make_issued_id_map.md) | 为选定定义建立 ID 映射 |
 | [命令](reference/definition/commands.md) | 游戏规则的操作描述 |

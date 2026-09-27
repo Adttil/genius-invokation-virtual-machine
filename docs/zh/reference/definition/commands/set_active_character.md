@@ -76,7 +76,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(source);
+    if(not sources.add(source)) return 1;
     const auto [library, ids] = compile(
         sources, basics,
         std::tuple{ givm::select_active_character_both{}, givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, 1 } } },

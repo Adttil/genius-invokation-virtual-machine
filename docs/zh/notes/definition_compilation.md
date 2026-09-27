@@ -378,18 +378,22 @@ adapter 把定义的固定命令序列交给 `add_program`。每个程序所需�
 
 **生命周期表述的细化：**下面原记录要求 source 覆盖源库及其编译库的全部使用期，是把源对象与它可能拥有的字符串一并保活的保守约束。当前源码中，源库的 `definition_source_view::source_` 非拥有地指向源对象；编译后的库保存 definition 数据、字符视图和不捕获 source 的静态 handler 函数指针，不再保存这个源对象指针。因此需要分别保证：源库使用期间 source 有效；所有仍借用的名称/标签字符在相应库或映射使用期间有效；definition 若另存 Lua 状态、回调句柄或其他非拥有对象，其目标也必须存活。字符属于 source 自身时，source 当然仍要覆盖字符使用期。不能因为运行期不调用 source 就把尚被借用的数据销毁。
 
-原注册说明与约束：
+注册接口与约束：
 
 ```cpp
 template<class TSource>
-bool definition_source_library::add(const TSource& source);
+std::expected<void, std::vector<source_add_error>> definition_source_library::add(const TSource& source);
 ```
 
-`add` 保存 source 的非拥有引用。返回 `true` 表示添加成功；同类别重名或依赖不满足时返回 `false`。source 对象必须在保存它的 `definition_source_library` 使用期间保持存活；编译库、ID 映射以及编译后配置借用的名称、标签或其他对象须分别覆盖对应使用期。
+`add` 保存 source 的非拥有引用。有值的 `expected` 表示添加成功；失败则保存名称冲突与缺失依赖的结构化诊断列表。source 对象必须在保存它的 `definition_source_library` 使用期间保持存活；编译库、ID 映射以及编译后配置借用的名称、标签或其他对象须分别覆盖对应使用期。
 
-同时添加多个 source 的重载是原子的：它允许同一批 source 互相依赖，任一名称或依赖检查失败时整批都不加入。源库之间也可以合并。合并只检查名称冲突，不重新读取或验证依赖；同类别同名项指向同一 source 对象且适配表相同时跳过重复项，其他冲突仍拒绝整次合并。动态源以 C++ adapter 对象为身份，不自动识别不同包装是否引用同一脚本定义。
+同时添加多个 source 的重载是原子的：它允许同一批 source 互相依赖，检查时收集全部名称冲突与缺失依赖，失败时整批都不加入。登记和合并都会去重同类别同名、同对象且同类型的项。冲突原因先判断类型不同，再判断同类型但对象不同。动态源也以 C++ 源对象及类型为身份，不自动识别不同对象是否引用同一脚本定义。源库之间合并返回 `expected<void, vector<source_conflict>>`，只检查名称冲突，不重新读取或验证依赖。
 
-源库是普通定义源集合，可以默认构造或一次登记若干 source。四个反应定义由独立的 `basic_definition_sources` 配置：草原核与激化领域使用 combat status source view，燃烧烈焰使用 summon source view，冻结使用 attachment source view。`compile` 和 `make_issued_id_map` 显式接收同一配置，临时并入四个基础源而不修改原源库；所需其他依赖须由源库或四个基础源满足。绑定来自调用方配置的源对象，不通过固定名称、标签或版本字符串识别。普通 source 的按名依赖仍在构造和 `add` 时验证。
+批量诊断先按参数顺序记录冲突，再按输入顺序、每个源的类别与依赖声明顺序记录缺失依赖；同一源和重复依赖诊断去重，已有冲突的名称不再被当作缺失依赖。合并按类别和对方库的登记顺序记录冲突。所有输入索引从零开始；冲突第一位置为空表示接收库，第二位置为空表示被合并库。诊断保留分类、名称和位置等结构化数据；`error_string` 对两种错误列表提供文本输出，保持列表顺序，每条一行且末尾无换行。
+
+源库是普通定义源集合，默认构造后通过 `add` 登记 source，不再提供带源参数的构造。四个反应定义由独立的 `basic_definition_sources` 配置：草原核与激化领域使用 combat status source view，燃烧烈焰使用 summon source view，冻结使用 attachment source view。`compile` 和 `make_issued_id_map` 显式接收同一配置，临时并入四个基础源而不修改原源库；所需其他依赖须由源库或四个基础源满足。绑定来自调用方配置的源对象，不通过固定名称、标签或版本字符串识别。普通 source 的按名依赖仍在 `add` 时验证，编译流程的异常机制不变。
+
+`make_definition_source_library(sources...)` 提供创建并登记的工厂：默认构造一个库，执行一次批量 `add`，然后返回 `expected<definition_source_library, vector<source_add_error>>`。不传源时返回空库，登记验证失败时返回全部诊断，不因此抛出异常；合并已有库仍使用 `add(library)`。
 
 单项定义编译通过 context 的 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()` 引用本次配置的基础定义，无须声明具体版本的名称依赖。context 与最终 definition library 使用同一组已解析 ID。
 

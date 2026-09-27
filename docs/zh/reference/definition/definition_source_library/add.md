@@ -5,22 +5,22 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-bool add(); // (1)
-bool add(const definition_source_library& library); // (2)
+std::expected<void, std::vector<source_add_error>> add(); // (1)
+std::expected<void, std::vector<source_conflict>> add(const definition_source_library& library); // (2)
 
 template<class TSource>
-bool add(const TSource& source); // (3)
+std::expected<void, std::vector<source_add_error>> add(const TSource& source); // (3)
 
 template<class TFirstSource, class TSecondSource, class... TOtherSource>
-bool add(const TFirstSource& first, const TSecondSource& second,
-         const TOtherSource&... others); // (4)
+std::expected<void, std::vector<source_add_error>> add(
+    const TFirstSource& first, const TSecondSource& second, const TOtherSource&... others); // (4)
 ```
 
 登记一批可供对局使用的定义源。一次调用中的源可以按名称相互依赖，适合一起加入某张卡牌及其生成的状态、召唤物等相关定义。
 
 (1) 不添加内容。(2) 合并另一个源库。(3) 登记一个源。(4) 一起登记多个源。名称在各定义类别内必须唯一。
 
-合并源库时，同类别同名项若引用相同源对象，且使用相同的定义源适配方式，则跳过重复项。其余同类别重名视为冲突，包括名称相同但源对象不同的情况。动态源以其 C++ 适配对象为身份，不会自动识别不同包装是否引用同一脚本定义。直接调用 (3)、(4) 重复登记仍会失败。
+登记或合并时，同类别同名项若引用同一 C++ 源对象且类型相同，则跳过重复项；其他情况为名称冲突。动态定义源也按其 C++ 源对象及类型区分，不会自动识别不同对象是否引用同一脚本定义。
 
 ## 模板参数
 
@@ -37,15 +37,29 @@ bool add(const TFirstSource& first, const TSecondSource& second,
 
 ## 返回值
 
-全部登记成功时返回 `true`。同类别名称冲突时返回 `false`，不登记本次的任何源。(3)、(4) 还会检查按名称声明的依赖是否在已有源或本次新增源中，缺失时同样整体失败。(2) 合并已登记的库时只检查名称冲突，不重新读取或验证依赖。(1) 始终返回 `true`；将库合并到自身也返回 `true`。
+成功时返回有值的 `std::expected`；相同源去重、空批次以及将库合并到自身均视为成功。用 `has_value()` 或条件判断检查结果。
+
+失败时，`error()` 返回本次发现的全部诊断，接收库保持不变：
+
+- (2) 返回 [`source_conflict`](../source_conflict.md) 列表，仅检查名称冲突，不重新读取或验证依赖。
+- (3)、(4) 返回 [`source_add_error`](../source_add_error.md) 列表，包含名称冲突与 [`source_missing_dependency`](../source_missing_dependency.md)。名称依赖须在已有库或本批输入中存在；同批源可以互相依赖。
+
+名称冲突先区分类型：类型不同为 `source_conflict::reason::different_type`；类型相同但对象不同为 `different_object`。诊断中的定义名称由 [`definition_name`](../definition_name.md) 保存。
+
+批量登记先按参数顺序收集冲突，再按输入顺序收集缺失依赖；每个源的依赖按定义类别索引及声明顺序检查。相同源与重复依赖不重复产生诊断；已有名称冲突的依赖名称不再额外报告为缺失。合并诊断按定义类别及对方库的登记顺序排列。
+
+输入索引从零开始。`source_conflict::first_input_index` 为空表示接收库中的源；`second_input_index` 为空表示被合并库中的源。批量输入之间发生冲突时，两者均保存相应参数索引。
 
 ## 注意
 
 本函数保存对源对象的非拥有引用，源对象不得提前销毁。单个源可声明对自身的依赖。按标签筛选的依赖在选择与编译时解析。
 
+通过 [`error_string`](../error_string.md) 可将失败结果中的诊断列表转换为可读文本。希望创建库并同时登记源时，可使用 [`make_definition_source_library`](../make_definition_source_library.md)。
+
 ## 示例
 
 ```cpp
+#include <array>
 #include <print>
 #include <string_view>
 
@@ -61,14 +75,30 @@ struct card_source
     int compile(givm::definition_compile_context&) const { return 0; }
 };
 
+struct dependent_card_source
+{
+    using definition_category = givm::card_definition;
+
+    std::string_view name() const { return "求助牌"; }
+    auto support_dependencies() const
+    { return std::array<std::string_view, 1>{ "失踪支援" }; }
+    int compile(givm::definition_compile_context&) const { return 0; }
+};
+
 int main()
 {
     const card_source potion{ "恢复药剂" };
     const card_source food{ "恢复料理" };
     givm::definition_source_library sources{};
-    std::println("批量登记成功: {}", sources.add(potion, food));
-    std::println("重复登记成功: {}", sources.add(potion));
-    std::println("恢复料理仍存在: {}", sources.has<givm::card_definition>("恢复料理"));
+    std::println("批量登记成功: {}", sources.add(potion, food).has_value());
+    std::println("重复登记成功: {}", sources.add(potion).has_value());
+
+    const card_source another_potion{ "恢复药剂" };
+    const dependent_card_source dependent{};
+    const auto result = sources.add(another_potion, dependent);
+    if(not result)
+        std::println("{}", error_string(result.error()));
+    std::println("失败后登记求助牌: {}", sources.has<givm::card_definition>("求助牌"));
 }
 ```
 
@@ -76,6 +106,8 @@ int main()
 
 ```text
 批量登记成功: true
-重复登记成功: false
-恢复料理仍存在: true
+重复登记成功: true
+source conflict (different_object): card_definition "恢复药剂"; first: receiver library; second: input[0]
+missing dependency: card_definition "求助牌" (input[1]) requires support_view "失踪支援"
+失败后登记求助牌: false
 ```

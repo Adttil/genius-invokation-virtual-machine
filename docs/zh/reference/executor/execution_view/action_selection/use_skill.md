@@ -114,8 +114,8 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(skill);
-    sources.add(character);
+    if(not sources.add(skill)) return 1;
+    if(not sources.add(character)) return 1;
     const auto [library, ids] = compile(sources, basics,
         std::tuple{
             givm::select_active_character_both{},

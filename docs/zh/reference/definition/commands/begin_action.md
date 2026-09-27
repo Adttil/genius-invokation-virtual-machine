@@ -88,8 +88,8 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(source);
-    sources.add(card);
+    if(not sources.add(source)) return 1;
+    if(not sources.add(card)) return 1;
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
     const auto [library, ids] = compile(
         sources, basics,

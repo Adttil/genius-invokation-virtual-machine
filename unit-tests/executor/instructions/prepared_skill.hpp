@@ -225,7 +225,8 @@ namespace
         const givm::basic_definition_sources basics{
             givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
             givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
-        const givm::definition_source_library sources{ observer, character, ordinary, fast, combat, later, immunity, plain };
+        givm::definition_source_library sources;
+        REQUIRE(sources.add(observer, character, ordinary, fast, combat, later, immunity, plain));
         const auto ids = sources.make_issued_id_map(basics);
         return compile(sources, basics, program(ids), round,
             observed ? givm::compile_mode::observed : givm::compile_mode::normal);

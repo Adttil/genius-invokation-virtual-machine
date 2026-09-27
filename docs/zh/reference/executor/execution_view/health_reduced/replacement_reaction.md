@@ -56,7 +56,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(source);
+    if(not sources.add(source)) return 1;
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     const std::array damages{
         givm::fixed_damage{

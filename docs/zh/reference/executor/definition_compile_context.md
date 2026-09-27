@@ -75,7 +75,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(card, support);
+    if(not sources.add(card, support)) return 1;
     const auto [library, ids] = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal

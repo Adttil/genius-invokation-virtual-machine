@@ -14,6 +14,9 @@
 | --- | --- |
 | [`definition_source_library`](definition/definition_source_library.md) | 可供编译的定义源集合 |
 | [`basic_definition_sources`](definition/basic_definition_sources.md) | 默认元素反应的基础定义源配置 |
+| [`definition_name`](definition/definition_name.md) | 定义类别及名称 |
+| [`source_conflict`](definition/source_conflict.md) | 同类别同名源的冲突诊断 |
+| [`source_missing_dependency`](definition/source_missing_dependency.md) | 定义源的缺失依赖诊断 |
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
 | [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
 | [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |
@@ -38,6 +41,7 @@
 
 |  |  |
 | --- | --- |
+| [`source_add_error`](definition/source_add_error.md) | 定义源登记诊断的 variant |
 | [`any_command`](definition/any_command.md) | 核心命令 variant |
 | [`any_command_input`](definition/any_command_input.md) | 核心命令输入 variant |
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
@@ -49,6 +53,8 @@
 
 |  |  |
 | --- | --- |
+| [`make_definition_source_library`](definition/make_definition_source_library.md) | 创建源库并批量登记定义源 |
+| [`error_string`](definition/error_string.md) | 将源库登记或合并诊断转换为文本 |
 | [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
 | [`query_default`](definition/query_default.md) | 定义源未提供查询时的默认结果 |
 

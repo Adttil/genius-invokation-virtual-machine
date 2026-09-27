@@ -68,7 +68,7 @@ int main()
     givm::definition_source_library sources{};
     const example_source<givm::card_definition> card_source{};
     const example_source<givm::character_view> character_source{};
-    sources.add(card_source, character_source);
+    if(not sources.add(card_source, character_source)) return 1;
     const auto [library, id_map] = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     givm::table table{};
     givm::linked_deck deck{};

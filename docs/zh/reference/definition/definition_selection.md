@@ -45,7 +45,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(potion, food);
+    if(not sources.add(potion, food)) return 1;
     const std::array<std::string_view, 1> names{ "恢复药剂" };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = names;

@@ -49,7 +49,7 @@ int main()
 {
     const card_source potion{ "恢复药剂" };
     givm::definition_source_library sources{};
-    sources.add(potion);
+    if(not sources.add(potion)) return 1;
     std::println("包含恢复药剂: {}", sources.has<givm::card_definition>("恢复药剂"));
     std::println("包含恢复料理: {}", sources.has<givm::card_definition>("恢复料理"));
 }

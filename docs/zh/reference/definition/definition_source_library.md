@@ -20,7 +20,7 @@ class definition_source_library;
 
 |  |  |
 | --- | --- |
-| [(构造函数)](definition_source_library/constructor.md) | 建立空源库或登记一批定义源 |
+| [(构造函数)](definition_source_library/constructor.md) | 建立空源库 |
 | [`add`](definition_source_library/add.md) | 登记定义源或合并源库 |
 | [`has`](definition_source_library/has.md) | 检查定义源是否存在 |
 | [`get`](definition_source_library/get.md) | 按名称查看定义源 |
@@ -31,6 +31,7 @@ class definition_source_library;
 
 |  |  |
 | --- | --- |
+| [`make_definition_source_library`](make_definition_source_library.md) | 创建源库并批量登记定义源 |
 | [`compile`](../executor/compile.md) | 编译选定定义与对局流程 |
 
 ## 注意
@@ -38,6 +39,10 @@ class definition_source_library;
 源库不拥有定义源。登记的源对象及名称、标签、依赖名称的字符存储必须在源库使用期间保持有效；编译出的定义库仍会使用名称和标签的字符存储。
 
 登记后，源的名称、标签和依赖声明必须保持不变。登记、遍历和编译可以分别读取这些信息；每次返回的范围只消费一次，多次调用仍须提供相同内容。
+
+默认构造得到空集合；通过 [`add`](definition_source_library/add.md) 登记源，结果中的错误列表提供名称冲突和缺失依赖的结构化诊断。同类别同名项若引用同一对象且类型相同则去重；其他错误会使整次登记或合并失败，并保留原有集合。
+
+需要创建库并登记一批源时，使用 [`make_definition_source_library`](make_definition_source_library.md) 取得包含源库或诊断列表的结果。错误列表可以通过 [`error_string`](error_string.md) 转换为文本，源库不提供带源参数的构造函数。
 
 ## 示例
 
@@ -68,7 +73,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    std::println("登记成功: {}", sources.add(potion));
+    std::println("登记成功: {}", sources.add(potion).has_value());
     const auto [library, ids] = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal

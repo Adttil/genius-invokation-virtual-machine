@@ -65,7 +65,7 @@ int main()
     };
     givm::definition_source_library sources{};
     const character_source source{};
-    sources.add(source);
+    if(not sources.add(source)) return 1;
     const auto [library, ids] = compile(sources, basics,
         std::tuple{
             givm::select_active_character_both{},

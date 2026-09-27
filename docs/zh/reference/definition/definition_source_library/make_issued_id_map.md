@@ -32,7 +32,7 @@ issued_id_map make_issued_id_map(const basic_definition_sources& basics, const d
 
 ## 注意
 
-本函数不调用定义源的 `compile`，也不修改源库。四个基础源仅参与本次映射准备；它们所依赖的其他源须在源库或这四个源中。已有同类别同名项只有引用相同源对象且采用相同适配方式时才会去重。
+本函数不调用定义源的 `compile`，也不修改源库。四个基础源仅参与本次映射准备；它们所依赖的其他源须在源库或这四个源中。已有同类别同名项只有引用相同源对象且类型相同时才会去重。
 
 改变源库内容、基础定义配置或选择集合后，应重新建立映射，不混用之前发放的 ID。随后调用 [`compile`](../../executor/compile.md) 时必须使用相同的 `basics`。
 
@@ -66,7 +66,7 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    sources.add(potion, food);
+    if(not sources.add(potion, food)) return 1;
     const std::array<std::string_view, 1> names{ "恢复药剂" };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = names;
