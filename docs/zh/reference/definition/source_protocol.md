@@ -27,18 +27,21 @@
 | | |
 | --- | --- |
 | `tags()` | 返回定义自身所属的分类标签 |
-| `tag_dependencies()` | 返回编译时需要直接取得 ID 的标签名称 |
-| `card_dependencies()` / `card_dependencies_by_tag()` | 返回所依赖的卡牌定义名称或标签筛选条件 |
-| `status_dependencies()` / `status_dependencies_by_tag()` | 返回所依赖的卡牌状态定义名称或标签筛选条件 |
-| `support_dependencies()` / `support_dependencies_by_tag()` | 返回所依赖的支援定义名称或标签筛选条件 |
-| `summon_dependencies()` / `summon_dependencies_by_tag()` | 返回所依赖的召唤物定义名称或标签筛选条件 |
-| `combat_status_dependencies()` / `combat_status_dependencies_by_tag()` | 返回所依赖的出战状态定义名称或标签筛选条件 |
-| `character_dependencies()` / `character_dependencies_by_tag()` | 返回所依赖的角色定义名称或标签筛选条件 |
-| `skill_dependencies()` / `skill_dependencies_by_tag()` | 返回所依赖的技能定义名称或标签筛选条件 |
-| `attachment_dependencies()` / `attachment_dependencies_by_tag()` | 返回所依赖的角色附着实体定义名称或标签筛选条件 |
-| `history_summary_dependencies()` / `history_summary_dependencies_by_tag()` | 返回所依赖的历史摘要定义名称或标签筛选条件 |
+| `card_dependencies()` | 返回所依赖的卡牌定义名称 |
+| `status_dependencies()` | 返回所依赖的卡牌状态定义名称 |
+| `support_dependencies()` | 返回所依赖的支援定义名称 |
+| `summon_dependencies()` | 返回所依赖的召唤物定义名称 |
+| `combat_status_dependencies()` | 返回所依赖的出战状态定义名称 |
+| `character_dependencies()` | 返回所依赖的角色定义名称 |
+| `skill_dependencies()` | 返回所依赖的技能定义名称 |
+| `attachment_dependencies()` | 返回所依赖的角色附着实体定义名称 |
+| `history_summary_dependencies()` | 返回所依赖的历史摘要定义名称 |
 
-`*_dependencies()` 列出名称，`*_dependencies_by_tag()` 列出形如 `治疗 & !料理` 的筛选表达式。每种查询须使用相应的声明：名称依赖通过 `resolve_id` 查询，标签依赖通过 `resolve_tag` 查询，筛选依赖通过 `resolve_ids_by_tag` 查询。只声明名称依赖不会顺带授权标签查询，反之亦然。
+`*_dependencies()` 列出必须存在的定义名称，通过 [`resolve_id`](../executor/definition_compile_context/resolve_id.md) 取得其 ID。选定源时，这些依赖也进入本次编译集合；缺失依赖会使登记失败。
+
+编译期间可自由查看本次集合中的元数据，不需要为查询另行声明依赖：[`definitions<T>()`](../executor/definition_compile_context/definitions.md) 遍历指定类别，按名称使用 [`find_definition<T>()`](../executor/definition_compile_context/find_definition.md)，按已有 ID 使用 [`operator[]`](../executor/definition_compile_context/operator_at.md)。这些视图提供名称、标签、名称依赖以及是否具有响应或自定义查询的信息，不执行响应或查询函数。
+
+[`find_tag`](../executor/definition_compile_context/find_tag.md) 查找本次集合中的标签，未知标签返回空结果；[`find_ids_by_tag`](../executor/definition_compile_context/find_ids_by_tag.md) 可用 `治疗 & !料理` 一类表达式筛选已选择的定义。上述查询都不扩充编译集合：未知的正向标签使筛选结果为空，未知的排除标签不限制结果。
 
 登记后，名称、标签和依赖声明必须保持不变。登记、遍历和编译可以分别调用这些接口；每次返回的范围只消费一次，但多次调用须提供相同内容。
 
@@ -46,9 +49,9 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 
 附属的 `control` 标签表示控制状态，例如冻结、石化、眩晕或水泡；`control_immunity` 表示阻止施加控制附属及效果引发的切人。控制查询检查当前仍在场的附属，移除其中一个不会解除其他实体提供的控制。免控不解除已经存在的控制，也不妨碍玩家在行动选择时主动切换。具体入口见 [`is_controlled`](../executor/definition_library/is_controlled.md)、[`is_control_immune`](../executor/definition_library/is_control_immune.md) 与 [`attach`](commands/attach.md)。标签只声明分类；到期移除等行为仍由定义响应实现。
 
-当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接依赖的所有定义。按标签匹配的定义也参与这一过程，因此选择一张会生成召唤物的卡牌时，无须再手动选择其召唤物定义。
+当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接按名称依赖的所有定义。例如卡牌声明生成的召唤物为名称依赖后，选择该卡牌即可带入相应召唤物；单纯按标签查询不会带入未选择的定义。
 
-需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`，不需要声明具体版本的名称依赖。普通定义的按名、标签或筛选查询仍须声明相应依赖。源库默认构造为空集合，普通 [`add`](definition_source_library/add.md) 验证名称冲突及普通名称依赖，并聚合返回结构化诊断；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
+需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`，不需要声明具体版本的名称依赖。普通定义的硬依赖仍须声明名称；仅查找或筛选本次集合不需要声明。源库默认构造为空集合，普通 [`add`](definition_source_library/add.md) 验证名称冲突及普通名称依赖，并聚合返回结构化诊断；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
 
 ## 事件响应
 
@@ -129,7 +132,7 @@ bool can_query() const;
 | `can_query<Q>()` 为 `true` | 使用对应 `query` |
 | `can_query<Q>()` 为 `false` | 使用 `query_default` |
 
-能力判断在编译定义库时对具体源对象进行。若返回 `true` 却没有匹配的实现，编译定义库抛出 `std::invalid_argument`；已有实现返回类型错误则属于 C++ 编译错误。能力判断须与源实际提供的实现一致。查询选定后仍遵守空参数查询求值一次、非空参数查询按本次参数求值的规则。
+能力判断在任何定义的 `compile` 或历史摘要的 `layout` 开始前对具体源对象进行，不能依赖这些操作的结果。元数据查询与最终定义库使用同次编译确定的能力。若返回 `true` 却没有匹配的实现，编译定义库抛出 `std::invalid_argument`；已有实现返回类型错误则属于 C++ 编译错误。能力判断须与源实际提供的实现一致。查询选定后仍遵守空参数查询求值一次、非空参数查询按本次参数求值的规则。
 
 游戏运行期间不再调用源对象的能力判断。定义库公开的 [`can_handle`](../executor/definition_library/can_handle.md) 查询返回本次编译确定的响应能力。
 

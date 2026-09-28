@@ -154,19 +154,19 @@ namespace
 
         std::string_view name() const { return remove ? "RemoveWeaponCard" : "EquipWeaponCard"; }
         auto attachment_dependencies() const { return std::array{ std::string_view{ "NewWeapon" } }; }
-        auto tag_dependencies() const
-        {
-            return std::array<std::string_view, 6>{ "equipment_target", "sword", "claymore", "polearm", "bow", "catalyst" };
-        }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return {
                 remove,
                 remove ? context.add_program(std::tuple{ givm::remove_attachment{} })
                     : context.add_program(std::tuple{ givm::add_attachment{} }),
-                context.resolve_id<givm::attachment_view>("NewWeapon"), context.resolve_tag("equipment_target"),
-                { context.resolve_tag("sword"), context.resolve_tag("claymore"), context.resolve_tag("polearm"),
-                    context.resolve_tag("bow"), context.resolve_tag("catalyst") }
+                context.resolve_id<givm::attachment_view>("NewWeapon"),
+                context.find_tag("equipment_target").value_or(givm::tag_id{}),
+                { context.find_tag("sword").value_or(givm::tag_id{}),
+                    context.find_tag("claymore").value_or(givm::tag_id{}),
+                    context.find_tag("polearm").value_or(givm::tag_id{}),
+                    context.find_tag("bow").value_or(givm::tag_id{}),
+                    context.find_tag("catalyst").value_or(givm::tag_id{}) }
             };
         }
         static givm::target_validation query(const definition_type& data, const givm::card_target_validation& parameters)
@@ -178,11 +178,11 @@ namespace
             const auto character = parameters.table[*target];
             if(not character.is_valid() || character.state().health == 0) return givm::target_validation::invalid;
             if(data.remove) return character.has(givm::equipment_type::weapon) ? givm::target_validation::valid_complete : givm::target_validation::invalid;
-            if(not parameters.library[character.definition_id()].has_tag(data.target_tag)) return givm::target_validation::invalid;
+            if(not data.target_tag || not parameters.library[character.definition_id()].has_tag(data.target_tag)) return givm::target_validation::invalid;
             constexpr std::array weapon_types{ givm::weapon_type::sword, givm::weapon_type::claymore,
                 givm::weapon_type::polearm, givm::weapon_type::bow, givm::weapon_type::catalyst };
             for(std::size_t index = 0; index < weapon_types.size(); ++index)
-                if(parameters.library[data.equipment].has_tag(data.weapon_types[index]))
+                if(data.weapon_types[index] && parameters.library[data.equipment].has_tag(data.weapon_types[index]))
                     return character.state().allowed_weapon_types[weapon_types[index]]
                         ? givm::target_validation::valid_complete : givm::target_validation::invalid;
             return givm::target_validation::invalid;

@@ -1,15 +1,15 @@
-[givm](../../../reference.md) / [执行](../../executor.md) / [definition_compile_context](../definition_compile_context.md) / **resolve_ids_by_tag**
+[givm](../../../reference.md) / [执行](../../executor.md) / [definition_compile_context](../definition_compile_context.md) / **find_ids_by_tag**
 
-# givm::definition_compile_context::resolve_ids_by_tag
+# givm::definition_compile_context::find_ids_by_tag
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
 template<class TCategory>
-std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter) const;
+std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) const;
 ```
 
-取得满足已声明标签条件的一组定义，适合编写从某类卡牌中检索或生成卡牌的效果。
+从本次编译集合中取得满足标签条件的一组定义，适合编写从当前规则提供的某类卡牌中检索或生成卡牌的效果。
 
 ## 模板参数
 
@@ -21,21 +21,17 @@ std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter
 
 |  |  |
 | --- | --- |
-| `filter` | 本源在对应 `*_dependencies_by_tag()` 中声明的完整表达式 |
+| `filter` | 标签筛选表达式；以 `&` 连接条件，`!标签` 表示排除该标签 |
 
 ## 返回值
 
-匹配条件的定义 ID 序列，按配套映射的 ID 分配顺序排列。
-
-## 异常
-
-|  |  |
-| --- | --- |
-| `std::invalid_argument` | 完整表达式未在本源的对应依赖声明中出现 |
+匹配条件的定义 ID 序列，按配套映射的 ID 分配顺序排列。无匹配时返回空序列。
 
 ## 注意
 
-筛选使用 [`query_by_tag`](../../definition/issued_id_map/query_by_tag.md) 的语法。声明与查询的字符串须完全一致，不能只在逻辑上等价。
+不需要预先声明筛选表达式。查询只查看选定定义及其按名称依赖形成的闭包，不会把源库中其他匹配定义加入编译结果。
+
+条件两侧允许空白，各条件不得为空，不支持括号或 `|`。未知的正向标签使结果为空；未知的排除标签不限制结果。例如未定义 `料理` 标签时，`治疗 & !料理` 与 `治疗` 的结果相同。
 
 ## 示例
 
@@ -59,12 +55,9 @@ struct search_source
 {
     using definition_category = givm::card_definition;
     std::string_view name() const { return "治疗检索"; }
-    auto card_dependencies_by_tag() const
-    { return std::array<std::string_view, 1>{ "治疗 & !料理" }; }
-
     auto compile(givm::definition_compile_context& context) const
     {
-        auto cards = context.resolve_ids_by_tag<givm::card_definition>("治疗 & !料理");
+        auto cards = context.find_ids_by_tag<givm::card_definition>("治疗 & !料理");
         std::println("可检索的治疗牌数量: {}", cards.size());
         return cards;
     }

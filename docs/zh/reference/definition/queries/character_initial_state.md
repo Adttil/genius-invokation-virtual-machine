@@ -25,4 +25,4 @@ struct character_initial_state
 
 角色初始状态只依赖编译后的定义，不依赖入场玩家、其他实体或当前牌桌。需要在入场之后产生的其他效果应另行表达。
 
-使用替代充能的定义可通过 `tag_dependencies()` 声明资源标签，在 `compile` 中用 [`resolve_tag`](../../executor/definition_compile_context/resolve_tag.md) 取得 ID，再将其写入本查询结果的 `energy_tag`；加载牌组时直接采用该初始状态，无需执行被动技能响应。
+使用替代充能的定义可将资源标签列入自身的 `tags()`，在 `compile` 中用 [`find_tag`](../../executor/definition_compile_context/find_tag.md) 查找 ID，再将其写入本查询结果的 `energy_tag`；使用结果前须确认标签存在。加载牌组时直接采用该初始状态，无需执行被动技能响应。

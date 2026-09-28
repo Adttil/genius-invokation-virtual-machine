@@ -54,6 +54,14 @@ namespace givm
 
     namespace detail
     {
+        struct basic_definition_names
+        {
+            std::string_view dendro_core;
+            std::string_view catalyzing_field;
+            std::string_view burning_flame;
+            std::string_view frozen;
+        };
+
         inline std::string source_definition_name_text(const definition_name& definition)
         {
             constexpr auto category_names = []
@@ -201,14 +209,14 @@ namespace givm
 
         issued_id_map make_issued_id_map(const basic_definition_sources& basics) const
         {
-            const auto sources = with_basic_definitions(basics);
+            const auto [sources, names] = with_basic_definitions(basics);
             return sources.make_issued_id_map(sources.make_full_selection());
         }
 
         issued_id_map make_issued_id_map(const basic_definition_sources& basics, const definition_selection& selection) const
         {
-            const auto sources = with_basic_definitions(basics);
-            return sources.make_issued_id_map(sources.resolve_selection(selection, basics));
+            const auto [sources, names] = with_basic_definitions(basics);
+            return sources.make_issued_id_map(sources.resolve_selection(selection, names));
         }
 
     private:
@@ -246,12 +254,6 @@ namespace givm
             size_t source_index;
         };
 
-        struct parsed_tag_filter
-        {
-            std::vector<std::string_view> required;
-            std::vector<std::string_view> excluded;
-        };
-
         template<class...TDefinition>
         using bucket_tuple_for = std::tuple<bucket<TDefinition>...>;
 
@@ -262,9 +264,6 @@ namespace givm
         using pending_tuple = definition_type_list::apply<pending_tuple_for>;
         using pending_sources_by_name = std::array<
             std::unordered_map<std::string_view, std::vector<std::size_t>>, definition_count>;
-
-        static constexpr std::string_view whitespace = " \t\n\r\f\v";
-        static constexpr std::string_view negation_or_whitespace = "! \t\n\r\f\v";
 
         template<class TDefinitionType>
         static consteval size_t index_of()
@@ -493,12 +492,12 @@ namespace givm
             }(std::make_index_sequence<definition_count>{});
         }
 
-        definition_source_library with_basic_definitions(const basic_definition_sources& basics) const
+        std::pair<definition_source_library, detail::basic_definition_names> with_basic_definitions(const basic_definition_sources& basics) const
         {
             auto sources = *this;
             pending_tuple pending;
             pending_names_type pending_names;
-            const auto prepare = [&]<class TCategory>(const definition_source_view<TCategory>& source)
+            const auto prepare = [&]<class TCategory>(const definition_source_view<TCategory>& source) -> std::string_view
             {
                 constexpr auto index = index_of<TCategory>();
                 const auto name = source.name();
@@ -508,7 +507,7 @@ namespace givm
                     const auto existing = bucket.entries[found->second].source;
                     if(existing.source_ != source.source_ || existing.rtti_ != source.rtti_)
                         throw std::invalid_argument{ "conflicting basic definition source" };
-                    return;
+                    return name;
                 }
                 auto& entries = std::get<index>(pending);
                 const auto found = std::ranges::find(entries, name, &pending_entry<TCategory>::name);
@@ -516,19 +515,22 @@ namespace givm
                 {
                     if(found->source.source_ != source.source_ || found->source.rtti_ != source.rtti_)
                         throw std::invalid_argument{ "conflicting basic definition source" };
-                    return;
+                    return name;
                 }
                 pending_names[index].insert(name);
                 entries.push_back({ .source = source, .name = name, .declarations = source.declarations() });
+                return name;
             };
-            prepare(basics.dendro_core);
-            prepare(basics.catalyzing_field);
-            prepare(basics.burning_flame);
-            prepare(basics.frozen);
+            const detail::basic_definition_names names{
+                .dendro_core = prepare(basics.dendro_core),
+                .catalyzing_field = prepare(basics.catalyzing_field),
+                .burning_flame = prepare(basics.burning_flame),
+                .frozen = prepare(basics.frozen)
+            };
             if(not sources.check_pending_dependencies(pending, pending_names))
                 throw std::invalid_argument{ "missing basic definition dependency" };
             sources.commit_pending(pending);
-            return sources;
+            return { std::move(sources), names };
         }
 
         selection_mask make_empty_selection() const
@@ -551,15 +553,15 @@ namespace givm
             return selected;
         }
 
-        selection_mask resolve_selection(const definition_selection& selection, const basic_definition_sources& basics) const
+        selection_mask resolve_selection(const definition_selection& selection, const detail::basic_definition_names& basics) const
         {
             auto selected = make_empty_selection();
             std::vector<queue_item> queue;
 
-            enqueue_name<index_of<combat_status_view>()>(basics.dendro_core.name(), selected, queue);
-            enqueue_name<index_of<combat_status_view>()>(basics.catalyzing_field.name(), selected, queue);
-            enqueue_name<index_of<summon_view>()>(basics.burning_flame.name(), selected, queue);
-            enqueue_name<index_of<attachment_view>()>(basics.frozen.name(), selected, queue);
+            enqueue_name<index_of<combat_status_view>()>(basics.dendro_core, selected, queue);
+            enqueue_name<index_of<combat_status_view>()>(basics.catalyzing_field, selected, queue);
+            enqueue_name<index_of<summon_view>()>(basics.burning_flame, selected, queue);
+            enqueue_name<index_of<attachment_view>()>(basics.frozen, selected, queue);
 
             [&]<size_t...I>(std::index_sequence<I...>)
             {
@@ -636,7 +638,6 @@ namespace givm
             [&]<size_t...J>(std::index_sequence<J...>)
             {
                 (enqueue_dependencies<J>(entry.declarations.dependencies[J], selected, queue), ...);
-                (enqueue_dependencies_by_tag<J>(entry.declarations.dependencies_by_tag[J], selected, queue), ...);
             }(std::make_index_sequence<definition_count>{});
         }
 
@@ -651,104 +652,6 @@ namespace givm
             {
                 enqueue_name<I>(name, selected, queue);
             }
-        }
-
-        template<size_t I>
-        void enqueue_dependencies_by_tag(
-            const std::vector<std::string_view>& filters,
-            selection_mask& selected,
-            std::vector<queue_item>& queue
-        ) const
-        {
-            for(std::string_view filter : filters)
-            {
-                const parsed_tag_filter parsed = parse_tag_filter(filter);
-                enqueue_matching_tags<I>(parsed, selected, queue);
-            }
-        }
-
-        template<size_t I>
-        void enqueue_matching_tags(
-            const parsed_tag_filter& filter,
-            selection_mask& selected,
-            std::vector<queue_item>& queue
-        ) const
-        {
-            const auto& entries = std::get<I>(buckets_).entries;
-            for(size_t index = 0; index < entries.size(); ++index)
-            {
-                if(match_tags(entries[index].declarations.tags, filter))
-                {
-                    enqueue<I>(index, selected, queue);
-                }
-            }
-        }
-
-        static parsed_tag_filter parse_tag_filter(std::string_view expression)
-        {
-            const auto terms = expression
-                | std::views::split('&')
-                | std::ranges::to<std::vector>();
-
-            parsed_tag_filter result;
-            result.required.reserve(terms.size());
-            result.excluded.reserve(terms.size());
-
-            for(const auto& range : terms)
-            {
-                const std::string_view term{ range };
-                const size_t tag_end = term.find_last_not_of(whitespace) + 1;
-                const size_t split = term.find_last_of(negation_or_whitespace, tag_end - 1);
-                if(split == std::string_view::npos)
-                {
-                    result.required.emplace_back(term.substr(0, tag_end));
-                    continue;
-                }
-
-                const std::string_view tag = term.substr(split + 1, tag_end - split - 1);
-                if(term[split] == '!' || term.find_last_not_of(whitespace, split) != std::string_view::npos)
-                {
-                    result.excluded.emplace_back(tag);
-                }
-                else
-                {
-                    result.required.emplace_back(tag);
-                }
-            }
-
-            return result;
-        }
-
-        static bool contains_tag(
-            const std::vector<std::string_view>& tags,
-            std::string_view tag
-        )
-        {
-            return std::ranges::find(tags, tag) != tags.end();
-        }
-
-        static bool match_tags(
-            const std::vector<std::string_view>& tags,
-            const parsed_tag_filter& filter
-        )
-        {
-            for(std::string_view tag : filter.required)
-            {
-                if(not contains_tag(tags, tag))
-                {
-                    return false;
-                }
-            }
-
-            for(std::string_view tag : filter.excluded)
-            {
-                if(contains_tag(tags, tag))
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         issued_id_map make_issued_id_map(const selection_mask& selected) const
@@ -783,29 +686,6 @@ namespace givm
             {
                 const auto& declarations = entries[index].declarations;
                 tags.insert(tags.end(), declarations.tags.begin(), declarations.tags.end());
-                tags.insert(
-                    tags.end(),
-                    declarations.tag_dependencies.begin(),
-                    declarations.tag_dependencies.end()
-                );
-
-                [&]<size_t...J>(std::index_sequence<J...>)
-                {
-                    (collect_filter_tags(declarations.dependencies_by_tag[J], tags), ...);
-                }(std::make_index_sequence<definition_count>{});
-            }
-        }
-
-        static void collect_filter_tags(
-            const std::vector<std::string_view>& filters,
-            std::vector<std::string_view>& tags
-        )
-        {
-            for(std::string_view filter : filters)
-            {
-                const parsed_tag_filter parsed = parse_tag_filter(filter);
-                tags.insert(tags.end(), parsed.required.begin(), parsed.required.end());
-                tags.insert(tags.end(), parsed.excluded.begin(), parsed.excluded.end());
             }
         }
 

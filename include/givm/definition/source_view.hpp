@@ -53,6 +53,13 @@ namespace givm::detail
     template<class TQuery>
     using query_fn_t = TQuery::result_t (*)(const definition_data&, const TQuery&);
 
+    template<class TQuery>
+    inline TQuery::result_t default_query(const definition_data&, const TQuery& query)
+    {
+        static_assert(std::same_as<decltype(query_default(query)), typename TQuery::result_t>);
+        return query_default(query);
+    }
+
     using definition_dependency_lists =
         std::array<std::vector<std::string_view>, definition_types::size()>;
 
@@ -60,8 +67,6 @@ namespace givm::detail
     {
         std::vector<std::string_view> tags;
         definition_dependency_lists dependencies;
-        std::vector<std::string_view> tag_dependencies;
-        definition_dependency_lists dependencies_by_tag;
     };
 
     template<class TItems>
@@ -81,19 +86,6 @@ namespace givm::detail
         if constexpr(requires { source.tags(); })
         {
             return source.tags();
-        }
-        else
-        {
-            return std::array<std::string_view, 0>{};
-        }
-    }
-
-    template<class TSource>
-    constexpr decltype(auto) definition_tag_dependencies(const TSource& source)
-    {
-        if constexpr(requires { source.tag_dependencies(); })
-        {
-            return source.tag_dependencies();
         }
         else
         {
@@ -155,66 +147,6 @@ namespace givm::detail
         }
     }
 
-    template<class TCategory, class TSource>
-    constexpr decltype(auto) definition_dependencies_by_tag(const TSource& source)
-    {
-        if constexpr(std::same_as<TCategory, card_definition>)
-        {
-            if constexpr(requires { source.card_dependencies_by_tag(); })
-                return source.card_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else if constexpr(std::same_as<TCategory, status_definition>)
-        {
-            if constexpr(requires { source.status_dependencies_by_tag(); })
-                return source.status_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else if constexpr(std::same_as<TCategory, support_view>)
-        {
-            if constexpr(requires { source.support_dependencies_by_tag(); })
-                return source.support_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else if constexpr(std::same_as<TCategory, summon_view>)
-        {
-            if constexpr(requires { source.summon_dependencies_by_tag(); })
-                return source.summon_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else if constexpr(std::same_as<TCategory, combat_status_view>)
-        {
-            if constexpr(requires { source.combat_status_dependencies_by_tag(); })
-                return source.combat_status_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else if constexpr(std::same_as<TCategory, character_view>)
-        {
-            if constexpr(requires { source.character_dependencies_by_tag(); })
-                return source.character_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else if constexpr(std::same_as<TCategory, skill_view>)
-        {
-            if constexpr(requires { source.skill_dependencies_by_tag(); })
-                return source.skill_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else if constexpr(std::same_as<TCategory, history_summary_definition>)
-        {
-            if constexpr(requires { source.history_summary_dependencies_by_tag(); })
-                return source.history_summary_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-        else
-        {
-            static_assert(std::same_as<TCategory, attachment_view>);
-            if constexpr(requires { source.attachment_dependencies_by_tag(); })
-                return source.attachment_dependencies_by_tag();
-            else return std::array<std::string_view, 0>{};
-        }
-    }
-
     template<class TSource>
     using definition_for_source_t = std::remove_cvref_t<decltype(
         std::declval<const TSource&>().compile(std::declval<definition_compile_context&>())
@@ -261,17 +193,6 @@ namespace givm
         std::vector<std::string_view> dependencies() const
         {
             return rtti_->dependencies[definition_types::index_of<TDependencyCategory>()](source_);
-        }
-
-        std::vector<std::string_view> tag_dependencies() const
-        {
-            return rtti_->tag_dependencies(source_);
-        }
-
-        template<class TDependencyCategory>
-        std::vector<std::string_view> dependencies_by_tag() const
-        {
-            return rtti_->dependencies_by_tag[definition_types::index_of<TDependencyCategory>()](source_);
         }
 
     private:
@@ -323,9 +244,6 @@ namespace givm
             std::string_view(*name)(const void*);
             std::vector<std::string_view>(*tags)(const void*);
             std::array<std::vector<std::string_view>(*)(const void*), definition_types::size()> dependencies;
-            std::vector<std::string_view>(*tag_dependencies)(const void*);
-            std::array<std::vector<std::string_view>(*)(const void*), definition_types::size()>
-                dependencies_by_tag;
             definition_data(*compile)(const void*, definition_compile_context&);
             handle_fn_getter_tuple_t handle_fn_getters;
 #ifdef _MSC_VER
@@ -351,15 +269,12 @@ namespace givm
         detail::definition_source_declarations declarations() const
         {
             detail::definition_source_declarations result{
-                .tags = tags(),
-                .tag_dependencies = tag_dependencies()
+                .tags = tags()
             };
             [&]<std::size_t... I>(std::index_sequence<I...>)
             {
                 ((result.dependencies[I] =
                     rtti_->dependencies[I](source_)), ...);
-                ((result.dependencies_by_tag[I] =
-                    rtti_->dependencies_by_tag[I](source_)), ...);
             }(std::make_index_sequence<definition_types::size()>{});
             return result;
         }
@@ -390,15 +305,6 @@ namespace givm
                     );
                 },
                 .dependencies = make_dependencies<TSource>(
-                    std::make_index_sequence<definition_types::size()>{}
-                ),
-                .tag_dependencies = +[](const void* source)
-                {
-                    return detail::collect_definition_strings(
-                        detail::definition_tag_dependencies(*static_cast<const TSource*>(source))
-                    );
-                },
-                .dependencies_by_tag = make_dependencies_by_tag<TSource>(
                     std::make_index_sequence<definition_types::size()>{}
                 ),
                 .compile = +[](const void* source, definition_compile_context& context)
@@ -495,18 +401,6 @@ namespace givm
             };
         }
 
-        template<class TQuery>
-        static constexpr detail::query_fn_t<TQuery> make_default_query_fn()
-        {
-            static_assert(std::same_as<
-                decltype(query_default(std::declval<const TQuery&>())), typename TQuery::result_t
-            >);
-            return +[](const definition_data&, const TQuery& query) -> TQuery::result_t
-            {
-                return query_default(query);
-            };
-        }
-
         template<class TSource, class TQuery>
         static detail::query_fn_t<TQuery> make_query_fn(const TSource& source)
         {
@@ -515,7 +409,7 @@ namespace givm
                 static_assert(std::same_as<decltype(source.template can_query<TQuery>()), bool>);
                 if(not source.template can_query<TQuery>())
                 {
-                    return make_default_query_fn<TQuery>();
+                    return nullptr;
                 }
             }
 
@@ -539,7 +433,7 @@ namespace givm
             }
             else
             {
-                return make_default_query_fn<TQuery>();
+                return nullptr;
             }
         }
 
@@ -552,22 +446,6 @@ namespace givm
                     using dependency_category = typename definition_types::template type_at<I>;
                     return detail::collect_definition_strings(
                         detail::definition_dependencies<dependency_category>(
-                            *static_cast<const TSource*>(source)
-                        )
-                    );
-                })...
-            };
-        }
-
-        template<class TSource, std::size_t... I>
-        static constexpr auto make_dependencies_by_tag(std::index_sequence<I...>)
-        {
-            return std::array<std::vector<std::string_view>(*)(const void*), definition_types::size()>{
-                (+[](const void* source)
-                {
-                    using dependency_category = typename definition_types::template type_at<I>;
-                    return detail::collect_definition_strings(
-                        detail::definition_dependencies_by_tag<dependency_category>(
                             *static_cast<const TSource*>(source)
                         )
                     );

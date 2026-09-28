@@ -116,14 +116,19 @@ namespace givm
                 const std::string_view term{ range };
                 const size_t tag_end = term.find_last_not_of(whitespace) + 1;
                 const size_t split = term.find_last_of(negation_or_whitespace, tag_end - 1);
-                if(split == std::string_view::npos)
+                const bool excluded = split != std::string_view::npos
+                    && (term[split] == '!' || term.find_last_not_of(whitespace, split) != std::string_view::npos);
+                const auto name = split == std::string_view::npos
+                    ? term.substr(0, tag_end) : term.substr(split + 1, tag_end - split - 1);
+                const auto found = tag_to_id_.find(name);
+                if(found == tag_to_id_.end())
                 {
-                    tags[required_count++] = get_tag_id(term.substr(0, tag_end));
+                    if(not excluded) return {};
                     continue;
                 }
 
-                const auto tag = get_tag_id(term.substr(split + 1, tag_end - split - 1));
-                if(term[split] == '!' || term.find_last_not_of(whitespace, split) != std::string_view::npos)
+                const tag_id tag{ found->second };
+                if(excluded)
                 {
                     tags[--excluded_begin] = tag;
                 }

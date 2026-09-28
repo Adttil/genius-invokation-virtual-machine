@@ -24,17 +24,16 @@ namespace
         struct definition_type { givm::tag_id target_tag; };
 
         std::string_view name() const noexcept { return "TaggedTargetCard"; }
-        auto tag_dependencies() const { return std::array{ std::string_view{ "allowed_target" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_tag("allowed_target") };
+            return { context.find_tag("allowed_target").value_or(givm::tag_id{}) };
         }
         static givm::target_validation query(const definition_type& data, const givm::card_target_validation& query)
         {
             if(query.target_count == 0) return givm::target_validation::valid_incomplete;
             if(query.target_count != 1) return givm::target_validation::invalid;
             const auto* target = std::get_if<givm::character_id>(&query.targets[0]);
-            return target != nullptr && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
+            return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::program_entry handle(
@@ -50,17 +49,16 @@ namespace
         struct definition_type { givm::tag_id target_tag; };
 
         std::string_view name() const noexcept { return "TaggedTargetSkill"; }
-        auto tag_dependencies() const { return std::array{ std::string_view{ "allowed_target" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_tag("allowed_target") };
+            return { context.find_tag("allowed_target").value_or(givm::tag_id{}) };
         }
         static givm::target_validation query(const definition_type& data, const givm::skill_target_validation& query)
         {
             if(query.target_count == 0) return givm::target_validation::valid_incomplete;
             if(query.target_count != 1) return givm::target_validation::invalid;
             const auto* target = std::get_if<givm::character_id>(&query.targets[0]);
-            return target != nullptr && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
+            return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::program_entry handle(

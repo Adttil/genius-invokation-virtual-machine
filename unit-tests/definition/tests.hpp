@@ -1,4 +1,5 @@
 #include "commands.hpp"
+#include "issued_id_map.hpp"
 #include "program.hpp"
 #include "queries.hpp"
 #include "source_library.hpp"

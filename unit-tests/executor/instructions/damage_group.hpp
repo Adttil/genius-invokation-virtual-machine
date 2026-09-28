@@ -59,7 +59,6 @@ namespace
 
         std::string_view name() const noexcept { return "GroupObserver"; }
         auto tags() const { return std::array{ std::string_view{ "GroupReactionReplacement" } }; }
-        auto tag_dependencies() const { return tags(); }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log,
@@ -74,7 +73,7 @@ namespace
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro }
                 }),
                 context.add_program(std::tuple{ givm::replace_cards{ .player = attacking_player } }),
-                context.resolve_tag("GroupReactionReplacement") };
+                *context.find_tag("GroupReactionReplacement") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {

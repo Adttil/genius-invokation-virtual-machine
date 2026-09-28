@@ -352,7 +352,7 @@ status 不一定稀有到只有少数卡拥有；很容易出现几乎每张手�
 - 清理：安全点原地填洞并保留 capacity；
 - ID：牌堆卡 ID 指向槽位，status ID 同时保存 owner ID 与节点槽位。
 
-status 使用独立的 `status_definition`，并按上下文生成 `hand_card_status_view` 与 `deck_card_status_view` 两套响应函数表。定义源边界相应提供可选的 `status_dependencies()` 与 `status_dependencies_by_tag()`。默认广播顺序为卡牌在前、该卡链中的 status 在后；实际规则需要其他顺序时仍可由具体指令显式采样并压入对应顺序的广播目标快照。
+status 使用独立的 `status_definition`，并按上下文生成 `hand_card_status_view` 与 `deck_card_status_view` 两套响应函数表。定义源边界提供可选的 `status_dependencies()` 声明名称依赖；按标签筛选只查询本次编译集合。默认广播顺序为卡牌在前、该卡链中的 status 在后；实际规则需要其他顺序时仍可由具体指令显式采样并压入对应顺序的广播目标快照。
 
 这一版的目标不是提前宣称最终性能最优，而是建立正确、简单、可测试的基线。后续至少应比较：
 

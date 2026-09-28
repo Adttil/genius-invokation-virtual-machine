@@ -25,8 +25,6 @@ class definition_source_view;
 | [`name`](definition_source_view/name.md) | 取得定义名称 |
 | [`tags`](definition_source_view/tags.md) | 取得分类标签 |
 | [`dependencies`](definition_source_view/dependencies.md) | 取得按名称声明的依赖 |
-| [`tag_dependencies`](definition_source_view/tag_dependencies.md) | 取得将直接查询的标签 |
-| [`dependencies_by_tag`](definition_source_view/dependencies_by_tag.md) | 取得按标签筛选的依赖 |
 
 ## 注意
 
@@ -49,10 +47,6 @@ struct card_source
     auto tags() const { return std::array<std::string_view, 1>{ "召唤" }; }
     auto support_dependencies() const
     { return std::array<std::string_view, 1>{ "协助者" }; }
-    auto tag_dependencies() const
-    { return std::array<std::string_view, 1>{ "治疗" }; }
-    auto card_dependencies_by_tag() const
-    { return std::array<std::string_view, 1>{ "治疗 & !料理" }; }
     int compile(givm::definition_compile_context&) const { return 0; }
 };
 

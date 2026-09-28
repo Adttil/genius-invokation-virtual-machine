@@ -201,7 +201,7 @@ namespace
         std::uint32_t health = 10;
 
         std::string_view name() const { return source_name; }
-        auto tag_dependencies() const { return std::array{ std::string_view{ "special_energy" } }; }
+        auto tags() const { return std::array{ std::string_view{ "special_energy" } }; }
         auto skill_dependencies() const
         {
             return std::array{ std::string_view{ "MutableSkill" }, std::string_view{ "MutationObserver" } };
@@ -209,7 +209,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { { .max_health = 10, .max_energy = log->max_energy, .health = health,
-                .energy = log->initial_energy, .energy_tag = context.resolve_tag("special_energy") },
+                .energy = log->initial_energy, .energy_tag = *context.find_tag("special_energy") },
                 context.resolve_id<givm::skill_view>("MutableSkill"),
                 observe ? context.resolve_id<givm::skill_view>("MutationObserver")
                     : givm::definition_id<givm::skill_view>{} };

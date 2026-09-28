@@ -56,8 +56,12 @@ namespace
             return false;
         }
 
-        definition_type compile(givm::definition_compile_context&) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
+            const auto self = context.find_definition<givm::card_definition>(source_name);
+            REQUIRE(self);
+            CHECK(self->has_query<givm::card_initial_state>());
+            CHECK(self->has_query<givm::card_target_validation>());
             return { counts, static_cast<std::uint8_t>(base_cost + 1), minimum_remaining_cards,
                 elemental_tuning_allowed };
         }
@@ -92,6 +96,18 @@ namespace
         bool initial_state_enabled;
         bool target_validation_enabled;
 
+        definition_type compile(givm::definition_compile_context& context) const
+        {
+            const auto capability_checks = counts->capability_checks;
+            const auto self = context.find_definition<givm::card_definition>(source_name);
+            REQUIRE(self);
+            CHECK(self->has_query<givm::card_initial_state>() == initial_state_enabled);
+            CHECK(self->has_query<givm::card_target_validation>() == target_validation_enabled);
+            CHECK(counts->capability_checks == capability_checks);
+            return { counts, static_cast<std::uint8_t>(base_cost + 1), minimum_remaining_cards,
+                elemental_tuning_allowed };
+        }
+
         template<class TView, class TEvent>
         bool can_handle() const noexcept { return false; }
 
@@ -121,8 +137,11 @@ namespace
 
         std::string_view name() const noexcept { return "ModifyingStatus"; }
 
-        definition_type compile(givm::definition_compile_context&) const
+        definition_type compile(givm::definition_compile_context& context) const
         {
+            const auto self = context.find_definition<givm::status_definition>("ModifyingStatus");
+            REQUIRE(self);
+            CHECK(self->has_query<givm::card_state_modification>());
             return { calls, cost_per_count };
         }
 
@@ -144,6 +163,16 @@ namespace
         std::uint32_t* capability_checks;
 
         std::string_view name() const noexcept { return source_name; }
+
+        definition_type compile(givm::definition_compile_context& context) const
+        {
+            const auto previous_capability_checks = *capability_checks;
+            const auto self = context.find_definition<givm::status_definition>(source_name);
+            REQUIRE(self);
+            CHECK(self->has_query<givm::card_state_modification>() == enabled);
+            CHECK(*capability_checks == previous_capability_checks);
+            return { calls, cost_per_count };
+        }
 
         template<class TView, class TEvent>
         bool can_handle() const noexcept { return false; }

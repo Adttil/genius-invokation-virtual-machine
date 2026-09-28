@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <limits>
+#include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <span>
@@ -33,6 +34,73 @@ namespace givm::detail
         definition_id<summon_view> burning_flame;
         definition_id<attachment_view> frozen;
     };
+
+    template<class TView>
+    struct definition_handle_vectors
+    {
+        template<class... TEvents>
+        using tuple_for = std::tuple<std::vector<handle_fn_t<TView, TEvents>>...>;
+
+        using type = subscribed_events<TView>::template apply<tuple_for>;
+    };
+
+    template<class... TViews>
+    using definition_handle_groups = std::tuple<typename definition_handle_vectors<TViews>::type...>;
+
+    template<class... TQueries>
+    using definition_query_vectors = std::tuple<std::vector<std::conditional_t<
+        std::is_empty_v<TQueries>, typename TQueries::result_t, query_fn_t<TQueries>>>...>;
+
+    template<class TCategory>
+    struct definition_bucket
+    {
+        std::vector<std::string_view> names;
+        std::vector<definition_data> data;
+        std::vector<tag_mask> tags;
+        views_of_definition<TCategory>::template apply<definition_handle_groups> handle_fns;
+#ifdef _MSC_VER
+        [[msvc::no_unique_address]]
+#else
+        [[no_unique_address]]
+#endif
+        typename supported_queries<TCategory>::template apply<definition_query_vectors> queries;
+    };
+
+    template<class... TCategories>
+    using definition_bucket_tuple = std::tuple<definition_bucket<TCategories>...>;
+
+    template<class TEvent>
+    struct history_handler
+    {
+        std::size_t index;
+        history_handle_fn_t<TEvent> function;
+    };
+
+    template<class... TEvents>
+    using history_handler_lists = std::tuple<std::vector<history_handler<TEvents>>...>;
+
+    using definition_history_handlers = subscribed_events<history_summary_definition>::apply<history_handler_lists>;
+
+    template<class... TQueries>
+    using static_query_functions = std::tuple<std::conditional_t<
+        std::is_empty_v<TQueries>, query_fn_t<TQueries>, std::monostate>...>;
+
+    template<class TCategory>
+    struct compile_definition
+    {
+        const definition_source_view<TCategory>* source;
+        definition_id<TCategory> id;
+        const definition_source_declarations* declarations;
+        const definition_bucket<TCategory>* bucket;
+        supported_queries<TCategory>::template apply<static_query_functions> static_queries{};
+        std::conditional_t<std::same_as<TCategory, history_summary_definition>,
+            const definition_history_handlers*, std::monostate> history{};
+    };
+
+    template<class... TCategories>
+    using compile_definition_vectors = std::tuple<std::vector<compile_definition<TCategories>>...>;
+
+    using compile_definitions = definition_types::apply<compile_definition_vectors>;
 
     struct compiled_history_field
     {
@@ -141,6 +209,102 @@ namespace givm
     class definition_compile_context
     {
     public:
+        template<class TCategory>
+        class definition_view
+        {
+        public:
+            definition_id<TCategory> id() const noexcept
+            {
+                return definition_->id;
+            }
+
+            std::string_view name() const noexcept
+            {
+                return definition_->bucket->names[definition_->id.value()];
+            }
+
+            std::span<const std::string_view> tags() const noexcept
+            {
+                return definition_->declarations->tags;
+            }
+
+            bool has_tag(std::string_view name) const noexcept
+            {
+                return std::ranges::find(tags(), name) != tags().end();
+            }
+
+            template<class TDependencyCategory>
+            std::span<const std::string_view> dependencies() const noexcept
+            {
+                return definition_->declarations->dependencies[definition_types::index_of<TDependencyCategory>()];
+            }
+
+            template<class TEvent, class TView = TCategory>
+            bool can_handle() const noexcept
+            {
+                if constexpr(std::same_as<TCategory, history_summary_definition>
+                    && std::same_as<TView, history_summary_definition>)
+                {
+                    if constexpr(requires { subscribed_events<TCategory>::template index_of<TEvent>(); })
+                        return std::ranges::binary_search(
+                            std::get<subscribed_events<TCategory>::template index_of<TEvent>()>(*definition_->history),
+                            definition_->id.value(), {}, &detail::history_handler<TEvent>::index);
+                    else return false;
+                }
+                else if constexpr(requires { views_of_definition<TCategory>::template index_of<TView>(); })
+                {
+                    if constexpr(requires { subscribed_events<TView>::template index_of<TEvent>(); })
+                        return std::get<subscribed_events<TView>::template index_of<TEvent>()>(
+                            std::get<views_of_definition<TCategory>::template index_of<TView>()>(definition_->bucket->handle_fns))
+                            [definition_->id.value()] != nullptr;
+                    else return false;
+                }
+                else return false;
+            }
+
+            template<class TQuery>
+            bool has_query() const noexcept
+            {
+                if constexpr(requires { supported_queries<TCategory>::template index_of<TQuery>(); })
+                {
+                    constexpr auto index = supported_queries<TCategory>::template index_of<TQuery>();
+                    if constexpr(std::is_empty_v<TQuery>)
+                        return std::get<index>(definition_->static_queries) != nullptr;
+                    else
+                        return std::get<index>(definition_->bucket->queries)[definition_->id.value()] != nullptr;
+                }
+                else return false;
+            }
+
+        private:
+            definition_view(const detail::compile_definition<TCategory>& definition)
+            : definition_{ &definition }
+            {}
+
+            const detail::compile_definition<TCategory>* definition_;
+            friend class definition_compile_context;
+        };
+
+        template<class TCategory>
+        auto definitions() const noexcept
+        {
+            return std::span{ std::get<definition_types::index_of<TCategory>()>(definitions_) }
+                | std::views::transform([](const auto& definition) { return definition_view<TCategory>{ definition }; });
+        }
+
+        template<class TCategory>
+        definition_view<TCategory> operator[](definition_id<TCategory> id) const noexcept
+        {
+            return { std::get<definition_types::index_of<TCategory>()>(definitions_)[id.value()] };
+        }
+
+        template<class TCategory>
+        std::optional<definition_view<TCategory>> find_definition(std::string_view name) const
+        {
+            if(not id_map_.has<TCategory>(name)) return std::nullopt;
+            return (*this)[id_map_.get_id<TCategory>(name)];
+        }
+
         definition_id<combat_status_view> dendro_core_id() const noexcept
         {
             return basic_ids_.dendro_core;
@@ -212,24 +376,15 @@ namespace givm
             return id_map_.get_id<TCategory>(name);
         }
 
-        tag_id resolve_tag(std::string_view name) const
+        std::optional<tag_id> find_tag(std::string_view name) const
         {
-            if(not contains(declarations_.tag_dependencies, name) || not id_map_.has_tag(name))
-            {
-                throw std::invalid_argument{ "undeclared tag dependency" };
-            }
+            if(not id_map_.has_tag(name)) return std::nullopt;
             return id_map_.get_tag_id(name);
         }
 
         template<class TCategory>
-        std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter) const
+        std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) const
         {
-            const auto& declared =
-                declarations_.dependencies_by_tag[definition_types::index_of<TCategory>()];
-            if(not contains(declared, filter))
-            {
-                throw std::invalid_argument{ "undeclared definition tag dependency" };
-            }
             return id_map_.query_by_tag<TCategory>(filter);
         }
 
@@ -257,6 +412,7 @@ namespace givm
     private:
         definition_compile_context(
             const issued_id_map& id_map,
+            const detail::compile_definitions& definitions,
             const detail::basic_definition_ids& basic_ids,
             detail::program_bytes& program,
             const detail::definition_source_declarations& declarations,
@@ -268,7 +424,7 @@ namespace givm
             , std::vector<std::size_t>& input_markers
 #endif
         )
-        : id_map_{ id_map }, basic_ids_{ basic_ids }, program_{ program }, declarations_{ declarations }, mode_{ mode },
+        : id_map_{ id_map }, definitions_{ definitions }, basic_ids_{ basic_ids }, program_{ program }, declarations_{ declarations }, mode_{ mode },
           history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }
 #ifndef NDEBUG
         , input_markers_{ input_markers }
@@ -281,6 +437,7 @@ namespace givm
         }
 
         const issued_id_map& id_map_;
+        const detail::compile_definitions& definitions_;
         const detail::basic_definition_ids& basic_ids_;
         detail::program_bytes& program_;
         const detail::definition_source_declarations& declarations_;
@@ -620,82 +777,13 @@ namespace givm
     private:
         using definition_type_list = definition_types;
 
-        template<class TEvent>
-        struct history_handler
-        {
-            std::size_t index;
-            detail::history_handle_fn_t<TEvent> function;
-        };
-
-        template<class... TEvents>
-        using history_handler_lists = std::tuple<std::vector<history_handler<TEvents>>...>;
-
-        template<class TView, class TSequence>
-        struct handle_fn_vectors_impl;
-
-        template<class TView, size_t...I>
-        struct handle_fn_vectors_impl<TView, std::index_sequence<I...>>
-        {
-            using type = std::tuple<
-                std::vector<handle_fn_t<TView, typename subscribed_events<TView>::template type_at<I>>>...
-            >;
-        };
-
-        template<class TView>
-        using handle_fn_vectors_t = typename handle_fn_vectors_impl<
-            TView,
-            std::make_index_sequence<subscribed_events<TView>::size()>
-        >::type;
-
-        template<class TDefinitionType, class TSequence>
-        struct handle_fn_vector_groups_impl;
-
-        template<class TDefinitionType, size_t...I>
-        struct handle_fn_vector_groups_impl<TDefinitionType, std::index_sequence<I...>>
-        {
-            using type = std::tuple<
-                handle_fn_vectors_t<typename views_of_definition<TDefinitionType>::template type_at<I>>...
-            >;
-        };
-
-        template<class TDefinitionType>
-        using handle_fn_vector_groups_t = typename handle_fn_vector_groups_impl<
-            TDefinitionType,
-            std::make_index_sequence<views_of_definition<TDefinitionType>::size()>
-        >::type;
-
-        template<class... TQueries>
-        using query_vectors_for = std::tuple<std::vector<std::conditional_t<
-            std::is_empty_v<TQueries>, typename TQueries::result_t, detail::query_fn_t<TQueries>
-        >>...>;
-
-        template<class TDefinitionType>
-        struct bucket
-        {
-            std::vector<std::string_view> names;
-            std::vector<definition_data> data;
-            std::vector<tag_mask> tags;
-            handle_fn_vector_groups_t<TDefinitionType> handle_fns;
-#ifdef _MSC_VER
-            [[msvc::no_unique_address]]
-#else
-            [[no_unique_address]]
-#endif
-            typename supported_queries<TDefinitionType>::template apply<query_vectors_for> queries;
-        };
-
-        template<class...TDefinition>
-        using bucket_tuple_for = std::tuple<bucket<TDefinition>...>;
-
-        using bucket_tuple = definition_type_list::apply<bucket_tuple_for>;
-
-        definition_library(const issued_id_map& id_map, const basic_definition_sources& basics)
+        definition_library(const issued_id_map& id_map, const detail::basic_definition_names& basics)
         : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end()),
           basic_ids_{
-              id_map.get_id<combat_status_view>(basics.dendro_core.name()),
-              id_map.get_id<combat_status_view>(basics.catalyzing_field.name()),
-              id_map.get_id<summon_view>(basics.burning_flame.name()),
-              id_map.get_id<attachment_view>(basics.frozen.name()) }
+              id_map.get_id<combat_status_view>(basics.dendro_core),
+              id_map.get_id<combat_status_view>(basics.catalyzing_field),
+              id_map.get_id<summon_view>(basics.burning_flame),
+              id_map.get_id<attachment_view>(basics.frozen) }
         {
             constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
                 "weapon", "artifact", "talent", "technique"
@@ -764,66 +852,48 @@ namespace givm
         }
 
         template<class TDefinitionType>
-        void append(
-            const definition_source_view<TDefinitionType>& source,
+        void compile_source(
+            const detail::compile_definition<TDefinitionType>& definition,
             const issued_id_map& id_map,
+            const detail::compile_definitions& definitions,
             compile_mode mode
         )
         {
-            const auto declarations = source.declarations();
             auto& bucket = bucket_for<TDefinitionType>();
             definition_id<history_summary_definition> own_history;
             if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
-                own_history = id_map.get_id<history_summary_definition>(source.name());
-            definition_compile_context context{ id_map, basic_ids_, program_, declarations, mode, history_layouts_, own_history, true
+                own_history = definition.id;
+            definition_compile_context context{ id_map, definitions, basic_ids_, program_, *definition.declarations,
+                mode, history_layouts_, own_history, true
 #ifndef NDEBUG
                 , input_markers_
 #endif
             };
-            definition_data data = source.compile(context);
-
-            bucket.names.push_back(source.name());
-            bucket.data.push_back(std::move(data));
-            bucket.tags.push_back(make_tag_mask(declarations.tags, id_map));
-            if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
-            {
-                subscribed_events<history_summary_definition>::each([&]<class TEvent>
-                {
-                    constexpr auto index = subscribed_events<history_summary_definition>::template index_of<TEvent>();
-                    if(const auto handler = std::get<index>(source.rtti_->history.handles)(source.source_))
-                        std::get<index>(history_handlers_).push_back({ own_history.value(), handler });
-                });
-            }
-            append_handle_fns(bucket, source,
-                              std::make_index_sequence<views_of_definition<TDefinitionType>::size()>{});
+            auto& data = bucket.data[definition.id.value()];
+            data = definition.source->compile(context);
             if constexpr(supported_queries<TDefinitionType>::size() != 0)
             {
                 supported_queries<TDefinitionType>::each([&]<class TQuery>
                 {
-                    auto& queries =
-                        std::get<supported_queries<TDefinitionType>::template index_of<TQuery>()>(bucket.queries);
-                    const auto query_fn = source.template get_query_fn<TQuery>();
                     if constexpr(std::is_empty_v<TQuery>)
                     {
-                        queries.push_back(query_fn(bucket.data.back(), TQuery{}));
-                    }
-                    else
-                    {
-                        queries.push_back(query_fn);
+                        constexpr auto index = supported_queries<TDefinitionType>::template index_of<TQuery>();
+                        auto query_fn = std::get<index>(definition.static_queries);
+                        if(not query_fn) query_fn = detail::default_query<TQuery>;
+                        std::get<index>(bucket.queries).push_back(query_fn(data, TQuery{}));
                     }
                 });
             }
         }
 
-        void prepare_history_layouts(const definition_source_library& sources, const issued_id_map& ids, compile_mode mode)
+        void prepare_history_layouts(const detail::compile_definitions& definitions, const issued_id_map& ids, compile_mode mode)
         {
             history_layouts_.resize(ids.definition_count<history_summary_definition>());
-            for(const auto source : sources.source_views<history_summary_definition>())
+            for(const auto& definition : std::get<definition_types::index_of<history_summary_definition>()>(definitions))
             {
-                if(not ids.has<history_summary_definition>(source.name())) continue;
-                const auto id = ids.get_id<history_summary_definition>(source.name());
-                const auto declarations = source.declarations();
-                definition_compile_context context{ ids, basic_ids_, program_, declarations, mode, history_layouts_, id, false
+                const auto& source = *definition.source;
+                const auto id = definition.id;
+                definition_compile_context context{ ids, definitions, basic_ids_, program_, *definition.declarations, mode, history_layouts_, id, false
 #ifndef NDEBUG
                     , input_markers_
 #endif
@@ -873,71 +943,98 @@ namespace givm
             return result;
         }
 
-        template<class TDefinitionType, size_t...I>
-        static void append_handle_fns(
-            bucket<TDefinitionType>& bucket,
-            const definition_source_view<TDefinitionType>& source,
-            std::index_sequence<I...>
-        )
+        detail::compile_definitions prepare_definitions(const definition_source_library& sources, const issued_id_map& ids)
         {
-            (append_handle_fns_for_view<
-                TDefinitionType,
-                typename views_of_definition<TDefinitionType>::template type_at<I>
-            >(bucket, source), ...);
-        }
-
-        template<class TDefinitionType, class TView, size_t...I>
-        static void append_handle_fns_for_view(
-            bucket<TDefinitionType>& bucket,
-            const definition_source_view<TDefinitionType>& source,
-            std::index_sequence<I...>
-        )
-        {
-            auto& handle_fns =
-                std::get<views_of_definition<TDefinitionType>::template index_of<TView>()>(bucket.handle_fns);
-            ((std::get<I>(handle_fns).push_back(
-                source.template get_handle_fn<TView, typename subscribed_events<TView>::template type_at<I>>()
-            )), ...);
-        }
-
-        template<class TDefinitionType, class TView>
-        static void append_handle_fns_for_view(
-            bucket<TDefinitionType>& bucket,
-            const definition_source_view<TDefinitionType>& source
-        )
-        {
-            append_handle_fns_for_view<TDefinitionType, TView>(
-                bucket,
-                source,
-                std::make_index_sequence<subscribed_events<TView>::size()>{}
-            );
-        }
-
-        template<class TCategory>
-        static void append_sources(
-            const definition_source_library& sources,
-            const issued_id_map& id_map,
-            definition_library& library,
-            compile_mode mode
-        )
-        {
-            std::vector<definition_source_view<TCategory>> selected;
-            for(auto source : sources.source_views<TCategory>())
+            detail::compile_definitions result;
+            definition_types::each([&]<class TCategory>
             {
-                if(id_map.has<TCategory>(source.name()))
+                auto& definitions = std::get<definition_types::index_of<TCategory>()>(result);
+                auto& bucket = bucket_for<TCategory>();
+                const auto count = ids.definition_count<TCategory>();
+                definitions.reserve(count);
+                bucket.names.resize(count);
+                bucket.data.resize(count);
+                bucket.tags.resize(count);
+                for(const auto& entry : sources.bucket_for<TCategory>().entries)
                 {
-                    selected.push_back(source);
+                    if(not ids.has<TCategory>(entry.name)) continue;
+                    const auto id = ids.get_id<TCategory>(entry.name);
+                    definitions.push_back({ &entry.source, id, &entry.declarations, &bucket });
+                    bucket.names[id.value()] = entry.name;
+                    bucket.tags[id.value()] = make_tag_mask(entry.declarations.tags, ids);
                 }
-            }
-            std::ranges::sort(selected, [&](const auto& left, const auto& right)
-            {
-                return id_map.get_id<TCategory>(left.name()).value()
-                    < id_map.get_id<TCategory>(right.name()).value();
+                std::ranges::sort(definitions, {}, [](const auto& definition) { return definition.id.value(); });
+                if constexpr(views_of_definition<TCategory>::size() != 0)
+                {
+                    views_of_definition<TCategory>::each([&]<class TView>
+                    {
+                        if constexpr(subscribed_events<TView>::size() != 0)
+                        {
+                            auto& handles = std::get<views_of_definition<TCategory>::template index_of<TView>()>(bucket.handle_fns);
+                            subscribed_events<TView>::each([&]<class TEvent>
+                            {
+                                auto& functions = std::get<subscribed_events<TView>::template index_of<TEvent>()>(handles);
+                                functions.reserve(count);
+                                for(const auto& definition : definitions)
+                                    functions.push_back(definition.source->template get_handle_fn<TView, TEvent>());
+                            });
+                        }
+                    });
+                }
+                if constexpr(supported_queries<TCategory>::size() != 0)
+                {
+                    supported_queries<TCategory>::each([&]<class TQuery>
+                    {
+                        constexpr auto index = supported_queries<TCategory>::template index_of<TQuery>();
+                        auto& queries = std::get<index>(bucket.queries);
+                        queries.reserve(count);
+                        for(auto& definition : definitions)
+                        {
+                            const auto query_fn = definition.source->template get_query_fn<TQuery>();
+                            if constexpr(std::is_empty_v<TQuery>)
+                                std::get<index>(definition.static_queries) = query_fn;
+                            else
+                                queries.push_back(query_fn);
+                        }
+                    });
+                }
+                if constexpr(std::same_as<TCategory, history_summary_definition>)
+                {
+                    for(auto& definition : definitions) definition.history = &history_handlers_;
+                    subscribed_events<TCategory>::each([&]<class TEvent>
+                    {
+                        constexpr auto index = subscribed_events<TCategory>::template index_of<TEvent>();
+                        auto& handlers = std::get<index>(history_handlers_);
+                        for(const auto& definition : definitions)
+                        {
+                            const auto& source = *definition.source;
+                            if(const auto handler = std::get<index>(source.rtti_->history.handles)(source.source_))
+                                handlers.push_back({ definition.id.value(), handler });
+                        }
+                    });
+                }
             });
-            for(const auto& source : selected)
+            return result;
+        }
+
+        void complete_dynamic_queries()
+        {
+            definition_types::each([&]<class TCategory>
             {
-                library.append(source, id_map, mode);
-            }
+                if constexpr(supported_queries<TCategory>::size() != 0)
+                {
+                    supported_queries<TCategory>::each([&]<class TQuery>
+                    {
+                        if constexpr(not std::is_empty_v<TQuery>)
+                        {
+                            auto& queries = std::get<supported_queries<TCategory>::template index_of<TQuery>()>(
+                                bucket_for<TCategory>().queries);
+                            for(auto& query : queries)
+                                if(not query) query = detail::default_query<TQuery>;
+                        }
+                    });
+                }
+            });
         }
 
     public:
@@ -949,8 +1046,8 @@ namespace givm
             TRoundSequence&& round_program,
             compile_mode mode)
         {
-            const auto selected_sources = sources.with_basic_definitions(basics);
-            return compile_prepared(selected_sources, basics,
+            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics);
+            return compile_prepared(selected_sources, basic_names,
                 selected_sources.make_issued_id_map(selected_sources.make_full_selection()),
                 std::forward<TInitializationSequence>(initialization_program),
                 std::forward<TRoundSequence>(round_program), mode);
@@ -965,9 +1062,9 @@ namespace givm
             TRoundSequence&& round_program,
             compile_mode mode)
         {
-            const auto selected_sources = sources.with_basic_definitions(basics);
-            return compile_prepared(selected_sources, basics,
-                selected_sources.make_issued_id_map(selected_sources.resolve_selection(selection, basics)),
+            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics);
+            return compile_prepared(selected_sources, basic_names,
+                selected_sources.make_issued_id_map(selected_sources.resolve_selection(selection, basic_names)),
                 std::forward<TInitializationSequence>(initialization_program),
                 std::forward<TRoundSequence>(round_program), mode);
         }
@@ -976,7 +1073,7 @@ namespace givm
         template<class TInitializationSequence, class TRoundSequence>
         static auto compile_prepared(
             const definition_source_library& sources,
-            const basic_definition_sources& basics,
+            const detail::basic_definition_names& basics,
             issued_id_map id_map,
             TInitializationSequence&& initialization_program,
             TRoundSequence&& round_program,
@@ -990,7 +1087,8 @@ namespace givm
             };
 
             definition_library library{ id_map, basics };
-            library.prepare_history_layouts(sources, id_map, mode);
+            const auto definitions = library.prepare_definitions(sources, id_map);
+            library.prepare_history_layouts(definitions, id_map, mode);
             detail::program_writer writer{ library.program_ };
             [[maybe_unused]] const auto initialization_inputs_count =
                 detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode);
@@ -1013,11 +1111,13 @@ namespace givm
 #endif
             detail::append_commands(writer, std::tuple{ detail::round_program_repeat{ round_start, round_entry } }, mode);
 
-            [&]<std::size_t... I>(std::index_sequence<I...>)
+            definition_types::each([&]<class TCategory>
             {
-                (append_sources<definition_types::type_at<I>>(sources, id_map, library, mode), ...);
-            }(std::make_index_sequence<definition_types::size()>{});
+                for(const auto& definition : std::get<definition_types::index_of<TCategory>()>(definitions))
+                    library.compile_source(definition, id_map, definitions, mode);
+            });
 
+            library.complete_dynamic_queries();
             detail::finalize_program(library.program_);
             return compile_result{ .library = std::move(library), .id_map = std::move(id_map) };
         }
@@ -1034,10 +1134,10 @@ namespace givm
         tag_id control_immunity_tag_{};
         tag_id remove_at_zero_usages_tag_{};
         detail::basic_definition_ids basic_ids_;
-        bucket_tuple buckets_;
+        definition_types::apply<detail::definition_bucket_tuple> buckets_;
         std::vector<detail::compiled_history_summary> history_layouts_;
         std::size_t history_size_{};
-        subscribed_events<history_summary_definition>::apply<history_handler_lists> history_handlers_;
+        detail::definition_history_handlers history_handlers_;
     };
 
     template<class TInitializationSequence, class TRoundSequence>

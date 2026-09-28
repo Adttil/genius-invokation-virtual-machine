@@ -39,10 +39,9 @@ namespace
         reaction_log* log;
         std::string_view name() const { return "ReactionObserver"; }
         auto tags() const { return std::array{ std::string_view{ "EntityReactionReplacement" } }; }
-        auto tag_dependencies() const { return tags(); }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::deal_damage{} }), context.resolve_tag("EntityReactionReplacement") };
+            return { log, context.add_program(std::tuple{ givm::deal_damage{} }), *context.find_tag("EntityReactionReplacement") };
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
             givm::damage_calculation& event, givm::handle_context& context)

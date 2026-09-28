@@ -41,13 +41,12 @@ namespace
         preparation_log* log;
         std::string_view name() const { return "DamageBonus"; }
         auto tags() const { return std::array{ std::string_view{ "PreparedReactionReplacement" } }; }
-        auto tag_dependencies() const { return tags(); }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::tuple{
                 givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::none },
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro }
-            }), context.resolve_tag("PreparedReactionReplacement") };
+            }), *context.find_tag("PreparedReactionReplacement") };
         }
         static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
             givm::damage_calculation& event, givm::handle_context& context)

@@ -29,7 +29,7 @@ std::vector<definition_id<TDefinition>> query_by_tag(std::string_view expression
 
 ## 注意
 
-表达式中的标签必须全部存在；条件不能为空。不支持括号或 `|`。
+未知的正向标签使结果为空；未知的排除标签不限制结果，例如不存在 `料理` 标签时，`治疗 & !料理` 与 `治疗` 等价。条件不能为空，不支持括号或 `|`。
 
 ## 示例
 

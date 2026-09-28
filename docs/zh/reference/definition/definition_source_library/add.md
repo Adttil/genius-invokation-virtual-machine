@@ -52,7 +52,7 @@ std::expected<void, std::vector<source_add_error>> add(
 
 ## 注意
 
-本函数保存对源对象的非拥有引用，源对象不得提前销毁。单个源可声明对自身的依赖。按标签筛选的依赖在选择与编译时解析。
+本函数保存对源对象的非拥有引用，源对象不得提前销毁。单个源可声明对自身的名称依赖。编译中的标签筛选只查询已选择的定义，不构成登记依赖。
 
 通过 [`error_string`](../error_string.md) 可将失败结果中的诊断列表转换为可读文本。希望创建库并同时登记源时，可使用 [`make_definition_source_library`](../make_definition_source_library.md)。
 

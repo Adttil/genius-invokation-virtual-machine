@@ -68,12 +68,16 @@ namespace
         std::string_view energy_tag;
 
         std::string_view name() const noexcept { return "ActiveSkill"; }
-        auto tags() const { return std::array{ std::string_view{ "elemental_burst" } }; }
-        auto tag_dependencies() const { return std::span{ &energy_tag, energy_tag.empty() ? 0uz : 1uz }; }
+        auto tags() const
+        {
+            std::vector<std::string_view> result{ "elemental_burst" };
+            if(not energy_tag.empty()) result.push_back(energy_tag);
+            return result;
+        }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, { .dice_requirement = { .any = dice }, .energy = energy,
-                .energy_tag = energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag) },
+                .energy_tag = energy_tag.empty() ? givm::tag_id{} : *context.find_tag(energy_tag) },
                 context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
         }
         static givm::action_cost_requirement query(const definition_type& data, const givm::skill_initial_cost&)
@@ -160,7 +164,7 @@ namespace
         skill_log* log;
         std::string_view energy_tag;
         std::string_view name() const noexcept { return "SkillCharacter"; }
-        auto tag_dependencies() const { return std::span{ &energy_tag, energy_tag.empty() ? 0uz : 1uz }; }
+        auto tags() const { return std::span{ &energy_tag, energy_tag.empty() ? 0uz : 1uz }; }
         auto skill_dependencies() const
         {
             return std::array{ std::string_view{ "ActiveSkill" }, std::string_view{ "PassiveSkill" },
@@ -180,7 +184,7 @@ namespace
                 context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
                 context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
                 context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
-                energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag)
+                energy_tag.empty() ? givm::tag_id{} : *context.find_tag(energy_tag)
             };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
@@ -280,10 +284,10 @@ namespace
         std::uint32_t energy;
         std::string_view energy_tag;
         std::string_view name() const noexcept { return "EnergyCard"; }
-        auto tag_dependencies() const { return std::span{ &energy_tag, energy_tag.empty() ? 0uz : 1uz }; }
+        auto tags() const { return std::span{ &energy_tag, energy_tag.empty() ? 0uz : 1uz }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, dice, energy, energy_tag.empty() ? givm::tag_id{} : context.resolve_tag(energy_tag) };
+            return { log, dice, energy, energy_tag.empty() ? givm::tag_id{} : *context.find_tag(energy_tag) };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {

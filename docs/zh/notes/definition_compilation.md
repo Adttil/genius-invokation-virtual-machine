@@ -51,9 +51,9 @@ std::string_view name() const;
 
 ## 标签与依赖
 
-类别间依赖的公开成员表见[可选的分类与依赖](../reference/definition/source_protocol.md#可选的分类与依赖)。以下保留三种依赖不能互相替代的前置声明设计。
+类别间依赖的公开成员表见[可选的分类与依赖](../reference/definition/source_protocol.md#可选的分类与依赖)。名称依赖决定编译集合；标签和能力查询只查看已经确定的集合。
 
-依赖在 issued id 产生前声明，因此使用“目标类别 + 名称”或“目标类别 + 标签筛选表达式”标识。编译器先用这些声明检查定义集合并求出依赖闭包，之后 `compile(...)` 才能把声明过的内容解析为 issued id。
+依赖在 issued id 产生前声明，使用“目标类别 + 名称”标识。编译器复用源库登记时缓存的名称、标签和依赖声明，先求出闭包并分配 ID，再把名称、标签位集、响应函数表、历史摘要响应列表和非空查询函数直接写入最终 `definition_library` 的存储。空查询需要编译后的 definition 才能求值，因此暂存其函数指针。编译上下文借用这些信息，不另建一套随后搬运的元数据或重复的能力表。source 的 `compile(...)` 和历史摘要 `layout(...)` 都可以查看本次集合，不依赖其他定义的编译先后顺序。
 
 同一个 source 的名称、标签和依赖接口在加入源库后必须保持结果一致。
 
@@ -65,7 +65,7 @@ auto tags() const;
 
 `tags()` 是可选的 const 成员函数，没有参数。返回值可以是任意 input range，其元素必须可转换为 `std::string_view`；每个字符串表示当前 definition 拥有的一个标签。省略该接口等价于返回空 range。
 
-标签供依赖筛选和编译库查询使用。标签名称同样是不透明字符串，核心只解释标签筛选表达式的组合语法。
+标签供编译集合筛选和编译库查询使用，不扩充依赖闭包。标签名称同样是不透明字符串，核心只解释标签筛选表达式的组合语法。
 
 ### 直接名称依赖
 
@@ -90,42 +90,17 @@ auto support_dependencies() const;
 
 省略某个接口等价于返回空 range。直接名称依赖是硬依赖：对应 source 不存在时，定义源集合无效。单个添加 source 时，除同类别自依赖外，依赖必须已经存在；原子批量添加允许同一批 source 互相依赖。
 
-### 标签 ID 依赖
+### 标签与元数据查询
 
-```cpp
-auto tag_dependencies() const;
-```
+不再为标签 ID 或标签筛选声明依赖。`context.find_tag(name)` 返回本次集合中的标签 ID，未知标签返回 `nullopt`。`context.find_ids_by_tag<T>(expression)` 只筛选已选择的定义；未知正向标签无匹配，未知排除标签不限制结果。
 
-`tag_dependencies()` 是可选的 const 成员函数，没有参数。返回值可以是任意 input range，其元素必须可转换为 `std::string_view`；每个字符串是 `compile(...)` 稍后需要解析为 `tag_id` 的标签名称。省略该接口等价于返回空 range。
+筛选表达式由 `&` 连接若干条件，以 `!` 排除标签。例如 `"food & !event"` 选择本次集合中具有 `food` 且不具有 `event` 标签的定义，不会把源库中未选择的匹配项加入依赖闭包。
 
-标签 ID 依赖本身不会选入某个 definition。它只声明编译后的 definition 需要保存或使用这个标签的 issued id。
-
-### 标签筛选依赖
-
-```cpp
-auto card_dependencies_by_tag() const;
-```
-
-标签筛选依赖接口都是可选的 const 成员函数，没有参数。返回值可以是任意 input range，其元素必须可转换为 `std::string_view`；每个字符串是针对目标类别的标签筛选表达式。上例筛选 card definition。
-
-每种目标类别对应一个接口：
-
-| 目标类别 | 接口 |
-| --- | --- |
-| card | `card_dependencies_by_tag()` |
-| card status | `status_dependencies_by_tag()` |
-| support | `support_dependencies_by_tag()` |
-| summon | `summon_dependencies_by_tag()` |
-| combat status | `combat_status_dependencies_by_tag()` |
-| character | `character_dependencies_by_tag()` |
-| skill | `skill_dependencies_by_tag()` |
-| attachment | `attachment_dependencies_by_tag()` |
-
-筛选表达式由 `&` 连接若干标签条件。未否定的标签必须存在，以 `!` 否定的标签必须不存在。例如 `"food & !event"` 选择具有 `food` 且不具有 `event` 标签的定义。匹配的定义全部进入依赖闭包。省略某个接口等价于返回空 range。
+`context.definitions<T>()` 遍历按 ID 排列、可取得数量的元数据范围。`find_definition<T>(name)` 返回可为空的元数据视图，`context[id]` 按本次有效 ID 访问。视图提供 `id/name/tags/dependencies/has_tag/can_handle/has_query`，仅查看声明与能力，不执行查询或响应；`has_query` 不把默认查询结果算作自定义实现。这些视图只在本次编译期间有效。
 
 ### Range 与字符串生命周期
 
-`definition_source_view` 的 [tags](../reference/definition/definition_source_view/tags.md)、[dependencies](../reference/definition/definition_source_view/dependencies.md)、[tag_dependencies](../reference/definition/definition_source_view/tag_dependencies.md) 和 [dependencies_by_tag](../reference/definition/definition_source_view/dependencies_by_tag.md) 都拥有返回的视图容器，但不拥有字符。这里“可返回临时容器”不包括让字符串本体随临时容器一起销毁：例如临时 `vector<string_view>` 可指向稳定字符，临时 `vector<string>` 的字符却会一起消失。
+`definition_source_view` 的 [tags](../reference/definition/definition_source_view/tags.md) 和 [dependencies](../reference/definition/definition_source_view/dependencies.md) 都拥有返回的视图容器，但不拥有字符。这里“可返回临时容器”不包括让字符串本体随临时容器一起销毁：例如临时 `vector<string_view>` 可指向稳定字符，临时 `vector<string>` 的字符却会一起消失。
 
 上述接口每次返回的 range 只需支持一次顺序遍历，数量不必在编译期确定。调用方会在本次接口调用后立即完整消费该 range，不保存 range 或元素对象的引用，因此 source 可以返回临时 range、容器或惰性 range。
 
@@ -133,7 +108,7 @@ auto card_dependencies_by_tag() const;
 
 ### 依赖声明示例
 
-下面的片段声明一个 support 名称依赖、一个标签 ID 依赖，以及一组由标签筛选的 card 依赖。相同字符串常量稍后会传给编译上下文：
+下面的片段声明一个 support 名称依赖与定义自身的标签；标签筛选表达式只是稍后查询本次集合时使用的条件：
 
 ```cpp
 static constexpr std::string_view bonus_support_name = "BonusSupport";
@@ -145,15 +120,11 @@ std::array<std::string_view, 1> support_dependencies() const
     return { bonus_support_name };
 }
 
-std::array<std::string_view, 1> tag_dependencies() const
+std::array<std::string_view, 1> tags() const
 {
     return { food_tag_name };
 }
 
-std::array<std::string_view, 1> card_dependencies_by_tag() const
-{
-    return { food_filter };
-}
 ```
 
 ## 编译定义
@@ -170,7 +141,7 @@ auto compile(definition_compile_context& context) const;
 
 `compile(...)` 是必须提供的 const 成员函数。
 
-参数 `context` 是只在本次调用期间有效的编译上下文。它可以解析当前 source 已声明的依赖，并把响应程序加入正在构建的游戏规则程序。source 不得在返回对象或其他长期状态中保存该上下文的引用或指针。
+参数 `context` 是只在本次调用期间有效的编译上下文。它可以解析当前 source 已声明的硬依赖、自由查询本次集合的元数据，并把响应程序加入正在构建的游戏规则程序。source 不得在返回对象或其他长期状态中保存该上下文或其元数据视图。
 
 返回值是编译后的 definition，必须按值返回一个非 `void`、可复制构造的对象类型。核心直接推导其准确类型、取得所有权，并在运行时以该类型的 const 引用传给 handler。接口不要求 source 提供 `data_type` 或其他用于重复说明返回类型的嵌套别名。本文示例通常把返回类型命名为 `definition_type`，但这只是 source 内部的命名习惯。
 
@@ -202,32 +173,32 @@ definition_id<TCategory> resolve_id(std::string_view name) const;
 
 名称未在对应类别中声明，或目标 definition 不存在时，抛出 `std::invalid_argument`，本次规则库编译失败。
 
-### 解析标签 ID 依赖
+### 查找标签 ID
 
-当前完整声明见 [resolve_tag](../reference/executor/definition_compile_context/resolve_tag.md)。
+当前完整声明见 [find_tag](../reference/executor/definition_compile_context/find_tag.md)。
 
 ```cpp
-tag_id resolve_tag(std::string_view name) const;
+std::optional<tag_id> find_tag(std::string_view name) const;
 ```
 
-`name` 必须等于当前 source 的 `tag_dependencies()` 返回的某个标签名称。
+`name` 可为任意标签名称，不需要依赖声明，也不会引入标签或定义。
 
-返回值是该标签在本次编译库中的 `tag_id`。它是拥有值，可以直接保存在编译后的 definition 中。名称没有声明时抛出 `std::invalid_argument`，本次规则库编译失败。
+已存在时返回该标签在本次编译库中的 `tag_id`，否则返回 `nullopt`。结果可以保存在编译后的 definition 中。
 
-### 解析标签筛选依赖
+### 按标签筛选
 
-返回与异常见 [resolve_ids_by_tag](../reference/executor/definition_compile_context/resolve_ids_by_tag.md)。下文“不表示名称排序”强调返回顺序由配套 ID 映射决定，不能据此断言当前结果一定与名称序不同：当前 ID 准备实现在各类别内按名称排序后分配 ID。筛选表达式必须与声明字符串完全一致，逻辑等价而拼写不同不够。
+返回规则见 [find_ids_by_tag](../reference/executor/definition_compile_context/find_ids_by_tag.md)。返回顺序由配套 ID 映射决定：当前 ID 准备实现在各类别内按名称排序后分配 ID。筛选表达式不需要提前声明。
 
 ```cpp
 template<class TCategory>
-std::vector<definition_id<TCategory>> resolve_ids_by_tag(std::string_view filter) const;
+std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) const;
 ```
 
-`TCategory` 指定筛选的定义类别。`filter` 必须等于当前 source 的对应 `xxx_dependencies_by_tag()` 返回的某个筛选表达式。
+`TCategory` 指定筛选的定义类别，`filter` 使用 `&` 连接标签条件、以 `!` 排除标签。查询范围只包含本次选定定义及其名称依赖和基础定义。
 
 返回值是拥有自身存储的 `std::vector<definition_id<TCategory>>`，包含每个匹配 definition 的 issued id 一次；没有匹配项时返回空 vector。结果不引用编译上下文，可以移动并长期保存在编译后的 definition 中。结果按本次编译的 issued id 顺序排列，不表示名称排序。
 
-筛选表达式未在对应类别中声明时，抛出 `std::invalid_argument`，本次规则库编译失败。
+未知正向标签使结果为空，未知排除标签不限制结果。筛选不修改本次编译集合。
 
 ### 加入响应程序
 
@@ -244,13 +215,13 @@ program_entry add_program(TCommands&& commands);
 
 ### 编译示例
 
-接着前面的依赖声明，编译后的 definition 可以直接保存三种依赖结果：
+接着前面的名称依赖和标签声明，编译后的 definition 可以保存依赖 ID 与本次集合的查询结果：
 
 ```cpp
 struct definition_type
 {
     definition_id<support_view> bonus_support;
-    tag_id food_tag;
+    std::optional<tag_id> food_tag;
     std::vector<definition_id<card_definition>> food_cards;
 };
 
@@ -258,8 +229,8 @@ definition_type compile(definition_compile_context& context) const
 {
     return {
         .bonus_support = context.resolve_id<support_view>(bonus_support_name),
-        .food_tag = context.resolve_tag(food_tag_name),
-        .food_cards = context.resolve_ids_by_tag<card_definition>(food_filter)
+        .food_tag = context.find_tag(food_tag_name),
+        .food_cards = context.find_ids_by_tag<card_definition>(food_filter)
     };
 }
 ```
@@ -362,7 +333,9 @@ bool can_handle() const;
 
 静态源没有匹配的 query 时使用未限定的 `query_default(parameters)`，由 ADL 找到默认方法；静态源不调用 `can_query`。动态源还须为所属类别的各查询提供 `template<class Q> bool can_query() const`：返回 `true` 时使用源查询，返回 `false` 时使用默认查询。返回 `true` 却缺少对应实现时，编译定义库抛出 `std::invalid_argument`。源函数和默认方法都检查准确返回类型；存在源函数但返回错误类型不能静默退化为默认查询。
 
-动态能力由具体源对象决定，不能写进按 C++ 源类型共享的 RTTI 结果。source view 在建库期间选择源查询或默认查询，再把选定的函数交给后续编译流程；空参数查询执行一次并保存结果，非空参数查询直接保存选定的函数。各类别只保存自己支持的查询内容，不增加对局运行期查询能力标志，也不在每次查询中判断是否走默认实现。
+动态能力由具体源对象决定，不能写进按 C++ 源类型共享的 RTTI 结果。在任何 `layout(...)` 或 `compile(...)` 调用前，source view 为每个查询取得自定义函数指针；没有自定义实现时返回空指针。非空查询直接把这个结果写入最终库的查询表，编译期间一直保留空指针，以便 `has_query` 区分自定义实现和默认实现。全部 definition 编译完成后才用默认函数补齐这些空项；不需要另一份能力表，也不依靠跨 DLL 的函数地址比较来识别默认实现。
+
+空查询的自定义函数指针仅暂存在本次编译条目中，使整个编译期间的 `has_query` 判断保持一致。每项 source 的 `compile(...)` 返回 definition 后，选择该自定义函数或默认函数执行一次，把结果写入最终库；临时函数指针随编译条目一起释放。各类别只保存自己支持的查询内容，不增加对局运行期查询能力标志，也不在每次查询中判断是否走默认实现。
 
 角色初始状态、初始费用采用值结果。若以后增加包含指针或视图的结果，缓存只保存该对象本身，不自动拥有目标数据；库复制后仍需遵守其借用关系。查询结果不在 source view 的按源类型共享 RTTI 中保存，源编译上下文解析出的 ID 可正常参与结果计算。
 
@@ -415,7 +388,7 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `source_library.make_issued_id_map(basics, ...)`。提前生成映射与随后 `compile(source_library, basics, ...)` 必须使用相同的基础定义配置、定义集合、标签声明及选择范围；生成映射后改变任一项都可能改变 ID 分配。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
 
-名称、标签和依赖声明在登记后保持不变。ID 准备复用源库登记时保留的声明数据；最终编译仍会通过 source view 读取元数据，每次返回的 input range 只消费一次，多次调用必须提供相同内容。编译器按配套 ID 装配定义，不能把源库的遍历顺序直接当成 ID 顺序。
+名称、标签和依赖声明在登记后保持不变。ID 准备和最终编译都复用源库登记时缓存的声明数据，不再通过 source view 重读这些声明。编译阶段仍通过 source view 获取响应与查询函数、调用历史摘要布局和 source 的 `compile(...)`。编译器按配套 ID 装配定义，不能把源库的遍历顺序直接当成 ID 顺序。
 
 ## 编译库与持久化
 
@@ -431,18 +404,19 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 
 ## 背后的编译过程
 
-**逻辑阶段与实际写入顺序。**下面七步保留原来的依赖关系解释，不声称每一步对应一次独立容器遍历。当前实现先发放 ID、建立局部 `definition_library`，写入初始化、回合和回跳连接，再逐项建立受限 context、编译 definition、追加其响应程序并安装 handler，最后一并返回 `library` 和 `id_map`。响应程序由 `add_program` 当场追加并补内部返回连接。尚未完成的库不对外发布；循环依赖能够成立，也依赖于解析时读取预先分配的 ID，而非要求对方 definition 已构造。
+**逻辑阶段与实际写入顺序。**以下步骤说明依赖关系，不要求每一步对应一次独立容器遍历。所有选中定义的声明与能力先准备好，历史摘要布局和 definition 编译随后执行。响应函数表直接保存在最终库中，不等各项 definition 编译后再安装；空查询函数则暂存在编译条目中，等待本源的 definition 产生后求值。尚未完成的库不对外发布；循环依赖能够成立，也依赖于解析时读取预先分配的 ID 和元数据，而非要求对方 definition 已构造。
 
 一份规则库的构建包含以下工作：
 
-1. 读取每个 source 的定义类别、名称、标签和依赖声明。
-2. 从 `definition_selection` 指定的定义和四个默认反应定义求出依赖闭包，或选择全部定义。
-3. 为选中的定义和标签建立 issued id 映射。
-4. 为每个选中的 source 建立受限的 `definition_compile_context` 并调用一次 `compile(...)`；依赖查询返回已经分配的 issued id，`add_program(...)` 立即返回相应程序入口。
-5. 根据静态实现和动态源的 `can_handle`、`can_query` 结果选择响应与查询；保存空查询的结果与非空查询的调用函数，安装事件运行时分派。
-6. 将 definition 响应程序与调用方提供的初始化程序、回合程序共同组成游戏规则程序。
-7. 所有 definition 完整构造后，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`。
+1. 临时并入四个基础定义源，复用登记缓存中的定义类别、名称、标签和依赖声明；新登记的基础源按同样方式取得声明。
+2. 从 `definition_selection` 指定的定义和四个默认反应定义求出依赖闭包，或选择全部定义，为选中的定义和标签建立 issued id 映射。
+3. 建立局部 `definition_library`，按 ID 预填名称、标签位集、响应函数表、历史摘要响应列表和非空查询的自定义函数指针；缺少自定义查询时保留空指针。编译条目引用登记缓存和最终库，并暂存空查询的自定义函数指针。
+4. 为全部历史摘要调用 `layout(...)` 并确定字段布局。此时上下文已经可以查看全部选中定义的声明和自定义能力。
+5. 编译调用方提供的初始化程序和回合程序，补入回合推进及回跳连接。
+6. 为每个选中的 source 建立 `definition_compile_context` 并调用一次 `compile(...)`。名称依赖解析使用已分配 ID；`add_program(...)` 当场追加响应程序、补内部返回连接并返回入口。本源的 definition 完成后执行其空查询，保存查询结果。
+7. 全部 definition 完成后，用默认查询函数补齐非空查询表中的空项，并完成程序链接。
+8. 同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`，释放仅编译期间需要的条目。
 
-编译期间的中间对象不是 `definition_library` 的可观察状态。程序段存放顺序、入口数值、内部连接指令和擦除存储也都不是定义源接口。definition source 与游戏流程只能提交核心公开命令描述；上层运行期间通过 execution_view 观察领域现场，而不是查看当前指令。
+尚未完成编译的 `definition_library` 不通过公开接口作为可运行规则暴露；定义源只能通过编译上下文查看已准备的元数据。程序段存放顺序、入口数值、内部连接指令和擦除存储也都不是定义源接口。definition source 与游戏流程只能提交核心公开命令描述；上层运行期间通过 execution_view 观察领域现场，而不是查看当前指令。
 
 [开发备忘](../notes.md)

@@ -58,10 +58,9 @@ namespace
         bool first;
         std::string_view name() const { return first ? "FirstReactionWriter" : "LastReactionWriter"; }
         auto tags() const { return std::array{ std::string_view{ first ? "FirstReplacement" : "LastReplacement" } }; }
-        auto tag_dependencies() const { return tags(); }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, first, context.resolve_tag(tags()[0]),
+            return { log, first, *context.find_tag(tags()[0]),
                 context.add_program(std::tuple{ givm::set_active_character{} }),
                 context.add_program(std::tuple{ givm::deal_damage{} }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };

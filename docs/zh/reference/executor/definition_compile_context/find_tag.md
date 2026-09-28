@@ -1,30 +1,28 @@
-[givm](../../../reference.md) / [执行](../../executor.md) / [definition_compile_context](../definition_compile_context.md) / **resolve_tag**
+[givm](../../../reference.md) / [执行](../../executor.md) / [definition_compile_context](../definition_compile_context.md) / **find_tag**
 
-# givm::definition_compile_context::resolve_tag
+# givm::definition_compile_context::find_tag
 
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-tag_id resolve_tag(std::string_view name) const;
+std::optional<tag_id> find_tag(std::string_view name) const;
 ```
 
-取得效果需要识别的分类标签。源可以声明使用某个标签，即使这次选中的其他定义都不具有该标签。
+查找本次编译集合中存在的标签。未被选入本场规则的定义不参与标签查询。
 
 ## 参数
 
 |  |  |
 | --- | --- |
-| `name` | 本源在 `tag_dependencies()` 中声明的标签名称 |
+| `name` | 要查找的标签名称 |
 
 ## 返回值
 
-配套定义库中的标签 ID。
+存在时返回配套定义库中的标签 ID；不存在时返回 `std::nullopt`。
 
-## 异常
+## 注意
 
-|  |  |
-| --- | --- |
-| `std::invalid_argument` | 本源未声明该标签依赖，或标签不存在 |
+查询不需要依赖声明，也不会把未选择的定义加入编译集合。标签来自选中定义的 `tags()`；需要保证某个资源标签存在时，可以将其列为相关定义自身的标签。
 
 ## 示例
 
@@ -40,13 +38,14 @@ struct card_source
 {
     using definition_category = givm::card_definition;
     std::string_view name() const { return "治疗检索"; }
-    auto tag_dependencies() const
+    auto tags() const
     { return std::array<std::string_view, 1>{ "治疗" }; }
 
-    givm::tag_id compile(givm::definition_compile_context& context) const
+    auto compile(givm::definition_compile_context& context) const
     {
-        const auto tag = context.resolve_tag("治疗");
-        std::println("已取得治疗标签: {}", tag.is_valid());
+        const auto tag = context.find_tag("治疗");
+        std::println("已取得治疗标签: {}", tag.has_value());
+        std::println("存在未登记标签: {}", context.find_tag("未登记").has_value());
         return tag;
     }
 };
@@ -73,4 +72,5 @@ int main()
 
 ```text
 已取得治疗标签: true
+存在未登记标签: false
 ```

@@ -41,7 +41,6 @@ namespace
         reaction_log* log;
 
         auto tags() const { return std::array{ std::string_view{ "TestReactionReplacement" } }; }
-        auto tag_dependencies() const { return tags(); }
 
         constexpr std::string_view name() const noexcept
         {
@@ -58,7 +57,7 @@ namespace
                         givm::apply_element{ .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 }, .element = log->replacement_element }
                     }
                 ),
-                .replacement = context.resolve_tag("TestReactionReplacement")
+                .replacement = *context.find_tag("TestReactionReplacement")
             };
         }
 

@@ -76,7 +76,7 @@ namespace
         }
     };
 
-    struct card_with_tag_dependency
+    struct card_with_soft_filter
     {
         using definition_category = givm::card_definition;
 
@@ -87,22 +87,25 @@ namespace
 
         std::string_view source_name;
         std::string_view filter;
+        std::vector<givm::definition_id<givm::card_definition>>* matches;
 
         constexpr std::string_view name() const noexcept
         {
             return source_name;
         }
 
-        constexpr auto card_dependencies_by_tag() const noexcept
+        constexpr auto tags() const noexcept
         {
-            return std::array{ filter };
+            return std::array<std::string_view, 2>{ "selected", "excluded" };
         }
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return {
-                .cards = context.resolve_ids_by_tag<givm::card_definition>(filter)
-            };
+            *matches = context.find_ids_by_tag<givm::card_definition>(filter);
+            CHECK(context.find_definition<givm::card_definition>("Alpha").has_value() == not matches->empty());
+            CHECK_FALSE(context.find_definition<givm::card_definition>("Gamma"));
+            CHECK(context.definitions<givm::card_definition>().size() == (matches->empty() ? 1 : 3));
+            return { .cards = *matches };
         }
     };
 
@@ -276,9 +279,10 @@ TEST_CASE("selected definitions include transitive named dependencies", "[source
     CHECK(bool(library.name(support_id) == "Support"));
 }
 
-TEST_CASE("tag dependencies select matching definitions only", "[source_library]")
+TEST_CASE("soft tag filters query selected definitions without expanding the closure", "[source_library]")
 {
-    const card_with_tag_dependency selected_card{ "Root", "selected & !excluded" };
+    std::vector<givm::definition_id<givm::card_definition>> matches;
+    const card_with_soft_filter selected_card{ "Root", "selected & !excluded", &matches };
     const plain_source<givm::card_definition> alpha{
         .source_name = "Alpha",
         .source_tags = { "selected", "ordinary" },
@@ -298,15 +302,31 @@ TEST_CASE("tag dependencies select matching definitions only", "[source_library]
     auto library = givm_test::make_source_library();
     REQUIRE(library.add(selected_card, alpha, beta, gamma));
 
-    const std::array card_roots{ std::string_view{ "Root" } };
+    std::vector<std::string_view> card_roots{ "Root" };
+    SECTION("unselected matching definitions remain unavailable") {}
+    SECTION("explicitly selected definitions can be filtered")
+    {
+        card_roots.insert(card_roots.end(), { "Alpha", "Beta" });
+    }
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
 
     const auto ids = library.make_issued_id_map(givm_test::basic_sources, selection);
     CHECK(ids.has<givm::card_definition>("Root"));
-    CHECK(ids.has<givm::card_definition>("Alpha"));
-    CHECK_FALSE(ids.has<givm::card_definition>("Beta"));
+    CHECK(ids.has<givm::card_definition>("Alpha") == (card_roots.size() > 1));
+    CHECK(ids.has<givm::card_definition>("Beta") == (card_roots.size() > 1));
     CHECK_FALSE(ids.has<givm::card_definition>("Gamma"));
+    const auto [compiled, compiled_ids] = compile(library, givm_test::basic_sources, selection,
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    if(card_roots.size() == 1)
+    {
+        CHECK(matches.empty());
+    }
+    else
+    {
+        REQUIRE(matches.size() == 1);
+        CHECK(matches.front() == compiled_ids.get_id<givm::card_definition>("Alpha"));
+    }
 }
 
 TEST_CASE("issued ids address the definitions produced by compilation", "[source_library]")
