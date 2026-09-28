@@ -70,7 +70,7 @@ static void handle(const D& definition, givm::history_summary_state state, const
 
 其余可订阅事件均为通知类事件，例如 [`round_started`](events/round_started.md)、[`character_defeated`](events/character_defeated.md)、[`skill_used`](events/skill_used.md)、[`card_played`](events/card_played.md)。报价、参数检查、伤害计算与濒死等可修改或尚未确认结果的时机不用于摘要更新。摘要不提供普通查询。
 
-静态摘要源通过是否存在相应 `handle` 决定订阅。动态源声明 `static constexpr bool is_dynamic = true;`，并以 `template<class Event> bool can_handle() const` 选择实际提供的响应；此处没有实体 view 模板参数。返回 `true` 的事件必须有匹配的静态 `handle` 实现。适配器需要的脚本状态可以保存在 `D` 中。
+静态摘要源通过是否存在相应 `handle` 决定订阅。动态源声明 `static constexpr bool is_dynamic = true;`，并以 `template<class Event> bool can_handle() const` 选择实际提供的响应；此处没有实体 view 模板参数。动态摘要须为全部可订阅事件提供 `can_handle` 和签名正确的静态 `handle`，包括返回 `false` 的事件；构造 `definition_source_view` 时检查完整性，缺少接口或返回类型错误属于 C++ 编译错误。返回 `false` 时不会调用该响应；定义源若自行直接调用该不支持的分支，属于未定义行为。适配器需要的脚本状态可以保存在 `D` 中。
 
 ## 更新与读取
 

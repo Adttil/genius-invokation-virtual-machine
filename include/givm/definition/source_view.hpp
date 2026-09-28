@@ -5,7 +5,6 @@
 #include <array>
 #include <concepts>
 #include <cstddef>
-#include <stdexcept>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -329,7 +328,8 @@ namespace givm
         {
             if constexpr(detail::is_dynamic_source<TSource>)
             {
-                static_assert(std::same_as<decltype(source.template can_handle<TEvent>()), bool>);
+                static_assert(requires { { source.template can_handle<TEvent>() } -> std::same_as<bool>; },
+                    "dynamic history source must provide can_handle<Event>() returning bool for every subscribed event");
                 if(not source.template can_handle<TEvent>()) return nullptr;
             }
             using definition_type = detail::definition_for_source_t<TSource>;
@@ -341,16 +341,20 @@ namespace givm
             {
                 static_assert(std::same_as<decltype(TSource::handle(std::declval<const definition_type&>(),
                     std::declval<history_summary_state>(), std::declval<const TEvent&>(),
-                    std::declval<const table&>(), std::declval<const definition_library&>())), void>);
+                    std::declval<const table&>(), std::declval<const definition_library&>())), void>,
+                    "history source handle must return void");
                 return +[](const definition_data& data, history_summary_state state,
                     const TEvent& event, const table& card_table, const definition_library& library)
                 {
                     TSource::handle(std::any_cast<const definition_type&>(data), state, event, card_table, library);
                 };
             }
-            else if constexpr(detail::is_dynamic_source<TSource>)
-                throw std::invalid_argument{ "dynamic source enables an unavailable history handler" };
-            else return nullptr;
+            else
+            {
+                static_assert(not detail::is_dynamic_source<TSource>,
+                    "dynamic history source must provide handle(definition, state, event, table, library) for every subscribed event, even when can_handle returns false");
+                return nullptr;
+            }
         }
 
         template<class TSource>
@@ -406,7 +410,8 @@ namespace givm
         {
             if constexpr(detail::is_dynamic_source<TSource>)
             {
-                static_assert(std::same_as<decltype(source.template can_query<TQuery>()), bool>);
+                static_assert(requires { { source.template can_query<TQuery>() } -> std::same_as<bool>; },
+                    "dynamic source must provide can_query<Query>() returning bool for every supported query");
                 if(not source.template can_query<TQuery>())
                 {
                     return nullptr;
@@ -421,18 +426,16 @@ namespace givm
             {
                 static_assert(std::same_as<decltype(TSource::query(
                     std::declval<const definition_type&>(), std::declval<const TQuery&>()
-                )), typename TQuery::result_t>);
+                )), typename TQuery::result_t>, "source query must return Query::result_t exactly");
                 return +[](const definition_data& data, const TQuery& query) -> TQuery::result_t
                 {
                     return TSource::query(std::any_cast<const definition_type&>(data), query);
                 };
             }
-            else if constexpr(detail::is_dynamic_source<TSource>)
-            {
-                throw std::invalid_argument{ "dynamic source enables an unavailable query" };
-            }
             else
             {
+                static_assert(not detail::is_dynamic_source<TSource>,
+                    "dynamic source must provide query(definition, query) for every supported query, even when can_query returns false");
                 return nullptr;
             }
         }
@@ -500,7 +503,8 @@ namespace givm
         {
             if constexpr(detail::is_dynamic_source<TSource>)
             {
-                static_assert(std::same_as<decltype(source.template can_handle<TView, TEvent>()), bool>);
+                static_assert(requires { { source.template can_handle<TView, TEvent>() } -> std::same_as<bool>; },
+                    "dynamic source must provide can_handle<View, Event>() returning bool for every subscribed view/event pair");
                 if(not source.template can_handle<TView, TEvent>())
                 {
                     return nullptr;
@@ -524,7 +528,7 @@ namespace givm
                     std::declval<TEvent&>(),
                     std::declval<handle_context&>()
                 ));
-                static_assert(std::same_as<result_type, program_entry>);
+                static_assert(std::same_as<result_type, program_entry>, "source handle must return program_entry");
 
                 return +[](
                     const definition_data& data,
@@ -541,12 +545,10 @@ namespace givm
                     );
                 };
             }
-            else if constexpr(detail::is_dynamic_source<TSource>)
-            {
-                throw std::invalid_argument{ "dynamic source enables an unavailable event handler" };
-            }
             else
             {
+                static_assert(not detail::is_dynamic_source<TSource>,
+                    "dynamic source must provide handle(definition, entity, event, context) for every subscribed view/event pair, even when can_handle returns false");
                 return nullptr;
             }
         }

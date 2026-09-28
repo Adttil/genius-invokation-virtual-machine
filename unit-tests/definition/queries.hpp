@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <stdexcept>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -120,6 +119,13 @@ namespace
             else
                 return target_validation_enabled;
         }
+
+        template<class TView, class TEvent>
+        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        {
+            FAIL("A disabled dynamic handler was invoked");
+            std::unreachable();
+        }
     };
 
     struct modifying_status_source
@@ -183,21 +189,12 @@ namespace
             ++*capability_checks;
             return enabled;
         }
-    };
-
-    struct missing_dynamic_query_source : givm::test::named_definition_source<givm::card_definition>
-    {
-        static constexpr bool is_dynamic = true;
-
-        bool enabled;
 
         template<class TView, class TEvent>
-        bool can_handle() const noexcept { return false; }
-
-        template<class TQuery>
-        bool can_query() const noexcept
+        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
         {
-            return enabled && std::is_same_v<TQuery, givm::card_initial_state>;
+            FAIL("A disabled dynamic handler was invoked");
+            std::unreachable();
         }
     };
 }
@@ -300,25 +297,6 @@ TEST_CASE("dynamic void queries select a source implementation or the no-op defa
     CHECK_FALSE(state.elemental_tuning_allowed);
     CHECK(calls == 1);
     CHECK(capability_checks == build_capability_checks);
-}
-
-TEST_CASE("dynamic queries only require an implementation when enabled", "[definition][query]")
-{
-    const bool enabled = GENERATE(false, true);
-    const missing_dynamic_query_source source{ { "MissingDynamicQuery" }, enabled };
-    auto sources = givm_test::make_source_library();
-    REQUIRE(sources.add(source));
-    if(enabled)
-    {
-        REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
-            std::invalid_argument);
-    }
-    else
-    {
-        const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
-        const auto id = ids.get_id<givm::card_definition>(source.name());
-        CHECK(library[id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
-    }
 }
 
 TEST_CASE("card state modifications use status state and survive library copies", "[definition][query]")

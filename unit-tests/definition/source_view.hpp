@@ -10,6 +10,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -240,6 +241,7 @@ namespace
 
         std::string_view source_name;
         bool enabled;
+        std::size_t* capability_checks = nullptr;
 
         constexpr std::string_view name() const noexcept
         {
@@ -254,6 +256,7 @@ namespace
         template<class TView, class TEvent>
         constexpr bool can_handle() const noexcept
         {
+            if(capability_checks) ++*capability_checks;
             return enabled && std::is_same_v<TView, givm::support_view>
                 && std::is_same_v<TEvent, givm::round_started>;
         }
@@ -261,6 +264,7 @@ namespace
         template<class TQuery>
         constexpr bool can_query() const noexcept
         {
+            if(capability_checks) ++*capability_checks;
             return false;
         }
 
@@ -271,6 +275,20 @@ namespace
             givm::handle_context&)
         {
             return {};
+        }
+
+        template<class TView, class TEvent>
+        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        {
+            FAIL("A disabled dynamic handler was invoked");
+            std::unreachable();
+        }
+
+        template<class TQuery>
+        static TQuery::result_t query(const definition_type&, const TQuery&)
+        {
+            FAIL("A disabled dynamic query was invoked");
+            std::unreachable();
         }
     };
 
@@ -304,15 +322,6 @@ namespace
     struct explicitly_static_handler_source : static_handler_source
     {
         static constexpr bool is_dynamic = false;
-    };
-
-    struct missing_dynamic_handler_source : selectable_handler_source
-    {
-        template<class TView, class TEvent>
-        constexpr bool can_handle() const noexcept
-        {
-            return std::is_same_v<TEvent, givm::damage_effect>;
-        }
     };
 
     struct metadata_observation
@@ -460,6 +469,14 @@ namespace
         {
             return enabled && std::same_as<TQuery, givm::support_state_limit>;
         }
+
+        using metadata_support_source::handle;
+        template<class TView, class TEvent>
+        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        {
+            FAIL("A disabled dynamic handler was invoked");
+            std::unreachable();
+        }
     };
 
     struct metadata_summary_source
@@ -561,8 +578,14 @@ TEST_CASE("definition compile context rejects undeclared dependency queries", "[
 
 TEST_CASE("compiled definitions expose only enabled source handlers", "[source_view]")
 {
-    const selectable_handler_source enabled{ "Enabled", true };
-    const selectable_handler_source disabled{ "Disabled", false };
+    std::size_t capability_checks = 0;
+    const selectable_handler_source enabled{ "Enabled", true, &capability_checks };
+    const selectable_handler_source disabled{ "Disabled", false, &capability_checks };
+    const givm::definition_source_view<givm::support_view> enabled_view{ enabled };
+    const givm::definition_source_view<givm::support_view> disabled_view{ disabled };
+    CHECK(bool(enabled_view.name() == "Enabled"));
+    CHECK(bool(disabled_view.name() == "Disabled"));
+    CHECK(capability_checks == 0);
 
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(enabled, disabled));
@@ -576,6 +599,12 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     CHECK_FALSE(
         library[id_map.get_id<givm::support_view>(disabled.name())].can_handle<givm::round_started, givm::support_view>()
     );
+    CHECK(capability_checks > 0);
+    const auto default_state = givm::query_default(givm::support_state_limit{});
+    const auto disabled_state = library[id_map.get_id<givm::support_view>(disabled.name())]
+        .query(givm::support_state_limit{});
+    CHECK(disabled_state.count == default_state.count);
+    CHECK(disabled_state.round_usages == default_state.round_usages);
 }
 
 TEST_CASE("static handler availability depends on the implementation alone", "[source_view]")
@@ -594,15 +623,6 @@ TEST_CASE("static handler availability depends on the implementation alone", "[s
     CHECK_FALSE(library[ids.get_id<givm::support_view>(implicit_source.name())]
         .can_handle<givm::damage_effect, givm::support_view>());
     CHECK(capability_checks == 0);
-}
-
-TEST_CASE("dynamic sources cannot enable a missing handler implementation", "[source_view]")
-{
-    const missing_dynamic_handler_source source{ { "MissingDynamicHandler", true } };
-    auto sources = givm_test::make_source_library();
-    REQUIRE(sources.add(source));
-    REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal),
-        std::invalid_argument);
 }
 
 TEST_CASE("definition metadata reuses registered declarations before every layout and compile", "[source_view][metadata]")

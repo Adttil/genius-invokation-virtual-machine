@@ -185,6 +185,20 @@ namespace
 
         template<class TQuery>
         constexpr bool can_query() const noexcept { return false; }
+
+        template<class TView, class TEvent>
+        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        {
+            FAIL("A disabled dynamic handler was invoked");
+            std::unreachable();
+        }
+
+        template<class TQuery>
+        static TQuery::result_t query(const definition_type&, const TQuery&)
+        {
+            FAIL("A disabled dynamic query was invoked");
+            std::unreachable();
+        }
     };
 
     template<class TCategory>

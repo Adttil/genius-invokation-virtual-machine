@@ -95,7 +95,7 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 
 当 `std::is_empty_v<Q>` 为 `true` 时，查询结果只由编译后的定义决定。每次编译定义库时，在该项定义的 `compile` 完成后查询一次并保存结果；游戏运行期间读取已保存的结果，不再调用定义源的 `query`。查询类型须能以 `Q{}` 构造；结果不要求是 C++ 常量表达式。非空查询按每次提供的参数求值。
 
-缺少对应 `query` 时，使用通过参数相关查找（ADL）找到的 [`query_default(parameters)`](query_default.md)，返回类型同样必须是 `Q::result_t`。既没有源查询也没有默认方法时，定义源不满足协议。当前[查询列表](queries.md)中的每种查询均有默认方法；其中卡牌、技能与特技的目标检查仅在目标数量为零时默认返回 `valid_complete`，非零数量返回 `invalid`。
+静态源缺少对应 `query`，或动态源的 `can_query<Q>()` 返回 `false` 时，使用通过参数相关查找（ADL）找到的 [`query_default(parameters)`](query_default.md)，返回类型同样必须是 `Q::result_t`。需要默认方法而没有匹配实现时，定义源不满足协议。当前[查询列表](queries.md)中的每种查询均有默认方法；其中卡牌、技能与特技的目标检查仅在目标数量为零时默认返回 `valid_complete`，非零数量返回 `invalid`。
 
 卡牌初始属性由 [`card_initial_state`](queries/card_initial_state.md) 给出，牌自身的费用与是否允许调和保存在 `card_state`。卡牌附属状态通过 [`card_state_modification`](queries/card_state_modification.md) 修改这些属性；此查询接收卡牌 state 的可变引用与该附属状态的只读 state，不读取牌外的动态状态。
 
@@ -123,7 +123,7 @@ template<class Q>
 bool can_query() const;
 ```
 
-动态源须为所属类别支持的每个实体 view 与事件组合提供 `can_handle`，并为每种支持的查询提供 `can_query`；两者的返回类型都必须为 `bool`。实际调用仍由前述静态 `handle`、`query` 函数实现，适配器所需的脚本状态、回调引用等数据由 `compile` 返回的配置保存。
+动态源须为所属类别支持的每个实体 view 与事件组合完整提供 `can_handle` 和静态 `handle`，并为每种支持的查询完整提供 `can_query` 和静态 `query`。能力判断的返回类型必须是 `bool`；普通响应返回 `program_entry`，查询返回 `Q::result_t`。即使能力判断始终返回 `false`，对应函数仍须存在且签名正确。这些要求在构造 [`definition_source_view`](definition_source_view/constructor.md) 时由 C++ 编译检查，缺失接口或返回类型错误都会导致编译错误。可以使用泛型函数覆盖这些组合，适配器所需的脚本状态、回调引用等数据由 `compile` 返回的配置保存。
 
 | 判断结果 | 编译定义库时的行为 |
 | --- | --- |
@@ -132,7 +132,7 @@ bool can_query() const;
 | `can_query<Q>()` 为 `true` | 使用对应 `query` |
 | `can_query<Q>()` 为 `false` | 使用 `query_default` |
 
-能力判断在任何定义的 `compile` 或历史摘要的 `layout` 开始前对具体源对象进行，不能依赖这些操作的结果。元数据查询与最终定义库使用同次编译确定的能力。若返回 `true` 却没有匹配的实现，编译定义库抛出 `std::invalid_argument`；已有实现返回类型错误则属于 C++ 编译错误。能力判断须与源实际提供的实现一致。查询选定后仍遵守空参数查询求值一次、非空参数查询按本次参数求值的规则。
+能力判断在任何定义的 `compile` 或历史摘要的 `layout` 开始前对具体源对象进行，不能依赖这些操作的结果。元数据查询与最终定义库使用同次编译确定的能力。返回 `false` 的分支不会调用源的对应 `handle` 或 `query`；定义源若绕过此选择直接调用声明不支持的分支，属于未定义行为，不要求该分支提供有效结果。查询选定后仍遵守空参数查询求值一次、非空参数查询按本次参数求值的规则。
 
 游戏运行期间不再调用源对象的能力判断。定义库公开的 [`can_handle`](../executor/definition_library/can_handle.md) 查询返回本次编译确定的响应能力。
 

@@ -245,6 +245,23 @@ namespace
                 return context.invoke(data.remove, typename T::removal{ self.id() });
             return {};
         }
+
+        template<class TEvent>
+        requires (not std::is_same_v<TEvent, typename T::regeneration>
+            && not std::is_same_v<TEvent, typename T::changed>)
+        static givm::program_entry handle(const definition_type&, const typename T::view&,
+            TEvent&, givm::handle_context&)
+        {
+            FAIL("A disabled lifecycle handler was invoked");
+            std::unreachable();
+        }
+
+        template<class TQuery>
+        static TQuery::result_t query(const definition_type&, const TQuery&)
+        {
+            FAIL("A disabled dynamic query was invoked");
+            std::unreachable();
+        }
     };
 
     template<class T>
