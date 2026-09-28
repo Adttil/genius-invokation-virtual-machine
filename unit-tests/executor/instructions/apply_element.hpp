@@ -115,6 +115,12 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         incoming = givm::element::pyro;
         expected_aura = givm::element_aura::none;
     }
+    SECTION("Cryo Dendro reaction preserves the Dendro aura")
+    {
+        initial_aura = givm::element_aura::cryo_dendro;
+        incoming = givm::element::pyro;
+        expected_aura = givm::element_aura::dendro;
+    }
     SECTION("reaction replacement preserves default aura consumption")
     {
         initial_aura = givm::element_aura::hydro;
@@ -155,7 +161,7 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         CHECK(log.order == std::vector{ 1, 2 });
         CHECK(log.incoming == givm::element::pyro);
         CHECK(log.reacted_aura == initial_aura);
-        CHECK(log.reaction == (initial_aura == givm::element_aura::cryo
+        CHECK(log.reaction == (primary_element_from_aura(initial_aura) == givm::element::cryo
             ? givm::elemental_reaction::melt : givm::elemental_reaction::vaporize));
         CHECK(log.cause == givm::element_application_cause::effect);
     }

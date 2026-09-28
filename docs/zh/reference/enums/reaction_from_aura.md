@@ -8,7 +8,7 @@
 constexpr elemental_reaction reaction_from_aura(element_aura aura, element incoming) noexcept;
 ```
 
-判断角色已有附着与新元素产生的反应。多元素共存时，由优先元素参与判断。
+判断角色已有附着与新元素产生的反应。冰草共存时始终由冰参与判断，与原先施加冰、草的顺序无关。
 
 ## 参数
 
@@ -31,14 +31,14 @@ constexpr elemental_reaction reaction_from_aura(element_aura aura, element incom
 int main()
 {
     const auto reaction = givm::reaction_from_aura(givm::element_aura::cryo_dendro, givm::element::pyro);
-    std::println("冰在先时发生融化: {}", reaction == givm::elemental_reaction::melt);
+    std::println("冰草共存时发生融化: {}", reaction == givm::elemental_reaction::melt);
 }
 ```
 
 输出
 
 ```text
-冰在先时发生融化: true
+冰草共存时发生融化: true
 ```
 
 ## 参阅

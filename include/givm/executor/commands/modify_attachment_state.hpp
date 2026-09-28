@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_MODIFY_ATTACHMENT_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_MODIFY_ATTACHMENT_STATE_HPP
 
+#include <algorithm>
+#include <limits>
 #include <vector>
 
 #ifndef NDEBUG
@@ -20,8 +22,8 @@ namespace givm::detail
         std::int64_t round_usages;
     };
 
-    template<class Selector = void>
-    execution_state execute_attachment_state_modification(
+    template<bool IgnoreLimit, class Selector = void>
+    inline execution_state execute_attachment_state_modification(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
@@ -56,7 +58,15 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         const auto state = attachment.state();
-        const auto limit = library[attachment.definition_id()].query(attachment_state_limit{});
+        attachment_state limit{
+            std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max()
+        };
+        if constexpr(not IgnoreLimit)
+        {
+            limit = library[attachment.definition_id()].query(attachment_state_limit{});
+            limit.count = std::max(state.count, limit.count);
+            limit.round_usages = std::max(state.round_usages, limit.round_usages);
+        }
         const auto add = [](std::uint32_t value, std::int64_t delta, std::uint32_t maximum) -> std::uint32_t
         {
             if(delta < -static_cast<std::int64_t>(value)) return 0;
@@ -78,13 +88,17 @@ namespace givm::detail
             {
                 if(not selector)
                 {
-                    writer.write(execute_fn{ execute_attachment_state_modification<> });
+                    writer.write(command.ignore_limit
+                        ? execute_fn{ execute_attachment_state_modification<true> }
+                        : execute_fn{ execute_attachment_state_modification<false> });
                     return;
                 }
             }
             else GIVM_ASSERT(selector != equipment_type::none);
             GIVM_ASSERT(command.target.character.selection == character_selection::character);
-            writer.write(execute_fn{ execute_attachment_state_modification<selector_type> });
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_attachment_state_modification<true, selector_type> }
+                : execute_fn{ execute_attachment_state_modification<false, selector_type> });
             writer.write(attachment_state_modification_data<selector_type>{
                 { command.target.character, selector }, command.count, command.round_usages });
         }, command.target.selector);

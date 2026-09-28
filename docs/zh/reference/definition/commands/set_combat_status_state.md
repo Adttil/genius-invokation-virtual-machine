@@ -18,6 +18,7 @@ struct set_combat_status_state
     relative_player player = relative_player::self;
     definition_id<combat_status_view> definition{};
     combat_status_state state{};
+    bool ignore_limit = false;
 };
 ```
 
@@ -35,9 +36,15 @@ struct set_combat_status_state
 
 `player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入直接指定要操作的有效实体。
 
+`ignore_limit` 是命令选项，对固定和动态模式均生效，默认 `false`。动态输入不重复携带此选项；例如 `set_combat_status_state{ .ignore_limit = true }` 使用忽略定义上限的动态模式。
+
 ## 结算
 
-执行时读取 [combat_status_state_limit](../queries/combat_status_state_limit.md)，将提供的 `state` 各字段分别裁剪至对应上限。然后以裁剪结果替换目标的完整状态。`state{}` 的两个字段均为零。
+执行时逐字段写入新状态。`ignore_limit == false` 时，每个字段的结果为 `min(requested, max(v, L))`，其中 `requested` 是要求设置的值，`v` 是当前值，`L` 是 [combat_status_state_limit](../queries/combat_status_state_limit.md) 对应字段的默认上限。允许保留已有的超限值，也允许明确将它设为更小的值。
+
+`ignore_limit == true` 时直接采用提供的完整状态，不按定义上限裁剪。`state{}` 的两个字段均为零。
+
+例如当前值为 3、定义上限为 2，普通模式设置为 3 或 4 均得到 3，设置为 2 得到 2。需要补足次数且保留原有次数时，定义应提交原值与补足目标中的较大者；直接提交较小的值表示明确降低。
 
 先写入新状态，再仅向被修改的实体发送 [combat_status_state_changed](../events/combat_status_state_changed.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
 

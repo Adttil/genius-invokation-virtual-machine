@@ -57,6 +57,7 @@ namespace givm
         definition_id<summon_view> definition{};
         std::int64_t value{};
         std::int64_t usages{};
+        bool ignore_limit = false;
     };
 }
 

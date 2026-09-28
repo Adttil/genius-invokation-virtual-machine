@@ -18,6 +18,7 @@ struct modify_attachment_state
     relative_attachment_target target{};
     std::int64_t count{};
     std::int64_t round_usages{};
+    bool ignore_limit = false;
 };
 ```
 
@@ -35,9 +36,15 @@ struct modify_attachment_state
 
 动态输入可使用具体附属实体 ID，也可使用角色 ID 与装备类别，在命令执行时定位该角色当前的装备。两种模式均要求相应实体存在；完整定位规则见 [附属实体定位](attachment_target.md)。
 
+`ignore_limit` 是命令选项，对固定和动态模式均生效，默认 `false`。动态输入不重复携带此选项；例如 `modify_attachment_state{ .ignore_limit = true }` 使用忽略定义上限的动态模式。
+
 ## 结算
 
-执行到命令时，分别读取目标各字段的当前值，加上对应的有符号增量，再将结果限制在零与 [attachment_state_limit](../queries/attachment_state_limit.md) 对应字段之间。负增量表示消耗，正增量表示增加；`INT64_MIN`、`INT64_MAX` 也按这一规则处理，不发生算术回绕。
+执行到命令时，分别读取目标各字段的当前值 `v`，加上对应的有符号增量 `delta`。`ignore_limit == false` 时，结果限制在零与 `max(v, L)` 之间，其中 `L` 是 [attachment_state_limit](../queries/attachment_state_limit.md) 对应字段的默认上限。已经超限的字段不会继续增加，也不会因上限裁剪而减少；负增量正常扣除，零增量保持原值。
+
+`ignore_limit == true` 时忽略定义上限，结果仅限制在零与 `UINT32_MAX` 之间。两种模式均支持 `INT64_MIN`、`INT64_MAX`，不发生算术回绕。
+
+例如当前值为 3、定义上限为 2，普通模式增加 1 仍为 3，减少 1 得到 2；忽略上限时增加 1 得到 4。
 
 先写入新状态，再仅向被修改的实体发送 [attachment_state_changed](../events/attachment_state_changed.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
 

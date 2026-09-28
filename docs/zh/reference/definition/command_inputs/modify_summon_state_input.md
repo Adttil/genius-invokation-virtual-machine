@@ -28,3 +28,5 @@ struct modify_summon_state_input
 `summons` 按处理顺序指定目标，可以跨双方；允许为空，目标不得重复。全部状态修改完成后，才按该顺序处理带 `remove_at_zero_usages` 标签且当前次数为零的召唤物离场。
 
 [`invoke`](../../executor/handle_context/invoke.md) 复制数组内容，返回后不再借用原数组。数组须在复制期间保持有效。目标须在命令开始执行时有效。
+
+饱和规则由命令的 `ignore_limit` 选项决定；此输入不重复携带该选项。普通模式也会保留原有的超限部分。

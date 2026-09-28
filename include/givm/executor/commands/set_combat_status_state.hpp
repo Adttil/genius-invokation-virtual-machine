@@ -1,6 +1,7 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SET_COMBAT_STATUS_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_SET_COMBAT_STATUS_STATE_HPP
 
+#include <algorithm>
 #include <vector>
 
 #ifndef NDEBUG
@@ -13,6 +14,13 @@
 
 namespace givm::detail
 {
+    struct combat_status_state_change_data
+    {
+        relative_player player;
+        definition_id<combat_status_view> definition;
+        combat_status_state state;
+    };
+
     inline execution_state finish_combat_status_state_change(
         const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
     {
@@ -41,22 +49,22 @@ namespace givm::detail
         return finish_combat_status_state_change(library, table, context, random);
     }
 
-    template<bool Fixed>
-    execution_state execute_combat_status_state_change(
+    template<bool Fixed, bool IgnoreLimit>
+    inline execution_state execute_combat_status_state_change(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
         set_combat_status_state_input input;
         if constexpr(Fixed)
         {
-            const auto& command = context.instruction_data<1, set_combat_status_state>(library);
+            const auto& command = context.instruction_data<1, combat_status_state_change_data>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
 #ifndef NDEBUG
             debug_validate_required_entity(table, player, command.definition, "set_combat_status_state", "status");
 #endif
             input = { require_combat_status(table, player, command.definition), command.state };
-            context.advance(instruction_extent<1, set_combat_status_state>);
+            context.advance(instruction_extent<1, combat_status_state_change_data>);
         }
         else
         {
@@ -70,8 +78,15 @@ namespace givm::detail
         const bool valid = static_cast<bool>(table[input.status]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
-        const auto definition = library[table[input.status].definition_id()];
-        input.state = clamp_combat_status_state(input.state, definition.query(combat_status_state_limit{}));
+        if constexpr(not IgnoreLimit)
+        {
+            const auto current = table[input.status].state();
+            const auto limit = library[table[input.status].definition_id()].query(combat_status_state_limit{});
+            input.state = {
+                std::min(input.state.count, std::max(current.count, limit.count)),
+                std::min(input.state.round_usages, std::max(current.round_usages, limit.round_usages))
+            };
+        }
         return change_combat_status_state(library, table, context, random, input);
     }
 
@@ -79,11 +94,15 @@ namespace givm::detail
     {
         if(command.definition)
         {
-            writer.write(execute_fn{ execute_combat_status_state_change<true> });
-            writer.write(command);
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_combat_status_state_change<true, true> }
+                : execute_fn{ execute_combat_status_state_change<true, false> });
+            writer.write(combat_status_state_change_data{ command.player, command.definition, command.state });
         }
         else
-            writer.write(execute_fn{ execute_combat_status_state_change<false> });
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_combat_status_state_change<false, true> }
+                : execute_fn{ execute_combat_status_state_change<false, false> });
         writer.write(execute_fn{ finish_combat_status_state_change });
     }
 }

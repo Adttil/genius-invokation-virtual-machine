@@ -13,6 +13,7 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <givm/basic_definitions.hpp>
 #include <givm/executor.hpp>
 
 #include "../../table/test_definition_library.hpp"
@@ -126,6 +127,7 @@ namespace
         state_deltas delta{};
         state_deltas next_delta{};
         bool other_summon = false;
+        bool ignore_limit = false;
     };
 
     template<class T>
@@ -312,8 +314,8 @@ namespace
                 const auto set = [&]
                 {
                     if constexpr(std::is_same_v<T, attachment_traits>)
-                        return typename T::set{ { { .player = player, .offset = static_cast<std::int32_t>(action.character_index) }, definition }, state };
-                    else return typename T::set{ player, definition, state };
+                        return typename T::set{ { { .player = player, .offset = static_cast<std::int32_t>(action.character_index) }, definition }, state, action.ignore_limit };
+                    else return typename T::set{ player, definition, state, action.ignore_limit };
                 };
                 const auto remove = [&]
                 {
@@ -324,8 +326,8 @@ namespace
                 const auto modify = [&](state_deltas delta)
                 {
                     if constexpr(std::is_same_v<T, attachment_traits>)
-                        return typename T::modify{ { { .player = player, .offset = static_cast<std::int32_t>(action.character_index) }, definition }, delta[0], delta[1] };
-                    else return typename T::modify{ player, definition, delta[0], delta[1] };
+                        return typename T::modify{ { { .player = player, .offset = static_cast<std::int32_t>(action.character_index) }, definition }, delta[0], delta[1], action.ignore_limit };
+                    else return typename T::modify{ player, definition, delta[0], delta[1], action.ignore_limit };
                 };
                 switch(action.operation)
                 {
@@ -708,6 +710,146 @@ TEMPLATE_TEST_CASE("signed deltas handle the full unsigned state range",
     CHECK(T::values(table[log.created[0]].state()) == log.limit);
 }
 
+TEMPLATE_TEST_CASE("ordinary state modification preserves existing excess without blocking reductions",
+    "[entity-state][state-limit]", summon_traits, combat_status_traits, attachment_traits)
+{
+    using T = TestType;
+    lifecycle_log<T> log;
+    log.dynamic = GENERATE(false, true);
+    const auto [delta, expected] = GENERATE(
+        std::pair{ state_deltas{ 0, 0 }, state_values{ 25, 35 } },
+        std::pair{ state_deltas{ 0, -1 }, state_values{ 25, 34 } },
+        std::pair{ state_deltas{ 3, 7 }, state_values{ 25, 35 } },
+        std::pair{ state_deltas{ -1, -1 }, state_values{ 24, 34 } },
+        std::pair{ state_deltas{ -10, -10 }, state_values{ 15, 25 } },
+        std::pair{ state_deltas{ std::numeric_limits<std::int64_t>::max(), std::numeric_limits<std::int64_t>::min() }, state_values{ 25, 0 } });
+    log.actions = { { operation::add, { 7, 8 } },
+        { .operation = operation::set, .state = { 25, 35 }, .ignore_limit = true },
+        { .operation = operation::modify, .delta = delta } };
+    const auto table = run_lifecycle(log, givm::compile_mode::normal);
+    REQUIRE(log.created.size() == 1);
+    CHECK(T::values(table[log.created[0]].state()) == expected);
+    if constexpr(not std::is_same_v<T, summon_traits>)
+    {
+        CHECK(log.previous_states == std::vector<state_values>{ { 7, 8 }, { 25, 35 } });
+        CHECK(log.current_states == std::vector<state_values>{ { 25, 35 }, expected });
+    }
+    else CHECK(log.changed.empty());
+}
+
+TEMPLATE_TEST_CASE("ignoring state limits still saturates signed modification at representable bounds",
+    "[entity-state][state-limit]", summon_traits, combat_status_traits, attachment_traits)
+{
+    using T = TestType;
+    lifecycle_log<T> log;
+    log.dynamic = GENERATE(false, true);
+    const auto [delta, expected] = GENERATE(
+        std::pair{ state_deltas{ 23, 32 }, state_values{ 30, 40 } },
+        std::pair{ state_deltas{ -1, -1 }, state_values{ 6, 7 } },
+        std::pair{ state_deltas{ std::numeric_limits<std::int64_t>::max(), std::numeric_limits<std::int64_t>::min() }, state_values{ maximum, 0 } },
+        std::pair{ state_deltas{ std::numeric_limits<std::int64_t>::min(), std::numeric_limits<std::int64_t>::max() }, state_values{ 0, maximum } });
+    log.actions = { { operation::add, { 7, 8 } },
+        { .operation = operation::modify, .delta = delta, .ignore_limit = true } };
+    const auto table = run_lifecycle(log, givm::compile_mode::normal);
+    REQUIRE(log.created.size() == 1);
+    CHECK(T::values(table[log.created[0]].state()) == expected);
+    if constexpr(not std::is_same_v<T, summon_traits>)
+    {
+        CHECK(log.previous_states == std::vector<state_values>{ { 7, 8 } });
+        CHECK(log.current_states == std::vector{ expected });
+    }
+    else CHECK(log.changed.empty());
+}
+
+TEMPLATE_TEST_CASE("state assignment preserves requested excess and honors explicit lower values",
+    "[entity-state][state-limit]", summon_traits, combat_status_traits, attachment_traits)
+{
+    using T = TestType;
+    lifecycle_log<T> log;
+    log.dynamic = GENERATE(false, true);
+    const bool ignore_limit = GENERATE(false, true);
+    const auto requested = GENERATE(state_values{ 25, 35 }, state_values{ 24, 34 },
+        state_values{ 20, 30 }, state_values{ 0, 0 }, state_values{ 26, 36 }, state_values{ maximum, maximum });
+    log.actions = { { operation::add, { 7, 8 } },
+        { .operation = operation::set, .state = { 25, 35 }, .ignore_limit = true },
+        { .operation = operation::set, .state = requested, .ignore_limit = ignore_limit } };
+    const auto table = run_lifecycle(log, givm::compile_mode::normal);
+    REQUIRE(log.created.size() == 1);
+    const auto expected = ignore_limit ? requested : state_values{ std::min(requested[0], 25u), std::min(requested[1], 35u) };
+    CHECK(T::values(table[log.created[0]].state()) == expected);
+    if constexpr(not std::is_same_v<T, summon_traits>)
+    {
+        CHECK(log.previous_states == std::vector<state_values>{ { 7, 8 }, { 25, 35 } });
+        CHECK(log.current_states == std::vector<state_values>{ { 25, 35 }, expected });
+    }
+    else CHECK(log.changed.empty());
+}
+
+TEMPLATE_TEST_CASE("repeated generation can accumulate or replenish without erasing existing excess",
+    "[entity-state][state-limit][entity-generation]", summon_traits, combat_status_traits, attachment_traits)
+{
+    using T = TestType;
+    lifecycle_log<T> log;
+    log.dynamic = GENERATE(false, true);
+    log.behavior = GENERATE(regeneration_behavior::accumulate, regeneration_behavior::refresh);
+    log.actions = { { operation::add, { 7, 8 } },
+        { .operation = operation::set, .state = { 25, 35 }, .ignore_limit = true },
+        { operation::generate, { 7, 8 } } };
+    const auto table = run_lifecycle(log, givm::compile_mode::normal);
+    REQUIRE(log.created.size() == 1);
+    CHECK(log.regenerated == log.created);
+    CHECK(T::values(table[log.created[0]].state()) == state_values{ 25, 35 });
+}
+
+TEST_CASE("official burning flame keeps extra usages when summoned again", "[summon][state-limit]")
+{
+    struct source
+    {
+        using definition_category = givm::character_view;
+
+        std::string_view name() const { return "OverLimitFlameDriver"; }
+        givm::program_entry compile(givm::definition_compile_context& context) const
+        {
+            const auto flame = context.burning_flame_id();
+            return context.add_program(std::tuple{
+                givm::summon{ .definition = flame, .state = { 1, 2 } },
+                givm::modify_summon_state{ .definition = flame, .usages = 1, .ignore_limit = true },
+                givm::summon{ .definition = flame, .state = { 1, 1 } }
+            });
+        }
+        static givm::character_state query(const givm::program_entry&, const givm::character_initial_state&)
+        {
+            return { .max_health = 10, .health = 10 };
+        }
+        static givm::program_entry handle(const givm::program_entry& entry, const givm::character_view&,
+            givm::round_started&, givm::handle_context& context)
+        {
+            return context.invoke(entry);
+        }
+    };
+    const auto driver = givm::test::with_passive_skill(source{});
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(driver, driver.passive));
+    const givm::basic_definition_sources basics{
+        givm_test::dendro_core, givm_test::catalyzing_field,
+        givm::genshin_impact::burning_flame_3_3_0, givm_test::frozen };
+    const auto program = std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const auto [library, ids] = givm_test::require_success(
+        compile(sources, basics, program, std::tuple{}, givm::compile_mode::normal));
+    constexpr givm::player_id player{ 0 };
+    givm::table table{ { .self_player = player }, { .active_character = givm::character_id{ player, 0 } }, {} };
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(driver.name()) } }, {});
+    givm::executor executor;
+    auto initialized = executor.start(library, table);
+    auto random = [] { return std::uint32_t{ 0 }; };
+    REQUIRE(initialized.resume(library, table, random) == givm::execution_state::finished);
+    auto summons = table[player].summons();
+    REQUIRE(std::ranges::distance(summons) == 1);
+    CHECK((*summons.begin()).definition_id() == library.burning_flame_id());
+    CHECK((*summons.begin()).state().value == 1);
+    CHECK((*summons.begin()).state().usages == 3);
+}
+
 TEMPLATE_TEST_CASE("zero state remains unless the entity response removes it",
     "[entity-state]", combat_status_traits, attachment_traits)
 {
@@ -820,6 +962,8 @@ TEMPLATE_TEST_CASE("entity limit queries cache source results and default to the
     CHECK(T::values(typename T::add{}.state) == state_values{ maximum, maximum });
     CHECK(T::values(typename T::addition{}.state) == state_values{ maximum, maximum });
     CHECK(T::values(typename T::state{}) == state_values{ 0, 0 });
+    CHECK_FALSE(typename T::set{}.ignore_limit);
+    CHECK_FALSE(typename T::modify{}.ignore_limit);
     if constexpr(std::is_same_v<T, summon_traits>)
     {
         STATIC_REQUIRE(std::is_same_v<decltype(T::modify::value), std::int64_t>);

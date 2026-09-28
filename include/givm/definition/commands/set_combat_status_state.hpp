@@ -53,6 +53,7 @@ namespace givm
         relative_player player = relative_player::self;
         definition_id<combat_status_view> definition{};
         combat_status_state state{};
+        bool ignore_limit = false;
     };
 }
 

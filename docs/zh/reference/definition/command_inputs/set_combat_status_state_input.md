@@ -19,4 +19,4 @@ struct set_combat_status_state_input
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `status` | `combat_status_id` | 要修改的有效实体 |
-| `state` | `combat_status_state` | 要设置的完整状态，默认两个字段均为零；执行时裁剪至定义上限 |
+| `state` | `combat_status_state` | 要设置的完整状态，默认两个字段均为零；执行时按命令的 `ignore_limit` 选项处理 |

@@ -211,7 +211,7 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
 
 TEST_CASE("damage observation follows aura preparation and copies resume independently", "[deal_damage][observation]")
 {
-    const auto initial_aura = GENERATE(givm::element_aura::none, givm::element_aura::cryo);
+    const auto initial_aura = GENERATE(givm::element_aura::none, givm::element_aura::cryo, givm::element_aura::cryo_dendro);
     damage_log log{ .effect_reduction = 1 };
     const auto observer = givm::test::with_passive_skill(damage_observer_source{ &log });
     const givm::test::initialized_character_source victim{
@@ -251,9 +251,9 @@ TEST_CASE("damage observation follows aura preparation and copies resume indepen
     observed.start(library, table);
     REQUIRE(observed.advance(library, table, random) == givm::execution_state::health_reduced);
     const auto health = observed.view_in<givm::execution_state::health_reduced>();
-    const auto expected_damage = initial_aura == givm::element_aura::cryo ? 4u : 2u;
-    const auto expected_aura = initial_aura == givm::element_aura::cryo
-        ? givm::element_aura::none : givm::element_aura::pyro;
+    const auto expected_damage = initial_aura != givm::element_aura::none ? 4u : 2u;
+    const auto expected_aura = initial_aura == givm::element_aura::cryo_dendro ? givm::element_aura::dendro
+        : initial_aura == givm::element_aura::cryo ? givm::element_aura::none : givm::element_aura::pyro;
     CHECK(health.source() == givm::damage_source_id{ source });
     CHECK(health.target() == damaged);
     CHECK(health.value() == expected_damage);
@@ -261,7 +261,7 @@ TEST_CASE("damage observation follows aura preparation and copies resume indepen
     CHECK(health.flags().contains(givm::damage_flag_bits::skill_damage));
     CHECK(table[damaged].state().health == 10 - expected_damage);
     CHECK(table[damaged].state().aura == expected_aura);
-    const auto order_before_completion = initial_aura == givm::element_aura::cryo
+    const auto order_before_completion = initial_aura != givm::element_aura::none
         ? std::vector{ observed_event::reaction_will_occur, observed_event::calculation, observed_event::effect }
         : std::vector{ observed_event::calculation, observed_event::effect };
     CHECK(log.order == order_before_completion);

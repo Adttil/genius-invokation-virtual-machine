@@ -18,6 +18,7 @@ struct set_summon_state
     relative_player player = relative_player::self;
     definition_id<summon_view> definition{};
     summon_state state{};
+    bool ignore_limit = false;
 };
 ```
 
@@ -35,9 +36,17 @@ struct set_summon_state
 
 `player` 沿用 [relative_player](relative_player.md) 的含义，相对于当前效果的本方。动态输入以数组指定本次全部目标，可跨双方；允许为空，目标不得重复，并须在命令开始时有效。数组内容在 `invoke` 时复制。
 
+`ignore_limit` 是命令选项，对固定和动态模式均生效，默认 `false`。动态输入不重复携带此选项；例如 `set_summon_state{ .ignore_limit = true }` 使用忽略定义上限的动态模式。
+
 ## 结算
 
-按输入顺序，以每个目标定义的 [summon_state_limit](../queries/summon_state_limit.md) 逐字段裁剪后写入完整状态。固定模式使用命令的 `state`；动态模式的每项 `change` 都有自己的 `state`。
+执行时逐字段写入新状态。`ignore_limit == false` 时，每个字段的结果为 `min(requested, max(v, L))`，其中 `requested` 是要求设置的值，`v` 是当前值，`L` 是 [summon_state_limit](../queries/summon_state_limit.md) 对应字段的默认上限。允许保留已有的超限值，也允许明确将它设为更小的值。
+
+`ignore_limit == true` 时直接采用提供的完整状态，不按定义上限裁剪。`state{}` 的两个字段均为零。
+
+例如当前值为 3、定义上限为 2，普通模式设置为 3 或 4 均得到 3，设置为 2 得到 2。需要补足次数且保留原有次数时，定义应提交原值与补足目标中的较大者；直接提交较小的值表示明确降低。
+
+固定模式使用命令的 `state`；动态模式按输入顺序处理，每项 `change` 都有自己的 `state`。
 
 本命令不发送状态修改通知，也不触发耗尽离场，即使目标带 `remove_at_zero_usages` 标签且被设置为零次数也仍保留。需要强制移除时，后续显式执行 [remove_summon](remove_summon.md)。这允许先一次性设置全部指定召唤物，再开始处理离场通知。
 

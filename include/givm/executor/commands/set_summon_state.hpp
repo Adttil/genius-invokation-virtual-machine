@@ -1,6 +1,7 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SET_SUMMON_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_SET_SUMMON_STATE_HPP
 
+#include <algorithm>
 #include <vector>
 
 #ifndef NDEBUG
@@ -13,23 +14,46 @@
 
 namespace givm::detail
 {
-    template<bool Fixed>
+    struct summon_state_change_data
+    {
+        relative_player player;
+        definition_id<summon_view> definition;
+        summon_state state;
+    };
+
+    template<bool Fixed, bool IgnoreLimit>
     inline execution_state execute_summon_state_change(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn&)
     {
+        const auto set_state = [&](summon_id id, summon_state state)
+        {
+            auto summon = table[id];
+            const bool valid = static_cast<bool>(summon);
+            GIVM_ASSERT(valid);
+            [[assume(valid)]];
+            if constexpr(not IgnoreLimit)
+            {
+                const auto current = summon.state();
+                const auto limit = library[summon.definition_id()].query(summon_state_limit{});
+                state = {
+                    std::min(state.value, std::max(current.value, limit.value)),
+                    std::min(state.usages, std::max(current.usages, limit.usages))
+                };
+            }
+            summon.state() = state;
+        };
         if constexpr(Fixed)
         {
-            const auto& command = context.instruction_data<1, set_summon_state>(library);
+            const auto& command = context.instruction_data<1, summon_state_change_data>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
 #ifndef NDEBUG
             debug_validate_required_entity(table, player, command.definition, "set_summon_state", "summon");
 #endif
             const auto summon = require_summon(table, player, command.definition);
-            table[summon].state() = clamp_summon_state(command.state,
-                library[command.definition].query(summon_state_limit{}));
-            return context.advance(instruction_extent<1, set_summon_state>);
+            set_state(summon, command.state);
+            return context.advance(instruction_extent<1, summon_state_change_data>);
         }
         else
         {
@@ -44,14 +68,7 @@ namespace givm::detail
             }
 #endif
             for(const auto& change : changes)
-            {
-                auto summon = table[change.summon];
-                const bool valid = static_cast<bool>(summon);
-                GIVM_ASSERT(valid);
-                [[assume(valid)]];
-                summon.state() = clamp_summon_state(change.state,
-                    library[summon.definition_id()].query(summon_state_limit{}));
-            }
+                set_state(change.summon, change.state);
             context.stack().pop<set_summon_state_input::change[]>();
             return context.enter_next();
         }
@@ -61,11 +78,15 @@ namespace givm::detail
     {
         if(command.definition)
         {
-            writer.write(execute_fn{ execute_summon_state_change<true> });
-            writer.write(command);
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_summon_state_change<true, true> }
+                : execute_fn{ execute_summon_state_change<true, false> });
+            writer.write(summon_state_change_data{ command.player, command.definition, command.state });
         }
         else
-            writer.write(execute_fn{ execute_summon_state_change<false> });
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_summon_state_change<false, true> }
+                : execute_fn{ execute_summon_state_change<false, false> });
     }
 }
 

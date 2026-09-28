@@ -59,6 +59,7 @@ namespace givm
         relative_player player = relative_player::self;
         definition_id<summon_view> definition{};
         summon_state state{};
+        bool ignore_limit = false;
     };
 }
 

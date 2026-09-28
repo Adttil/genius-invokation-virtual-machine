@@ -59,6 +59,7 @@ namespace givm
 
         relative_attachment_target target{};
         attachment_state state{};
+        bool ignore_limit = false;
     };
 }
 

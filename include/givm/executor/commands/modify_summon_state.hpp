@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_MODIFY_SUMMON_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_MODIFY_SUMMON_STATE_HPP
 
+#include <algorithm>
+#include <limits>
 #include <vector>
 
 #ifndef NDEBUG
@@ -14,7 +16,15 @@
 
 namespace givm::detail
 {
-    template<bool Fixed>
+    struct summon_state_modification_data
+    {
+        relative_player player;
+        definition_id<summon_view> definition;
+        std::int64_t value;
+        std::int64_t usages;
+    };
+
+    template<bool Fixed, bool IgnoreLimit>
     inline execution_state execute_summon_state_modification(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
@@ -35,7 +45,15 @@ namespace givm::detail
             GIVM_ASSERT(valid);
             [[assume(valid)]];
             const auto current = summon.state();
-            const auto limit = library[summon.definition_id()].query(summon_state_limit{});
+            summon_state limit{
+                std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max()
+            };
+            if constexpr(not IgnoreLimit)
+            {
+                limit = library[summon.definition_id()].query(summon_state_limit{});
+                limit.value = std::max(current.value, limit.value);
+                limit.usages = std::max(current.usages, limit.usages);
+            }
             summon.state() = {
                 add_saturated(current.value, value, limit.value),
                 add_saturated(current.usages, usages, limit.usages)
@@ -45,7 +63,7 @@ namespace givm::detail
 
         if constexpr(Fixed)
         {
-            const auto& command = context.instruction_data<1, modify_summon_state>(library);
+            const auto& command = context.instruction_data<1, summon_state_modification_data>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
 #ifndef NDEBUG
@@ -53,7 +71,7 @@ namespace givm::detail
 #endif
             const auto summon = require_summon(table, player, command.definition);
             const auto changed = modify(summon, command.value, command.usages);
-            context.advance(instruction_extent<1, modify_summon_state>);
+            context.advance(instruction_extent<1, summon_state_modification_data>);
             if(changed.state().usages == 0 && library.remove_at_zero_usages(command.definition))
                 return remove_summon_and_broadcast(library, table, context, random, summon);
             return context.enter_next();
@@ -92,13 +110,17 @@ namespace givm::detail
     {
         if(command.definition)
         {
-            writer.write(execute_fn{ execute_summon_state_modification<true> });
-            writer.write(command);
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_summon_state_modification<true, true> }
+                : execute_fn{ execute_summon_state_modification<true, false> });
+            writer.write(summon_state_modification_data{ command.player, command.definition, command.value, command.usages });
             writer.write(execute_fn{ broadcast_summon_removal });
         }
         else
         {
-            writer.write(execute_fn{ execute_summon_state_modification<false> });
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_summon_state_modification<false, true> }
+                : execute_fn{ execute_summon_state_modification<false, false> });
             writer.write(execute_fn{ broadcast_summon_removals<true> });
         }
     }

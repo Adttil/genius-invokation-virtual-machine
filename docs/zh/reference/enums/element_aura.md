@@ -15,12 +15,11 @@ enum class element_aura : unsigned char
     anemo,
     geo,
     dendro,
-    cryo_dendro,
-    dendro_cryo
+    cryo_dendro
 };
 ```
 
-角色身上保留的元素附着。冰与草共存时，还区分二者的先后次序。
+角色身上保留的元素附着。冰与草共存只有一种状态，冰始终在前，与施加顺序无关；后续反应优先消耗冰并保留草。
 
 ## 枚举值
 
@@ -34,8 +33,7 @@ enum class element_aura : unsigned char
 | `anemo` | 保留值，正常附着流程不会产生风附着 |
 | `geo` | 保留值，正常附着流程不会产生岩附着 |
 | `dendro` | 草附着 |
-| `cryo_dendro` | 冰在先、草在后的共存附着 |
-| `dendro_cryo` | 草在先、冰在后的共存附着 |
+| `cryo_dendro` | 冰与草共存，冰优先参与反应 |
 
 ## 示例
 

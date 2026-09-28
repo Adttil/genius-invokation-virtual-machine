@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_MODIFY_COMBAT_STATUS_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_MODIFY_COMBAT_STATUS_STATE_HPP
 
+#include <algorithm>
+#include <limits>
 #include <vector>
 
 #ifndef NDEBUG
@@ -14,15 +16,23 @@
 
 namespace givm::detail
 {
-    template<bool Fixed>
-    execution_state execute_combat_status_state_modification(
+    struct combat_status_state_modification_data
+    {
+        relative_player player;
+        definition_id<combat_status_view> definition;
+        std::int64_t count;
+        std::int64_t round_usages;
+    };
+
+    template<bool Fixed, bool IgnoreLimit>
+    inline execution_state execute_combat_status_state_modification(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
         modify_combat_status_state_input input;
         if constexpr(Fixed)
         {
-            const auto& command = context.instruction_data<1, modify_combat_status_state>(library);
+            const auto& command = context.instruction_data<1, combat_status_state_modification_data>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
 #ifndef NDEBUG
@@ -31,7 +41,7 @@ namespace givm::detail
             input = {
                 require_combat_status(table, player, command.definition), command.count, command.round_usages
             };
-            context.advance(instruction_extent<1, modify_combat_status_state>);
+            context.advance(instruction_extent<1, combat_status_state_modification_data>);
         }
         else
         {
@@ -47,7 +57,15 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         const auto current = table[input.status].state();
-        const auto limit = library[table[input.status].definition_id()].query(combat_status_state_limit{});
+        combat_status_state limit{
+            std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max()
+        };
+        if constexpr(not IgnoreLimit)
+        {
+            limit = library[table[input.status].definition_id()].query(combat_status_state_limit{});
+            limit.count = std::max(current.count, limit.count);
+            limit.round_usages = std::max(current.round_usages, limit.round_usages);
+        }
         const auto add_saturated = [](std::uint32_t value, std::int64_t delta, std::uint32_t maximum)
         {
             const auto previous = static_cast<std::int64_t>(value);
@@ -69,11 +87,15 @@ namespace givm::detail
     {
         if(command.definition)
         {
-            writer.write(execute_fn{ execute_combat_status_state_modification<true> });
-            writer.write(command);
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_combat_status_state_modification<true, true> }
+                : execute_fn{ execute_combat_status_state_modification<true, false> });
+            writer.write(combat_status_state_modification_data{ command.player, command.definition, command.count, command.round_usages });
         }
         else
-            writer.write(execute_fn{ execute_combat_status_state_modification<false> });
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_combat_status_state_modification<false, true> }
+                : execute_fn{ execute_combat_status_state_modification<false, false> });
         writer.write(execute_fn{ finish_combat_status_state_change });
     }
 }

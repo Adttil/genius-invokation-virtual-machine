@@ -62,6 +62,7 @@ namespace givm
         relative_attachment_target target{};
         std::int64_t count{};
         std::int64_t round_usages{};
+        bool ignore_limit = false;
     };
 }
 

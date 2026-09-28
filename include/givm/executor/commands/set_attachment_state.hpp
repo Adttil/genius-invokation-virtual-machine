@@ -7,6 +7,7 @@
 #include "../debug_validation.hpp"
 #endif
 
+#include <algorithm>
 #include <utility>
 
 #include "add_attachment.hpp"
@@ -50,8 +51,8 @@ namespace givm::detail
         return finish_attachment_state_change(library, table, context, random);
     }
 
-    template<class Selector = void>
-    execution_state execute_attachment_state_change(
+    template<bool IgnoreLimit, class Selector = void>
+    inline execution_state execute_attachment_state_change(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
@@ -82,7 +83,15 @@ namespace givm::detail
         const bool valid = static_cast<bool>(attachment);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
-        state = clamp_attachment_state(state, library[attachment.definition_id()].query(attachment_state_limit{}));
+        if constexpr(not IgnoreLimit)
+        {
+            const auto current = attachment.state();
+            const auto limit = library[attachment.definition_id()].query(attachment_state_limit{});
+            state = {
+                std::min(state.count, std::max(current.count, limit.count)),
+                std::min(state.round_usages, std::max(current.round_usages, limit.round_usages))
+            };
+        }
         return change_attachment_state(library, table, context, random, id, state);
     }
 
@@ -95,13 +104,17 @@ namespace givm::detail
             {
                 if(not selector)
                 {
-                    writer.write(execute_fn{ execute_attachment_state_change<> });
+                    writer.write(command.ignore_limit
+                        ? execute_fn{ execute_attachment_state_change<true> }
+                        : execute_fn{ execute_attachment_state_change<false> });
                     return;
                 }
             }
             else GIVM_ASSERT(selector != equipment_type::none);
             GIVM_ASSERT(command.target.character.selection == character_selection::character);
-            writer.write(execute_fn{ execute_attachment_state_change<selector_type> });
+            writer.write(command.ignore_limit
+                ? execute_fn{ execute_attachment_state_change<true, selector_type> }
+                : execute_fn{ execute_attachment_state_change<false, selector_type> });
             writer.write(attachment_state_change_data<selector_type>{
                 { command.target.character, selector }, command.state });
         }, command.target.selector);

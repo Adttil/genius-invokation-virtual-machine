@@ -1,4 +1,5 @@
 #include <array>
+#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -62,9 +63,22 @@ TEST_CASE("non-reactive element pairs remain non-reactive", "[elemental_reaction
     CHECK(reaction_between(givm::element::anemo, givm::element::geo) == givm::elemental_reaction::none);
 }
 
-TEST_CASE("ordered Cryo Dendro auras choose the primary reaction element", "[elemental_reaction]")
+TEST_CASE("Cryo Dendro reactions consume Cryo and preserve Dendro", "[elemental_reaction]")
 {
-    CHECK(reaction_from_aura(givm::element_aura::cryo_dendro, givm::element::pyro) == givm::elemental_reaction::melt);
-    CHECK(reaction_from_aura(givm::element_aura::dendro_cryo, givm::element::pyro) == givm::elemental_reaction::burning);
+    constexpr std::array cases{
+        std::pair{ givm::element::pyro, givm::elemental_reaction::melt },
+        std::pair{ givm::element::hydro, givm::elemental_reaction::frozen },
+        std::pair{ givm::element::electro, givm::elemental_reaction::superconduct },
+        std::pair{ givm::element::anemo, givm::elemental_reaction::swirl },
+        std::pair{ givm::element::geo, givm::elemental_reaction::crystallize }
+    };
+    for(const auto [incoming, reaction] : cases)
+    {
+        CHECK(reaction_from_aura(givm::element_aura::cryo_dendro, incoming) == reaction);
+        CHECK(aura_after_reaction(givm::element_aura::cryo_dendro, incoming, reaction) == givm::element_aura::dendro);
+        CHECK(aura_after_reaction(givm::element_aura::cryo, incoming, reaction) == givm::element_aura::none);
+    }
+    CHECK(reaction_from_aura(givm::element_aura::cryo_dendro, givm::element::cryo) == givm::elemental_reaction::none);
+    CHECK(reaction_from_aura(givm::element_aura::cryo_dendro, givm::element::dendro) == givm::elemental_reaction::none);
 }
 }

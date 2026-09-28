@@ -20,7 +20,7 @@ constexpr element_aura aura_after_reaction(element_aura aura, element incoming, 
 
 ## 返回值
 
-`element_aura::none`，即清除附着。
+冰草共存时返回 `element_aura::dendro`，即仅消耗参与反应的冰；其他附着返回 `element_aura::none`，即清除附着。
 
 ## 示例
 

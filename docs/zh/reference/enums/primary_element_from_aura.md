@@ -8,7 +8,7 @@
 constexpr element primary_element_from_aura(element_aura aura) noexcept;
 ```
 
-取得附着中优先用于判断反应的元素。冰草共存时，取名称中排在前面的元素。
+取得附着中优先用于判断反应的元素。冰草共存时始终返回冰。
 
 ## 参数
 
@@ -18,7 +18,7 @@ constexpr element primary_element_from_aura(element_aura aura) noexcept;
 
 ## 返回值
 
-单元素附着对应的元素；冰草共存时的首个元素；无附着时返回 `element::none`。
+单元素附着对应的元素；冰草共存时返回 `element::cryo`；无附着时返回 `element::none`。
 
 ## 示例
 
@@ -29,10 +29,8 @@ constexpr element primary_element_from_aura(element_aura aura) noexcept;
 
 int main()
 {
-    const auto first = givm::primary_element_from_aura(givm::element_aura::cryo_dendro);
-    const auto second = givm::primary_element_from_aura(givm::element_aura::dendro_cryo);
-    std::println("冰草优先冰: {}", first == givm::element::cryo);
-    std::println("草冰优先草: {}", second == givm::element::dendro);
+    const auto element = givm::primary_element_from_aura(givm::element_aura::cryo_dendro);
+    std::println("冰草优先冰: {}", element == givm::element::cryo);
 }
 ```
 
@@ -40,7 +38,6 @@ int main()
 
 ```text
 冰草优先冰: true
-草冰优先草: true
 ```
 
 ## 参阅

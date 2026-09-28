@@ -81,10 +81,9 @@ namespace givm
         return reaction_between(primary_element_from_aura(aura), incoming);
     }
 
-    constexpr element_aura aura_after_reaction(element_aura, element, elemental_reaction) noexcept
+    constexpr element_aura aura_after_reaction(element_aura aura, element, elemental_reaction) noexcept
     {
-        // TODO: complete official aura consumption rules.
-        return element_aura::none;
+        return aura == element_aura::cryo_dendro ? element_aura::dendro : element_aura::none;
     }
 }
 

@@ -23,4 +23,4 @@ struct modify_combat_status_state_input
 | `count` | `std::int64_t` | 对同名状态字段的增量，默认零 |
 | `round_usages` | `std::int64_t` | 对同名状态字段的增量，默认零 |
 
-增量作用于命令实际执行时的当前值，结果饱和至零和定义上限之间。
+增量作用于命令实际执行时的当前值。饱和规则由 [modify_combat_status_state](../commands/modify_combat_status_state.md) 的 `ignore_limit` 选项决定；普通模式也会保留原有的超限部分。
