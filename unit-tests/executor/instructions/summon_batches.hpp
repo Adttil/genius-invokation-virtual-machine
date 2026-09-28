@@ -154,10 +154,10 @@ namespace
             { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 }, .summon_limit = 8 },
             { .summon_limit = 8 } };
         load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(driver.name()) } }, {});
-        givm::executor executor;
+        givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
-        REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+        REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
         CHECK(log.phase == 2);
         return table;
     }

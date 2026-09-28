@@ -125,9 +125,9 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
 
     std::uint32_t random_calls = 0;
     auto random = [&]() -> std::uint32_t { ++random_calls; return 0; };
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
 
     // The first response burns a later recipient; both this broadcast and the next skip it.
     CHECK(log.handlers == std::vector{

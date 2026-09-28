@@ -218,12 +218,12 @@ namespace
 
     struct zero_random { std::uint32_t operator()() const { return 0; } };
 
-    givm::execution_state advance(givm::executor& executor, const givm::definition_library& library,
+    givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library,
         givm::table& table, zero_random& random)
     {
         for(;;)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             if(state != givm::execution_state::active_character_changed && state != givm::execution_state::action_started)
                 return state;
         }
@@ -262,7 +262,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     log.library = &library;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
@@ -286,7 +286,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     const auto selected = view.switch_target(0);
     view.calculate_switch_cost(library, table, 0);
     REQUIRE(view.switch_payment_validate(table, 0, {}) == givm::switch_payment_validation::valid);
-    view.switch_active_character(0, {});
+    executor.submitted(view.switch_active_character_with_cached_cost(library, table, random, 0, {}));
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
     CHECK(table[givm::player_id{ 0 }].state().active_character == selected);
     CHECK(log.switches.back() == selected);
@@ -313,7 +313,7 @@ TEST_CASE("control immunity prevents overload switching without suppressing its 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     log.library = &library;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     for(;;)
@@ -355,7 +355,7 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     log.library = &library;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::size_t observations = 0;
@@ -404,7 +404,7 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     log.library = &library;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     auto state = advance(executor, library, table, random);
@@ -417,7 +417,7 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
         CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == (preexisting ? 3 : 2));
         auto copied_executor = executor;
         auto copied_table = table;
-        const auto finish = [&](givm::executor& running, givm::table& current)
+        const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
         {
             REQUIRE(advance(running, library, current, random) == givm::execution_state::round_started);
             CHECK(library.is_controlled(current[target]) == not preexisting);
@@ -464,10 +464,10 @@ TEST_CASE("a lethal frozen reaction does not attach control to the defeated char
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     log.library = &library;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[target].state().health == 0);
     CHECK(table[reserve].state().health == 20);
     CHECK_FALSE(library.is_controlled(table[target]));
@@ -494,7 +494,7 @@ TEST_CASE("round start responses wait for both rerolls and resume independently 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     log.library = &library;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     auto state = advance(executor, library, table, random);
@@ -510,20 +510,20 @@ TEST_CASE("round start responses wait for both rerolls and resume independently 
     CHECK(table.state().round_number == 1);
     CHECK(log.rounds_started == 0);
     CHECK(library.is_controlled(table[target]));
-    executor.view_in<givm::execution_state::dice_selection>().select({});
+    executor.submitted(executor.view_in<givm::execution_state::dice_selection>().select(library, table, random, {}));
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::dice_selection);
     CHECK(log.rounds_started == 0);
     CHECK(library.is_controlled(table[target]));
-    executor.view_in<givm::execution_state::dice_selection>().select({});
+    executor.submitted(executor.view_in<givm::execution_state::dice_selection>().select(library, table, random, {}));
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::card_selection);
     CHECK(log.rounds_started == 1);
     CHECK(log.dice_at_round_start == std::vector<std::array<std::uint32_t, 2>>{ { 2, 2 } });
     CHECK(library.is_controlled(table[target]));
     auto copied_executor = executor;
     auto copied_table = table;
-    const auto finish = [&](givm::executor& running, givm::table& current)
+    const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
     {
-        running.view_in<givm::execution_state::card_selection>().select({});
+        running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, random, {}));
         REQUIRE(advance(running, library, current, random) == givm::execution_state::finished);
         CHECK_FALSE(library.is_controlled(current[target]));
         CHECK(current[givm::player_id{ 0 }].state().dice.total() == 2);
@@ -554,7 +554,7 @@ TEST_CASE("exceeding the round limit prevents rolling and round start responses"
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
     log.library = &library;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     auto state = advance(executor, library, table, random);

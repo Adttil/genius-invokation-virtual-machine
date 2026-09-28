@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-tag_id replacement_reaction() const noexcept;
+tag_id replacement_reaction() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 
 取得本次元素反应采用的替代标签，用于识别反应效果由哪一种规则替代。原始反应种类仍由 [`reaction()`](reaction.md) 返回。
@@ -15,6 +15,8 @@ tag_id replacement_reaction() const noexcept;
 已确定的只读 [`tag_id`](../../../table/tag_id.md)；空标签表示使用默认反应效果。没有反应时也为空，需结合 `reaction()` 区分。
 
 ## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 标签在伤害属性确定、反应判定完成后，通过 [`elemental_reaction_will_occur`](../../../definition/events/elemental_reaction_will_occur.md) 选择，并在数值计算开始前固定。本现场只能读取标签，不能重新选择。
 
@@ -87,15 +89,11 @@ int main()
         givm::linked_deck{ .characters = { definition } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 1 }, 0 });
-    execution.step(library, table, random);
-    if(execution.step(library, table, random) == givm::execution_state::health_reduced)
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
+    if(execution.view_in<givm::execution_state::initial_active_characters_selected>().resume(library, table, random) == givm::execution_state::health_reduced)
     {
         const auto view = execution.view_in<givm::execution_state::health_reduced>();
         std::println("原始反应是融化: {}", view.reaction() == givm::elemental_reaction::melt);

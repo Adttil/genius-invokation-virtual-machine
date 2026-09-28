@@ -151,12 +151,12 @@ namespace
             givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent, 0 } } };
     }
 
-    givm::execution_state advance(givm::executor& executor, const givm::definition_library& library,
+    givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library,
         givm::table& table, zero_random& random)
     {
-        auto state = executor.step(library, table, random);
+        auto state = executor.advance(library, table, random);
         while(state == givm::execution_state::active_character_changed)
-            state = executor.step(library, table, random);
+            state = executor.advance(library, table, random);
         return state;
     }
 }
@@ -207,7 +207,7 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, player == givm::player_id{ 0 } ? source_deck : target_deck,
         player == givm::player_id{ 1 } ? source_deck : target_deck);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::vector<std::uint32_t> values;
@@ -273,10 +273,10 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[target].state().health == (application_only ? 30 : 24));
     CHECK(table[target].state().aura == givm::element_aura::none);
     if(reaction == givm::elemental_reaction::bloom)
@@ -324,10 +324,10 @@ TEST_CASE("reaction replacement suppresses default numbers and entities while co
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[target].state().health == (take_over_effects ? 29 : 28));
     CHECK(table[target].state().aura == givm::element_aura::none);
     const auto entity_count = std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses())
@@ -354,10 +354,10 @@ TEST_CASE("a self-applied reaction creates its entity for the affected player's 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto target_id = ids.get_id<givm::character_view>(target_definition.name());
     load_deck(table, library, { .characters = { target_id } }, { .characters = { target_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[self].state().health == 30);
     CHECK(table[self].state().aura == givm::element_aura::none);
     CHECK(std::ranges::empty(table[givm::player_id{ 0 }].combat_statuses()));
@@ -391,10 +391,10 @@ TEST_CASE("the first damage completion can use a field produced by a later hit",
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.nested_invoked);
     CHECK(log.statuses_at_calculation == std::vector<std::size_t>{ 0, 0, 1 });
     CHECK(log.statuses_at_completion == std::vector<std::size_t>{ 1, 1, 1 });
@@ -428,7 +428,7 @@ TEST_CASE("burning flame finishes its damage before exhausting and broadcasting 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::size_t damage_observations = 0;
@@ -493,18 +493,18 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
         { .characters = { target_id, target_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     for(const auto target : { first, second })
     {
-        REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
+        REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
         CHECK(executor.view_in<givm::execution_state::health_reduced>().target() == target);
         CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 2);
         CHECK(std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses()) == (target == first ? 0 : 1));
         CHECK(log.values.empty());
     }
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
     CHECK(log.repeated == 1);
     CHECK(log.values.empty());
     REQUIRE(std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses()) == 1);
@@ -512,25 +512,25 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     CHECK(table[second].state().health == 28);
     auto copied_executor = executor;
     auto copied_table = table;
-    executor.view_in<givm::execution_state::card_selection>().select({});
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
+    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().target() == first);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 1);
     CHECK(table[first].state().health == 27);
     CHECK(log.values.empty());
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 2, 2, 1 });
     CHECK(log.statuses_at_completion == std::vector<std::size_t>{ 1, 1, 1 });
     CHECK(log.repeated == 1);
     log.values.clear();
     log.statuses_at_completion.clear();
-    copied_executor.view_in<givm::execution_state::card_selection>().select({});
-    REQUIRE(copied_executor.step(library, copied_table, random) == givm::execution_state::health_reduced);
+    copied_executor.submitted(copied_executor.view_in<givm::execution_state::card_selection>().select(library, copied_table, random, {}));
+    REQUIRE(copied_executor.advance(library, copied_table, random) == givm::execution_state::health_reduced);
     CHECK(copied_executor.view_in<givm::execution_state::health_reduced>().target() == first);
     CHECK(copied_executor.view_in<givm::execution_state::health_reduced>().value() == 1);
     CHECK(copied_table[first].state().health == 27);
     CHECK(log.values.empty());
-    REQUIRE(copied_executor.step(library, copied_table, random) == givm::execution_state::finished);
+    REQUIRE(copied_executor.advance(library, copied_table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 2, 2, 1 });
     CHECK(log.statuses_at_completion == std::vector<std::size_t>{ 1, 1, 1 });
     CHECK(log.repeated == 1);

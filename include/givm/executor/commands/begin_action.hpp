@@ -4,6 +4,7 @@
 
 #include "../executor.hpp"
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cstddef>
@@ -496,10 +497,17 @@ namespace givm::detail
             && library[active.get(equipment_type::technique).definition_id()].can_handle<technique_effect, attachment_view>();
         const auto technique_handlers = has_technique ? collect_all_broadcast_targets<cost_of_technique>(library, table)
             : std::vector<technique_cost_handler_id>{};
-        auto&& [stored_technique_handlers, technique_costs, technique_onpay_entries, technique_onpay_offsets, technique_onpay_sizes,
+        auto&& [
+#ifndef NDEBUG
+                debug_cost_states,
+#endif
+                stored_technique_handlers, technique_costs, technique_onpay_entries, technique_onpay_offsets, technique_onpay_sizes,
                 stored_skill_handlers, skill_costs, skill_onpay_entries, skill_onpay_offsets, skill_onpay_sizes,
                 stored_card_handlers, card_costs, card_onpay_entries, card_onpay_offsets, card_onpay_sizes,
                 handlers, costs, onpay_entries, onpay_offsets, onpay_sizes, onpay_cursor, selection, cached_inputs] = context.stack().push(
+#ifndef NDEBUG
+            dynamic_array<std::uint8_t>(switch_count + card_count + skill_count + (has_technique ? 1uz : 0uz)),
+#endif
             dynamic_array<technique_cost_handler_id>(technique_handlers),
             dynamic_array<cost_of_technique>(has_technique ? 1uz : 0uz),
             dynamic_array<program_entry>(technique_handlers.size()),
@@ -524,6 +532,10 @@ namespace givm::detail
             action_selection{},
             substack()
         );
+
+#ifndef NDEBUG
+        std::ranges::fill(debug_cost_states, std::uint8_t{});
+#endif
 
         if(has_technique)
         {
@@ -657,6 +669,9 @@ namespace givm::detail
         if(std::holds_alternative<round_end_selection>(selection))
         {
             context.stack().pop<
+#ifndef NDEBUG
+                std::uint8_t[],
+#endif
                 technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
                 skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
                 card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
@@ -885,6 +900,9 @@ namespace givm::detail
         GIVM_ASSERT(selected->switch_cost_index < costs.size());
         const auto speed = costs[selected->switch_cost_index].requirement.speed;
         context.stack().pop<
+#ifndef NDEBUG
+            std::uint8_t[],
+#endif
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
@@ -1087,6 +1105,9 @@ namespace givm::detail
         const auto speed = get<0>(context.stack().top<card_played, response_return>()).speed;
         pop_broadcast<card_played>(context);
         context.stack().pop<
+#ifndef NDEBUG
+            std::uint8_t[],
+#endif
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
@@ -1181,6 +1202,9 @@ namespace givm::detail
         const auto speed = get<0>(context.stack().top<skill_used, response_return>()).speed;
         pop_broadcast<skill_used>(context);
         context.stack().pop<
+#ifndef NDEBUG
+            std::uint8_t[],
+#endif
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
@@ -1256,6 +1280,9 @@ namespace givm::detail
         const auto speed = get<0>(context.stack().top<technique_used, response_return>()).speed;
         pop_broadcast<technique_used>(context);
         context.stack().pop<
+#ifndef NDEBUG
+            std::uint8_t[],
+#endif
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
@@ -1371,6 +1398,9 @@ namespace givm::detail
         }
         pop_broadcast<elemental_tuning_completed>(context);
         context.stack().pop<
+#ifndef NDEBUG
+            std::uint8_t[],
+#endif
             technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
             skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
             card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],

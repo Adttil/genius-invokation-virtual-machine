@@ -230,12 +230,12 @@ namespace
         return table;
     }
 
-    givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table)
+    givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library, givm::table& table)
     {
         auto random = [] { return std::uint32_t{ 0 }; };
         for(std::size_t step = 0; step < 20; ++step)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::finished || state == givm::execution_state::card_selection) return state;
         }
         FAIL("attachment transfer did not finish");
@@ -294,7 +294,7 @@ TEST_CASE("attachment transfer preserves state or resets only round usages witho
     log.occupied = GENERATE(false, true);
     const auto [library, ids] = make_library(mode, log);
     auto table = make_table(library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK_FALSE(table[log.source].is_valid());
@@ -339,7 +339,7 @@ TEST_CASE("displaced equipment observes completed transfer and can change it acr
     log.response = removal_response::change_and_pause;
     const auto [library, ids] = make_library(mode, log);
     auto table = make_table(library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
     CHECK(table[log.transferred].state().count == 9);
@@ -348,9 +348,9 @@ TEST_CASE("displaced equipment observes completed transfer and can change it acr
     CHECK(log.removed == std::vector{ log.displaced });
     auto copied_table = table;
     auto copied_executor = executor;
-    const auto resume = [&](givm::executor& execution, givm::table& branch)
+    const auto resume = [&](givm_test::executor_driver& execution, givm::table& branch)
     {
-        execution.view_in<givm::execution_state::card_selection>().select({});
+        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, branch, givm_test::zero_random, {}));
         REQUIRE(advance(execution, library, branch) == givm::execution_state::finished);
         REQUIRE(branch[log.transferred].is_valid());
         CHECK(branch[log.transferred].state().count == 9);
@@ -373,7 +373,7 @@ TEST_CASE("displaced equipment may remove or replace the transferred equipment p
     log.response = GENERATE(removal_response::remove, removal_response::replace);
     const auto [library, ids] = make_library(mode, log);
     auto table = make_table(library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK_FALSE(table[log.source].is_valid());
@@ -403,7 +403,7 @@ TEST_CASE("equipment targets resolve the current slot when each command executes
     log.followup = true;
     const auto [library, ids] = make_library(mode, log);
     auto table = make_table(library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
     CHECK_FALSE(table[log.source].is_valid());
@@ -426,10 +426,10 @@ TEST_CASE("equipment targets resolve the current slot when each command executes
     const auto paused_log = log;
     auto copied_table = table;
     auto copied_executor = executor;
-    const auto resume = [&](givm::executor& execution, givm::table& branch)
+    const auto resume = [&](givm_test::executor_driver& execution, givm::table& branch)
     {
         log = paused_log;
-        execution.view_in<givm::execution_state::card_selection>().select({});
+        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, branch, givm_test::zero_random, {}));
         REQUIRE(advance(execution, library, branch) == givm::execution_state::finished);
         CHECK_FALSE(branch[target_character].has(givm::equipment_type::artifact));
         CHECK_FALSE(branch[replacement_id].is_valid());
@@ -461,7 +461,7 @@ TEST_CASE("fixed attachment state and removal commands retain a zero-health char
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } }, {} };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(zero_health.name()),
         ids.get_id<givm::character_view>(living.name()) } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     REQUIRE(removed.size() == 1);

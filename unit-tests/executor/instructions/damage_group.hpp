@@ -268,10 +268,10 @@ TEST_CASE("damage groups finish all health changes before invoking completion re
     load_deck(table, compiled.library,
         { .characters = { compiled.id_map.get_id<givm::character_view>(observer.name()) } },
         { .characters = { character_id, character_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(compiled.library, table);
     zero_random random;
-    REQUIRE(executor.step(compiled.library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(compiled.library, table, random) == givm::execution_state::finished);
     CHECK(log.order == std::vector<std::pair<phase, std::size_t>>{
         { phase::calculation, 0 }, { phase::effect, 0 }, { phase::calculation, 1 }, { phase::effect, 1 },
         { phase::after_damage, 0 }, { phase::after_damage, 1 }
@@ -305,19 +305,19 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(front.name()), ids.get_id<givm::character_view>(back.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::size_t response_pauses = 0;
     std::size_t observed_damage = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         if(state == givm::execution_state::card_selection)
         {
             ++response_pauses;
-            executor.view_in<givm::execution_state::card_selection>().select({});
+            executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
         }
         else
         {
@@ -363,10 +363,10 @@ TEST_CASE("defeat checks game end before clearing attachments and energy", "[dea
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } }, defending_deck);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    auto state = executor.step(library, table, random);
+    auto state = executor.advance(library, table, random);
     if(observed)
     {
         REQUIRE(state == givm::execution_state::health_reduced);
@@ -375,7 +375,7 @@ TEST_CASE("defeat checks game end before clearing attachments and energy", "[dea
         CHECK(table[victim(0)].state().energy == 3);
         CHECK(std::ranges::distance(table[victim(0)].attachments()) == 2);
         CHECK(table[victim(0)].has(givm::equipment_type::artifact));
-        state = executor.step(library, table, random);
+        state = executor.advance(library, table, random);
         if(!terminal)
         {
             REQUIRE(state == givm::execution_state::health_reduced);
@@ -383,7 +383,7 @@ TEST_CASE("defeat checks game end before clearing attachments and energy", "[dea
             CHECK(table[victim(0)].state().energy == 0);
             CHECK(std::ranges::empty(table[victim(0)].attachments()));
             CHECK(log.completed.empty());
-            state = executor.step(library, table, random);
+            state = executor.advance(library, table, random);
         }
     }
     REQUIRE(state == givm::execution_state::finished);
@@ -430,10 +430,10 @@ TEST_CASE("reactions use the calculated element and expand over the living oppos
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, defending_deck);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     std::vector<std::uint32_t> expected_health(count, 9);
     expected_health[0] = 0;
     REQUIRE(log.after_health.size() == count + 1);
@@ -464,10 +464,10 @@ TEST_CASE("reaction damage finishes before the next initial description", "[deal
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0, 1, 2, 1 });
     CHECK(targets_at(log, phase::after_damage) == std::vector<std::size_t>{ 0, 1, 2, 1 });
     for(const auto& health : log.after_health) CHECK(health == std::vector<std::uint32_t>{ 8, 4, 9 });
@@ -495,10 +495,10 @@ TEST_CASE("swirled damage can expand another reaction inside the same group", "[
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(front.name()), ids.get_id<givm::character_view>(electro.name()),
             ids.get_id<givm::character_view>(empty.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0, 1, 2, 0, 2 });
     CHECK(targets_at(log, phase::after_damage) == std::vector<std::size_t>{ 0, 1, 2, 0, 2 });
     CHECK(targets_at(log, phase::after_reaction) == std::vector<std::size_t>{ 0, 1 });
@@ -523,10 +523,10 @@ TEST_CASE("replacing a reaction suppresses its extra damage while consuming the 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0 });
     CHECK(table[victim(0)].state().aura == givm::element_aura::none);
     for(const auto& health : log.after_health) CHECK(health == std::vector<std::uint32_t>{ 9, 10, 10 });
@@ -556,10 +556,10 @@ TEST_CASE("relative and other-character damage targets skip defeated characters 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { alive_id, dead_id, alive_id, dead_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0, 2, 0 });
     for(const auto& health : log.after_health) CHECK(health == std::vector<std::uint32_t>{ 6, 0, 8, 0 });
 }
@@ -589,13 +589,13 @@ TEST_CASE("relative damage selections share a living anchor and visit each selec
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = attacker }, { .active_character = victim(2) } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { other_id, dead_id, alive_id, dead_id, other_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::vector<std::size_t> observations;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         REQUIRE(state == givm::execution_state::health_reduced);
@@ -637,10 +637,10 @@ TEST_CASE("damage groups copied at health observation resume independently", "[d
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().target() == victim(0));
     CHECK(table[victim(0)].state().health == 8);
     CHECK(table[victim(1)].state().health == 10);
@@ -648,12 +648,12 @@ TEST_CASE("damage groups copied at health observation resume independently", "[d
     auto copied_executor = executor;
     auto copied_table = table;
     const auto saved_order = log.order;
-    const auto resume = [&](givm::executor& current_executor, givm::table& current_table)
+    const auto resume = [&](givm_test::executor_driver& current_executor, givm::table& current_table)
     {
-        REQUIRE(current_executor.step(library, current_table, random) == givm::execution_state::health_reduced);
+        REQUIRE(current_executor.advance(library, current_table, random) == givm::execution_state::health_reduced);
         CHECK(current_executor.view_in<givm::execution_state::health_reduced>().target() == victim(1));
         CHECK(log.after_health.empty());
-        REQUIRE(current_executor.step(library, current_table, random) == givm::execution_state::finished);
+        REQUIRE(current_executor.advance(library, current_table, random) == givm::execution_state::finished);
         CHECK(log.after_health == std::vector<std::vector<std::uint32_t>>{ { 8, 7 }, { 8, 7 } });
     };
     resume(executor, table);
@@ -684,10 +684,10 @@ TEST_CASE("a nested damage command completes its own group before resuming the c
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.order == std::vector<std::pair<phase, std::size_t>>{
         { phase::calculation, 0 }, { phase::calculation, 2 }, { phase::effect, 2 }, { phase::after_damage, 2 },
         { phase::effect, 0 }, { phase::calculation, 1 }, { phase::effect, 1 },
@@ -716,13 +716,13 @@ TEST_CASE("queued damage skips a target defeated by an earlier response and cont
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { alive_id, alive_id, ids.get_id<givm::character_view>(fragile.name()), alive_id, alive_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::vector<std::size_t> observed_targets;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         REQUIRE(state == givm::execution_state::health_reduced);
@@ -757,10 +757,10 @@ TEST_CASE("standalone element application has reaction effects without damage", 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(targets_at(log, phase::calculation).empty());
     CHECK(targets_at(log, phase::effect).empty());
     CHECK(targets_at(log, phase::after_damage).empty());
@@ -790,10 +790,10 @@ TEST_CASE("a damage group stops before completion responses when the last charac
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
     CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0, 1 });
     CHECK(targets_at(log, phase::after_damage).empty());
@@ -819,10 +819,10 @@ TEST_CASE("an independent nested damage group can end the game before its caller
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
     CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0, 1, 2 });
     CHECK(targets_at(log, phase::after_damage) == std::vector<std::size_t>{ 0 });
@@ -847,10 +847,10 @@ TEST_CASE("elemental reaction identity survives aura changes during damage effec
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(front.name()), ids.get_id<givm::character_view>(back.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.reactions == std::vector{ givm::elemental_reaction::superconduct });
     CHECK(log.final_types == std::vector{ givm::damage_type::electro, givm::damage_type::piercing });
     CHECK(table[victim(0)].state().aura == givm::element_aura::pyro);
@@ -873,10 +873,10 @@ TEST_CASE("applying no element clears an existing aura without reaction or damag
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { id, id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[victim(0)].state().aura == givm::element_aura::none);
     CHECK(table[victim(0)].state().health == 10);
     CHECK(log.order.empty());

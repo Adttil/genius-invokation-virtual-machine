@@ -138,7 +138,7 @@ TEST_CASE("history declarations and dynamic keys retain scalar and array types",
     const auto id = result->id_map.get_id<givm::history_summary_definition>(summary.name());
     givm::table table;
     load_deck(table, result->library, {}, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(result->library, table);
 
     const auto scalar_key = result->library.history_field(id, "scalar");

@@ -67,8 +67,8 @@ int main()
 
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     const givm::hand_card_view view = table[givm::hand_card_id{ givm::player_id{ 0 }, 0 }];
     std::println("采用已加载的定义: {}", view.definition_id() == definition);
 }

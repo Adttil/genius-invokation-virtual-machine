@@ -118,13 +118,13 @@ namespace
         }
     };
 
-    void finish_responses(givm::executor& executor, const givm::definition_library& library,
+    void finish_responses(givm_test::executor_driver& executor, const givm::definition_library& library,
         givm::table& table, bool observed)
     {
         auto random = [] { return std::uint32_t{ 0 }; };
         for(;;)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::finished) break;
             REQUIRE(observed);
             REQUIRE(state == givm::execution_state::health_reduced);
@@ -205,12 +205,12 @@ TEST_CASE("response programs resolve relative players and restore their caller a
         { .cards = { card_id, card_id, card_id },
             .characters = { ids.get_id<givm::character_view>(second_source.name()) } });
     CHECK(table.state().self_player == no_self);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     if(observed)
     {
         auto random = [] { return std::uint32_t{ 0 }; };
-        REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
+        REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
         CHECK(table.state().self_player == first);
         CHECK(table[second_character].state().health == 8);
         auto copied_executor = executor;
@@ -243,11 +243,11 @@ TEST_CASE("cost preview preserves the caller while cached payment executes on it
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
     load_deck(table, library, { .cards = { card_id }, .characters = { character_id, character_id } },
         { .cards = { card_id }, .characters = { ids.get_id<givm::character_view>(responder.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
-    if(observed) REQUIRE(executor.step(library, table, random) == givm::execution_state::action_started);
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::action_selection);
+    if(observed) REQUIRE(executor.advance(library, table, random) == givm::execution_state::action_started);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::action_selection);
     CHECK(table.state().self_player == no_self);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
     CHECK(action.calculate_switch_cost(library, table, 0).requirement.dice_requirement.any == 0);
@@ -262,12 +262,12 @@ TEST_CASE("cost preview preserves the caller while cached payment executes on it
     auto copied_table = table;
     for(const auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &copied_executor, &copied_table } })
     {
-        running->view_in<givm::execution_state::action_selection>().switch_active_character(0, {});
-        auto state = running->step(library, *current, random);
+        running->submitted(running->view_in<givm::execution_state::action_selection>().switch_active_character_with_cached_cost(library, *current, random, 0, {}));
+        auto state = running->advance(library, *current, random);
         if(observed)
         {
             REQUIRE(state == givm::execution_state::active_character_changed);
-            state = running->step(library, *current, random);
+            state = running->advance(library, *current, random);
         }
         REQUIRE(state == givm::execution_state::action_selection);
         CHECK(current->state().self_player == no_self);

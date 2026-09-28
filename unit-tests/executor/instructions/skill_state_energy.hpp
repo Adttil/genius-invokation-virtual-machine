@@ -242,10 +242,10 @@ namespace
             { .characters = { ids.get_id<givm::character_view>("Opponent") } });
         const auto energy_tag = table[active].state().energy_tag;
         REQUIRE(energy_tag.is_valid());
-        givm::executor executor;
+        givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
-        REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+        REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
         CHECK(log.energy_notifications == 0);
         for(const auto character : { active, standby, opponent })
         {
@@ -274,10 +274,10 @@ namespace
                 : givm::character_id{ givm::player_id{ 1 }, 2 } } };
         load_deck(table, library, { .characters = { actor, living, living, defeated, living } }, opponent_deck);
         const auto energy_tag = table[active].state().energy_tag;
-        givm::executor executor;
+        givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
-        REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+        REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
         CHECK(log.energy_notifications == 0);
         for(const auto player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
             for(const auto character : table[player].characters())

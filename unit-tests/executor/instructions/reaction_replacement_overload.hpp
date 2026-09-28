@@ -226,13 +226,13 @@ TEST_CASE("the final reaction replacement tag reaches every damage stage and pre
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Reserve" });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::size_t observed_damage = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         if(state == givm::execution_state::active_character_changed) continue;
@@ -274,13 +274,13 @@ TEST_CASE("a damage group overloads only once after all hits and ignores standby
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Defeated", "Reserve" });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::size_t observed_hits = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         if(state == givm::execution_state::health_reduced)
@@ -323,12 +323,12 @@ TEST_CASE("overload follows the current active character after death or nested r
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Reserve", "Reserve" });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         REQUIRE((state == givm::execution_state::health_reduced || state == givm::execution_state::active_character_changed));
@@ -357,12 +357,12 @@ TEST_CASE("copied overload switch responses resume before group completion exact
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids, { "Front", "Reserve" });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::card_selection) break;
         REQUIRE((state == givm::execution_state::health_reduced || state == givm::execution_state::active_character_changed));
     }
@@ -371,14 +371,14 @@ TEST_CASE("copied overload switch responses resume before group completion exact
     CHECK(table[givm::player_id{ 1 }].state().active_character == target(1));
     auto copy = executor;
     auto copy_table = table;
-    executor.view_in<givm::execution_state::card_selection>().select({});
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 3 });
     CHECK(log.active_at_completion == std::vector<std::size_t>{ 1 });
     log.values.clear();
     log.active_at_completion.clear();
-    copy.view_in<givm::execution_state::card_selection>().select({});
-    REQUIRE(copy.step(library, copy_table, random) == givm::execution_state::finished);
+    copy.submitted(copy.view_in<givm::execution_state::card_selection>().select(library, copy_table, random, {}));
+    REQUIRE(copy.advance(library, copy_table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 3 });
     CHECK(log.active_at_completion == std::vector<std::size_t>{ 1 });
     CHECK(log.switches == std::vector<std::size_t>{ 1 });
@@ -403,13 +403,13 @@ TEST_CASE("overload from element application respects missing alternatives and g
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     if(kind == scenario::application) load_scenario(table, library, ids, { "Front", "Reserve" });
     else load_scenario(table, library, ids, { "Front" });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::size_t overload_observations = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         if(state == givm::execution_state::active_character_changed)

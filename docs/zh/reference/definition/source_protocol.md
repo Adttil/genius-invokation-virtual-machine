@@ -73,9 +73,9 @@ static givm::program_entry handle(
 
 一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算。命令输入中的数组内容在调用时复制，返回后不再借用原数组；原数组须在复制期间保持有效，不能因本次调用扩容而失效。定义源须保证输入数量、具体类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时，在写入前检查入口、提交方式、重复提交及输入数量、类型与顺序，失败时抛出 [`program_input_error`](../executor/program_input_error.md)；数组长度不参与类型匹配。命令的值与执行前提在实际执行时检查，错误以 [`command_input_error`](../executor/command_input_error.md) 报告。发布构建不保留这些检查或对应诊断元数据，违反约定属于未定义行为。脚本适配器可在两种构建模式下使用相同的输入对象接口，不需要脚本自行生成检查信息或处理字节布局。
 
-调试异常不提供整个响应或 `step` 的回滚保证，捕获后不应在原执行现场继续推进。尾调用和借用对象的生命周期仍由定义源保证，不自动检查。
+调试异常不提供整个响应或推进调用的回滚保证，捕获后不应在原执行现场继续推进。尾调用和借用对象的生命周期仍由定义源保证，不自动检查。
 
-入口是否执行以及何时执行由触发事件的操作决定。切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md)、技能的 [`cost_of_skill`](events/cost_of_skill.md) 与特技的 [`cost_of_technique`](events/cost_of_technique.md) 响应在报价时准备后续效果，确认行动后才执行。这些费用响应提交时必须使用首参数为 `givm::substack_t{}` 的 `invoke` 重载，没有输入的程序也不例外；使用普通重载属于未定义行为，不进行运行期检查。报价期间牌桌不变，先前响应只通过费用事件影响后续响应；费用响应不得使用随机数，违反此前提属于未定义行为。当前行动窗口内每个候选只允许计算一次报价，已计算结果可以反复读取；不进行运行期检查。
+入口是否执行以及何时执行由触发事件的操作决定。切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md)、技能的 [`cost_of_skill`](events/cost_of_skill.md) 与特技的 [`cost_of_technique`](events/cost_of_technique.md) 响应在报价时准备后续效果，确认行动后才执行。这些费用响应提交时必须使用首参数为 `givm::substack_t{}` 的 `invoke` 重载，没有输入的程序也不例外；使用普通重载时，Debug 抛出 `program_input_error`；Release 不检查，违反协议属于未定义行为。报价期间牌桌不变，先前响应只通过费用事件影响后续响应；费用响应不得使用随机数，违反此前提属于未定义行为。当前行动窗口内每个候选只允许计算一次报价，已计算结果可以反复读取；Debug 检查报价状态，Release 不进行检查。
 
 可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。主动特技由特技装备提供 [`technique_effect`](events/technique_effect.md) 原效果响应，未提供时不能通过行动选择主动使用。卡牌初始状态、技能与特技初始费用和目标检查采用下述查询接口。
 

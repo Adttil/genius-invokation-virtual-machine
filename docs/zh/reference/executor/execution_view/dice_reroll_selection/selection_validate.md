@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr bool selection_validate(const table& card_table, const dice_counts& selected) const noexcept;
+constexpr bool selection_validate(const table& card_table, const dice_counts& selected) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`table`](../../../table/table.md)
 [`dice_counts`](../../../enums/dice_counts.md)
@@ -25,4 +25,6 @@ constexpr bool selection_validate(const table& card_table, const dice_counts& se
 
 ## 注意
 
-本操作只检查，不填写选择、消耗重投机会、推进对局或调用随机源。检查成功后仍须调用 [`select`](select.md) 提交；能够保证合法时也可以直接提交。提交和后续推进不会自动调用本检查。
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
+
+本操作只检查，不填写选择、消耗重投机会、推进对局或调用随机源。检查成功后仍须调用 [`select`](select.md) 提交；能够保证合法时也可以直接提交。Debug 提交时自动执行本检查；Release 不重复检查。

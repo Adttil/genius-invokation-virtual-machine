@@ -69,10 +69,10 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
             givm::start_round{}, givm::replace_cards{ givm::player_id{ 0 } } }, observer);
     givm::table table{ givm::table_state{ .max_rounds = 2 } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     counting_random random;
-    const auto first_state = executor.step(library, table, random);
+    const auto first_state = executor.advance(library, table, random);
     REQUIRE(first_state == (observed ? givm::execution_state::round_started : givm::execution_state::card_selection));
     CHECK(table.state().round_number == 1);
     if(observed)
@@ -91,7 +91,7 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
     auto copied_table = table;
     const auto saved_log = log;
     const auto saved_random = random;
-    const auto finish = [&](givm::executor& running, givm::table& current)
+    const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
     {
         log = saved_log;
         random = saved_random;
@@ -117,9 +117,9 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
                 CHECK(current.state().round_number == inputs);
                 CHECK(log.notifications.size() == inputs);
                 for(const auto player : current.players()) CHECK(player.state().dice.total() == 2);
-                running.view_in<givm::execution_state::card_selection>().select({});
+                running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, random, {}));
             }
-            state = running.step(library, current, random);
+            state = running.advance(library, current, random);
         }
         CHECK(observations == (observed ? 3 : 0));
         CHECK(inputs == 2);
@@ -149,10 +149,10 @@ TEST_CASE("start round commands only broadcast and never count rounds clear dice
         std::tuple{}, observer);
     givm::table table{ givm::table_state{ .max_rounds = 0 } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     counting_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
     CHECK(table.state().round_number == 0);
     CHECK(log.notifications == std::vector<std::uint32_t>{ 0, 0 });

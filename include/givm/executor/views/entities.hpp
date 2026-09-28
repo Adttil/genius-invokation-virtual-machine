@@ -11,15 +11,38 @@ namespace givm
     class execution_view<execution_state::active_character_changed>
     {
         friend class executor;
-        constexpr explicit execution_view(frame_stack& stack) noexcept : stack_{ &stack } {}
-        frame_stack* stack_;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : executor_{ &owner }
+#ifndef NDEBUG
+            , version_{ version }
+#endif
+        {}
+        executor* executor_;
+#ifndef NDEBUG
+        std::size_t version_;
+#endif
 
     public:
-        character_id character() const noexcept
+        character_id character() const noexcept(detail::view_checks_disabled)
         {
-            const auto& event = get<0>(std::as_const(*stack_).top<
+#ifndef NDEBUG
+            executor_->validate_view<execution_state::active_character_changed>(version_);
+#endif
+            const auto& event = get<0>(std::as_const(executor_->context_.stack()).top<
                 active_character_changed, detail::response_return>());
             return event.current;
+        }
+
+        template<class TRandom>
+        execution_state resume(const definition_library& library, table& card_table, TRandom& random) const
+        {
+#ifndef NDEBUG
+            executor_->validate_view<execution_state::active_character_changed>(version_);
+#endif
+            return executor_->advance(library, card_table, random);
         }
     };
 }

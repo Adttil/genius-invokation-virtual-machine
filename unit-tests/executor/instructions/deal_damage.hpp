@@ -188,10 +188,10 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { victim_id, victim_id } });
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
-    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
     CHECK(table[damaged].state().health == (expected_damage >= initial.health ? 0 : initial.health - expected_damage));
     CHECK(log.after_damage_value == expected_damage);
@@ -240,16 +240,16 @@ TEST_CASE("damage observation follows aura preparation and copies resume indepen
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
     auto normal_table = table;
-    givm::executor normal;
+    givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
     zero_random random;
-    REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
+    REQUIRE(normal.advance(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     const auto normal_order = log.order;
     log.order.clear();
 
-    givm::executor observed;
+    givm_test::executor_driver observed;
     observed.start(library, table);
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::health_reduced);
+    REQUIRE(observed.advance(library, table, random) == givm::execution_state::health_reduced);
     const auto health = observed.view_in<givm::execution_state::health_reduced>();
     const auto expected_damage = initial_aura == givm::element_aura::cryo ? 4u : 2u;
     const auto expected_aura = initial_aura == givm::element_aura::cryo
@@ -268,13 +268,13 @@ TEST_CASE("damage observation follows aura preparation and copies resume indepen
     auto copy = observed;
     auto copied_table = table;
 
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(observed.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.order == normal_order);
     CHECK(table[damaged].state().health == normal_table[damaged].state().health);
     CHECK(table[damaged].state().aura == normal_table[damaged].state().aura);
     CHECK(copied_table[damaged].state().aura == expected_aura);
     log.order = order_before_completion;
-    REQUIRE(copy.step(library, copied_table, random) == givm::execution_state::finished);
+    REQUIRE(copy.advance(library, copied_table, random) == givm::execution_state::finished);
     CHECK(log.order == normal_order);
     CHECK(copied_table[damaged].state().health == table[damaged].state().health);
     CHECK(copied_table[damaged].state().aura == table[damaged].state().aura);
@@ -306,16 +306,16 @@ TEST_CASE("lethal damage reports overkill and ends the game before later instruc
     load_deck(table, library,
         damaged_player == givm::player_id{ 0 } ? defending_deck : attacking_deck,
         damaged_player == givm::player_id{ 1 } ? defending_deck : attacking_deck);
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
-    auto state = target.step(library, table, random);
+    auto state = target.advance(library, table, random);
     if(observed)
     {
         REQUIRE(state == givm::execution_state::health_reduced);
         CHECK(target.view_in<givm::execution_state::health_reduced>().value() == 999);
         CHECK(table[damaged].state().health == 0);
-        state = target.step(library, table, random);
+        state = target.advance(library, table, random);
     }
     REQUIRE(state == givm::execution_state::finished);
     const auto expected = source_health == 0 ? givm::game_result::both_loss
@@ -350,10 +350,10 @@ TEST_CASE("zero damage skips health observation and preserves element applicatio
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
-    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[damaged].state().health == 10);
     CHECK(table[damaged].state().aura == (type == givm::damage_type::pyro ? givm::element_aura::pyro : givm::element_aura::none));
     CHECK(log.order == std::vector{ observed_event::calculation, observed_event::effect, observed_event::after_damage });

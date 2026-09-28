@@ -233,12 +233,12 @@ namespace
 
     auto zero_random = []() -> std::uint32_t { return 0; };
 
-    givm::execution_state advance(givm::executor& execution, const givm::definition_library& library, givm::table& table)
+    givm::execution_state advance(givm_test::executor_driver& execution, const givm::definition_library& library, givm::table& table)
     {
-        auto state = execution.step(library, table, zero_random);
+        auto state = execution.advance(library, table, zero_random);
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started
             || state == givm::execution_state::round_end_declared)
-            state = execution.step(library, table, zero_random);
+            state = execution.advance(library, table, zero_random);
         return state;
     }
 
@@ -347,7 +347,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     attachment_log log;
     const auto [library, ids] = compile_equipment_scenario(mode, log, true);
     auto table = load_equipment_scenario(library, ids);
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const std::vector<std::string> initial_order{ "Weapon", "Artifact", "Talent", "Technique", "OrdinaryA", "OrdinaryB" };
@@ -378,7 +378,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     log.events.clear();
     log.responders.clear();
     log.pause_after_removal = true;
-    action.play_card(equipment_index, {}, targets);
+    execution.submitted(action.play_card_with_cached_cost(library, table, zero_random, equipment_index, {}, targets));
     REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
     CHECK(log.events == std::vector<std::string>{ "left:7" });
     CHECK_FALSE(table[old_weapon].is_valid());
@@ -387,10 +387,10 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     const auto paused_log = log;
     auto copied_execution = execution;
     auto copied_table = table;
-    const auto resume = [&](givm::executor& branch, givm::table& branch_table)
+    const auto resume = [&](givm_test::executor_driver& branch, givm::table& branch_table)
     {
         log = paused_log;
-        branch.view_in<givm::execution_state::card_selection>().select({});
+        branch.submitted(branch.view_in<givm::execution_state::card_selection>().select(library, branch_table, zero_random, {}));
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
         CHECK(log.events == std::vector<std::string>{ "left:7" });
         CHECK(log.responders == std::vector<std::string>{ "NewWeapon", "Artifact", "Talent", "Technique", "OrdinaryA", "OrdinaryB" });
@@ -404,15 +404,15 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
         const auto removal_index = card_index(next_action, branch_table, ids.get_id<givm::card_definition>("RemoveWeaponCard"));
         CHECK(next_action.card_targets_validate(library, branch_table, removal_index, targets) == givm::target_validation::valid_complete);
         log.events.clear();
-        next_action.play_card(library, branch_table, removal_index, {}, targets);
+        branch.submitted(next_action.play_card(library, branch_table, zero_random, removal_index, {}, targets));
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
         CHECK(log.events == std::vector<std::string>{ "left:9" });
         CHECK_FALSE(branch_table[equipped_character].has(givm::equipment_type::weapon));
         CHECK_FALSE(branch_table[new_weapon].is_valid());
         CHECK(branch_table[new_weapon].state().count == 9);
-        branch.view_in<givm::execution_state::action_selection>().declare_round_end();
+        branch.submitted(branch.view_in<givm::execution_state::action_selection>().declare_round_end(library, branch_table, zero_random));
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
-        branch.view_in<givm::execution_state::action_selection>().declare_round_end();
+        branch.submitted(branch.view_in<givm::execution_state::action_selection>().declare_round_end(library, branch_table, zero_random));
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::finished);
         branch_table.clean_up();
         CHECK_FALSE(branch_table[equipped_character].has(givm::equipment_type::weapon));
@@ -437,7 +437,7 @@ TEST_CASE("equipment replacement handles a nested replacement in the removal bro
     attachment_log log;
     const auto [library, ids] = compile_equipment_scenario(mode, log, true);
     auto table = load_equipment_scenario(library, ids);
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     log.events.clear();
@@ -445,7 +445,7 @@ TEST_CASE("equipment replacement handles a nested replacement in the removal bro
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     const auto index = card_index(action, table, ids.get_id<givm::card_definition>("EquipWeaponCard"));
     const std::array<givm::card_target_id, 1> targets{ equipped_character };
-    action.play_card(library, table, index, {}, targets);
+    execution.submitted(action.play_card(library, table, zero_random, index, {}, targets));
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     CHECK(log.events == std::vector<std::string>{ "left:7", "left:11" });
     REQUIRE(log.removed.size() == 2);
@@ -465,7 +465,7 @@ TEST_CASE("equipment card input selects a reserve character without changing the
     attachment_log log;
     const auto [library, ids] = compile_equipment_scenario(mode, log, false);
     auto table = load_equipment_scenario(library, ids);
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
@@ -473,7 +473,7 @@ TEST_CASE("equipment card input selects a reserve character without changing the
     const givm::character_id reserve{ givm::player_id{ 0 }, 1 };
     const std::array<givm::card_target_id, 1> targets{ reserve };
     CHECK(action.card_targets_validate(library, table, index, targets) == givm::target_validation::valid_complete);
-    action.play_card(library, table, index, {}, targets);
+    execution.submitted(action.play_card(library, table, zero_random, index, {}, targets));
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     CHECK_FALSE(table[equipped_character].has(givm::equipment_type::weapon));
     REQUIRE(table[reserve].has(givm::equipment_type::weapon));
@@ -499,7 +499,7 @@ TEST_CASE("a non-card response supplies multiple attachment inputs and removes o
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("DynamicAttachmentCharacter") } },
         { .characters = { ids.get_id<givm::character_view>("LowerHealth"), ids.get_id<givm::character_view>("HigherHealth") } });
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::finished);
     CHECK(log.calls == 2);

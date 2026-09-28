@@ -121,16 +121,16 @@ TEST_CASE("element application inputs resume nested responses with the same resu
         { .characters = { ids.get_id<givm::character_view>(source.name()) } },
         { .characters = { ids.get_id<givm::character_view>(target.name()) } });
     const auto target_id = (*table[givm::player_id{ 1 }].characters().begin()).id();
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    auto state = executor.step(library, table, random);
+    auto state = executor.advance(library, table, random);
     REQUIRE(state == givm::execution_state::card_selection);
     CHECK(log.order == std::vector{ 1, 2 });
     CHECK(table[target_id].state().aura == givm::element_aura::dendro);
     CHECK(table[target_id].state().health == 10);
-    executor.view_in<givm::execution_state::card_selection>().select({});
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.order == std::vector{ 1, 2, 3 });
     CHECK(table[target_id].state().aura == givm::element_aura::cryo);
     CHECK(table[target_id].state().health == 10);

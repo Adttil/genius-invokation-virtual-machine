@@ -86,17 +86,15 @@ int main()
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(target);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, target);
     const auto remaining = execution.view_in<givm::execution_state::remaining_active_character_selection>();
     std::println("首份选择已接受: {}", remaining.first_selected_character() == target);
     std::println("剩余玩家为玩家 0: {}", remaining.player() == givm::player_id{ 0 });
     if(remaining.selection_validate(table, attacker) != givm::remaining_active_character_selection_validation::valid)
         return 1;
-    remaining.select(attacker);
-    const auto state = execution.step(library, table, random);
+    const auto state = remaining.select(library, table, random, attacker);
     std::println("双方出战角色同时设置完成: {}", state == givm::execution_state::initial_active_characters_selected);
     std::println("玩家 0 已选出战角色: {}", table[givm::player_id{ 0 }].state().active_character == attacker);
     std::println("玩家 1 已选出战角色: {}", table[givm::player_id{ 1 }].state().active_character == target);

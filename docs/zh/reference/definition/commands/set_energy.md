@@ -114,13 +114,10 @@ int main()
     const givm::character_id target{ givm::player_id{ 0 }, 0 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(target);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 1 }, 0 });
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, target);
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     std::println("充能上限: {}", table[target].state().max_energy);
     std::println("先设为 10 再减少 2: {}", table[target].state().energy);
 }

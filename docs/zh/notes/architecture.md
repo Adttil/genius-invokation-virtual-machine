@@ -19,7 +19,7 @@
 - `table` 保存一局游戏中持续存在的牌桌状态，例如实体、资源和回合信息。
 - `executor` 保存当前执行位置和结算过程中的临时状态，并负责推进规则。
 
-`definition_library` 可以被多局游戏共享，它不是游戏状态。在给定定义库下，一局游戏的可变状态由 `table` 与 `executor` 共同组成。table 只保存游戏状态与定义 ID，不持有 definition library。executor 也不保存库指针；每次 `step` 显式接收与程序现场和实体定义 ID 配套的定义库。
+`definition_library` 可以被多局游戏共享，它不是游戏状态。在给定定义库下，一局游戏的可变状态由 `table` 与 `executor` 共同组成。table 只保存游戏状态与定义 ID，不持有 definition library。executor 也不保存库指针；每次视图提交或 `resume` 显式接收与程序现场和实体定义 ID 配套的定义库。
 
 牌组等每局输入不编入游戏规则程序。上层在对局开始前用 `issued_id_map` 链接名称，再由 `load_deck` 把 `linked_deck` 装入 table 并完成角色状态与技能初始化；随机洗牌、抽牌和出战角色选择等规则步骤由游戏流程命令执行。具体接口见 [牌组链接与装载](deck_initialization.md)。
 

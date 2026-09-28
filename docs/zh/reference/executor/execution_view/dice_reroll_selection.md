@@ -23,7 +23,7 @@ class execution_view<execution_state::dice_reroll_selection>;
 
 玩家由命令确定。选择用 [`dice_counts`](../../enums/dice_counts.md) 表示每种骰子要重投的数量，各类数量不得超过该玩家当前持有数量。非空选择消耗一次重投机会，空选择放弃全部剩余机会。
 
-每次输入现场都须先提交合法选择再推进；检查不提交输入，提交和推进不自动检查。随机结果在首次等待输入前已经取得，具体规则见 [`reroll_dice`](../../definition/commands/reroll_dice.md)。
+每次输入直接提交并推进；独立检查不提交输入。Debug 提交会自动检查，Release 由调用方保证输入合法。随机结果在首次等待输入前已经取得，具体规则见 [`reroll_dice`](../../definition/commands/reroll_dice.md)。
 
 ## 参阅
 

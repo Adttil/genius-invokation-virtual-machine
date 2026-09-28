@@ -22,7 +22,8 @@ enum class execution_state : std::uint8_t
     action_started,
     round_end_declared,
     round_ending,
-    dice_reroll_selection
+    dice_reroll_selection,
+    initialized
 };
 ```
 
@@ -32,6 +33,7 @@ enum class execution_state : std::uint8_t
 
 | | |
 | --- | --- |
+| `initialized` | 已完成初始化、尚未执行游戏流程的现场 |
 | `finished` | 已结束的对局 |
 | `card_selection` | 等待指定玩家换牌的现场 |
 | `initial_card_selection` | 开局尚未接受任何一方换牌选择的现场 |
@@ -51,7 +53,7 @@ enum class execution_state : std::uint8_t
 
 ## 注意
 
-以 [`compile_mode::normal`](compile_mode.md) 编译时，[`step`](executor/step.md) 返回输入现场或 `finished`；以 `compile_mode::observed` 编译时还会返回观察现场。每种现场均可取得相应 [`execution_view`](execution_view.md)。`initial_active_characters_selected` 和四种流程通知的视图不提供额外读取或输入操作，相关信息直接从牌桌读取。
+以 [`compile_mode::normal`](compile_mode.md) 编译时，视图的输入提交或 [`resume`](execution_view/resume.md) 返回输入现场或 `finished`；以 `compile_mode::observed` 编译时还会返回观察现场。每种现场均可取得相应 [`execution_view`](execution_view.md)。`initial_active_characters_selected` 和四种流程通知的视图提供 `resume`，不提供其他读取或输入操作，相关信息直接从牌桌读取。
 
 `card_selection` 的玩家已由当前流程确定，不一定是牌桌上的行动方；`initial_card_selection` 和 `initial_active_character_selection` 允许任选先提交的一方。首次出战选择被接受后，`remaining_active_character_selection` 固定等待另一方；双方选择全部被接受后才同时设置出战角色。以观察模式编译时，先报告 `initial_active_characters_selected`，随后推进才处理相应变更响应。
 
@@ -96,13 +98,13 @@ int main()
     givm::table table{ { .max_rounds = 1 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.start(library, table);
-    auto state = execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    auto state = initialized.resume(library, table, random);
     while(state == givm::execution_state::round_started)
     {
         // 回合通知直接从牌桌取得信息。
         std::println("进入回合: {}", table.state().round_number);
-        state = execution.step(library, table, random);
+        state = execution.view_in<givm::execution_state::round_started>().resume(library, table, random);
     }
     std::println("超过回合上限后结束: {}", state == givm::execution_state::finished);
 }

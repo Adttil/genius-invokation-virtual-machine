@@ -124,19 +124,15 @@ int main()
     const givm::character_id target{ givm::player_id{ 1 }, 1 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 1 }, 0 });
-    execution.step(library, table, random);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
+    execution.view_in<givm::execution_state::initial_active_characters_selected>().resume(library, table, random);
     const auto view = execution.view_in<givm::execution_state::active_character_changed>();
     std::println("本次将设置为目标角色: {}", view.character() == target);
     std::println("牌桌仍保留原出战角色: {}", table[view.character().player_id].state().active_character == original);
-    execution.step(library, table, random);
+    view.resume(library, table, random);
     std::println("出战角色设置成功: {}", table[givm::player_id{ 1 }].state().active_character == target);
 }
 ```

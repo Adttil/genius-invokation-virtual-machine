@@ -87,7 +87,7 @@ auto compile(
 
 两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。此限制在所有构建模式下检查，错误通过返回值报告。空回合流程也会自动推进回合，直至超过牌桌配置的上限而结束。
 
-`mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 `executor::step` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
+`mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 视图的提交或 `resume` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
 
 编译返回后，初始化和回合流程的输入序列及其中的命令对象可以销毁，不影响定义库的使用。定义源编译所得配置数据随定义库保持有效；源名称、标签以及配置数据借用的对象仍须由调用方保证存活。
 
@@ -123,8 +123,8 @@ int main()
     givm::table table{ { .max_rounds = 2 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     std::println("终局时的回合数: {}", table.state().round_number);
     std::println("以双败结束: {}", execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }

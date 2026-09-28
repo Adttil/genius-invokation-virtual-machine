@@ -34,7 +34,7 @@ enum class begin_action_error {};
 
 等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、检查或选择行动。出牌选择当前行动玩家的有效手牌，并提供支付骰子及至多两个目标；目标参数默认为空 span，超过两个的元素忽略。目标和用牌条件由牌定义决定。主动切换选择当前行动玩家存活、非出战的角色。调用方保证支付满足费用、骰子持有数量及出战角色充能；宣布结束无需支付骰子。
 
-调用方必须通过 `use_skill`、`use_technique`、`play_card`、`elemental_tuning`、`switch_active_character` 或 `declare_round_end` 提供本次行动输入后，才能再次调用 `step`。费用预览、支付检查与目标检查不提供行动输入；等待玩家决定期间由上层保留当前现场。
+调用方必须通过 `use_skill`、`use_technique`、`play_card`、`elemental_tuning`、`switch_active_character` 或 `declare_round_end` 提交本次行动输入并立即推进。费用预览、支付检查与目标检查不提供行动输入；等待玩家决定期间由上层保留当前现场。
 
 技能或特技选择前由调用方通过现场的 [`is_controlled`](../../executor/execution_view/action_selection/is_controlled.md) 检查控制状态，执行器不自动拒绝受控角色使用技能或特技。主动切换不受控制或免控附属限制。需要限制受控角色使用的卡牌，由牌定义在目标与用牌条件查询中检查。
 
@@ -46,11 +46,11 @@ enum class begin_action_error {};
 
 通过 [`calculate_card_cost`](../../executor/execution_view/action_selection/calculate_card_cost.md) 同步计算出牌费用，通过 [`card_payment_validate`](../../executor/execution_view/action_selection/card_payment_validate.md) 与 [`card_targets_validate`](../../executor/execution_view/action_selection/card_targets_validate.md) 分别检查支付及用牌条件。目标检查按 span 中的目标数量分步进行，允许检查空选择，告知当前选择是否有效、能否完成或继续；检查第二目标时可假设第一目标合法。两项检查相互独立，由调用方按需使用。目标检查通过 [`card_target_validation`](../queries/card_target_validation.md) 返回结果，不接收随机源。费用响应不得使用随机数，调用随机函数属于未定义行为。
 
-[`play_card`](../../executor/execution_view/action_selection/play_card.md) 可采用已完整计算的费用，也可同步计算报价后选择出牌；不会自动检查支付或目标。下一次推进先让牌离手，再执行已确认的费用效果、扣除骰子与充能，再依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../events/card_will_be_played.md)。未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，之后均广播 [`card_played`](../events/card_played.md)。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
+[`play_card`](../../executor/execution_view/action_selection/play_card.md) 同步报价并提交，`play_card_with_cached_cost` 使用已有报价；Debug 自动检查支付与目标，Release 不检查。提交立即推进，先让牌离手，再执行已确认的费用效果、扣除骰子与充能，再依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../events/card_will_be_played.md)。未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，之后均广播 [`card_played`](../events/card_played.md)。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
 
 通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`switch_payment_validate`](../../executor/execution_view/action_selection/switch_payment_validate.md)，依次检查骰子是否匹配费用、持有数量是否足够、非零充能费用的类型是否匹配及出战角色充能是否足够。
 
-通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 选择切换时，可采用已经计算的费用，也可传入定义库和牌桌，在本次调用中同步计算报价后提交。两种重载均由下一次推进执行已确认的费用效果、支付及切换，不自动检查支付是否合法。采用已计算费用时，由调用方保证该角色已经完整报价。同一行动窗口内每个候选只允许计算一次报价，可重复读取结果；带定义库与牌桌的提交重载仅用于尚未报价的候选，库不检查此约定。
+通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 同步报价并提交切换，或通过 [`switch_active_character_with_cached_cost`](../../executor/execution_view/action_selection/switch_active_character_with_cached_cost.md) 使用已有报价。两者均立即推进，执行已确认的费用效果、支付及切换。Debug 提交检查支付与报价状态，Release 由调用方保证合法。同一行动窗口内每个候选只允许报价一次，可以反复读取结果。
 
 成功切换时，原出战角色上的所有准备技能附属一起标记为离场，按顺序逐个完成 [`attachment_removed`](../events/attachment_removed.md) 通知后，才处理正常的切换通知。
 
@@ -126,14 +126,10 @@ int main()
         givm::linked_deck{ .characters = { definition } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 1 }, 0 });
-    auto state = execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
+    auto state = execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     if(state == givm::execution_state::action_selection)
     {
         const auto action = execution.view_in<givm::execution_state::action_selection>();
@@ -147,9 +143,8 @@ int main()
     while(state == givm::execution_state::action_selection)
     {
         // 当前玩家宣布本回合结束。
-        execution.view_in<givm::execution_state::action_selection>().declare_round_end();
+        state = execution.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random);
         ++declarations;
-        state = execution.step(library, table, random);
     }
     std::println("双方结束声明次数: {}", declarations);
 }

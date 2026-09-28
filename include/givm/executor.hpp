@@ -2,6 +2,7 @@
 #define GIVM_EXECUTOR_HPP
 
 #include "executor/instruction.hpp"
+#include "executor/execution_view_error.hpp"
 #include "executor/program_input_error.hpp"
 #include "executor/command_input_error.hpp"
 #include "executor/history_access_error.hpp"

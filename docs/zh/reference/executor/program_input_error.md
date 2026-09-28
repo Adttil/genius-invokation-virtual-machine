@@ -37,7 +37,7 @@ program_input_error(program_input_error_reason cause,
 
 未定义 `NDEBUG` 时，[`invoke`](handle_context/invoke.md) 在写入本次输入前检查协议并可能抛出本异常。发布构建不进行这些检查，也不保留相关诊断元数据；违反协议仍属于未定义行为。异常类型本身在两种构建模式下均可使用。
 
-输入尚未写入不代表整个响应或 [`step`](executor/step.md) 已回滚：此前的事件修改、命令及嵌套响应可能已经生效。捕获异常仅用于报告定义错误，不应在原执行现场继续调用 `step`。
+输入尚未写入不代表整个响应或 [`resume`](execution_view/resume.md) 已回滚：此前的事件修改、命令及嵌套响应可能已经生效。捕获异常仅用于报告定义错误，不应在原执行现场继续推进。
 
 ## 参阅
 

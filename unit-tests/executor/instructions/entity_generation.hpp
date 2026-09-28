@@ -443,12 +443,12 @@ namespace
             { .characters = { ids.template get_id<givm::character_view>(driver.name()) } },
             { .characters = { ids.template get_id<givm::character_view>(character.name()),
                 ids.template get_id<givm::character_view>(character.name()) } });
-        givm::executor executor;
+        givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
-        auto state = executor.step(library, table, random);
+        auto state = executor.advance(library, table, random);
         while(state == givm::execution_state::active_character_changed)
-            state = executor.step(library, table, random);
+            state = executor.advance(library, table, random);
         REQUIRE(state == givm::execution_state::finished);
         CHECK(log.next_action == log.actions.size());
         CHECK(log.limit_queries == 1);

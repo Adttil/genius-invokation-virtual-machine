@@ -47,4 +47,4 @@ using history_access_error_reason = std::variant<definition_metadata_error,
 
 仅在未定义 `NDEBUG` 时由 `definition_library::history_field` 检查并抛出。发布构建不进行这些检查，违反字段访问约定属于未定义行为。异常类型本身在两种构建模式下均可使用。
 
-编译上下文的字段查询使用 [`compile_error`](compile_error.md) 收集错误，不抛出本异常。若本异常由对局响应传播出 [`step`](executor/step.md)，该次推进不提供回滚保证，不应在原现场继续推进。
+编译上下文的字段查询使用 [`compile_error`](compile_error.md) 收集错误，不抛出本异常。若本异常由对局响应传播出 [`resume`](execution_view/resume.md)，该次推进不提供回滚保证，不应在原现场继续推进。

@@ -5,24 +5,24 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-void start(const definition_library& library, table& table);
+auto start(const definition_library& library, table& card_table);
 ```
 [`definition_library`](../definition_library.md)、[`table`](../../table/table.md)
 
 准备按照 `library` 提供的游戏流程开始一场对局。
 
-原有的待完成结算被丢弃。按定义库布局准备历史摘要的状态空间，并向摘要发送 [`history_summary_initialization`](../../definition/events/history_summary_initialization.md)，全部初始化响应在本函数返回前完成。本函数不执行游戏流程中的命令；通过 [`step`](step.md) 开始推进。
+原有的待完成结算被丢弃。按定义库布局准备历史摘要的状态空间，并向摘要发送 [`history_summary_initialization`](../../definition/events/history_summary_initialization.md)，全部初始化响应在本函数返回前完成。本函数不执行游戏流程中的命令；通过返回视图的 [`resume`](../execution_view/resume.md) 开始推进。
 
 ## 参数
 
 | | |
 | --- | --- |
 | `library` | 本场对局使用的定义库 |
-| `table` | 本场对局使用的牌桌 |
+| `card_table` | 本场对局使用的牌桌 |
 
 ## 返回值
 
-（无）
+初始化完成现场的 [`execution_view<initialized>`](../execution_view/initialized.md)。可先检查或复制初始化后的牌桌与执行器，再由此视图开始推进。
 
 ## 注意
 
@@ -64,9 +64,9 @@ int main()
     load_deck(table, library, {}, {});
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.start(library, table);
+    const auto initialized = execution.start(library, table);
     std::println("牌桌回合数保持原值: {}", table.state().round_number);
-    const auto state = execution.step(library, table, random);
+    const auto state = initialized.resume(library, table, random);
     std::println("随后推进至终局: {}", state == givm::execution_state::finished);
 }
 ```
@@ -82,4 +82,4 @@ int main()
 
 | | |
 | --- | --- |
-| [`step`](step.md) | 推进至编译模式要求报告的下一处现场 |
+| [`resume`](../execution_view/resume.md) | 推进至编译模式要求报告的下一处现场 |

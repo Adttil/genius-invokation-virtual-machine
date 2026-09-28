@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr givm::skill_id skill_id(std::size_t skill_index) const noexcept;
+constexpr givm::skill_id skill_id(std::size_t skill_index) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`skill_id`](../../../table/skill_id.md)
 
@@ -22,6 +22,8 @@ constexpr givm::skill_id skill_id(std::size_t skill_index) const noexcept;
 指定技能候选的技能 ID。
 
 ## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 无需先计算费用。本操作不提交行动，也不修改牌桌或推进执行器。
 

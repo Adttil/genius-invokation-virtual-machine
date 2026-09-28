@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-elemental_reaction reaction() const noexcept;
+elemental_reaction reaction() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 
 取得本次伤害引起的原始元素反应种类。它在伤害属性修饰结束后、数值计算之前确定，表示最终伤害元素与目标当时附着发生的反应。
@@ -15,6 +15,8 @@ elemental_reaction reaction() const noexcept;
 本次伤害的 [`elemental_reaction`](../../../enums/elemental_reaction.md)；没有反应时为 `elemental_reaction::none`。此值不受 [`replacement_reaction()`](replacement_reaction.md) 影响，也不会根据观察时的牌桌附着重新判定。
 
 ## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 非空替代标签只替代反应效果，仍认可本次原始反应发生。例如被替代的感电仍返回 `elemental_reaction::electro_charged`，默认附着处理也仍按该反应进行。
 

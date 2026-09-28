@@ -8,3 +8,4 @@
 #include "selection.hpp"
 #include "target_validation.hpp"
 #include "instructions/tests.hpp"
+#include "view_lifetime.hpp"

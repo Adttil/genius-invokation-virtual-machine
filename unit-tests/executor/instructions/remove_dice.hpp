@@ -153,13 +153,13 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
             givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, mode));
     givm::table table{ { .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = log.expected[0] }, { .dice = log.expected[1] } };
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     std::size_t pauses = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         if(state != givm::execution_state::card_selection) continue;
         ++pauses;
@@ -172,7 +172,7 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
         executor = std::move(copied_executor);
         const auto view = executor.view_in<givm::execution_state::card_selection>();
         REQUIRE(view.selection_validate(table, {}));
-        view.select({});
+        executor.submitted(view.select(library, table, random, {}));
     }
     CHECK(pauses == 1);
     CHECK(log.players == std::vector<givm::player_id>{ givm::player_id{ 0 }, givm::player_id{ 1 }, givm::player_id{ 1 } });
@@ -200,10 +200,10 @@ TEST_CASE("successive end-round collectors choose dice from the updated pool", "
     initial[givm::elemental_dice::pyro] = 1;
     initial[givm::elemental_dice::geo] = 2;
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .dice = initial }, {} };
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
-    while(executor.step(library, table, random) != givm::execution_state::finished) {}
+    while(executor.advance(library, table, random) != givm::execution_state::finished) {}
     CHECK(log.selected == std::vector<givm::elemental_dice>{ givm::elemental_dice::hydro, givm::elemental_dice::pyro });
     givm::dice_counts remaining;
     remaining[givm::elemental_dice::geo] = 2;

@@ -5,7 +5,11 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-bool has_technique() const noexcept;
+bool has_technique() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 
 当前出战角色装备了支持 `technique_effect` 响应的特技时返回 true。受控不改变此结果，使用前可单独调用 `is_controlled`。
+
+## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。

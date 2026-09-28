@@ -93,20 +93,14 @@ int main()
         givm::linked_deck{ .characters = { definition } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 1 }, 0 });
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
+    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     std::println("投骰时出战角色受控: {}", library.is_controlled(table[target]));
     std::println("冻结属于控制: {}", library.is_control(library.frozen_id()));
-    execution.view_in<givm::execution_state::dice_selection>().select({});
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::dice_selection>().select({});
-    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::dice_selection>().select(library, table, random, {});
+    execution.view_in<givm::execution_state::dice_selection>().select(library, table, random, {});
     std::println("回合开始通知后仍受控: {}", library.is_controlled(table[target]));
 }
 ```

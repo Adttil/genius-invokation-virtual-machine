@@ -53,19 +53,19 @@ TEST_CASE("fixed character positions use signed offsets and circular living targ
     const auto alive = ids.get_id<givm::character_view>("Alive");
     const auto defeated = ids.get_id<givm::character_view>("Defeated");
     load_deck(table, library, { .characters = { alive, defeated, alive } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     if(mode == givm::compile_mode::observed)
     {
         for(const auto index : std::array<std::size_t, 3>{ 2, 0, 2 })
         {
-            REQUIRE(executor.step(library, table, random) == givm::execution_state::active_character_changed);
+            REQUIRE(executor.advance(library, table, random) == givm::execution_state::active_character_changed);
             CHECK(executor.view_in<givm::execution_state::active_character_changed>().character()
                 == givm::character_id{ player, index });
         }
     }
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[player].state().active_character == givm::character_id{ player, 2 });
 }
 
@@ -83,10 +83,10 @@ TEST_CASE("fixed healing and maximum health increases can locate a defeated char
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("Alive"),
         ids.get_id<givm::character_view>("Defeated") } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     const auto& state = table[givm::character_id{ player, 1 }].state();
     CHECK(state.health == 5);
     CHECK(state.max_health == 13);
@@ -107,10 +107,10 @@ TEST_CASE("fixed character commands skip effects without an active character", "
         }, std::tuple{}, positioned_character_source{ "Alive", 7 });
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("Alive") } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     REQUIRE_FALSE(table[player].state().active_character.has_value());
     const auto& state = table[givm::character_id{ player, 0 }].state();
     CHECK(state.health == 7);
@@ -177,19 +177,19 @@ TEST_CASE("switch notifications prioritize the new active character in both comp
     const auto character = ids.get_id<givm::character_view>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
     load_deck(table, library, { .characters = { character, character } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     if(mode == givm::compile_mode::observed)
     {
-        REQUIRE(executor.step(library, table, random) == givm::execution_state::active_character_changed);
+        REQUIRE(executor.advance(library, table, random) == givm::execution_state::active_character_changed);
         CHECK(executor.view_in<givm::execution_state::active_character_changed>().character()
             == givm::character_id{ player, 1 });
         CHECK(table[player].state().active_character == givm::character_id{ player, 0 });
         CHECK_FALSE(table[player].state().can_plunge);
         CHECK(responses.empty());
     }
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(responses == std::vector<givm::character_id>{ { player, 1 }, { player, 0 } });
     CHECK(table[player].state().active_character == givm::character_id{ player, 1 });
     CHECK(table[player].state().can_plunge);

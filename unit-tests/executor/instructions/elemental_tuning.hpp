@@ -161,12 +161,12 @@ namespace
         };
     }
 
-    givm::execution_state advance(givm::executor& execution, const givm::definition_library& library, givm::table& table)
+    givm::execution_state advance(givm_test::executor_driver& execution, const givm::definition_library& library, givm::table& table)
     {
         auto random = []() -> std::uint32_t { return 0; };
-        auto state = execution.step(library, table, random);
+        auto state = execution.advance(library, table, random);
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started)
-            state = execution.step(library, table, random);
+            state = execution.advance(library, table, random);
         return state;
     }
 }
@@ -187,7 +187,7 @@ TEST_CASE("elemental tuning shares card candidates and validates card attributes
         .cards = { ids.get_id<givm::card_definition>(blocked.name()), ids.get_id<givm::card_definition>(allowed.name()) },
         .characters = { ids.get_id<givm::character_view>(character.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(opponent.name()) } });
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
@@ -231,7 +231,7 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
         .cards = { filler_definition, filler_definition, card_definition },
         .characters = { ids.get_id<givm::character_view>(character.name()) }
     }, { .characters = { ids.get_id<givm::character_view>(opponent.name()) } });
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
@@ -241,18 +241,18 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
         CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 1);
         CHECK(table[selected_card].state().cost.dice_requirement.any == 2);
     }
-    action.elemental_tuning(0, givm::elemental_dice::cryo);
+    execution.submitted(action.elemental_tuning(library, table, givm_test::zero_random, 0, givm::elemental_dice::cryo));
     if(nested)
     {
         REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
         CHECK(table[selected_card].is_valid());
         CHECK(log.modifications == 1);
         CHECK(log.completions == 0);
-        execution.view_in<givm::execution_state::card_selection>().select({});
+        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
         REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
         CHECK_FALSE(table[selected_card].is_valid());
         CHECK(log.completions == 1);
-        execution.view_in<givm::execution_state::card_selection>().select({});
+        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
     }
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     CHECK(table.state().active_player == givm::player_id{ 0 });

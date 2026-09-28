@@ -550,9 +550,9 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, givm::linked_deck{ .cards = { card_id } }, {});
     zero_random random_source;
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(executor.step(library, table, random_source) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random_source) == givm::execution_state::finished);
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == 1);
     REQUIRE(observation.handled);
     CHECK(observation.alpha_support.value() == id_map.get_id<givm::support_view>("AlphaSupport").value());

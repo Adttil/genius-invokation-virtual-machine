@@ -11,6 +11,9 @@ inline std::string error_string(const program_input_error& error);
 inline std::string error_string(const command_input_error& error);
 inline std::string error_string(const command_input_error_reason& error);
 inline std::string error_string(const history_access_error& error);
+inline std::string error_string(const execution_view_error& error);
+template<class Reason>
+inline std::string error_string(const view_input_error<Reason>& error);
 ```
 
 把定义库编译的结构化诊断或对局运行时的调试异常转换为文本。
@@ -21,6 +24,8 @@ inline std::string error_string(const history_access_error& error);
 | --- | --- |
 | `error`、`errors` | [`compile`](compile.md) 返回的一项诊断或诊断列表 |
 | `error` | [`program_input_error`](program_input_error.md)、[`command_input_error`](command_input_error.md)、[`history_access_error`](history_access_error.md) 异常对象，或命令输入错误的具体原因 |
+
+[`execution_view_error`](execution_view_error.md)、[`view_input_error`](view_input_error.md) 及其具体原因同样可以格式化。
 
 ## 返回值
 

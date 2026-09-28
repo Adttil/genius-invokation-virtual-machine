@@ -75,12 +75,11 @@ int main()
         givm::linked_deck{ .cards = { b, a } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     std::bitset<givm::selection_capacity> selected{};
     selected.set(0);
-    execution.view_in<givm::execution_state::card_selection>().select(selected);
-    execution.step(library, table, random);
+    execution.view_in<givm::execution_state::card_selection>().select(library, table, random, selected);
     std::println("清理前的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));
     table.clean_up();
     std::println("清理后的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));

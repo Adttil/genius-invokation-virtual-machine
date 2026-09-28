@@ -12,7 +12,7 @@ class execution_view;
 
 一处对局执行现场的视图，例如需要换牌的玩家、已经生效的伤害，或已结束对局的结果。
 
-该模板组织各类现场视图。调用方通过 [`executor::view_in`](executor/view_in.md) 取得当前现场的访问对象，可用 `auto` 接收。不同现场提供不同的信息；需要外部输入的现场还提供相应输入操作。只作通知的现场不提供额外的读取或输入操作，相关信息直接从牌桌读取。
+该模板组织各类现场视图。调用方通过 [`executor::view_in`](executor/view_in.md) 取得当前现场的访问对象，可用 `auto` 接收。不同现场提供不同的信息；需要外部输入的现场还提供相应输入操作。观察现场通过 [`resume`](execution_view/resume.md) 继续执行；纯通知现场的其他信息直接从牌桌读取。
 
 ## 模板参数
 
@@ -24,6 +24,7 @@ class execution_view;
 
 | | |
 | --- | --- |
+| [`execution_view<initialized>`](execution_view/initialized.md) | 初始化完成、尚未执行游戏流程的视图 |
 | [`execution_view<finished>`](execution_view/finished.md) | 已结束对局的结果视图 |
 | [`execution_view<card_selection>`](execution_view/card_selection.md) | 指定玩家换牌现场的视图 |
 | [`execution_view<initial_card_selection>`](execution_view/initial_card_selection.md) | 开局首次换牌选择现场的视图 |
@@ -40,17 +41,19 @@ class execution_view;
 
 ## 纯通知现场
 
-主模板用于 `initial_active_characters_selected`、`round_started`、`action_started`、`round_end_declared` 和 `round_ending`。这些视图不提供读取或输入操作；对应的出战角色、玩家及回合数等信息直接从牌桌读取。
+主模板用于 `initial_active_characters_selected`、`round_started`、`action_started`、`round_end_declared` 和 `round_ending`。这些视图提供 [`resume`](execution_view/resume.md)，不提供其他读取或输入操作；对应的出战角色、玩家及回合数等信息直接从牌桌读取。
 
 ## 注意
 
 有数据的视图借用当前执行现场，不拥有历史记录；下一次推进或重建现场后，先前的借用失效。复制执行器不会把原有视图重定向到副本。
 
-输入操作通过参数填写选择，不返回可修改引用，不进行合法性检查，也不推进对局。调用方必须保证现场种类、参数和对局条件满足相应操作的要求；违反要求属于未定义行为。
+输入操作提交选择并直接推进，返回下一处 [`execution_state`](execution_state.md)。观察现场由 `resume` 推进；终局视图没有推进操作。查询、费用预览和独立合法性检查不提交输入，也不推进。
 
-独立检查接口供调用方按需使用，检查本身不提交输入。所有输入现场都须先提交合法选择，再调用 [`step`](executor/step.md)；查询或检查不能代替提交，空选择也须显式提交。
+未定义 `NDEBUG` 时，每个视图操作都检查现场种类和是否仍有效；种类不匹配或旧视图被使用时抛出 [`execution_view_error`](execution_view_error.md)。检查包括同种类现场的再次出现，不能复用上一处现场的视图。Release 不保留这些诊断记录，不执行检查。
 
-换牌、开局出战选择和重投视图通过 `selection_validate` 检查拟提交的参数；行动视图按操作提供检查，例如 `switch_payment_validate`。提交操作和后续推进均不会自动调用这些检查。
+输入提交在 Debug 下还会自动验证相应参数，合法性结果失败时抛出 [`view_input_error`](view_input_error.md)，实体 ID 越界或已移除的诊断沿用 [`command_input_error`](command_input_error.md)；均发生在提交或推进之前。独立 `*_validate` 接口仍供 UI 自行查询；Release 提交直接使用输入，调用方必须保证其合法。
+
+一旦开始推进，全部旧视图以及借出的引用和 span 失效；执行中抛出异常不回滚牌桌和执行进度，不应继续使用该现场。Debug 对视图的检查不能追踪已经借出的引用或 span。
 
 ## 参阅
 

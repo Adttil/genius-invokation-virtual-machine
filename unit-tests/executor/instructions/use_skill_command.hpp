@@ -183,6 +183,13 @@ namespace
         {
             return { .cost = { .dice_requirement = { .any = 1 }, .speed = data.log->card_speed } };
         }
+        static givm::target_validation query(const definition_type& data, const givm::card_target_validation& query)
+        {
+            if(not data.dynamic) return query.target_count == 0 ? givm::target_validation::valid_complete
+                : givm::target_validation::invalid;
+            return query.target_count == 2 ? givm::target_validation::valid_complete
+                : givm::target_validation::valid_incomplete;
+        }
         static givm::program_entry handle(const definition_type& data, const givm::hand_card_view&,
             givm::card_effect& event, givm::handle_context& context)
         {
@@ -197,12 +204,12 @@ namespace
 
     struct omni_random { std::uint32_t operator()() noexcept { return std::to_underlying(givm::elemental_dice::omni); } };
 
-    inline givm::execution_state advance(givm::executor& execution, const givm::definition_library& library,
+    inline givm::execution_state advance(givm_test::executor_driver& execution, const givm::definition_library& library,
         givm::table& table, omni_random& random)
     {
-        auto state = execution.step(library, table, random);
+        auto state = execution.advance(library, table, random);
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started)
-            state = execution.step(library, table, random);
+            state = execution.advance(library, table, random);
         return state;
     }
 }
@@ -239,7 +246,7 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
         | givm::skill_flag_bits::plunging_attack : givm::skill_flags{ givm::skill_flag_bits::normal_attack };
     log.targets = dynamic ? std::array<givm::skill_target_id, 2>{ enemy, actor }
         : std::array<givm::skill_target_id, 2>{};
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     omni_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
@@ -249,14 +256,15 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 1;
     log.record = true;
-    action.play_card(library, table, 0, payment, log.targets);
+    execution.submitted(action.play_card(library, table, random, 0, payment,
+        dynamic ? std::span<const givm::card_target_id>{ log.targets } : std::span<const givm::card_target_id>{}));
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::card_selection);
     CHECK(log.events == std::vector<std::string>{ "card-effect", "will" });
     CHECK_FALSE(table[played].is_valid());
     const auto paused_log = log;
     auto copied_execution = execution;
     auto copied_table = table;
-    const auto resume = [&](givm::executor& current, givm::table& current_table)
+    const auto resume = [&](givm_test::executor_driver& current, givm::table& current_table)
     {
         log = paused_log;
         const auto pauses = effect == 0 ? 3 : 2;
@@ -264,7 +272,7 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
         {
             const auto selection = current.view_in<givm::execution_state::card_selection>();
             CHECK(selection.player() == owner);
-            selection.select({});
+            current.submitted(selection.select(library, current_table, random, {}));
             REQUIRE(advance(current, library, current_table, random)
                 == (pause + 1 == pauses ? givm::execution_state::action_selection : givm::execution_state::card_selection));
         }
@@ -316,7 +324,7 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     REQUIRE_FALSE(table[standby].skills().empty());
     log.skill = (*table[standby].skills().begin()).id();
     log.flags = givm::skill_flag_bits::normal_attack;
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     omni_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
@@ -325,7 +333,7 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 1;
     log.record = true;
-    action.play_card(library, table, 0, payment);
+    execution.submitted(action.play_card(library, table, random, 0, payment));
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
     CHECK(log.events == std::vector<std::string>{ "card-effect", "draw:owner", "played" });
     CHECK(log.cost_broadcasts == 0);

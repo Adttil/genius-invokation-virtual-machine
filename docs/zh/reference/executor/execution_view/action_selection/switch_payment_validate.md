@@ -9,7 +9,7 @@ constexpr switch_payment_validation switch_payment_validate(
     const table& card_table,
     std::size_t target_index,
     const dice_counts& paid_dice
-) const noexcept;
+) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`switch_payment_validation`](../../switch_payment_validation.md)
 [`table`](../../../table/table.md)
@@ -39,7 +39,9 @@ constexpr switch_payment_validation switch_payment_validate(
 
 ## 注意
 
-先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 完整计算该角色的切换费用，由调用方保证报价可用。本操作只读取已计算费用和牌桌，不计算费用、提交行动、执行费用响应的后续效果或修改牌桌；提交接口也不会自动调用它。
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
+
+先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 完整计算该角色的切换费用，由调用方保证报价可用。本操作只读取已计算费用和牌桌，不计算费用、提交行动、执行费用响应的后续效果或修改牌桌；Debug 提交接口会自动调用它，Release 不重复调用。
 
 所选骰子须恰好支付 [`elemental_dice_requirement`](../../../enums/elemental_dice_requirement.md) 的 `fixed`、`same` 和 `any` 三部分，具体匹配规则见该类型。
 

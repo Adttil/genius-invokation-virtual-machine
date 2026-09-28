@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr const cost_of_skill& skill_cost(std::size_t skill_index) const noexcept;
+constexpr const cost_of_skill& skill_cost(std::size_t skill_index) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`cost_of_skill`](../../../definition/events/cost_of_skill.md)
 
@@ -22,6 +22,8 @@ constexpr const cost_of_skill& skill_cost(std::size_t skill_index) const noexcep
 指定候选已经完整计算的只读费用引用。
 
 ## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 调用方须先为该候选完成一次 [`calculate_skill_cost`](calculate_skill_cost.md)。本操作可反复调用，只读取已计算结果，不触发费用响应。
 

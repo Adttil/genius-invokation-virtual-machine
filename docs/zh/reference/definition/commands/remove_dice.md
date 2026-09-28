@@ -107,8 +107,8 @@ int main()
     givm::table table{ { .self_player = givm::player_id{ 1 } } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     const auto& remaining = table[givm::player_id{ 1 }].state().dice;
     std::println("剩余火元素骰: {}", remaining[givm::elemental_dice::pyro]);
     std::println("剩余万能元素骰: {}", remaining[givm::elemental_dice::omni]);

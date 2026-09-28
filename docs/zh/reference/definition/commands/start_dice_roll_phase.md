@@ -109,8 +109,8 @@ int main()
     givm::table table{ { .max_rounds = 0 } };
     auto random = []() -> std::uint32_t { return 7; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     // 该随机源使首次投骰全部为万能骰，双方各重投一颗。
     givm::dice_counts selected{};
     selected[givm::elemental_dice::omni] = 1;
@@ -119,8 +119,7 @@ int main()
         const auto view = execution.view_in<givm::execution_state::dice_selection>();
         if(not view.selection_validate(table, selected))
             return 1;
-        view.select(selected);
-        execution.step(library, table, random);
+        view.select(library, table, random, selected);
     }
     std::println("玩家 0 的骰子数量: {}", table[givm::player_id{ 0 }].state().dice.total());
     std::println("玩家 1 的骰子数量: {}", table[givm::player_id{ 1 }].state().dice.total());

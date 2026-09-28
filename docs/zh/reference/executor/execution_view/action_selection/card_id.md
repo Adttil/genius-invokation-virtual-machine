@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr hand_card_id card_id(std::size_t card_index) const noexcept;
+constexpr hand_card_id card_id(std::size_t card_index) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`hand_card_id`](../../../table/hand_card_id.md)
 
@@ -22,6 +22,8 @@ constexpr hand_card_id card_id(std::size_t card_index) const noexcept;
 指定手牌候选的手牌 ID。
 
 ## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 无需先计算费用。本操作不提交行动，也不修改牌桌或推进执行器。
 

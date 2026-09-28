@@ -17,4 +17,5 @@ class execution_view<execution_state::deck_cards_discarded>;
 
 | | |
 | --- | --- |
+| [`resume`](resume.md) | 继续至下一处输入、观察或终局现场。 |
 | [`cards`](deck_cards_discarded/cards.md) | 取得本批被舍弃的牌，按从牌堆顶向下的顺序排列。 |

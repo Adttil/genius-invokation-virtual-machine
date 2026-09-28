@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr character_id first_selected_character() const noexcept;
+constexpr character_id first_selected_character() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`character_id`](../../../table/character_id.md)
 
@@ -14,3 +14,7 @@ constexpr character_id first_selected_character() const noexcept;
 ## 返回值
 
 先提交一方所选的角色 ID。该选择已经被接受，但尚未写入牌桌的出战角色字段。
+
+## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。

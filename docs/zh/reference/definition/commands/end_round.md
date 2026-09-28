@@ -84,19 +84,14 @@ int main()
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 1 }, 0 });
-    auto state = execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
+    auto state = execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     while(state == givm::execution_state::action_selection)
     {
         // 当前玩家宣布本回合结束。
-        execution.view_in<givm::execution_state::action_selection>().declare_round_end();
-        state = execution.step(library, table, random);
+        state = execution.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random);
     }
     std::println("下一回合由玩家 0 先手: {}", table.state().active_player == givm::player_id{ 0 });
     std::println("结束声明标记已清除: {}", !table.state().first_ended);

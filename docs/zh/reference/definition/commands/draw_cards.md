@@ -126,8 +126,8 @@ int main()
     load_deck(table, library, givm::linked_deck{ .cards = { card, card } }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     std::println("手牌数量: {}", player.hand_card_count());
     std::println("牌堆数量: {}", player.deck_card_count());
 }

@@ -10,15 +10,15 @@
 
 ## 调用协议
 
-`executor::step` 以非常量左值引用接收可调用对象；其无参数调用结果必须可转换为 `std::uint32_t`：
+视图的输入提交与 `resume` 以非常量左值引用接收可调用对象；其无参数调用结果必须可转换为 `std::uint32_t`：
 
 ```cpp
-executor.step(library, table, random);
+view.resume(library, table, random);
 ```
 
-本次同步调用内部会把它作为非持有 `random_fn` 传给当前指令，definition handler 通过 `handle_context::random()` 使用同一随机源。核心不会把该引用写入指令、table 或 executor stack，也不会在 `step` 返回后继续持有它。因此相邻两步可以使用不同的生成器、记录包装器或回放条带。
+本次同步调用内部会把它作为非持有 `random_fn` 传给当前指令，definition handler 通过 `handle_context::random()` 使用同一随机源。核心不会把该引用写入指令、table 或 executor stack，也不会在 推进返回后继续持有它。因此相邻两步可以使用不同的生成器、记录包装器或回放条带。
 
-`calculate_switch_cost`、`calculate_card_cost` 及为尚未报价候选计算费用的行动提交重载不接收随机源，报价在调用中同步完成。费用 handler 保留统一签名，但不得调用随机函数，违反此前提属于未定义行为。角色初始状态与卡牌初始费用是空查询，结果在库编译期间保存；目标检查是非空查询，参数中不含随机源。反复读取已有报价或改变不同候选的计算顺序不会消耗对局随机序列；下一次 `step` 只执行已确认结果，其中真正执行的后续效果仍可使用该次推进的随机源。详见[费用预览与提交](event_dispatch/payment_commit.md)。
+`calculate_switch_cost`、`calculate_card_cost` 不接收随机源，报价在调用中同步完成。行动提交接收随机源供后续推进使用，报价本身仍不使用它。费用 handler 保留统一签名，但不得调用随机函数，违反此前提属于未定义行为。角色初始状态与卡牌初始费用是空查询，结果在库编译期间保存；目标检查是非空查询，参数中不含随机源。反复读取已有报价或改变不同候选的计算顺序不会消耗对局随机序列；提交推进只执行已确认结果，其中真正执行的后续效果仍可使用该次推进的随机源。详见[费用预览与提交](event_dispatch/payment_commit.md)。
 
 随机函数的调用结果为 `std::uint32_t`；哪些响应应当使用随机数由对应事件的规则约定。
 
@@ -30,7 +30,7 @@ executor.step(library, table, random);
 
 上层记录器应记录所有实际发生的随机调用。即使一次调用发生在最终挂起之前，它仍属于本次同步执行步骤。
 
-推进接口统一为 [`executor::step`](../reference/executor/executor/step.md)，是否提供额外观察由 [`compile_mode`](../reference/executor/compile_mode.md) 决定。
+推进接口统一为 [`execution_view::resume`](../reference/executor/execution_view/resume.md)，是否提供额外观察由 [`compile_mode`](../reference/executor/compile_mode.md) 决定。
 
 ## 记录与回放
 
@@ -70,13 +70,13 @@ struct tape_random
 
 ## 模拟分叉
 
-模拟器可以在一次 `step` 返回后复制彼此匹配的 table 与 executor，并为不同分支提供不同随机源。两个分支每次推进时都须显式传入与其现场及定义 ID 配套的不可变 definition library。
+模拟器可以在一次 推进返回后复制彼此匹配的 table 与 executor，并为不同分支提供不同随机源。两个分支每次推进时都须显式传入与其现场及定义 ID 配套的不可变 definition library。
 
 每个记录的 `std::uint32_t` 都是独立输入，可以单独替换。若替换导致后续控制流和随机调用次数发生变化，分支可以使用调整后的条带或在条带耗尽时切换到后备生成器。
 
 复制暂停状态也会复制 stack 中已经预发的随机值。更换后续传入的随机源只影响之后的新调用，不会替换已经保存在 stack 中的随机池；若要替换这些值所对应的随机输入，应从预发之前的状态重新回放。
 
-单条指令内部是同步执行过程。只有 `step` 返回后，当前执行位置、table 和 stack 才共同构成可复制、可观察的暂停状态。
+单条指令内部是同步执行过程。只有 推进返回后，当前执行位置、table 和 stack 才共同构成可复制、可观察的暂停状态。
 
 ## 数值语义
 

@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr character_id switch_target(std::size_t target_index) const noexcept;
+constexpr character_id switch_target(std::size_t target_index) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`character_id`](../../../table/character_id.md)
 
@@ -22,6 +22,8 @@ constexpr character_id switch_target(std::size_t target_index) const noexcept;
 指定切换候选的角色 ID。
 
 ## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 无需先计算费用。本操作不提交行动，也不修改牌桌或推进执行器。
 

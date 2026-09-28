@@ -254,12 +254,12 @@ namespace
 
     struct zero_random { std::uint32_t operator()() const { return 0; } };
 
-    givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table)
+    givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library, givm::table& table)
     {
         zero_random random;
         for(std::size_t steps = 0; steps != 100; ++steps)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             switch(state)
             {
             case givm::execution_state::action_started:
@@ -288,7 +288,7 @@ TEST_CASE("prepared attachments consume consecutive action opportunities in orde
             add(ids, "LaterPreparation", 3), givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(log.events == std::vector<std::string>{ "removed:FastPreparation", "effect:FastPreparation", "damage:FastPreparation",
@@ -321,17 +321,17 @@ TEST_CASE("control preserves a prepared attachment through declarations until th
             givm::begin_action{}, givm::end_round{} };
     }, round);
     auto table = make_table(log, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(executor.view_in<givm::execution_state::action_selection>().is_controlled(library, table));
     CHECK(log.effects.empty());
-    executor.view_in<givm::execution_state::action_selection>().declare_round_end();
+    executor.submitted(executor.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, givm_test::zero_random));
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(table.state().active_player == opponent);
     CHECK(log.effects.empty());
     CHECK(std::ranges::distance(table[actor].attachments()) == 2);
-    executor.view_in<givm::execution_state::action_selection>().declare_round_end();
+    executor.submitted(executor.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, givm_test::zero_random));
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(table.state().round_number == 1);
     CHECK_FALSE(library.is_controlled(table[actor]));
@@ -377,7 +377,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
         return commands;
     });
     auto table = make_table(log, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto state = advance(executor, library, table);
     if(choice == scenario::voluntary)
@@ -388,7 +388,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
         REQUIRE(view.switch_target_count() == 1);
         view.calculate_switch_cost(library, table, 0);
         REQUIRE(view.switch_payment_validate(table, 0, {}) == givm::switch_payment_validation::valid);
-        view.switch_active_character(0, {});
+        executor.submitted(view.switch_active_character_with_cached_cost(library, table, givm_test::zero_random, 0, {}));
         REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     }
     else REQUIRE(state == givm::execution_state::finished);
@@ -411,7 +411,7 @@ TEST_CASE("prepared effects resume after a removal response and copying the susp
             givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
     CHECK(log.effects.empty());
@@ -420,9 +420,9 @@ TEST_CASE("prepared effects resume after a removal response and copying the susp
     CHECK(table[target].state().health == 20);
     auto copied_executor = executor;
     auto copied_table = table;
-    const auto finish = [&](givm::executor& running, givm::table& current)
+    const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
     {
-        running.view_in<givm::execution_state::card_selection>().select({});
+        running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, givm_test::zero_random, {}));
         REQUIRE(advance(running, library, current) == givm::execution_state::action_selection);
         CHECK(current[target].state().health == 18);
         CHECK(current.state().active_player == opponent);
@@ -447,12 +447,12 @@ TEST_CASE("switch cancellation resumes remaining removal notifications independe
             givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     if(observed)
     {
         zero_random random;
-        REQUIRE(executor.step(library, table, random) == givm::execution_state::active_character_changed);
+        REQUIRE(executor.advance(library, table, random) == givm::execution_state::active_character_changed);
         CHECK(table[owner].state().active_character == actor);
         CHECK(std::ranges::distance(table[actor].attachments()) == 3);
         CHECK(log.removed.empty());
@@ -465,9 +465,9 @@ TEST_CASE("switch cancellation resumes remaining removal notifications independe
     CHECK(std::ranges::distance(table[actor].attachments()) == 1);
     auto copied_executor = executor;
     auto copied_table = table;
-    const auto finish = [&](givm::executor& running, givm::table& current)
+    const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
     {
-        running.view_in<givm::execution_state::card_selection>().select({});
+        running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, givm_test::zero_random, {}));
         REQUIRE(advance(running, library, current) == givm::execution_state::finished);
         CHECK(current[owner].state().active_character == ally);
         CHECK(current.state().self_player == owner);

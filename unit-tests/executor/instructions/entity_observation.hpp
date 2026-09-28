@@ -259,14 +259,14 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(program_source.name()) } }, {});
     auto normal_table = table;
     counting_random normal_random;
-    givm::executor normal;
+    givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
-    REQUIRE(normal.step(normal_compilation.library, normal_table, normal_random) == givm::execution_state::finished);
+    REQUIRE(normal.advance(normal_compilation.library, normal_table, normal_random) == givm::execution_state::finished);
 
     counting_random random;
-    givm::executor observed;
+    givm_test::executor_driver observed;
     observed.start(library, table);
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(observed.advance(library, table, random) == givm::execution_state::finished);
     auto characters = table[givm::player_id{ 1 }].characters();
     REQUIRE(std::ranges::distance(characters) == 1);
     const auto character = (*characters.begin()).id();
@@ -301,15 +301,15 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } }, {});
     auto normal_table = table;
     counting_random random;
-    givm::executor normal;
+    givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
-    REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
+    REQUIRE(normal.advance(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     REQUIRE(handler_calls == 1);
     handler_calls = 0;
 
-    givm::executor observed;
+    givm_test::executor_driver observed;
     observed.start(library, table);
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(observed.advance(library, table, random) == givm::execution_state::finished);
     CHECK(handler_calls == 1);
     CHECK(random.calls == 0);
 }
@@ -347,15 +347,15 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
 
     auto normal_table = table;
     counting_random random;
-    givm::executor normal;
+    givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
-    REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
+    REQUIRE(normal.advance(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     log.drawn.clear();
     log.card_counts_at_drawn.clear();
 
-    givm::executor observed;
+    givm_test::executor_driver observed;
     observed.start(library, table);
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(observed.advance(library, table, random) == givm::execution_state::finished);
     CHECK(player.deck_card_count() == 0);
     CHECK(player.hand_card_count() == 2);
     CHECK(log.drawn.size() == 2);
@@ -395,22 +395,22 @@ TEST_CASE("single-player active-character observation precedes the table update 
 
     auto normal_table = table;
     counting_random random;
-    givm::executor normal;
+    givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
-    REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
+    REQUIRE(normal.advance(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     const auto normal_events = log.active;
     log.active.clear();
 
-    givm::executor observed;
+    givm_test::executor_driver observed;
     observed.start(library, table);
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::active_character_changed);
+    REQUIRE(observed.advance(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
     const auto view = observed.view_in<givm::execution_state::active_character_changed>();
     CHECK(view.character() == current);
     CHECK(table[givm::player_id{ 0 }].state().active_character == previous);
     CHECK(log.active.empty());
 
-    REQUIRE(observed.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(observed.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.active == std::vector{ current });
     CHECK(log.active == normal_events);
     CHECK(table[givm::player_id{ 0 }].state().active_character == normal_table[givm::player_id{ 0 }].state().active_character);
@@ -434,44 +434,44 @@ TEST_CASE("initial active choices update both players before either response", "
         { .characters = { ids.get_id<givm::character_view>(observer.name()), character } },
         { .characters = { character, character } });
 
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(target.step(library, table, random) == givm::execution_state::initial_active_character_selection);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::initial_active_character_selection);
     const givm::character_id first_choice{ first_player, 1 };
-    target.view_in<givm::execution_state::initial_active_character_selection>().select(first_choice);
+    target.submitted(target.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, first_choice));
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     REQUIRE(log.active.empty());
-    REQUIRE(target.step(library, table, random) == givm::execution_state::remaining_active_character_selection);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::remaining_active_character_selection);
     const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
     CHECK(remaining.first_selected_character() == first_choice);
     CHECK(remaining.player() == other_player(first_player));
-    remaining.select(givm::character_id{ other_player(first_player), 1 });
     CHECK(remaining.first_selected_character() == first_choice);
     CHECK(remaining.player() == other_player(first_player));
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     REQUIRE(log.active.empty());
-    REQUIRE(target.step(library, table, random) == givm::execution_state::initial_active_characters_selected);
+    target.submitted(remaining.select(library, table, random, givm::character_id{ other_player(first_player), 1 }));
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::initial_active_characters_selected);
     CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 1 });
     CHECK(table[givm::player_id{ 1 }].state().active_character == givm::character_id{ givm::player_id{ 1 }, 1 });
     REQUIRE(log.active.empty());
 
     auto copied = target;
     auto copied_table = table;
-    const auto advance = [&](givm::executor& execution, givm::table& current_table)
+    const auto advance = [&](givm_test::executor_driver& execution, givm::table& current_table)
     {
         log.active.clear();
         if(behavior == 2)
         {
-            REQUIRE(execution.step(library, current_table, random) == givm::execution_state::active_character_changed);
+            REQUIRE(execution.advance(library, current_table, random) == givm::execution_state::active_character_changed);
             const auto changed = execution.view_in<givm::execution_state::active_character_changed>();
             CHECK(changed.character() == givm::character_id{ givm::player_id{ 1 }, 0 });
             CHECK(current_table[givm::player_id{ 1 }].state().active_character == givm::character_id{ givm::player_id{ 1 }, 1 });
             CHECK(log.active == std::vector{ givm::character_id{ givm::player_id{ 0 }, 1 } });
         }
-        const auto state = execution.step(library, current_table, random);
+        const auto state = execution.advance(library, current_table, random);
         if(behavior == 0)
         {
             REQUIRE(state == givm::execution_state::finished);
@@ -515,30 +515,30 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
     const auto character = ids.get_id<givm::character_view>(character_source.name());
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(response.name()), character } }, {});
     auto normal_table = table;
-    givm::executor normal;
+    givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
     counting_random random;
-    REQUIRE(normal.step(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
+    REQUIRE(normal.advance(normal_compilation.library, normal_table, random) == givm::execution_state::finished);
     CHECK(log.active == std::vector{ next, previous });
     log.active.clear();
 
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
-    REQUIRE(target.step(library, table, random) == givm::execution_state::active_character_changed);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::active_character_changed);
     log.active.clear();
     CHECK(target.view_in<givm::execution_state::active_character_changed>().character() == next);
     CHECK(table[givm::player_id{ 0 }].state().active_character == previous);
     REQUIRE(log.active.empty());
     auto copied = target;
     auto copied_table = table;
-    const auto resume = [&](givm::executor& execution, givm::table& current_table)
+    const auto resume = [&](givm_test::executor_driver& execution, givm::table& current_table)
     {
         log.active.clear();
-        REQUIRE(execution.step(library, current_table, random) == givm::execution_state::active_character_changed);
+        REQUIRE(execution.advance(library, current_table, random) == givm::execution_state::active_character_changed);
         CHECK(execution.view_in<givm::execution_state::active_character_changed>().character() == previous);
         CHECK(current_table[givm::player_id{ 0 }].state().active_character == next);
         CHECK(log.active == std::vector{ next });
-        REQUIRE(execution.step(library, current_table, random) == givm::execution_state::finished);
+        REQUIRE(execution.advance(library, current_table, random) == givm::execution_state::finished);
         CHECK(current_table[givm::player_id{ 0 }].state().active_character == previous);
         CHECK(log.active == std::vector{ next, previous });
         CHECK(current_table[givm::player_id{ 0 }].state().active_character
@@ -571,19 +571,19 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     load_deck(table, library,
         { .cards = { second_id, second_id, second_id, second_id, first_id, first_id } },
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
     std::size_t response_pauses = 0;
     const auto step_until_input = [&]
     {
-        auto state = target.step(library, table, random);
+        auto state = target.advance(library, table, random);
         while(state == givm::execution_state::card_selection
             && target.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 1 })
         {
             ++response_pauses;
-            target.view_in<givm::execution_state::card_selection>().select({});
-            state = target.step(library, table, random);
+            target.submitted(target.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+            state = target.advance(library, table, random);
         }
         return state;
     };
@@ -594,7 +594,7 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     log.drawn.clear();
     log.card_counts_at_drawn.clear();
 
-    target.view_in<givm::execution_state::card_selection>().select(std::bitset<givm::selection_capacity>{ 0b11 });
+    target.submitted(target.view_in<givm::execution_state::card_selection>().select(library, table, random, std::bitset<givm::selection_capacity>{ 0b11 }));
     REQUIRE(step_until_input() == givm::execution_state::finished);
     REQUIRE(log.drawn.size() == 3);
     std::vector<givm::hand_card_id> hand;

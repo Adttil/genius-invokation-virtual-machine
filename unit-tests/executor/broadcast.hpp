@@ -291,9 +291,9 @@ TEST_CASE("handle context exposes the current table random source and invocation
         std::uint32_t next = 17;
         std::uint32_t operator()() noexcept { return next++; }
     } random;
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
     CHECK(samples == std::vector<std::uint32_t>{ 17, 18 });
     CHECK(random.next == 19);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 1);
@@ -318,10 +318,10 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
     load_deck(table, library, { .characters = {
         ids.get_id<givm::character_view>(first_character.name()), ids.get_id<givm::character_view>(second_character.name())
     } }, {});
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
-    REQUIRE(target.step(library, table, random)
+    REQUIRE(target.advance(library, table, random)
         == givm::execution_state::finished);
     if(terminal)
     {
@@ -356,10 +356,10 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
         .cards = { card_id, card_id, card_id },
         .characters = { ids.get_id<givm::character_view>(character.name()) }
     }, {});
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
-    REQUIRE(target.step(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::card_selection);
     REQUIRE(drawn.size() == 1);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 2);
 
@@ -373,7 +373,7 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
     auto copied_target = target;
     auto copied_table = table;
     const auto prefix = drawn;
-    const auto resume = [&](givm::executor& execution, givm::table& current_table,
+    const auto resume = [&](givm_test::executor_driver& execution, givm::table& current_table,
                             const givm::definition_library& current_library)
     {
         drawn = prefix;
@@ -381,11 +381,11 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
         {
             REQUIRE(drawn.size() == index + 1);
             CHECK(execution.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 0 });
-            execution.view_in<givm::execution_state::card_selection>().select({});
-            REQUIRE(execution.step(current_library, current_table, random) == givm::execution_state::card_selection);
+            execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(current_library, current_table, random, {}));
+            REQUIRE(execution.advance(current_library, current_table, random) == givm::execution_state::card_selection);
             CHECK(drawn.size() == index + 1);
-            execution.view_in<givm::execution_state::card_selection>().select({});
-            const auto state = execution.step(current_library, current_table, random);
+            execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(current_library, current_table, random, {}));
+            const auto state = execution.advance(current_library, current_table, random);
             REQUIRE(state == (index == 2 ? givm::execution_state::finished : givm::execution_state::card_selection));
         }
         CHECK(current_table.state().round_number == 0);
@@ -425,12 +425,12 @@ TEST_CASE("consecutive broadcasts mix missing empty and parameterized response p
         .cards = { card_id, card_id, card_id },
         .characters = { character_id, character_id, character_id, character_id }
     }, {});
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     zero_random random;
-    auto state = execution.step(library, table, random);
+    auto state = execution.advance(library, table, random);
     while(state == givm::execution_state::active_character_changed)
-        state = execution.step(library, table, random);
+        state = execution.advance(library, table, random);
     REQUIRE(state == givm::execution_state::finished);
     CHECK(handlers == std::vector<givm::character_id>{
         { givm::player_id{ 0 }, 0 }, { givm::player_id{ 0 }, 1 },
@@ -473,17 +473,17 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 1 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 2 } } };
     load_deck(table, library, deck, deck);
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     zero_random random;
     const auto next_selection = [&]
     {
-        auto state = execution.step(library, table, random);
+        auto state = execution.advance(library, table, random);
         while(state != givm::execution_state::action_selection)
         {
             REQUIRE((state == givm::execution_state::active_character_changed
                 || state == givm::execution_state::action_started || state == givm::execution_state::round_end_declared));
-            state = execution.step(library, table, random);
+            state = execution.advance(library, table, random);
         }
     };
     const std::vector<std::string> first{
@@ -500,7 +500,7 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     CHECK(log == expected);
     CHECK(table.state().active_player == givm::player_id{ 0 });
     log.clear();
-    execution.view_in<givm::execution_state::action_selection>().declare_round_end();
+    execution.submitted(execution.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random));
     next_selection();
     expected = second;
     expected.insert(expected.end(), first.begin(), first.end());

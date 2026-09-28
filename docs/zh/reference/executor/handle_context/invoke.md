@@ -42,7 +42,7 @@ program_entry invoke(substack_t, program_entry entry, std::span<const any_comman
 
 未定义 `NDEBUG` 时，在写入本次输入前检查入口、提交方式、重复提交以及输入对象的数量、具体类型和顺序；违反协议时抛出 [`program_input_error`](../program_input_error.md)。其中 `reason` 区分具体错误，可直接读取结构化字段，也可用 `what()` 或 [`error_string`](../error_string.md) 取得文本。发布构建不进行这些检查，也不保留对应诊断元数据；违反输入约定属于未定义行为。
 
-协议检查失败时不写入本次输入，但不回滚此前响应对事件的修改，也不回滚本次 `step` 已执行的其他效果。捕获异常用于定位定义错误，不应在原现场继续推进执行器。
+协议检查失败时不写入本次输入，但不回滚此前响应对事件的修改，也不回滚本次推进已执行的其他效果。捕获异常用于定位定义错误，不应在原现场继续推进执行器。
 
 目标实体、资源数量及具体输入值等前提在命令实际执行时检查，错误以 [`command_input_error`](../command_input_error.md) 报告；不会因为提交时尚未满足、但前序命令会使其满足而拒绝提交。
 
@@ -150,8 +150,8 @@ int main()
 
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     const givm::character_id selected{ givm::player_id{ 0 }, 0 };
     std::println("已按响应输入选择出战: {}", table[givm::player_id{ 0 }].state().active_character == selected);
     std::println("剩余生命: {}", table[selected].state().health);

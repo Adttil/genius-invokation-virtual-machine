@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-std::uint32_t value() const noexcept;
+std::uint32_t value() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 
 取得结算后的伤害值。
@@ -13,3 +13,7 @@ std::uint32_t value() const noexcept;
 ## 返回值
 
 经过修正及抵挡、用于减少生命的完整伤害值，不以目标原有生命为上限。
+
+## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。

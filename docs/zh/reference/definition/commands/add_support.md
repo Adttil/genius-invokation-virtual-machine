@@ -140,8 +140,8 @@ int main()
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     auto supports = table[givm::player_id{ 0 }].supports();
     const auto first = *supports.begin();
     std::println("支援数量: {}", std::ranges::distance(supports));

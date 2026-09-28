@@ -63,9 +63,9 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     auto copy = table;
 
     auto random = []() -> std::uint32_t { return 0; };
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(player.hand_card_count() == 2);
     CHECK(player.deck_card_count() == 1);
     CHECK(hand_definitions(player) == std::vector{ gamma_id, beta_id });

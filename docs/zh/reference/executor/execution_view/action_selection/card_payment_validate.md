@@ -9,7 +9,7 @@ constexpr card_payment_validation card_payment_validate(
     const table& card_table,
     std::size_t card_index,
     const dice_counts& paid_dice
-) const noexcept;
+) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`card_payment_validation`](../../card_payment_validation.md)
 
@@ -36,6 +36,8 @@ constexpr card_payment_validation card_payment_validate(
 
 ## 注意
 
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
+
 费用匹配规则见 [`elemental_dice_requirement`](../../../enums/elemental_dice_requirement.md)。本操作读取已计算费用和牌桌，不重新报价、不检查目标、不提交行动或修改牌桌。
 
-支付检查与 [`card_targets_validate`](card_targets_validate.md) 相互独立，由调用方按需使用；[`play_card`](play_card.md) 不会自动调用它们。即使检查通过，也须显式提供行动输入后才能继续推进。
+支付检查与 [`card_targets_validate`](card_targets_validate.md) 相互独立，由调用方按需使用；[`play_card`](play_card.md) 在 Debug 提交时自动执行检查，Release 不检查。检查通过后仍须提交输入，提交同时推进。

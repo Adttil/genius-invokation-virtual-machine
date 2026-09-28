@@ -8,7 +8,7 @@
 constexpr remaining_active_character_selection_validation selection_validate(
     const table& card_table,
     character_id character
-) const noexcept;
+) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`remaining_active_character_selection_validation`](../../remaining_active_character_selection_validation.md)
 [`table`](../../../table/table.md)
@@ -38,4 +38,6 @@ constexpr remaining_active_character_selection_validation selection_validate(
 
 ## 注意
 
-本操作只检查，不填写选择、推进对局或调用随机源。检查成功后仍须调用 [`select`](select.md) 提交；调用方能够保证合法时，也可以直接提交。提交及后续推进不会自动调用本检查。
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
+
+本操作只检查，不填写选择、推进对局或调用随机源。检查成功后仍须调用 [`select`](select.md) 提交；调用方能够保证合法时，也可以直接提交。Debug 提交时自动执行本检查；Release 不重复检查。

@@ -129,12 +129,12 @@ namespace
         for(std::size_t player = 0; player != decks.size(); ++player)
             for(const auto card : table[givm::player_id{ player }].deck_cards()) decks[player].push_back(card.id());
         for(const auto& [player, index] : log.selections) log.input.push_back(decks[player][index]);
-        givm::executor executor;
+        givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
         for(;;)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::finished) break;
             if(state != givm::execution_state::card_selection) continue;
             ++log.pauses;
@@ -145,7 +145,7 @@ namespace
             executor = std::move(executor_copy);
             const auto view = executor.view_in<givm::execution_state::card_selection>();
             CHECK(view.selection_validate(table, {}));
-            view.select({});
+            executor.submitted(view.select(library, table, random, {}));
         }
         CHECK(log.unexpected_notifications == 0);
         for(const auto id : log.input) CHECK_FALSE(table[id].is_valid());

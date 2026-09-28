@@ -109,13 +109,13 @@ TEST_CASE("adding dice updates all types before notifying and resumes nested eff
             givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, mode));
     givm::table table{ { .self_player = givm::player_id{ 1 } },
         { .dice = log.expected[0] }, { .dice = log.expected[1] } };
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     std::size_t pauses = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         if(state != givm::execution_state::card_selection) continue;
         ++pauses;
@@ -128,7 +128,7 @@ TEST_CASE("adding dice updates all types before notifying and resumes nested eff
         executor = std::move(copied_executor);
         const auto view = executor.view_in<givm::execution_state::card_selection>();
         REQUIRE(view.selection_validate(table, {}));
-        view.select({});
+        executor.submitted(view.select(library, table, random, {}));
     }
     CHECK(pauses == 1);
     CHECK(log.players == std::vector<givm::player_id>{ givm::player_id{ 0 }, givm::player_id{ 1 }, givm::player_id{ 1 } });

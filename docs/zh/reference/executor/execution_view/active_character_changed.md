@@ -17,6 +17,7 @@ class execution_view<execution_state::active_character_changed>;
 
 | | |
 | --- | --- |
+| [`resume`](resume.md) | 继续至下一处输入、观察或终局现场。 |
 | [`character`](active_character_changed/character.md) | 取得本次将设置为出战的角色。 |
 
 ## 参阅

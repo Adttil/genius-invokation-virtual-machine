@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr bool elemental_tuning_card_validate(const table& card_table, std::size_t card_index) const noexcept;
+constexpr bool elemental_tuning_card_validate(const table& card_table, std::size_t card_index) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 
 检查指定手牌是否允许用于元素调和。
@@ -22,5 +22,7 @@ constexpr bool elemental_tuning_card_validate(const table& card_table, std::size
 该牌 `state().elemental_tuning_allowed` 的值。`true` 表示允许调和。
 
 ## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 与出牌使用同一组手牌候选，无需先计算费用。本操作只检查卡牌许可，不检查选中的骰子，也不提交行动。

@@ -140,10 +140,10 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
         { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
-    REQUIRE(target.step(library, table, random)
+    REQUIRE(target.advance(library, table, random)
         == givm::execution_state::finished);
     CHECK(table[affected].state().aura == expected_aura);
     if(initial_aura == givm::element_aura::none)

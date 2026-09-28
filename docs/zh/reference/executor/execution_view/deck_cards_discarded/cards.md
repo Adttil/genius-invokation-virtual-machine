@@ -3,9 +3,13 @@
 # cards
 
 ```cpp
-constexpr std::span<const deck_card_id> cards() const noexcept;
+constexpr std::span<const deck_card_id> cards() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 
 返回本批全部被舍弃卡牌的 ID，顺序为原牌堆从顶向下的顺序，也就是随后自身效果和通知的结算顺序。
 
 这些牌已全部离场；可用 ID 从牌桌读取其定义和状态。返回的借用在下一次推进或重建执行现场后失效。
+
+## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。

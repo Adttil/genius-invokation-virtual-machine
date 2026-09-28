@@ -29,16 +29,16 @@ TEST_CASE("executor repeats the round program and reports round boundaries", "[e
         observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     givm::table table{ givm::table_state{ .max_rounds = 2 } };
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
 
     if(observed) for(std::uint32_t round = 1; round <= 3; ++round)
     {
-        REQUIRE(target.step(library, table, random) == givm::execution_state::round_started);
+        REQUIRE(target.advance(library, table, random) == givm::execution_state::round_started);
         CHECK(table.state().round_number == round);
     }
-    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table.state().round_number == 3);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
 }
@@ -60,17 +60,17 @@ TEST_CASE("terminal results survive copies and entering another game replaces th
         std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     givm::table table;
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
 
-    REQUIRE(target.step(library, table, random)
+    REQUIRE(target.advance(library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == result);
     CHECK(table.state().round_number == 0);
     auto copy = target;
     target.start(second.library, table);
-    REQUIRE(target.step(second.library, table, random)
+    REQUIRE(target.advance(second.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
     CHECK(copy.view_in<givm::execution_state::finished>().result() == result);
@@ -87,15 +87,15 @@ TEST_CASE("executor uses the explicitly supplied library with an independent tab
         std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     givm::table table;
-    givm::executor target;
+    givm_test::executor_driver target;
     zero_random random;
 
     target.start(first.library, table);
-    REQUIRE(target.step(first.library, table, random)
+    REQUIRE(target.advance(first.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
     target.start(second.library, table);
-    REQUIRE(target.step(second.library, table, random)
+    REQUIRE(target.advance(second.library, table, random)
         == givm::execution_state::finished);
     CHECK(target.view_in<givm::execution_state::finished>().result() == givm::game_result::player_1_win);
 }

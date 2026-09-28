@@ -70,28 +70,28 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     load_deck(table, library, { .characters = { character_id } }, { .characters = { character_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::health_reduced);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 2);
     CHECK(applications == 0);
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
     CHECK(applications == 1);
     CHECK(table[target].state().health == 18);
     CHECK(table.state().round_number == 0);
     CHECK(library.is_controlled(table[target]));
     auto copied_executor = executor;
     auto copied_table = table;
-    const auto finish = [&](givm::executor& running, givm::table& current)
+    const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
     {
-        running.view_in<givm::execution_state::card_selection>().select({});
-        REQUIRE(running.step(library, current, random) == givm::execution_state::health_reduced);
+        running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, random, {}));
+        REQUIRE(running.advance(library, current, random) == givm::execution_state::health_reduced);
         const auto next = running.view_in<givm::execution_state::health_reduced>();
         CHECK(next.target() == target);
         CHECK(next.value() == 1);
         CHECK(next.reaction() == givm::elemental_reaction::none);
-        REQUIRE(running.step(library, current, random) == givm::execution_state::finished);
+        REQUIRE(running.advance(library, current, random) == givm::execution_state::finished);
         CHECK(current[target].state().health == 17);
         CHECK(current.state().round_number == 0);
         CHECK(library.is_controlled(current[target]));

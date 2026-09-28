@@ -115,12 +115,12 @@ namespace
     }
 
     template<class TRandom>
-    givm::execution_state advance(givm::executor& executor, const givm::definition_library& library,
+    givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library,
         givm::table& table, TRandom& random)
     {
         for(;;)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::dice_reroll_selection
                 || state == givm::execution_state::action_selection || state == givm::execution_state::finished)
                 return state;
@@ -147,7 +147,7 @@ TEST_CASE("single-player rerolls preserve partial choices and prefetched randomn
         round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode));
     givm::table table{ { .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = initial_dice() }, { .dice = initial_dice() } };
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     reroll_random random;
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::dice_reroll_selection);
@@ -167,11 +167,11 @@ TEST_CASE("single-player rerolls preserve partial choices and prefetched randomn
         givm::dice_counts selection;
         selection[givm::elemental_dice::pyro] = 2;
         selection[givm::elemental_dice::omni] = 1;
-        first.select(selection);
         CHECK_FALSE(first.selection_validate(branch_table, invalid));
         CHECK(first.selection_validate(branch_table, selection));
         CHECK(first.selection_validate(branch_table, {}));
         CHECK(branch_table[player].state().dice == initial_dice());
+        branch.submitted(first.select(library, branch_table, no_random, selection));
         REQUIRE(advance(branch, library, branch_table, no_random) == givm::execution_state::dice_reroll_selection);
         givm::dice_counts expected;
         expected[givm::elemental_dice::cryo] = 1;
@@ -183,7 +183,7 @@ TEST_CASE("single-player rerolls preserve partial choices and prefetched randomn
         selection = {};
         selection[givm::elemental_dice::hydro] = 2;
         REQUIRE(second.selection_validate(branch_table, selection));
-        second.select(selection);
+        branch.submitted(second.select(library, branch_table, no_random, selection));
         REQUIRE(advance(branch, library, branch_table, no_random) == givm::execution_state::finished);
         expected[givm::elemental_dice::hydro] -= 2;
         expected[givm::elemental_dice::electro] = 1;
@@ -210,13 +210,13 @@ TEST_CASE("single-player rerolls skip empty pools and zero counts and can stop w
         round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode));
     const auto initial = scenario == 1 ? givm::dice_counts{} : initial_dice();
     givm::table table{ { .self_player = givm::player_id{ 1 } }, { .dice = initial_dice() }, { .dice = initial } };
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     reroll_random random;
     if(scenario == 2)
     {
         REQUIRE(advance(executor, library, table, random) == givm::execution_state::dice_reroll_selection);
-        executor.view_in<givm::execution_state::dice_reroll_selection>().select({});
+        executor.submitted(executor.view_in<givm::execution_state::dice_reroll_selection>().select(library, table, random, {}));
     }
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::finished);
     if(scenario != 2) CHECK(random.calls == 0);
@@ -248,14 +248,14 @@ TEST_CASE("a played card finishes both rerolls before the card-played notificati
         { .dice = initial_dice(), .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const givm::linked_deck deck{ .characters = { ids.get_id<givm::character_view>(character.name()) } };
     load_deck(table, library, deck, deck);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     reroll_random random;
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.card_count() == 1);
     action.calculate_card_cost(library, table, 0);
-    action.play_card(0, {});
+    executor.submitted(action.play_card_with_cached_cost(library, table, random, 0, {}));
     for(int index = 1; index <= 2; ++index)
     {
         REQUIRE(advance(executor, library, table, random) == givm::execution_state::dice_reroll_selection);
@@ -266,7 +266,7 @@ TEST_CASE("a played card finishes both rerolls before the card-played notificati
         givm::dice_counts selected;
         selected[givm::elemental_dice::pyro] = 1;
         REQUIRE(view.selection_validate(table, selected));
-        view.select(selected);
+        executor.submitted(view.select(library, table, random, selected));
     }
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
     CHECK(log.order == std::vector<int>{ 0, 1, 2, 3 });

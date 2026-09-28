@@ -154,7 +154,7 @@ namespace givm_test::executor::runtime_argument_errors
             .cards = { ids.get_id<givm::card_definition>(card.name()) },
             .characters = { ids.get_id<givm::character_view>(source.name()) }
         }, {});
-        givm::executor execution;
+        givm_test::executor_driver execution;
         execution.start(library, table);
         auto random = []() -> std::uint32_t { return 0; };
         check(execution, library, table, random, observed);
@@ -167,7 +167,7 @@ namespace givm_test::executor::runtime_argument_errors
             {
                 try
                 {
-                    execution.step(library, table, random);
+                    execution.advance(library, table, random);
                     FAIL("invalid runtime entity did not throw");
                 }
                 catch(const givm::command_input_error& error)
@@ -199,7 +199,7 @@ namespace givm_test::executor::runtime_argument_errors
         {
             try
             {
-                execution.step(library, table, random);
+                execution.advance(library, table, random);
                 FAIL("duplicate deck card did not throw");
             }
             catch(const givm::command_input_error& error)
@@ -221,7 +221,7 @@ namespace givm_test::executor::runtime_argument_errors
         {
             try
             {
-                execution.step(library, table, random);
+                execution.advance(library, table, random);
                 FAIL("missing dice did not throw");
             }
             catch(const givm::command_input_error& error)
@@ -237,7 +237,7 @@ namespace givm_test::executor::runtime_argument_errors
         });
         with_fixture(scenario::generate_then_remove_dice, [](auto& execution, const auto& library, auto& table, auto& random, bool& observed)
         {
-            CHECK(execution.step(library, table, random) == givm::execution_state::finished);
+            CHECK(execution.advance(library, table, random) == givm::execution_state::finished);
             CHECK(observed);
             CHECK(table[givm::player_id{ 0 }].state().dice.total() == 0);
         });
@@ -250,7 +250,7 @@ namespace givm_test::executor::runtime_argument_errors
             {
                 try
                 {
-                    execution.step(library, table, random);
+                    execution.advance(library, table, random);
                     FAIL("zero damage denominator did not throw");
                 }
                 catch(const givm::command_input_error& error)

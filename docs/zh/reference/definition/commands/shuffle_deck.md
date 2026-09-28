@@ -104,8 +104,8 @@ int main()
     load_deck(table, library, givm::linked_deck{ .cards = { a, b } }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     std::println("洗牌后牌数: {}", player.deck_card_count());
     std::println("原底牌变为顶牌: {}", player.deck_card_definition(1).value() == a.value());
 }

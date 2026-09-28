@@ -49,7 +49,7 @@ struct end_game_error;
 
 执行时 `result` 必须是实际的终局结果，不能为 `game_result::no_result`；违反此前提属于未定义行为。
 
-[`step`](../../executor/executor/step.md) 执行本命令后返回 `execution_state::finished`，通过终局视图的 [`result()`](../../executor/execution_view/finished/result.md) 取得胜负。终局不能继续执行；本命令之后的程序步骤不再执行。
+[`resume`](../../executor/execution_view/resume.md) 执行本命令后返回 `execution_state::finished`，通过终局视图的 [`result()`](../../executor/execution_view/finished/result.md) 取得胜负。终局不能继续执行；本命令之后的程序步骤不再执行。
 
 程序中先于本命令执行的步骤仍可提前结束对局，此时结果由先发生的终局决定。
 
@@ -86,9 +86,9 @@ int main()
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
 
-    execution.start(library, table);
+    const auto initialized = execution.start(library, table);
     std::println("普通推进到终局: {}",
-        execution.step(library, table, random) == givm::execution_state::finished);
+        initialized.resume(library, table, random) == givm::execution_state::finished);
     std::println("玩家 0 获胜: {}",
         execution.view_in<givm::execution_state::finished>().result()
             == givm::game_result::player_0_win);
@@ -103,9 +103,9 @@ int main()
         return 1;
     }
     const auto [observed_library, observed_ids] = std::move(*observed_library_result);
-    execution.start(observed_library, table);
+    const auto initialized_2 = execution.start(observed_library, table);
     std::println("观察推进到终局: {}",
-        execution.step(observed_library, table, random) == givm::execution_state::finished);
+        initialized_2.resume(observed_library, table, random) == givm::execution_state::finished);
 }
 ```
 

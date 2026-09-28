@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr game_result result() const noexcept;
+constexpr game_result result() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`game_result`](../../../enums/game_result.md)
 
@@ -14,6 +14,10 @@ constexpr game_result result() const noexcept;
 ## 返回值
 
 本场对局的胜负结果。
+
+## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
 
 ## 示例
 
@@ -46,8 +50,8 @@ int main()
     givm::table table{ { .max_rounds = 0 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
-    execution.start(library, table);
-    const auto state = execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    const auto state = initialized.resume(library, table, random);
     if(state == givm::execution_state::finished)
     {
         std::println("双方告负: {}",

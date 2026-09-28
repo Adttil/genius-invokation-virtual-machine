@@ -5,17 +5,26 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr void use_skill(
+template<class TRandom>
+execution_state use_skill(
+    const definition_library& library, table& card_table, TRandom& random,
     std::size_t skill_index, const dice_counts& paid_dice, std::span<const skill_target_id> targets = {}
-) const noexcept;
+) const;
 
-void use_skill(
-    const definition_library& library, const table& card_table,
+template<class TRandom>
+execution_state use_skill_with_cached_cost(
+    const definition_library& library, table& card_table, TRandom& random,
     std::size_t skill_index, const dice_counts& paid_dice, std::span<const skill_target_id> targets = {}
 ) const;
 ```
 
-选择出战角色要使用的技能、技能目标与支付骰子。下一次推进才开始结算这次技能行动。
+选择出战角色要使用的技能、技能目标与支付骰子。提交后立即推进，返回下一处暂停现场。
+
+## 模板参数
+
+| | |
+| --- | --- |
+| `TRandom` | 非 `const`、非 `volatile` 的可调用对象类型，其无参数调用结果可隐式转换为 `std::uint32_t`。 |
 
 ## 参数
 
@@ -26,26 +35,31 @@ void use_skill(
 | `targets` | 按选择顺序提供的目标 ID，默认空 span 表示不选目标。只采用前两个元素，多余元素忽略；缺少的位置补为 `std::monostate`。 |
 | `library` | 与当前现场及牌桌配套的定义库。 |
 | `card_table` | 当前行动发生的牌桌。 |
+| `random` | 本次推进使用的随机源，以左值传入。 |
 
 ## 返回值
 
-（无）
+推进后到达的 [`execution_state`](../../execution_state.md)，可能是下一处输入、观察或终局现场。
 
 ## 异常
 
-带定义库与牌桌的重载会传递费用响应抛出的异常。报价失败时不提交本次选择；该候选在当前行动窗口不能读取、检查、采用或重新计算。
+未定义 `NDEBUG` 时，现场已失效或种类错误会抛出 [`execution_view_error`](../../execution_view_error.md)；输入合法性结果失败时抛出 [`view_input_error`](../../view_input_error.md)；实体 ID 越界或已移除的诊断沿用 [`command_input_error`](../../command_input_error.md)。这些检查均在填写选择和开始推进之前。进入执行后，定义源、随机源及命令检查产生的异常向外传播，执行不提供回滚。
+
+计算费用时的响应异常也向外传播。报价失败后，该候选在本现场不能重新报价或使用缓存。
 
 ## 注意
 
-选择技能前应通过 [`is_controlled`](is_controlled.md) 检查出战角色是否受控。本函数及后续执行不自动检查控制状态；控制查询也不代替支付与目标检查。
+若即时报价已经成功，而后续 Debug 输入检查失败，报价仍然保留；修正输入后应调用 `use_skill_with_cached_cost`，不能重新报价。
 
-同一行动窗口内，每个候选只允许计算一次费用。带定义库与牌桌的重载只可用于尚未报价的候选；已报价的候选必须使用采用已计算费用的重载。调用方自行保证，库不进行运行期检查。
+出战角色受控时不能使用技能；可通过 [`is_controlled`](is_controlled.md) 独立查询。Debug 提交会检查控制状态、支付与目标，Release 由调用方保证这些条件成立。
 
-不带定义库与牌桌的重载采用已完整计算的费用。另一重载同步计算报价后填写选择；两者都不自动检查支付、目标或其他使用条件。调用方可以独立使用 [`skill_payment_validate`](skill_payment_validate.md) 与分步的 [`skill_targets_validate`](skill_targets_validate.md)，并负责保证输入合法、当前选择允许完成。
+同一行动窗口内，每个候选只允许计算一次费用。`use_skill` 同步计算报价后提交，只用于尚未报价的候选；`use_skill_with_cached_cost` 使用已经完整计算的报价与对应支付效果，不重新计算。Debug 检查报价状态，Release 由调用方保证。
 
-充能按费用要求自动从出战角色扣除，不需要另行选择支付量。目标由技能定义解释，未使用的位置忽略；无需目标时可直接调用 `use_skill(skill_index, paid_dice)`。本操作复制采用的目标 ID，调用完成后无需保留传入的目标范围。
+两种提交方式均在 Debug 下检查支付、目标及使用条件；目标按选择前缀依次验证，最终选择须允许完成。Release 不执行这些检查。调用方可以独立使用 [`skill_payment_validate`](skill_payment_validate.md) 与分步的 [`skill_targets_validate`](skill_targets_validate.md)，并负责保证输入合法、当前选择允许完成。
 
-本操作不推进执行器，也不修改牌桌。下一次 [`step`](../../executor/step.md) 先执行确认的费用效果，再扣除骰子与充能，依次处理骰子移除和充能变化通知，然后广播 [`skill_will_be_used`](../../../definition/events/skill_will_be_used.md)。若效果未被取消，则执行该技能的 [`skill_effect`](../../../definition/events/skill_effect.md)；之后均广播 [`skill_used`](../../../definition/events/skill_used.md)。取消效果不退还支付，也不撤销本次技能使用。
+充能按费用要求自动从出战角色扣除，不需要另行选择支付量。目标由技能定义解释，未使用的位置忽略；无需目标时可直接调用 `use_skill(library, card_table, random, skill_index, paid_dice)`。本操作复制采用的目标 ID，调用完成后无需保留传入的目标范围。
+
+本操作提交并推进，先执行确认的费用效果，再扣除骰子与充能，依次处理骰子移除和充能变化通知，然后广播 [`skill_will_be_used`](../../../definition/events/skill_will_be_used.md)。若效果未被取消，则执行该技能的 [`skill_effect`](../../../definition/events/skill_effect.md)；之后均广播 [`skill_used`](../../../definition/events/skill_used.md)。取消效果不退还支付，也不撤销本次技能使用。
 
 技能使用不会自动增加充能。需要获得充能的技能应在自身效果程序中显式安排 [`modify_energy`](../../../definition/commands/modify_energy.md)，因此获得充能的时机由技能效果决定。
 
@@ -136,14 +150,10 @@ int main()
         givm::linked_deck{ .characters = { character_definition } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::initial_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.step(library, table, random);
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(
-        givm::character_id{ givm::player_id{ 1 }, 0 });
-    auto state = execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
+    execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
+    auto state = execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     std::println("技能候选数量: {}", action.skill_count());
     const auto user = action.skill_id(0).character_id;
@@ -152,13 +162,11 @@ int main()
         action.skill_payment_validate(table, 0, {}) == givm::skill_payment_validation::valid);
     std::println("无需目标: {}",
         action.skill_targets_validate(library, table, 0) == givm::target_validation::valid_complete);
-    action.use_skill(0, {});
-    state = execution.step(library, table, random);
+    state = action.use_skill_with_cached_cost(library, table, random, 0, {});
     std::println("使用后的充能: {}", table[user].state().energy);
     while(state == givm::execution_state::action_selection)
     {
-        execution.view_in<givm::execution_state::action_selection>().declare_round_end();
-        state = execution.step(library, table, random);
+        state = execution.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random);
     }
 }
 ```

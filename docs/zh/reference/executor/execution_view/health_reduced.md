@@ -15,6 +15,7 @@ class execution_view<execution_state::health_reduced>;
 
 | | |
 | --- | --- |
+| [`resume`](resume.md) | 继续至下一处输入、观察或终局现场。 |
 | [`source`](health_reduced/source.md) | 取得本次伤害来源。 |
 | [`target`](health_reduced/target.md) | 取得本次伤害目标。 |
 | [`value`](health_reduced/value.md) | 取得结算后的伤害值。 |

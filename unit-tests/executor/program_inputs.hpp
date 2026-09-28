@@ -134,12 +134,12 @@ namespace
 
     struct zero_random { std::uint32_t operator()() const noexcept { return 0; } };
 
-    givm::execution_state advance(givm::executor& execution, const givm::definition_library& library,
+    givm::execution_state advance(givm_test::executor_driver& execution, const givm::definition_library& library,
                                   givm::table& table, zero_random& random)
     {
-        auto state = execution.step(library, table, random);
+        auto state = execution.advance(library, table, random);
         while(state == givm::execution_state::active_character_changed or state == givm::execution_state::action_started)
-            state = execution.step(library, table, random);
+            state = execution.advance(library, table, random);
         return state;
     }
 }
@@ -160,7 +160,7 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
         .characters = { ids.get_id<givm::character_view>(source.name()), plain_id, plain_id }
     }, {});
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     zero_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::card_selection);
@@ -172,10 +172,10 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
     auto copied_execution = execution;
     auto copied_table = table;
     const auto prefix = log.active;
-    const auto finish = [&](givm::executor& current, givm::table& current_table)
+    const auto finish = [&](givm_test::executor_driver& current, givm::table& current_table)
     {
         log.active = prefix;
-        current.view_in<givm::execution_state::card_selection>().select({});
+        current.submitted(current.view_in<givm::execution_state::card_selection>().select(library, current_table, random, {}));
         REQUIRE(advance(current, library, current_table, random) == givm::execution_state::finished);
         CHECK(log.active == std::vector{ first, second, third });
         CHECK(current_table[givm::player_id{ 0 }].state().active_character == third);
@@ -199,7 +199,7 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
     const auto source_id = ids.get_id<givm::character_view>(source.name());
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     load_deck(table, library, { .characters = { source_id, source_id, plain_id } }, { .characters = { plain_id } });
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     zero_random random;
     REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
@@ -221,18 +221,18 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
         auto branch_table = table;
         const auto selected = action.switch_target(candidate);
         log.active.clear();
-        branch.view_in<givm::execution_state::action_selection>().switch_active_character(candidate, {});
+        branch.submitted(branch.view_in<givm::execution_state::action_selection>().switch_active_character_with_cached_cost(library, branch_table, random, candidate, {}));
         REQUIRE(advance(branch, library, branch_table, random) == givm::execution_state::card_selection);
         CHECK(log.active == std::vector{ selected });
         auto paused_copy = branch;
         auto paused_table = branch_table;
-        const auto finish = [&](givm::executor& current, givm::table& current_table)
+        const auto finish = [&](givm_test::executor_driver& current, givm::table& current_table)
         {
             log.active = { selected };
-            current.view_in<givm::execution_state::card_selection>().select({});
+            current.submitted(current.view_in<givm::execution_state::card_selection>().select(library, current_table, random, {}));
             REQUIRE(advance(current, library, current_table, random) == givm::execution_state::card_selection);
             CHECK(log.active == std::vector{ selected, original, other_responder });
-            current.view_in<givm::execution_state::card_selection>().select({});
+            current.submitted(current.view_in<givm::execution_state::card_selection>().select(library, current_table, random, {}));
             REQUIRE(advance(current, library, current_table, random) == givm::execution_state::action_selection);
             CHECK(log.active == std::vector{ selected, original, other_responder, original, selected });
             CHECK(current_table[givm::player_id{ 0 }].state().active_character == selected);
@@ -323,16 +323,16 @@ TEST_CASE("dynamic damage array inputs retain their contents through cached and 
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     load_deck(table, library,
         { .characters = { ids.get_id<givm::character_view>(source.name()), plain_id } }, { .characters = { plain_id } });
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     zero_random random;
-    const auto advance_array = [&](givm::executor& current, givm::table& current_table)
+    const auto advance_array = [&](givm_test::executor_driver& current, givm::table& current_table)
     {
-        auto state = current.step(library, current_table, random);
+        auto state = current.advance(library, current_table, random);
         while(state == givm::execution_state::health_reduced
             || state == givm::execution_state::active_character_changed
             || state == givm::execution_state::action_started)
-            state = current.step(library, current_table, random);
+            state = current.advance(library, current_table, random);
         return state;
     };
     if(cached)
@@ -343,16 +343,16 @@ TEST_CASE("dynamic damage array inputs retain their contents through cached and 
         action.calculate_switch_cost(library, table, 0);
         CHECK(table[target].state().health == 10);
         CHECK(table[owner].state().energy == 0);
-        action.switch_active_character(0, {});
+        execution.submitted(action.switch_active_character_with_cached_cost(library, table, random, 0, {}));
     }
     REQUIRE(advance_array(execution, table) == givm::execution_state::card_selection);
     CHECK(table[target].state().health == 10 - count);
     CHECK(table[owner].state().energy == 1);
     auto copied_execution = execution;
     auto copied_table = table;
-    const auto finish = [&](givm::executor& current, givm::table& current_table)
+    const auto finish = [&](givm_test::executor_driver& current, givm::table& current_table)
     {
-        current.view_in<givm::execution_state::card_selection>().select({});
+        current.submitted(current.view_in<givm::execution_state::card_selection>().select(library, current_table, random, {}));
         REQUIRE(advance_array(current, current_table)
             == (cached ? givm::execution_state::action_selection : givm::execution_state::finished));
         CHECK(current_table[target].state().health == 8 - count);
@@ -507,7 +507,7 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
     load_deck(table, library, {
         .characters = { ids.get_id<givm::character_view>(source.name()), plain_id }
     }, { .characters = { plain_id } });
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     zero_random random;
     const auto verify_error = [&](auto&& operation)
@@ -562,7 +562,7 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
     else
     {
         REQUIRE_FALSE(table[givm::player_id{ 0 }].state().active_character);
-        verify_error([&] { execution.step(library, table, random); });
+        verify_error([&] { execution.advance(library, table, random); });
         CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character);
     }
 }
@@ -581,10 +581,10 @@ TEST_CASE("debug entries reject foreign libraries and remain usable in library c
         const givm::character_id owner{ givm::player_id{0}, 0 };
         givm::table table{ { .self_player = owner.player_id }, { .active_character = owner } };
         load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } }, {});
-        givm::executor execution;
+        givm_test::executor_driver execution;
         execution.start(library, table);
         zero_random random;
-        return execution.step(library, table, random);
+        return execution.advance(library, table, random);
     };
     try { run(second, second_ids); FAIL("expected foreign entry error"); }
     catch(const givm::program_input_error& error)

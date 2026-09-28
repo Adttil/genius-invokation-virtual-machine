@@ -26,6 +26,8 @@
 | --- | --- |
 | [`executor`](executor/executor.md) | 游戏对局的执行器 |
 | [`execution_view`](executor/execution_view.md) | 一处对局执行现场的视图 |
+| [`execution_view_error`](executor/execution_view_error.md) | 现场种类或视图生命周期的调试异常 |
+| [`view_input_error`](executor/view_input_error.md) | 视图参数或查询前提的强类型调试异常 |
 | [`random_fn`](executor/random_fn.md) | 随机函数视图 |
 | [`handle_context`](executor/handle_context.md) | 事件响应使用的牌桌、随机源及效果提交接口 |
 | [`program_invoker`](executor/program_invoker.md) | 响应提交后续效果的调用对象 |
@@ -48,6 +50,7 @@
 | [`program_input_error_reason`](executor/program_input_error_reason.md) | 程序提交协议错误的 variant |
 | [`command_input_error_reason`](executor/command_input_error_reason.md) | 命令执行前提错误的 variant |
 | [`command_entity_id`](executor/command_input_error_reason.md#command_entity_id) | 命令诊断中的实体 ID variant |
+| [`execution_view_error_reason`](executor/execution_view_error.md#相关类型别名) | 现场与视图有效性错误的 variant |
 | [`history_access_error_reason`](executor/history_access_error.md#相关类型别名) | 历史字段访问错误的 variant |
 
 ## 函数

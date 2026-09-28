@@ -1,6 +1,8 @@
 #include "table/independent.hpp"
 #include "definition/independent.hpp"
 
+#include "test_executor.hpp"
+
 #include "definition/tests.hpp"
 #include "enums/tests.hpp"
 #include "table/tests.hpp"

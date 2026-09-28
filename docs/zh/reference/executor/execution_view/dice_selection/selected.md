@@ -5,7 +5,7 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-constexpr dice_counts selected() const noexcept;
+constexpr dice_counts selected() const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`dice_counts`](../../../enums/dice_counts.md)
 
@@ -14,3 +14,7 @@ constexpr dice_counts selected() const noexcept;
 ## 返回值
 
 当前填写的各类重投骰子数量的副本。
+
+## 注意
+
+Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。

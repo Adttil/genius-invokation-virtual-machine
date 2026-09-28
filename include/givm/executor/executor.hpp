@@ -8,6 +8,8 @@
 #include <utility>
 
 #include "random_fn.hpp"
+#include "execution_state.hpp"
+#include "execution_view_error.hpp"
 #include "../definition.hpp"
 #include "library.hpp"
 #include "handle_context.hpp"
@@ -22,59 +24,43 @@ namespace givm
 {
     inline constexpr size_t selection_capacity = 64;
 
-    enum class execution_state : std::uint8_t
-    {
-        finished = 1,
-        card_selection,
-        initial_card_selection,
-        initial_active_character_selection,
-        remaining_active_character_selection,
-        dice_selection,
-        action_selection,
-        health_reduced,
-        deck_cards_discarded,
-        active_character_changed,
-        initial_active_characters_selected,
-        round_started,
-        action_started,
-        round_end_declared,
-        round_ending,
-        dice_reroll_selection
-    };
-
-    namespace detail
-    {
-        inline constexpr execution_state continue_execution = static_cast<execution_state>(0);
-    }
-
     class executor;
 
     template<execution_state State>
     class execution_view
     {
         static_assert(
-            State == execution_state::initial_active_characters_selected
+            State == execution_state::initialized
+            || State == execution_state::initial_active_characters_selected
             || State == execution_state::round_started
             || State == execution_state::action_started
             || State == execution_state::round_end_declared
             || State == execution_state::round_ending
         );
         friend class executor;
-        constexpr execution_view() noexcept = default;
-    };
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : executor_{ &owner }
+#ifndef NDEBUG
+            , version_{ version }
+#endif
+        {}
 
-    template<>
-    class execution_view<execution_state::finished>
-    {
-        friend class executor;
-        constexpr explicit execution_view(frame_stack& stack) noexcept : stack_{ &stack } {}
-        frame_stack* stack_;
+        executor* executor_;
+#ifndef NDEBUG
+        std::size_t version_;
+#endif
 
     public:
-        constexpr game_result result() const noexcept
+        template<class TRandom>
+        execution_state resume(this const auto& self, const definition_library& library, table& card_table, TRandom& random)
         {
-            const auto [result] = std::as_const(*stack_).top<game_result>();
-            return result;
+#ifndef NDEBUG
+            self.executor_->template validate_view<State>(self.version_);
+#endif
+            return self.executor_->advance(library, card_table, random);
         }
     };
 }
@@ -198,46 +184,96 @@ namespace givm
     public:
         constexpr executor() noexcept = default;
         constexpr executor(const executor&) = default;
+#ifdef NDEBUG
         constexpr executor(executor&&) noexcept = default;
         constexpr executor& operator=(const executor&) = default;
         constexpr executor& operator=(executor&&) noexcept = default;
-        constexpr ~executor() = default;
-
-        void start(const definition_library& library, table& card_table)
+#else
+        constexpr executor(executor&& other) noexcept
+        : context_{ std::move(other.context_) }, last_state_{ other.last_state_ }
         {
-            context_.stack_.clear();
-            context_.position_ = library.entry();
-#ifndef NDEBUG
-            last_state_ = detail::continue_execution;
-#endif
-            library.initialize_history(card_table);
+            other.invalidate_views();
         }
 
-        template<class TRandom>
-        execution_state step(const definition_library& library, table& card_table, TRandom& random_source)
+        constexpr executor& operator=(const executor& other)
         {
-            GIVM_ASSERT(last_state_ != execution_state::finished);
-            return advance(library, card_table, random_source);
+            if(this != &other)
+            {
+                invalidate_views();
+                context_ = other.context_;
+                last_state_ = other.last_state_;
+            }
+            return *this;
+        }
+
+        constexpr executor& operator=(executor&& other) noexcept
+        {
+            if(this != &other)
+            {
+                invalidate_views();
+                context_ = std::move(other.context_);
+                last_state_ = other.last_state_;
+                other.invalidate_views();
+            }
+            return *this;
+        }
+#endif
+        constexpr ~executor() = default;
+
+        auto start(const definition_library& library, table& card_table)
+        {
+#ifndef NDEBUG
+            invalidate_views();
+#endif
+            context_.stack_.clear();
+            context_.position_ = library.entry();
+            library.initialize_history(card_table);
+#ifndef NDEBUG
+            last_state_ = execution_state::initialized;
+#endif
+            return view_in<execution_state::initialized>();
         }
 
         template<execution_state State>
-        constexpr auto view_in() noexcept
+        constexpr execution_view<State> view_in() noexcept(detail::view_checks_disabled)
         {
-            GIVM_ASSERT(last_state_ == State);
-            if constexpr(requires { execution_view<State>{ context_.stack_ }; })
-            {
-                return execution_view<State>{ context_.stack_ };
-            }
-            else
-            {
-                return execution_view<State>{};
-            }
+#ifndef NDEBUG
+            validate_view<State>(version_);
+#endif
+            return execution_view<State>{ *this
+#ifndef NDEBUG
+                , version_
+#endif
+            };
         }
 
     private:
+        template<execution_state> friend class execution_view;
+
+#ifndef NDEBUG
+        constexpr void invalidate_views() noexcept
+        {
+            ++version_;
+            last_state_ = detail::continue_execution;
+        }
+
+        template<execution_state State>
+        constexpr void validate_view(std::size_t version) const
+        {
+            if(version != version_)
+                throw execution_view_error{ expired_execution_view{ version, version_ } };
+            if(last_state_ != State)
+                throw execution_view_error{ unexpected_execution_state{ State,
+                    last_state_ == detail::continue_execution ? std::nullopt : std::optional{ last_state_ } } };
+        }
+#endif
+
         template<class TRandom>
         execution_state advance(const definition_library& library, table& table, TRandom& random_source)
         {
+#ifndef NDEBUG
+            invalidate_views();
+#endif
             detail::unrestricted_table& runtime_table = table;
             random_fn random{ random_source };
 #ifndef NDEBUG
@@ -260,7 +296,37 @@ namespace givm
         detail::execution_context context_;
 #ifndef NDEBUG
         execution_state last_state_ = detail::continue_execution;
+        std::size_t version_ = 0;
 #endif
+    };
+
+    template<>
+    class execution_view<execution_state::finished>
+    {
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : executor_{ &owner }
+#ifndef NDEBUG
+            , version_{ version }
+#endif
+        {}
+        executor* executor_;
+#ifndef NDEBUG
+        std::size_t version_;
+#endif
+
+    public:
+        constexpr game_result result() const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            executor_->validate_view<execution_state::finished>(version_);
+#endif
+            const auto [result] = std::as_const(executor_->context_).stack().top<game_result>();
+            return result;
+        }
     };
 }
 

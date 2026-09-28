@@ -350,12 +350,12 @@ namespace
         }
     };
 
-    givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table)
+    givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library, givm::table& table)
     {
         auto random = [] { return std::uint32_t{ 0 }; };
         for(;;)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::action_selection || state == givm::execution_state::card_selection
                 || state == givm::execution_state::finished)
                 return state;
@@ -476,7 +476,7 @@ TEST_CASE("starting initializes history after both decks and copies preserve ini
     load_deck(table, library, { .cards = { ids.get_id<givm::card_definition>(first.name()) } },
         { .cards = { ids.get_id<givm::card_definition>(second.name()), ids.get_id<givm::card_definition>(second.name()) } });
     CHECK(initializations == 0);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     CHECK(initializations == 1);
     CHECK(table[small] == 7);
@@ -502,7 +502,7 @@ TEST_CASE("starting initializes history after both decks and copies preserve ini
     givm::table another;
     load_deck(another, copied_library, {}, {});
     CHECK(initializations == 1);
-    givm::executor another_executor;
+    givm_test::executor_driver another_executor;
     another_executor.start(copied_library, another);
     CHECK(initializations == 2);
     CHECK(another[wide] == 0xFEDCBA9876543210ull);
@@ -527,7 +527,7 @@ TEST_CASE("history without initialization writes fields before reading them", "[
         std::tuple{}, givm::compile_mode::normal));
     givm::table table;
     load_deck(table, library, {}, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     CHECK(recordings == 0);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
@@ -556,7 +556,7 @@ TEST_CASE("history dependencies select only needed summaries and validate field 
     givm::table table;
     load_deck(table, library, {}, {});
     CHECK(selected_initializations == 0);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     CHECK(selected_initializations == 1);
     CHECK(unused_initializations == 0);
@@ -619,7 +619,7 @@ TEST_CASE("dynamic history adapters update once after resumable ordinary respons
     const auto hits = library.history_field<std::uint32_t>(enabled_id, "hits");
     givm::table table;
     load_deck(table, library, { .cards = { ids.get_id<givm::card_definition>(observer.name()) } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     CHECK(table[hits] == 0);
     CHECK(table[library.history_field<std::uint64_t[]>(enabled_id, "payload")].size() == 3);
@@ -629,7 +629,7 @@ TEST_CASE("dynamic history adapters update once after resumable ordinary respons
     CHECK(observed == std::vector<std::uint32_t>{ 0 });
     auto branch = table;
     auto branch_executor = executor;
-    branch_executor.view_in<givm::execution_state::card_selection>().select({});
+    branch_executor.submitted(branch_executor.view_in<givm::execution_state::card_selection>().select(library, branch, givm_test::zero_random, {}));
     REQUIRE(advance(branch_executor, library, branch) == givm::execution_state::finished);
     CHECK(branch[hits] == 2);
     CHECK(table[hits] == 0);
@@ -659,7 +659,7 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
     givm::table small, large;
     load_deck(small, small_library, {}, {});
     load_deck(large, large_library, {}, {});
-    givm::executor small_executor, large_executor;
+    givm_test::executor_driver small_executor, large_executor;
     small_executor.start(small_library, small);
     large_executor.start(large_library, large);
     REQUIRE(advance(large_executor, large_library, large) == givm::execution_state::finished);
@@ -706,7 +706,7 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
     const auto integer_field = integer_library.history_field<std::int32_t>(
         integer_ids.get_id<givm::history_summary_definition>("ScalarHistory"), "value");
     givm::table doubles, integers;
-    givm::executor double_executor, integer_executor;
+    givm_test::executor_driver double_executor, integer_executor;
     double_executor.start(double_library, doubles);
     integer_executor.start(integer_library, integers);
     auto changing_layout = doubles;
@@ -745,7 +745,7 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
     const auto history_id = ids.get_id<givm::history_summary_definition>(magic_name);
     const auto counts = library.history_field<std::uint32_t[]>(history_id, "counts");
     const auto seen = library.history_field<std::uint64_t[]>(history_id, "seen");
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     const auto words = table[seen].size() / 2;
     const auto first_mask = std::uint64_t{ 1 } << (first_id.value() % 64);
@@ -763,7 +763,7 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
         std::size_t index = 0;
         while(index < action.card_count() && table[action.card_id(index)].definition_id() != expected.first) ++index;
         REQUIRE(index < action.card_count());
-        action.play_card(library, table, index, {});
+        executor.submitted(action.play_card(library, table, givm_test::zero_random, index, {}));
         REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
         CHECK(table[counts][0] == expected.second);
         CHECK(table[counts][1] == 0);
@@ -802,7 +802,7 @@ TEST_CASE("defeat history records only confirmed nonterminal defeats after ordin
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, defenders);
     const auto counts = library.history_field<std::uint32_t[]>(
         ids.get_id<givm::history_summary_definition>(summary.name()), "counts");
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(table[counts][0] == 0);

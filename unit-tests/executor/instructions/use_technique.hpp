@@ -108,12 +108,12 @@ namespace
         }
     };
 
-    inline givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table)
+    inline givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library, givm::table& table)
     {
         auto random = []() -> std::uint32_t { return std::to_underlying(givm::elemental_dice::omni); };
-        auto state = executor.step(library, table, random);
+        auto state = executor.advance(library, table, random);
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started)
-            state = executor.step(library, table, random);
+            state = executor.advance(library, table, random);
         return state;
     }
 }
@@ -133,7 +133,7 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
         { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
@@ -154,17 +154,17 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
     CHECK(action.technique_targets_validate(library, table) == givm::target_validation::valid_incomplete);
     const std::array<givm::technique_target_id, 1> targets{ givm::character_id{ givm::player_id{ 1 }, 0 } };
     CHECK(action.technique_targets_validate(library, table, targets) == givm::target_validation::valid_complete);
-    action.use_technique(payment, targets);
+    executor.submitted(action.use_technique_with_cached_cost(library, table, givm_test::zero_random, payment, targets));
     if(not cancelled)
     {
         REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
         auto branch = executor;
         auto branch_table = table;
-        branch.view_in<givm::execution_state::card_selection>().select({});
+        branch.submitted(branch.view_in<givm::execution_state::card_selection>().select(library, branch_table, givm_test::zero_random, {}));
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
         CHECK_FALSE(branch.view_in<givm::execution_state::action_selection>().has_technique());
         log.events.pop_back();
-        executor.view_in<givm::execution_state::card_selection>().select({});
+        executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
     }
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(table[technique].state().count == 1);

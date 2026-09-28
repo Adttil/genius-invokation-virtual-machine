@@ -221,12 +221,12 @@ namespace
             { .cards = { ids.get_id<givm::card_definition>("SupportCard") }, .characters = { character } },
             { .characters = { character } });
     }
-    givm::execution_state advance(givm::executor& executor, const givm::definition_library& library, givm::table& table)
+    givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library, givm::table& table)
     {
         auto random = [] { return std::uint32_t{ 0 }; };
         for(;;)
         {
-            const auto state = executor.step(library, table, random);
+            const auto state = executor.advance(library, table, random);
             if(state != givm::execution_state::active_character_changed && state != givm::execution_state::action_started)
                 return state;
         }
@@ -254,7 +254,7 @@ TEST_CASE("support capacity counts duplicate definitions and removal releases a 
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(givm::player_state{}.support_limit == 4);
@@ -296,7 +296,7 @@ TEST_CASE("support state changes preserve packed dice and saturate without delet
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     const auto supports = support_ids(table);
@@ -326,7 +326,7 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     const auto before = support_ids(table);
@@ -341,8 +341,8 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
         ? givm::target_validation::valid_complete : givm::target_validation::invalid));
     action.calculate_card_cost(library, table, 0);
     REQUIRE(action.card_payment_validate(table, 0, {}) == givm::card_payment_validation::valid);
-    if(full) action.play_card(0, {}, selected);
-    else action.play_card(0, {});
+    if(full) executor.submitted(action.play_card_with_cached_cost(library, table, givm_test::zero_random, 0, {}, selected));
+    else executor.submitted(action.play_card_with_cached_cost(library, table, givm_test::zero_random, 0, {}));
     const auto check_result = [&](const givm::table& current)
     {
         const auto after = support_ids(current);
@@ -362,7 +362,7 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
         auto copied_table = table;
         for(auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &copied_executor, &copied_table } })
         {
-            running->view_in<givm::execution_state::card_selection>().select({});
+            running->submitted(running->view_in<givm::execution_state::card_selection>().select(library, *current, givm_test::zero_random, {}));
             REQUIRE(advance(*running, library, *current) == givm::execution_state::action_selection);
             check_result(*current);
         }
@@ -387,7 +387,7 @@ TEST_CASE("support definitions can remove themselves through a resumable state c
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_scenario(table, library, ids);
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
     const auto waiting = support_ids(table);
@@ -400,7 +400,7 @@ TEST_CASE("support definitions can remove themselves through a resumable state c
     CHECK(log.current == std::vector<values>{ { 0, 2 } });
     CHECK(log.removed.empty());
     CHECK(log.next_action == 2);
-    executor.view_in<givm::execution_state::card_selection>().select({});
+    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(log.next_action == 3);
     CHECK(log.removed == std::vector{ waiting[0], waiting[0] });

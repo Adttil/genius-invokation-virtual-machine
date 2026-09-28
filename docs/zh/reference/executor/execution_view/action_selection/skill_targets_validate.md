@@ -51,4 +51,4 @@ target_validation skill_targets_validate(
 
 本操作不自动检查控制状态。调用方还应通过 [`is_controlled`](is_controlled.md) 判断当前出战角色是否允许使用技能。
 
-本操作与 [`skill_payment_validate`](skill_payment_validate.md) 独立，且不要求先报价。调用方仍须保证传入当前现场内有效的候选索引，并在选择使用技能时保证目标与技能使用条件成立；[`use_skill`](use_skill.md) 不会自动检查。
+本操作与 [`skill_payment_validate`](skill_payment_validate.md) 独立，且不要求先报价。调用方仍须保证传入当前现场内有效的候选索引，并在选择使用技能时保证目标与技能使用条件成立；[`use_skill`](use_skill.md) 在 Debug 提交时自动检查，Release 不检查。

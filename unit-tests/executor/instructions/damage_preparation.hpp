@@ -196,19 +196,19 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
         { .characters = { ids.get_id<givm::character_view>(target.name()), ids.get_id<givm::character_view>(reserve.name()) } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     std::vector<givm::elemental_reaction> observed_reactions;
     std::size_t pauses = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         if(state == givm::execution_state::card_selection)
         {
             ++pauses;
-            executor.view_in<givm::execution_state::card_selection>().select({});
+            executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
         }
         else
         {
@@ -261,12 +261,12 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     const auto target_id = ids.get_id<givm::character_view>(target.name());
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
         { .characters = { target_id, target_id } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::card_selection);
-    executor.view_in<givm::execution_state::card_selection>().select({});
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
+    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[front].state().health == 13);
     CHECK(table[back].state().health == 20);
     CHECK(table[front].state().aura == givm::element_aura::none);

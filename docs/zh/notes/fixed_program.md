@@ -33,11 +33,11 @@ handler 读取编译后的 definition、自身实体 view、事件、只读 tabl
 
 提交的输入是响应时的快照；前序命令及其嵌套响应改变牌桌后，后序输入仍保留原值。定义源应区分需要保留的快照与需要相对现值计算的修改，并保证每条命令实际执行时的目标及输入满足前提。普通即时响应推荐先消耗已承诺使用的资源，再执行可能触发其他响应的效果；不要求所有根据 table 计算的参数都由程序首条消费。费用缓存的延迟执行前提另见[费用预览与提交](event_dispatch/payment_commit.md#缓存输入的快照与执行前提)。
 
-Debug 的 `command_input_error` 检查保留在各命令实际使用参数之前，不把依赖 table 的条件提前到 invoke。输入值、实体有效性和必要资源按执行时状态判断；响应可以改写的关键事件字段在使用前再次检查。协议检查不写入失败调用的输入，仍不能保证整个响应或 step 回滚；捕获调试异常后不继续使用原执行现场。Release 不保留这些检查分支或诊断存储。
+Debug 的 `command_input_error` 检查保留在各命令实际使用参数之前，不把依赖 table 的条件提前到 invoke。输入值、实体有效性和必要资源按执行时状态判断；响应可以改写的关键事件字段在使用前再次检查。协议检查不写入失败调用的输入，仍不能保证整个响应或推进调用回滚；捕获调试异常后不继续使用原执行现场。Release 不保留这些检查分支或诊断存储。
 
 ## 费用预览
 
-费用响应仍接收同一种 `handle_context&`，但必须以 `context.invoke(substack_t{}, entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个候选在一个行动窗口内只允许报价一次，费用可反复读取；不保存“已报价”标记，不进行重复报价检查。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
+费用响应仍接收同一种 `handle_context&`，但必须以 `context.invoke(substack_t{}, entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个候选在一个行动窗口内只允许报价一次，费用可反复读取；Release 不保存“已报价”标记；Debug 保存报价状态并检查重复报价及未完成报价的使用。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
 
 报价时所有响应读取不变的 table，前一响应只通过费用事件影响后一响应。支付效果不会反馈到本次报价。缓存及复制策略见[费用预览与提交](event_dispatch/payment_commit.md)。
 
@@ -95,7 +95,7 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 ## 编译模式与文件组织
 
-整库 `compile` 显式接收 `compile_mode::normal` 或 `compile_mode::observed`。编译上下文保存该选择，所有 `add_program` 使用同一模式。两种模式生成相同的 `definition_library` 类型；内部指令类型、数量、数据类型与布局都可以不同。运行时统一通过 `executor::step` 推进，不再选择另一套分派入口。
+整库 `compile` 显式接收 `compile_mode::normal` 或 `compile_mode::observed`。编译上下文保存该选择，所有 `add_program` 使用同一模式。两种模式生成相同的 `definition_library` 类型；内部指令类型、数量、数据类型与布局都可以不同。视图的提交与 `resume` 统一调用 executor 内部推进循环，不再选择另一套分派入口。
 
 每个 command 的公开描述、输入、独立的 `xxx_error` 类型及其 `error_string` 放在 [`definition/commands/`](../../../include/givm/definition/commands) 对应文件中；命令只用 `using error_type = xxx_error` 关联错误类型。编译检查重载、编译重载与执行指令放在 [`executor/commands/`](../../../include/givm/executor/commands) 的同名文件中。两侧 [`definition/commands.hpp`](../../../include/givm/definition/commands.hpp) 与 [`executor/commands.hpp`](../../../include/givm/executor/commands.hpp) 都只聚合包含，不在汇总头中实现格式化或其他函数。
 

@@ -172,12 +172,12 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     }
     REQUIRE(original_ids.size() == 4);
 
-    givm::executor target;
+    givm_test::executor_driver target;
     target.start(library, table);
     sequence_random random{
         .values = { std::numeric_limits<std::uint32_t>::max(), 0, std::uint32_t{ 0x80000000u } }
     };
-    REQUIRE(target.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(target.advance(library, table, random) == givm::execution_state::finished);
     CHECK(random.position == 3);
 
     CHECK(deck_definition_values(table[givm::player_id{ 0 }]) == std::vector<std::size_t>{

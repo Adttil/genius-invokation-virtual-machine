@@ -67,7 +67,7 @@ int main()
     execution.start(library, table);
     givm::table branch_table{ table };
     givm::executor branch{ execution };
-    branch.step(library, branch_table, random);
+    branch.view_in<givm::execution_state::initialized>().resume(library, branch_table, random);
     std::println("原对局尚未开始回合: {}", table.state().round_number == 0);
     std::println("分支双方告负: {}",
         branch.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);

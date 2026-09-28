@@ -65,10 +65,10 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
         INFO(value);
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, givm::linked_deck{ .cards = { a, b } }, {});
-        givm::executor execution;
+        givm_test::executor_driver execution;
         execution.start(library, table);
         random_tape random{ { value } };
-        REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+        REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
         CHECK(random.consumed == 1);
         CHECK(deck_definitions(table[givm::player_id{ 0 }])
             == (changes_order ? std::vector{ b, a } : std::vector{ a, b }));
@@ -78,10 +78,10 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
     {
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, givm::linked_deck{ .cards = cards }, {});
-        givm::executor execution;
+        givm_test::executor_driver execution;
         execution.start(library, table);
         random_tape random;
-        REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+        REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
         CHECK(random.consumed == 0);
         CHECK(deck_definitions(table[givm::player_id{ 0 }]) == cards);
     }
@@ -111,10 +111,10 @@ TEST_CASE("initial replacements assign random values by player and selected card
     givm::table initial_table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .cards = { a, b, c, d, e } };
     load_deck(initial_table, library, deck, deck);
-    givm::executor initial_execution;
+    givm_test::executor_driver initial_execution;
     initial_execution.start(library, initial_table);
     random_tape random{ { 0u, 0xaaaaaaaau, 0xffffffffu, 0xffffffffu, 0x55555555u, 0u } };
-    REQUIRE(initial_execution.step(library, initial_table, random) == givm::execution_state::initial_card_selection);
+    REQUIRE(initial_execution.advance(library, initial_table, random) == givm::execution_state::initial_card_selection);
     REQUIRE(random.consumed == 6);
 
     for(const givm::player_id first_player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
@@ -123,11 +123,11 @@ TEST_CASE("initial replacements assign random values by player and selected card
         auto execution = initial_execution;
         random_tape later_random;
         const auto selected = std::bitset<givm::selection_capacity>{ 1u << 2 };
-        execution.view_in<givm::execution_state::initial_card_selection>().select(first_player, selected);
-        REQUIRE(execution.step(library, table, later_random) == givm::execution_state::card_selection);
+        execution.submitted(execution.view_in<givm::execution_state::initial_card_selection>().select(library, table, later_random, first_player, selected));
+        REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::card_selection);
         REQUIRE(execution.view_in<givm::execution_state::card_selection>().player() == other_player(first_player));
-        execution.view_in<givm::execution_state::card_selection>().select(selected);
-        REQUIRE(execution.step(library, table, later_random) == givm::execution_state::finished);
+        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, later_random, selected));
+        REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::finished);
         CHECK(later_random.consumed == 0);
         CHECK(deck_definitions(table[givm::player_id{ 0 }]) == std::vector{ c, a });
         CHECK(deck_definitions(table[givm::player_id{ 1 }]) == std::vector{ a, c });
@@ -168,15 +168,13 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
         const auto e = ids.get_id<givm::card_definition>(epsilon.name());
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, { .cards = { a, d, c, e, c, b, a } }, {});
-        givm::executor execution;
+        givm_test::executor_driver execution;
         execution.start(library, table);
         random_tape random{ { 0u, 0xffffffffu, 0x80000000u } };
-        REQUIRE(execution.step(library, table, random) == givm::execution_state::card_selection);
+        REQUIRE(execution.advance(library, table, random) == givm::execution_state::card_selection);
         CHECK(random.consumed == 0);
-        execution.view_in<givm::execution_state::card_selection>().select(
-            std::bitset<givm::selection_capacity>{ 0b0111 }
-        );
-        REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, random, std::bitset<givm::selection_capacity>{ 0b0111 }));
+        REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
         CHECK(random.consumed == 3);
 
         // A, B and C return at the bottom, top and middle. Only D avoids the
@@ -198,7 +196,7 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
         std::tuple{}, givm::compile_mode::normal
     ));
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     // Player 0 receives dice 1,2,3,4,5,6,7,0,1,2, then 3,4,... .
     // The high two bits do not represent a die; player 1 starts its own sequence.
@@ -207,7 +205,7 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
         | (5u << 12) | (6u << 15) | (7u << 18) | (1u << 24) | (2u << 27));
     random.values.push_back(3u | (4u << 3));
     random.values.push_back(0x3fffffffu);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::dice_selection);
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
     REQUIRE(random.consumed == 15);
     CHECK(table[givm::player_id{ 0 }].state().dice[givm::elemental_dice::cryo] == 6);
     CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::cryo] == 6);
@@ -215,8 +213,8 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
     random_tape later_random;
     givm::dice_counts player1_selection;
     player1_selection[givm::elemental_dice::cryo] = 2;
-    execution.view_in<givm::execution_state::dice_selection>().select(givm::player_id{ 1 }, player1_selection);
-    REQUIRE(execution.step(library, table, later_random) == givm::execution_state::dice_selection);
+    execution.submitted(execution.view_in<givm::execution_state::dice_selection>().select(library, table, later_random, givm::player_id{ 1 }, player1_selection));
+    REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::dice_selection);
     CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::cryo] == 4);
     CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::omni] == 2);
 
@@ -230,12 +228,12 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
     player0_selections[2][givm::elemental_dice::geo] = 1;
     for(std::size_t index = 0; index < 2; ++index)
     {
-        execution.view_in<givm::execution_state::dice_selection>().select(givm::player_id{ 0 }, player0_selections[index]);
-        REQUIRE(execution.step(library, table, later_random) == givm::execution_state::dice_selection);
+        execution.submitted(execution.view_in<givm::execution_state::dice_selection>().select(library, table, later_random, givm::player_id{ 0 }, player0_selections[index]));
+        REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::dice_selection);
     }
     REQUIRE(execution.view_in<givm::execution_state::dice_selection>().remaining(givm::player_id{ 0 }) == 1);
-    execution.view_in<givm::execution_state::dice_selection>().select(givm::player_id{ 0 }, player0_selections[2]);
-    REQUIRE(execution.step(library, table, later_random) == givm::execution_state::finished);
+    execution.submitted(execution.view_in<givm::execution_state::dice_selection>().select(library, table, later_random, givm::player_id{ 0 }, player0_selections[2]));
+    REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::finished);
     CHECK(later_random.consumed == 0);
     givm::dice_counts expected;
     for(givm::elemental_dice dice : { givm::elemental_dice::hydro, givm::elemental_dice::pyro, givm::elemental_dice::electro,

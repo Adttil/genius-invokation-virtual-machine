@@ -178,13 +178,13 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
     givm::table table{ {}, { .hand_limit = full ? 1u : 10u }, {} };
     load_deck(table, library, { .cards = { card } },
         { .cards = { ids.get_id<givm::card_definition>("CreationDriver") } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     std::size_t pauses = 0;
     for(;;)
     {
-        const auto state = executor.step(library, table, random);
+        const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
         if(state != givm::execution_state::card_selection) continue;
         ++pauses;
@@ -197,7 +197,7 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
         executor = std::move(copied_executor);
         const auto view = executor.view_in<givm::execution_state::card_selection>();
         CHECK(view.selection_validate(table, {}));
-        view.select({});
+        executor.submitted(view.select(library, table, random, {}));
     }
     CHECK(pauses == 1);
     CHECK(log.discards == 0);
@@ -223,10 +223,10 @@ TEST_CASE("draw and general hand entry responders share attachment order", "[cre
         { .cards = { ids.get_id<givm::card_definition>("CreatedCard") },
             .characters = { ids.get_id<givm::character_view>("Character") } },
         { .cards = { ids.get_id<givm::card_definition>("EntryOrderDriver") } });
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.responses == (log.reverse ? std::vector<char>{ 'A', 'D', 'A' } : std::vector<char>{ 'D', 'A', 'A' }));
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 2);
 }

@@ -23,9 +23,9 @@ TEST_CASE("initialization and round programs accept tuple-like and range forms",
     const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, initialization, round, givm::compile_mode::normal));
     auto random = []() -> std::uint32_t { return 0; };
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(executor.step(library, table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table.state().round_number == 1);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
 
@@ -33,7 +33,7 @@ TEST_CASE("initialization and round programs accept tuple-like and range forms",
     const auto [selected_library, selected_id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, selection, initialization, round, givm::compile_mode::normal));
     givm::table selected_table{ { .self_player = givm::player_id{ 0 } } };
     executor.start(selected_library, selected_table);
-    REQUIRE(executor.step(selected_library, selected_table, random) == givm::execution_state::finished);
+    REQUIRE(executor.advance(selected_library, selected_table, random) == givm::execution_state::finished);
     CHECK(selected_table.state().round_number == 1);
     CHECK(executor.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
 }

@@ -33,7 +33,7 @@ const cost_of_card& calculate_card_cost(
 
 ## 注意
 
-同一行动窗口内，每个候选只允许计算一次；调用方自行保证，库不进行运行期检查，重复计算属于未定义行为。计算完成后可反复调用 `card_cost` 读取缓存结果。
+同一行动窗口内，每个候选只允许计算一次；Debug 检查报价状态，Release 由调用方保证，重复计算属于未定义行为。计算完成后可反复调用 `card_cost` 读取缓存结果。
 
 报价先复制该牌当前 [`card_state::cost`](../../../table/card_state.md) 作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。报价不会写回卡牌自身的费用；卡牌初始费用默认是零骰子、零充能的快速行动。
 
@@ -41,4 +41,4 @@ const cost_of_card& calculate_card_cost(
 
 费用响应不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不选择出牌、不执行费用响应提交的后续效果，也不修改牌桌或推进执行器。
 
-报价其他候选可能使之前取得的费用引用失效，下一次推进或重建现场也会使引用失效。需要再次读取时，通过本 view 的费用读取接口重新取得引用。完整报价后可独立检查 [支付](card_payment_validate.md) 与 [目标及用牌条件](card_targets_validate.md)，再通过 [`play_card`](play_card.md) 选择出牌。
+报价其他候选可能使之前取得的费用引用失效，下一次推进或重建现场也会使引用失效。需要再次读取时，通过本 view 的费用读取接口重新取得引用。完整报价后可独立检查 [支付](card_payment_validate.md) 与 [目标及用牌条件](card_targets_validate.md)，再通过 [`play_card_with_cached_cost`](play_card_with_cached_cost.md) 提交出牌。

@@ -109,8 +109,8 @@ int main()
     }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
-    execution.start(library, table);
-    execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    initialized.resume(library, table, random);
     std::println("收到事件次数: {}", count);
 }
 ```

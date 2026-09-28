@@ -93,10 +93,10 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("HealthIncreaseSource") } }, {});
-    givm::executor executor;
+    givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
-    const auto result = executor.step(library, table, random);
+    const auto result = executor.advance(library, table, random);
     REQUIRE(result == (log.pause ? givm::execution_state::card_selection : givm::execution_state::finished));
     const auto increase = std::min(log.value, std::numeric_limits<std::uint32_t>::max() - log.initial.max_health);
     CHECK(table[target].state().max_health == log.initial.max_health + increase);
@@ -107,8 +107,8 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
         auto copy_table = table;
         for(auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &copy_executor, &copy_table } })
         {
-            running->view_in<givm::execution_state::card_selection>().select({});
-            REQUIRE(running->step(library, *current, random) == givm::execution_state::finished);
+            running->submitted(running->view_in<givm::execution_state::card_selection>().select(library, *current, random, {}));
+            REQUIRE(running->advance(library, *current, random) == givm::execution_state::finished);
             CHECK((*current)[target].state().max_health == log.initial.max_health + increase);
             CHECK((*current)[target].state().health == log.initial.health + increase);
         }

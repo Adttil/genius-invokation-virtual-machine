@@ -53,4 +53,4 @@ target_validation card_targets_validate(
 
 无需目标的牌也可以通过空选择查询其他用牌条件，例如由牌定义调用 `library.is_controlled(character)` 检查控制状态。是否检查由该牌的 [`card_target_validation`](../../../definition/queries/card_target_validation.md) 决定。
 
-本操作与 [`card_payment_validate`](card_payment_validate.md) 独立，且不要求先报价。调用方仍须保证传入当前现场内有效的候选索引，并在选择出牌时保证目标与用牌条件成立；[`play_card`](play_card.md) 不会自动检查。
+本操作与 [`card_payment_validate`](card_payment_validate.md) 独立，且不要求先报价。调用方仍须保证传入当前现场内有效的候选索引，并在选择出牌时保证目标与用牌条件成立；[`play_card`](play_card.md) 在 Debug 提交时自动检查，Release 不检查。

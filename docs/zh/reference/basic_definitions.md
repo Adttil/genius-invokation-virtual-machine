@@ -40,7 +40,7 @@
 
 ## 冻结与控制
 
-`frozen_3_3_0_source` 的静态对象为 `frozen_3_3_0`。该附属具有 `control` 标签，供 [`is_controlled`](executor/definition_library/is_controlled.md) 判断角色是否受控；技能和主动特技的选择方应据此限制使用，执行器不自动检查技能提交。
+`frozen_3_3_0_source` 的静态对象为 `frozen_3_3_0`。该附属具有 `control` 标签，供 [`is_controlled`](executor/definition_library/is_controlled.md) 判断角色是否受控；技能和主动特技的选择方应据此限制使用，Debug 提交时自动检查，Release 由调用方保证合法。
 
 默认冻结反应使本段伤害增加 1，并在本段扣血、击倒及附着处理后，向仍存活的反应目标施加冻结。新的冻结不追溯影响产生它的伤害，可影响后续同组伤害。替代反应会取消默认加伤与冻结生成；目标具有 `control_immunity` 时，只阻止控制附属的施加，不撤销已发生的反应或默认加伤。
 

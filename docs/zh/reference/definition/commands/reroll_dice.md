@@ -62,7 +62,7 @@ struct reroll_dice_error;
 
 默认构造 `reroll_dice{}` 使用动态模式，由响应通过 [`invoke`](../../executor/handle_context/invoke.md) 提交一个 [`reroll_dice_input`](../command_inputs/reroll_dice_input.md)，包含玩家 ID 和重投次数。显式指定 `player` 为 `self` 或 `opponent` 时采用固定模式，不消费响应输入。本方的含义见 [`relative_player`](relative_player.md)；动态输入的玩家 ID 必须有效。
 
-若次数为零或该玩家当前没有骰子，本命令立即完成，不要求选择，也不调用随机源。否则返回 [`execution_state::dice_reroll_selection`](../../executor/execution_state.md)，通过相应[现场视图](../../executor/execution_view/dice_reroll_selection.md)提交选择。该玩家的每类所选数量不得超过当前持有数量，可以通过 `selection_validate` 独立检查；提交和后续推进不自动检查。
+若次数为零或该玩家当前没有骰子，本命令立即完成，不要求选择，也不调用随机源。否则返回 [`execution_state::dice_reroll_selection`](../../executor/execution_state.md)，通过相应[现场视图](../../executor/execution_view/dice_reroll_selection.md)提交选择。该玩家的每类所选数量不得超过当前持有数量，可以通过 `selection_validate` 独立检查；提交时直接推进，Debug 自动检查输入，Release 不重复检查。
 
 每次非空选择只替换所选骰子，并消耗一次重投机会。只要还有机会，就再次等待该玩家选择；各次可以选择不同骰子。空选择放弃全部剩余机会。重投不改变骰子总数，不广播准备、增加、移除、转换或其他事件。
 
@@ -110,8 +110,8 @@ int main()
     givm::executor execution{};
     std::uint32_t random_calls = 0;
     auto random = [&]() -> std::uint32_t { ++random_calls; return 17; };
-    execution.start(library, table);
-    auto state = execution.step(library, table, random);
+    const auto initialized = execution.start(library, table);
+    auto state = initialized.resume(library, table, random);
     while(state == givm::execution_state::dice_reroll_selection)
     {
         const auto view = execution.view_in<givm::execution_state::dice_reroll_selection>();
@@ -119,8 +119,7 @@ int main()
         selected[givm::elemental_dice::cryo] = 1;
         if(not view.selection_validate(table, selected))
             return 1;
-        view.select(selected);
-        state = execution.step(library, table, random);
+        state = view.select(library, table, random, selected);
     }
     const auto& dice = table[givm::player_id{ 0 }].state().dice;
     std::println("水、火、万能: {}、{}、{}", dice[givm::elemental_dice::hydro],

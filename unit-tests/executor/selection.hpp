@@ -63,13 +63,12 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .cards = { a, b, c } };
     load_deck(table, library, deck, deck);
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     counting_random random;
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::initial_card_selection);
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::initial_card_selection);
     const auto prepared_random_count = random.calls;
     const auto initial = execution.view_in<givm::execution_state::initial_card_selection>();
-    initial.select(givm::player_id{ 1 }, std::bitset<givm::selection_capacity>{ 0b01 });
     CHECK(initial.selection_validate(table, givm::player_id{ 0 }, {}) == check_result::valid);
     CHECK(initial.selection_validate(table, givm::player_id{ 0 }, std::bitset<givm::selection_capacity>{ 0b10 })
         == check_result::valid);
@@ -90,22 +89,22 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     }
     CHECK(random.calls == prepared_random_count);
 
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::card_selection);
+    execution.submitted(initial.select(library, table, random, givm::player_id{ 1 }, std::bitset<givm::selection_capacity>{ 0b01 }));
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::card_selection);
     CHECK(hand_definitions(table[givm::player_id{ 1 }]) == std::vector{ b, a });
     const auto remaining = execution.view_in<givm::execution_state::card_selection>();
     REQUIRE(remaining.player() == givm::player_id{ 0 });
     const std::bitset<givm::selection_capacity> submitted{ 0b10 };
-    remaining.select(submitted);
     CHECK(remaining.selection_validate(table, {}));
     CHECK(remaining.selection_validate(table, std::bitset<givm::selection_capacity>{ 0b01 }));
     CHECK_FALSE(remaining.selection_validate(table, std::bitset<givm::selection_capacity>{ 0b100 }));
     CHECK_FALSE(remaining.selection_validate(table, last_bit));
-    CHECK(remaining.selected() == submitted);
     CHECK(remaining.player() == givm::player_id{ 0 });
     CHECK(hand_definitions(table[givm::player_id{ 0 }]) == std::vector{ c, b });
     CHECK(table[givm::player_id{ 0 }].deck_card_count() == 1);
     CHECK(random.calls == prepared_random_count);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+    execution.submitted(remaining.select(library, table, random, submitted));
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
     CHECK(hand_definitions(table[givm::player_id{ 0 }]) == std::vector{ c, a });
     CHECK(random.calls == prepared_random_count);
 }
@@ -132,17 +131,17 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     deck.cards.front() = b;
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = static_cast<std::uint32_t>(hand_count) }, { .hand_limit = static_cast<std::uint32_t>(hand_count) } };
     load_deck(table, library, deck, {});
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     counting_random random;
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::card_selection);
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == hand_count);
     const auto input = execution.view_in<givm::execution_state::card_selection>();
     std::bitset<givm::selection_capacity> highest_bit;
     highest_bit.set(givm::selection_capacity - 1);
     CHECK(input.selection_validate(table, highest_bit));
-    input.select(highest_bit);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+    execution.submitted(input.select(library, table, random, highest_bit));
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
     std::vector expected(hand_count, a);
     expected.back() = b;
     CHECK(hand_definitions(table[givm::player_id{ 0 }]) == expected);
@@ -170,12 +169,11 @@ TEST_CASE("initial character checks validate ownership and existence without req
     const givm::character_id second_choice{ givm::player_id{ 0 }, 1 };
     REQUIRE(table[first_choice].state().health == 0);
     REQUIRE(table[second_choice].state().health == 0);
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     counting_random random;
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::initial_active_character_selection);
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::initial_active_character_selection);
     const auto initial = execution.view_in<givm::execution_state::initial_active_character_selection>();
-    initial.select(first_choice);
     CHECK(initial.selection_validate(table, first_choice) == initial_validation::valid);
     CHECK(initial.selection_validate(table, second_choice) == initial_validation::valid);
     CHECK(initial.selection_validate(table,
@@ -189,11 +187,11 @@ TEST_CASE("initial character checks validate ownership and existence without req
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     CHECK(random.calls == 0);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::remaining_active_character_selection);
+    execution.submitted(initial.select(library, table, random, first_choice));
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::remaining_active_character_selection);
     const auto remaining = execution.view_in<givm::execution_state::remaining_active_character_selection>();
     CHECK(remaining.first_selected_character() == first_choice);
     CHECK(remaining.player() == givm::player_id{ 0 });
-    remaining.select(second_choice);
     CHECK(remaining.selection_validate(table, second_choice) == remaining_validation::valid);
     CHECK(remaining.selection_validate(table, givm::character_id{ givm::player_id{ 0 }, 0 }) == remaining_validation::valid);
     CHECK(remaining.selection_validate(table, first_choice) == remaining_validation::wrong_player);
@@ -208,11 +206,12 @@ TEST_CASE("initial character checks validate ownership and existence without req
     CHECK(remaining.player() == givm::player_id{ 0 });
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
-    auto state = execution.step(library, table, random);
+    execution.submitted(remaining.select(library, table, random, second_choice));
+    auto state = execution.advance(library, table, random);
     if(mode == givm::compile_mode::observed)
     {
         REQUIRE(state == givm::execution_state::initial_active_characters_selected);
-        state = execution.step(library, table, random);
+        state = execution.advance(library, table, random);
     }
     REQUIRE(state == givm::execution_state::finished);
     CHECK(table[givm::player_id{ 0 }].state().active_character == second_choice);
@@ -234,10 +233,10 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
         }, std::tuple{}, mode
     ));
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    givm::executor execution;
+    givm_test::executor_driver execution;
     execution.start(library, table);
     counting_random random;
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::dice_selection);
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
     const auto prepared_random_count = random.calls;
     const auto player0_dice = table[givm::player_id{ 0 }].state().dice;
     const auto player1_dice = table[givm::player_id{ 1 }].state().dice;
@@ -250,7 +249,6 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     too_many[givm::elemental_dice::cryo] = 5;
     givm::dice_counts absent_type;
     absent_type[givm::elemental_dice::omni] = 1;
-    input.select(givm::player_id{ 1 }, submitted);
     CHECK(input.selection_validate(table, {}));
     CHECK(input.selection_validate(table, alternative));
     CHECK(input.selection_validate(table, givm::player_id{ 0 }, alternative) == check_result::valid);
@@ -260,20 +258,20 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     CHECK(input.selection_validate(table, givm::player_id{ 2 }, too_many) == check_result::invalid_player);
     CHECK(input.selection_validate(table, givm::player_id{ std::numeric_limits<std::size_t>::max() }, {})
         == check_result::invalid_player);
-    CHECK(input.player() == givm::player_id{ 1 });
-    CHECK(input.selected() == submitted);
+    CHECK(input.player() == givm::player_id{ 0 });
     CHECK(input.remaining(givm::player_id{ 0 }) == 1);
     CHECK(input.remaining(givm::player_id{ 1 }) == 2);
     CHECK(table[givm::player_id{ 0 }].state().dice == player0_dice);
     CHECK(table[givm::player_id{ 1 }].state().dice == player1_dice);
     CHECK(random.calls == prepared_random_count);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::dice_selection);
+    execution.submitted(input.select(library, table, random, givm::player_id{ 1 }, submitted));
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
 
     const auto player0_input = execution.view_in<givm::execution_state::dice_selection>();
     REQUIRE(player0_input.player() == givm::player_id{ 0 });
     CHECK(player0_input.remaining(givm::player_id{ 1 }) == 1);
-    player0_input.select(alternative);
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::dice_selection);
+    execution.submitted(player0_input.select(library, table, random, alternative));
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
     const auto last_input = execution.view_in<givm::execution_state::dice_selection>();
     REQUIRE(last_input.player() == givm::player_id{ 1 });
     CHECK(last_input.remaining(givm::player_id{ 0 }) == 0);
@@ -281,8 +279,8 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     CHECK(last_input.selection_validate(table, givm::player_id{ 0 }, alternative) == check_result::no_rerolls_remaining);
     CHECK(last_input.selection_validate(table, givm::player_id{ 0 }, too_many) == check_result::no_rerolls_remaining);
     CHECK(last_input.selection_validate(table, {}));
-    last_input.select({});
-    REQUIRE(execution.step(library, table, random) == givm::execution_state::finished);
+    execution.submitted(last_input.select(library, table, random, {}));
+    REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
     CHECK(random.calls == prepared_random_count);
 }
 }
