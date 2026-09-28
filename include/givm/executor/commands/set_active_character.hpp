@@ -1,6 +1,7 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SET_ACTIVE_CHARACTER_HPP
 #define GIVM_EXECUTOR_COMMANDS_SET_ACTIVE_CHARACTER_HPP
 
+
 #include <optional>
 #include <utility>
 #include <vector>
@@ -8,9 +9,8 @@
 #include "../executor.hpp"
 #include "../character_target.hpp"
 #include "../broadcast.hpp"
-#include "../../definition/events.hpp"
+#include "../../definition.hpp"
 #include "../instruction.hpp"
-#include "../../definition/commands.hpp"
 #include "../../utils/debug.hpp"
 
 #include "../../macro_define.hpp"
@@ -183,6 +183,27 @@ namespace givm::detail
             writer.write(execute_fn{ &apply_active_character_change });
         }
         writer.write(execute_fn{ &broadcast_active_character_change });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<set_active_character::error_type> check(const set_active_character& command,
+        const definition_compile_context&, program_kind kind)
+    {
+        using reason = set_active_character::error_type::reason;
+        std::vector<set_active_character::error_type> errors;
+        if(command.target.offset == std::numeric_limits<std::int32_t>::max())
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.target.player != relative_player::self && command.target.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_target_player, .value = static_cast<std::size_t>(command.target.player) });
+        if(command.target.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_target_selection, .value = static_cast<std::size_t>(command.target.selection) });
+        return errors;
     }
 }
 

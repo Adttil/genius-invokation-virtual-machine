@@ -311,9 +311,9 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
     const character_source second_character{ "SecondCharacter", second.name() };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second, first_character, second_character));
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
-    );
+    ));
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = {
         ids.get_id<givm::character_view>(first_character.name()), ids.get_id<givm::character_view>(second_character.name())

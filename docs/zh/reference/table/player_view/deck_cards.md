@@ -25,10 +25,10 @@ constexpr auto deck_cards() const;
 
 遍历所得访问对象的存活约定见[实体的身份与访问](../entity_access.md)。按牌库底到牌库顶的顺序遍历；已移出的牌不会因 `SkipErased = false` 重新出现。
 
-
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <ranges>
@@ -56,9 +56,15 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{};
     load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});

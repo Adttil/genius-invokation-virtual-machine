@@ -142,9 +142,9 @@ TEST_CASE("single-player rerolls preserve partial choices and prefetched randomn
     const reroll_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared = sources.make_issued_id_map(givm_test::basic_sources);
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
-        round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode);
+    const auto prepared = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
+        round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode));
     givm::table table{ { .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = initial_dice() }, { .dice = initial_dice() } };
     givm::executor executor;
@@ -205,9 +205,9 @@ TEST_CASE("single-player rerolls skip empty pools and zero counts and can stop w
     const reroll_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared = sources.make_issued_id_map(givm_test::basic_sources);
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
-        round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode);
+    const auto prepared = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
+        round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode));
     const auto initial = scenario == 1 ? givm::dice_counts{} : initial_dice();
     givm::table table{ { .self_player = givm::player_id{ 1 } }, { .dice = initial_dice() }, { .dice = initial } };
     givm::executor executor;
@@ -237,12 +237,12 @@ TEST_CASE("a played card finishes both rerolls before the card-played notificati
     REQUIRE(sources.add(observer));
     REQUIRE(sources.add(card));
     REQUIRE(sources.add(character));
-    const auto prepared = sources.make_issued_id_map(givm_test::basic_sources);
-    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{
+    const auto prepared = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
         givm::add_support{ .player = givm::relative_player::self,
             .definition = prepared.get_id<givm::support_view>(observer.name()) },
         givm::create_hand_card{ .player = givm::relative_player::self,
-            .definition = prepared.get_id<givm::card_definition>(card.name()) }, givm::begin_action{} }, std::tuple{}, mode);
+            .definition = prepared.get_id<givm::card_definition>(card.name()) }, givm::begin_action{} }, std::tuple{}, mode));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .dice = initial_dice(), .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .dice = initial_dice(), .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };

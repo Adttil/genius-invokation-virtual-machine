@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_CREATE_HAND_CARD_HPP
 #define GIVM_EXECUTOR_COMMANDS_CREATE_HAND_CARD_HPP
 
+#include <vector>
+
 #include "../broadcast.hpp"
 #include "../../definition.hpp"
 
@@ -59,6 +61,27 @@ namespace givm::detail
         else
             writer.write(execute_fn{ create_hand_card_execute<false> });
         writer.write(execute_fn{ broadcast_hand_card_added });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<create_hand_card::error_type> check(const create_hand_card& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = create_hand_card::error_type::reason;
+        std::vector<create_hand_card::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<card_definition>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<card_definition>() });
+        return errors;
     }
 }
 

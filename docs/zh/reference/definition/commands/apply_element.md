@@ -15,6 +15,7 @@ struct apply_element;
 | | |
 | --- | --- |
 | `input_type` | [`apply_element_input`](../command_inputs/apply_element_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `apply_element_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 成员对象
 
@@ -28,6 +29,35 @@ struct apply_element;
 ## 输入
 
 默认构造 `apply_element{}` 使用动态输入，消费响应通过 `invoke` 提交的一个 [`apply_element_input`](../command_inputs/apply_element_input.md)。显式填写固定目标时不消费输入，执行时解析来源和目标的位置；任一位置不存在时，本次附着无效。固定定位允许生命为零但尚未离场的角色。
+
+## 编译检查
+
+```cpp
+struct apply_element_error;
+```
+
+`apply_element::error_type` 是 `givm::apply_element_error` 的别名。`apply_element_error` 是本命令的结构化编译错误，`apply_element_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_source_player` | `source.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_source_selection` | `source.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+| `invalid_target_player` | `target.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_target_selection` | `target.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+| `invalid_element` | `element` 不是已声明的 `element` 枚举值；`element::none` 本身合法 |
+| `invalid_cause` | `cause` 不是 `element_application_cause::effect` 或 `element_application_cause::damage` |
+
+### `apply_element_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 注意
 
@@ -46,6 +76,7 @@ struct apply_element;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -77,10 +108,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::select_active_character_both{}, givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

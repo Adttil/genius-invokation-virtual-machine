@@ -20,10 +20,10 @@ constexpr auto end(this const auto& self);
 
 单实体范围的尾后迭代器。实体有效时范围包含一个元素，否则与 `begin()` 相等。
 
-
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -54,9 +54,15 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});

@@ -7,8 +7,12 @@
 将一个角色的附属状态或装备转移给另一个角色，可同时恢复它的本回合可用次数。
 
 ```cpp
+struct transfer_attachment_error;
+
 struct transfer_attachment
 {
+    using error_type = transfer_attachment_error;
+
     using input_type = transfer_attachment_input;
 
     relative_attachment_target source{};
@@ -22,6 +26,7 @@ struct transfer_attachment
 | | |
 | --- | --- |
 | `input_type` | [`transfer_attachment_input`](../command_inputs/transfer_attachment_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `transfer_attachment_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 成员对象
 
@@ -55,6 +60,36 @@ struct transfer_attachment
 被转移的实体不产生自身离场、重复附属或入场效果；可选的次数恢复也不发送 [attachment_state_changed](../events/attachment_state_changed.md)，不借用回合开始事件。转移后的实体位于目标角色的附属列表末尾；装备仍遵守通常广播中的固定类别顺序。
 
 转移后实体取得属于目标角色的新 ID，旧 ID 对应的实体失效。正在进行的外层广播不会因此补入新实体；实体身份及访问约定见 [实体的身份与访问](../../table/entity_access.md)。
+
+## 编译检查
+
+```cpp
+struct transfer_attachment_error;
+```
+
+`transfer_attachment::error_type` 是 `givm::transfer_attachment_error` 的别名。`transfer_attachment_error` 是本命令的结构化编译错误，`transfer_attachment_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_definition` | `source.selector` 的定义 ID 数值超出本次编译集合的 `attachment_view` 定义数量 |
+| `invalid_equipment_type` | `source.selector` 不是有效装备类型，包括使用了 `equipment_type::none` |
+| `invalid_source_character_player` | `source.character.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_source_character_selection` | `source.character.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+| `invalid_target_player` | `target.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_target_selection` | `target.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+
+### `transfer_attachment_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 参阅
 

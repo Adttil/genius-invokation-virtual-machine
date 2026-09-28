@@ -1,8 +1,10 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_END_GAME_HPP
 #define GIVM_EXECUTOR_COMMANDS_END_GAME_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 namespace givm::detail
 {
@@ -18,6 +20,19 @@ namespace givm::detail
     {
         writer.write<execute_fn>(&end_game_execute);
         writer.write(command);
+    }
+}
+
+namespace givm
+{
+    inline std::vector<end_game::error_type> check(const end_game& command, const definition_compile_context&, program_kind)
+    {
+        using reason = end_game::error_type::reason;
+        std::vector<end_game::error_type> errors;
+        if(command.result != game_result::player_0_win && command.result != game_result::player_1_win
+            && command.result != game_result::both_loss)
+            errors.push_back({ .cause = reason::invalid_result, .value = static_cast<std::size_t>(command.result) });
+        return errors;
     }
 }
 

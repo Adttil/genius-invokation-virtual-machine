@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_REMOVE_DICE_HPP
 #define GIVM_EXECUTOR_COMMANDS_REMOVE_DICE_HPP
 
+#include <vector>
+
 #include <cstddef>
 
 #include "../broadcast.hpp"
@@ -67,6 +69,24 @@ namespace givm::detail
             writer.write(command);
         }
         writer.write(execute_fn{ broadcast_removed_dice<> });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<remove_dice::error_type> check(const remove_dice& command, const definition_compile_context&, program_kind kind)
+    {
+        using reason = remove_dice::error_type::reason;
+        std::vector<remove_dice::error_type> errors;
+        if(command.player == static_cast<relative_player>(-1))
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        return errors;
     }
 }
 

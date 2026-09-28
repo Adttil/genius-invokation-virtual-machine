@@ -24,6 +24,7 @@ class executor;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <tuple>
@@ -40,11 +41,17 @@ int main()
     };
     givm::definition_source_library sources{};
     // 编译一个最大回合数为 2 的定义库
-    const auto [library, id_map] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, id_map] = std::move(*library_result);
     givm::table table{ { .max_rounds = 2 } };
     auto random = []() -> std::uint32_t { return 0; };
 

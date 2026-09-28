@@ -18,10 +18,10 @@ constexpr auto definition_id() const;
 
 实体须曾存在于此处，且未转移、未清理；删除后仍可读取本项信息。访问对象与 ID 的保存期限见[实体的身份与访问](../entity_access.md)。
 
-
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -52,9 +52,15 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});

@@ -37,7 +37,7 @@
 | `attachment_dependencies()` | 返回所依赖的角色附着实体定义名称 |
 | `history_summary_dependencies()` | 返回所依赖的历史摘要定义名称 |
 
-`*_dependencies()` 列出必须存在的定义名称，通过 [`resolve_id`](../executor/definition_compile_context/resolve_id.md) 取得其 ID。选定源时，这些依赖也进入本次编译集合；缺失依赖会使登记失败。
+`*_dependencies()` 列出必须存在的定义名称，通过 [`resolve_id`](../executor/definition_compile_context/resolve_id.md) 取得其 ID。选定源时，这些依赖也进入本次编译集合；缺失依赖会使登记失败。编译中查询未声明的硬依赖会记录诊断并返回无效 ID，最终 [`compile`](../executor/compile.md) 返回失败，不以验证异常中断源的编译函数。
 
 编译期间可自由查看本次集合中的元数据，不需要为查询另行声明依赖：[`definitions<T>()`](../executor/definition_compile_context/definitions.md) 遍历指定类别，按名称使用 [`find_definition<T>()`](../executor/definition_compile_context/find_definition.md)，按已有 ID 使用 [`operator[]`](../executor/definition_compile_context/operator_at.md)。这些视图提供名称、标签、名称依赖以及是否具有响应或自定义查询的信息，不执行响应或查询函数。
 
@@ -145,6 +145,7 @@ bool can_query() const;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -181,10 +182,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto id = ids.get_id<givm::skill_view>("重投助手");
 
     std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::skill_view>(id));

@@ -20,6 +20,7 @@ struct linked_deck;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <string_view>
@@ -31,11 +32,17 @@ int main()
     givm::issued_id_map ids{};
     ids.add<givm::card_definition>("恢复药剂", {});
     ids.add<givm::character_view>("测试角色", {});
-    const auto deck = link_deck(
+    auto deck_result = link_deck(
         ids,
         std::array<std::string_view, 2>{ "恢复药剂", "恢复药剂" },
         std::array<std::string_view, 1>{ "测试角色" }
     );
+    if(not deck_result)
+    {
+        std::println("{}", error_string(deck_result.error()));
+        return 1;
+    }
+    const auto deck = std::move(*deck_result);
     std::println("卡牌数量: {}", deck.cards.size());
     std::println("角色数量: {}", deck.characters.size());
     std::println("两张牌采用同一定义: {}", deck.cards[0].value() == deck.cards[1].value());

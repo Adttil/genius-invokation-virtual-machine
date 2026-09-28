@@ -1,10 +1,11 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_END_ROUND_HPP
 #define GIVM_EXECUTOR_COMMANDS_END_ROUND_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
 #include "../broadcast.hpp"
-#include "../../definition/events.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 namespace givm::detail
 {
@@ -50,6 +51,14 @@ namespace givm::detail
         }
         writer.write<execute_fn>(&prepare_round_end);
         writer.write<execute_fn>(&broadcast_round_end);
+    }
+}
+
+namespace givm
+{
+    inline std::vector<end_round::error_type> check(const end_round&, const definition_compile_context&, program_kind)
+    {
+        return {};
     }
 }
 

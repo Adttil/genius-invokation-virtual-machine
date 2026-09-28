@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_DISCARD_HAND_CARD_HPP
 #define GIVM_EXECUTOR_COMMANDS_DISCARD_HAND_CARD_HPP
 
+#include <vector>
+
 #include <algorithm>
 #include <memory>
 
@@ -147,6 +149,27 @@ namespace givm::detail
             writer.write(execute_fn{ prepare_hand_card_discard<false> });
         writer.write(execute_fn{ finish_hand_card_discard_effect });
         writer.write(execute_fn{ broadcast_hand_card_discard });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<discard_hand_card::error_type> check(const discard_hand_card& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = discard_hand_card::error_type::reason;
+        std::vector<discard_hand_card::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<card_definition>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<card_definition>() });
+        return errors;
     }
 }
 

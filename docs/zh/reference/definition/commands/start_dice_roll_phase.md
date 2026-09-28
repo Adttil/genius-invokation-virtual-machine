@@ -10,12 +10,26 @@ struct start_dice_roll_phase;
 
 双方投骰阶段的处理命令，涵盖固定骰子与重投次数的准备、初次投骰和重投选择。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `start_dice_roll_phase_error` 的别名，即本命令的编译检查错误类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `count` | `std::uint32_t` | 每方投出的骰子总数，初始为 8 |
 | `reroll_count` | `std::array<std::uint32_t, 2>` | 双方重投次数，初始各为 1 |
+
+## 编译检查
+
+```cpp
+enum class start_dice_roll_phase_error {};
+```
+
+`start_dice_roll_phase::error_type` 是 `givm::start_dice_roll_phase_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
 
 ## 注意
 
@@ -65,6 +79,7 @@ struct start_dice_roll_phase;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -81,10 +96,16 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::start_dice_roll_phase{ .count = 8 } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0 } };
     auto random = []() -> std::uint32_t { return 7; };
     givm::executor execution{};

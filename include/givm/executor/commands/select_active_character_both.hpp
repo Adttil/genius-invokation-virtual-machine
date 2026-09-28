@@ -1,13 +1,14 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SELECT_ACTIVE_CHARACTER_BOTH_HPP
 #define GIVM_EXECUTOR_COMMANDS_SELECT_ACTIVE_CHARACTER_BOTH_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 #include <cstddef>
 
 #include "../broadcast.hpp"
-#include "../../definition/events.hpp"
 
 #include "../../macro_define.hpp"
 
@@ -106,6 +107,15 @@ namespace givm::detail
         }
         writer.write(execute_fn{ &broadcast_initial_active_character });
         writer.write(execute_fn{ &broadcast_initial_active_character });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<select_active_character_both::error_type> check(const select_active_character_both&,
+        const definition_compile_context&, program_kind)
+    {
+        return {};
     }
 }
 

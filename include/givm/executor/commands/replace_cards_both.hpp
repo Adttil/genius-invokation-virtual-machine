@@ -1,8 +1,10 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_REPLACE_CARDS_BOTH_HPP
 #define GIVM_EXECUTOR_COMMANDS_REPLACE_CARDS_BOTH_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 #include <bitset>
 #include <cstddef>
@@ -69,6 +71,14 @@ namespace givm::detail
         writer.write(execute_fn{ &prepare_initial_card_selection });
         writer.write(execute_fn{ &apply_initial_card_selection<true> });
         writer.write(execute_fn{ &apply_initial_card_selection<false> });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<replace_cards_both::error_type> check(const replace_cards_both&, const definition_compile_context&, program_kind)
+    {
+        return {};
     }
 }
 

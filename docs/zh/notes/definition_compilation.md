@@ -171,7 +171,7 @@ definition_id<TCategory> resolve_id(std::string_view name) const;
 
 返回值是 `definition_id<TCategory>`，表示该 definition 在本次编译库中的强类型 issued id。它是拥有值，可以直接保存在编译后的 definition 中；不同类别的 definition id 不能混用。
 
-名称未在对应类别中声明，或目标 definition 不存在时，抛出 `std::invalid_argument`，本次规则库编译失败。
+名称未在对应类别中声明，或目标 definition 不存在时，记录 `definition_resolution_error` 并返回无效 ID。源的编译函数可以继续收集其他独立错误，但不能用该无效 ID 访问元数据；最终 `compile` 返回错误列表，不发布部分定义库。验证过程不借助抛出异常，因此源的 `noexcept compile` 也可以报告这些错误。
 
 ### 查找标签 ID
 
@@ -366,7 +366,7 @@ std::expected<void, std::vector<source_add_error>> definition_source_library::ad
 
 批量诊断先按参数顺序记录冲突，再按输入顺序、每个源的类别与依赖声明顺序记录缺失依赖；同一源和重复依赖诊断去重，已有冲突的名称不再被当作缺失依赖。合并按类别和对方库的登记顺序记录冲突。所有输入索引从零开始；冲突第一位置为空表示接收库，第二位置为空表示被合并库。诊断保留分类、名称和位置等结构化数据；`error_string` 对两种错误列表提供文本输出，保持列表顺序，每条一行且末尾无换行。
 
-源库是普通定义源集合，默认构造后通过 `add` 登记 source，不再提供带源参数的构造。四个反应定义由独立的 `basic_definition_sources` 配置：草原核与激化领域使用 combat status source view，燃烧烈焰使用 summon source view，冻结使用 attachment source view。`compile` 和 `make_issued_id_map` 显式接收同一配置，临时并入四个基础源而不修改原源库；所需其他依赖须由源库或四个基础源满足。绑定来自调用方配置的源对象，不通过固定名称、标签或版本字符串识别。普通 source 的按名依赖仍在 `add` 时验证，编译流程的异常机制不变。
+源库是普通定义源集合，默认构造后通过 `add` 登记 source，不再提供带源参数的构造。四个反应定义由独立的 `basic_definition_sources` 配置：草原核与激化领域使用 combat status source view，燃烧烈焰使用 summon source view，冻结使用 attachment source view。`compile` 和 `make_issued_id_map` 显式接收同一配置，临时并入四个基础源而不修改原源库；所需其他依赖须由源库或四个基础源满足。绑定来自调用方配置的源对象，不通过固定名称、标签或版本字符串识别。普通 source 的按名依赖仍在 `add` 时验证；基础源冲突、依赖缺失和选择错误通过准备或编译结果的结构化诊断报告。
 
 `make_definition_source_library(sources...)` 提供创建并登记的工厂：默认构造一个库，执行一次批量 `add`，然后返回 `expected<definition_source_library, vector<source_add_error>>`。不传源时返回空库，登记验证失败时返回全部诊断，不因此抛出异常；合并已有库仍使用 `add(library)`。
 
@@ -375,7 +375,13 @@ std::expected<void, std::vector<source_add_error>> definition_source_library::ad
 整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition。四个默认反应定义始终属于选择根，与显式选中的定义一起求依赖闭包。源库提供 source view 遍历和成员 `make_issued_id_map`；后者利用登记时保留的声明信息完成选择、依赖闭包和 ID 分配。executor 中的非成员 `compile` 调用这个成员取得映射，再通过 source view 完成最终编译。初始化程序、回合程序与 `compile_mode` 必须在同一次编译中提供；所有响应程序继承该编译模式。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
 
 ```cpp
-auto [library, id_map] = compile(source_library, basics, initialization_program, round_program, givm::compile_mode::normal);
+auto result = compile(source_library, basics, initialization_program, round_program, givm::compile_mode::normal);
+if(not result)
+{
+    std::println("{}", error_string(result.error()));
+    return 1;
+}
+auto [library, id_map] = std::move(*result);
 ```
 
 `initialization_program` 只执行一次；随后 `round_program` 会反复执行，直到游戏结束。初始化完成和每轮回合程序完成时自动递增回合数，检查牌桌参数 `max_rounds`，未超限则清空骰子并开始下一轮命令。观察模式在递增后、上限检查前报告 `round_started`；回合程序中的 `start_round` 仅负责显式广播规则通知，应位于投骰命令之后。空回合程序也会自动推进至超限终局；普通响应子程序不推进回合。两者都由不消费响应输入的公开命令值组成；支持固定参数和消费输入两种方式的命令须选择固定参数。`compile(...)` 不提供省略这两段程序的重载。
@@ -386,7 +392,11 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 需要只编译部分定义时，使用接受 `const definition_selection& selection` 的重载。`selection` 按 definition 类别保存名称序列；每个选中的 definition、四个默认反应定义及它们的传递依赖都会进入编译结果。
 
-[`compile` 的返回值](../reference/executor/compile.md#返回值)类型未指定。其 `library` 成员是编译后的游戏规则，`id_map` 成员是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。两者对应同一个定义集合和 ID 分配结果，也可以按该顺序结构化绑定；对局运行时只需要 `library`。
+[`compile` 的返回值](../reference/executor/compile.md#返回值)为 `expected`：成功值类型未指定，其中 `library` 是编译后的游戏规则，`id_map` 是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。检查成功后，成功值可以按该顺序结构化绑定；对局运行时只需要 `library`。失败值为 `vector<compile_error>`，每项包含发生位置和一层具体错误 variant。`make_issued_id_map` 同样返回 `expected`，失败时提供源准备错误，不返回部分 ID 映射。
+
+命令的参数错误独立定义为 `givm::xxx_error`，命令内的 `error_type` 只保留别名。该错误及其文本格式化与公开命令一起位于 definition 的对应命令文件，不需要 executor；整库错误的原因 variant、位置类型与总格式化位于 `executor/compile_error.hpp`。两个 `commands.hpp` 都只负责聚合包含。命令和输入类型列表由 `definition/any_command.hpp` 集中保存，不让错误格式化反向依赖命令实现。
+
+编译上下文只保存当前阶段 `stage_` 和可选源 `source_`，不长期保存程序类别、程序编号和命令下标全为空的完整 `compile_location`。普通上下文诊断在产生时组合位置；`add_program` 检查命令时单独构造程序位置。`program_count_` 仍然保留，用于记录同一个定义源内第几次调用 `add_program`：响应程序的编号从零开始，错误中据此区分该源登记的不同程序。这个计数不参与游戏运行期。
 
 当调用方必须先取得 issued ID 才能构造初始化程序或回合程序中的指令时，可以使用 `source_library.make_issued_id_map(basics, ...)`。提前生成映射与随后 `compile(source_library, basics, ...)` 必须使用相同的基础定义配置、定义集合、标签声明及选择范围；生成映射后改变任一项都可能改变 ID 分配。牌组链接发生在编译后，应直接使用编译结果中的 `id_map`，不需要再次生成映射。
 
@@ -415,9 +425,9 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 3. 建立局部 `definition_library`，按 ID 预填名称、标签位集、响应函数表、历史摘要响应列表和非空查询的自定义函数指针；缺少自定义查询时保留空指针。编译条目引用登记缓存和最终库，并暂存空查询的自定义函数指针。
 4. 为全部历史摘要调用 `layout(...)` 并确定字段布局。此时上下文已经可以查看全部选中定义的声明和自定义能力。
 5. 编译调用方提供的初始化程序和回合程序，补入回合推进及回跳连接。
-6. 为每个选中的 source 建立 `definition_compile_context` 并调用一次 `compile(...)`。名称依赖解析使用已分配 ID；`add_program(...)` 当场追加响应程序、补内部返回连接并返回入口。本源的 definition 完成后执行其空查询，保存查询结果。
+6. 为每个选中的 source 建立 `definition_compile_context` 并调用一次 `compile(...)`。名称依赖解析使用已分配 ID；`add_program(...)` 当场检查并追加响应程序、补内部返回连接并返回入口。本源编译未产生错误时，执行其空查询并保存结果；否则跳过本源空查询，继续其他源的编译与诊断收集。
 7. 全部 definition 完成后，用默认查询函数补齐非空查询表中的空项，并完成程序链接。
-8. 同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`，释放仅编译期间需要的条目。
+8. 无验证错误时，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`；否则仅返回收集到的诊断列表。释放仅编译期间需要的条目。
 
 尚未完成编译的 `definition_library` 不通过公开接口作为可运行规则暴露；定义源只能通过编译上下文查看已准备的元数据。程序段存放顺序、入口数值、内部连接指令和擦除存储也都不是定义源接口。definition source 与游戏流程只能提交核心公开命令描述；上层运行期间通过 execution_view 观察领域现场，而不是查看当前指令。
 

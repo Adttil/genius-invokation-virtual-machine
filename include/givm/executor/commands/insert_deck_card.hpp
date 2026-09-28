@@ -1,8 +1,10 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_INSERT_DECK_CARD_HPP
 #define GIVM_EXECUTOR_COMMANDS_INSERT_DECK_CARD_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include <cstddef>
 #include <cstdint>
 
@@ -40,6 +42,21 @@ namespace givm::detail
     {
         writer.write(execute_fn{ &insert_deck_card_execute });
         writer.write(command);
+    }
+}
+
+namespace givm
+{
+    inline std::vector<insert_deck_card::error_type> check(const insert_deck_card& command,
+        const definition_compile_context& context, program_kind)
+    {
+        using reason = insert_deck_card::error_type::reason;
+        std::vector<insert_deck_card::error_type> errors;
+        if(command.player.index >= 2)
+            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index });
+        if(command.definition.value() >= context.definition_count<card_definition>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<card_definition>() });
+        return errors;
     }
 }
 

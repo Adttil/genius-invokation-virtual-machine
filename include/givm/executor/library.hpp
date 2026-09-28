@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <expected>
 #include <limits>
 #include <optional>
 #include <ranges>
@@ -18,7 +19,7 @@
 #include <vector>
 
 #include "instruction.hpp"
-#include "../definition/program_entry.hpp"
+#include "compile_error.hpp"
 #include "../definition.hpp"
 #include "../enums/equipment_type.hpp"
 #include "../utils/stack.hpp"
@@ -114,21 +115,12 @@ namespace givm::detail
         std::size_t size{};
         std::vector<compiled_history_field> fields;
 
-        dynamic_history_field find(std::string_view name) const
+        const dynamic_history_field* find(std::string_view name) const noexcept
         {
             const auto found = std::ranges::find(fields, name, &compiled_history_field::name);
-            if(found == fields.end()) throw std::invalid_argument{ "unknown history field" };
-            return found->field;
+            return found == fields.end() ? nullptr : &found->field;
         }
     };
-
-    template<class T>
-    inline void validate_history_field(const dynamic_history_field& field)
-    {
-        if(field.type != history_value_type_of<std::remove_extent_t<T>>
-            || field.is_array != std::is_unbounded_array_v<T>)
-            throw std::invalid_argument{ "history field type does not match its declaration" };
-    }
 
     struct response_return
     {
@@ -153,18 +145,27 @@ namespace givm::detail
         execution_position round_entry;
     };
 
-    template<class TSequence>
-    inline std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode
+    template<class TSequence, class TContext>
+    inline std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode,
+        const TContext& context, program_kind kind, std::vector<compile_error>& errors, compile_location location
 #ifndef NDEBUG
         , std::vector<std::size_t>* input_markers = nullptr
 #endif
     )
     {
         std::size_t inputs_count = 0;
+        std::size_t command_index = 0;
         const auto append_command = [&](const auto& command)
         {
+            location.command_index = command_index++;
+            if constexpr(requires { typename std::remove_cvref_t<decltype(command)>::error_type; })
+            {
+                auto command_errors = check(command, context, kind);
+                for(auto& error : command_errors) errors.push_back({ location, std::move(error) });
+                if(not command_errors.empty()) return;
+            }
 #ifndef NDEBUG
-            const auto marker = input_marker(command);
+            const auto marker = input_marker<command_input_types>(command);
             if(marker != size_t(-1))
             {
                 ++inputs_count;
@@ -215,17 +216,17 @@ namespace givm
         public:
             definition_id<TCategory> id() const noexcept
             {
-                return definition_->id;
+                return definition_ ? definition_->id : definition_id<TCategory>{};
             }
 
             std::string_view name() const noexcept
             {
-                return definition_->bucket->names[definition_->id.value()];
+                return definition_ ? definition_->bucket->names[definition_->id.value()] : std::string_view{};
             }
 
             std::span<const std::string_view> tags() const noexcept
             {
-                return definition_->declarations->tags;
+                return definition_ ? std::span<const std::string_view>{ definition_->declarations->tags } : std::span<const std::string_view>{};
             }
 
             bool has_tag(std::string_view name) const noexcept
@@ -236,12 +237,14 @@ namespace givm
             template<class TDependencyCategory>
             std::span<const std::string_view> dependencies() const noexcept
             {
+                if(not definition_) return {};
                 return definition_->declarations->dependencies[definition_types::index_of<TDependencyCategory>()];
             }
 
             template<class TEvent, class TView = TCategory>
             bool can_handle() const noexcept
             {
+                if(not definition_) return false;
                 if constexpr(std::same_as<TCategory, history_summary_definition>
                     && std::same_as<TView, history_summary_definition>)
                 {
@@ -265,6 +268,7 @@ namespace givm
             template<class TQuery>
             bool has_query() const noexcept
             {
+                if(not definition_) return false;
                 if constexpr(requires { supported_queries<TCategory>::template index_of<TQuery>(); })
                 {
                     constexpr auto index = supported_queries<TCategory>::template index_of<TQuery>();
@@ -277,11 +281,13 @@ namespace givm
             }
 
         private:
+            definition_view() noexcept = default;
+
             definition_view(const detail::compile_definition<TCategory>& definition)
             : definition_{ &definition }
             {}
 
-            const detail::compile_definition<TCategory>* definition_;
+            const detail::compile_definition<TCategory>* definition_ = nullptr;
             friend class definition_compile_context;
         };
 
@@ -293,9 +299,15 @@ namespace givm
         }
 
         template<class TCategory>
-        definition_view<TCategory> operator[](definition_id<TCategory> id) const noexcept
+        definition_view<TCategory> operator[](definition_id<TCategory> id) const
         {
-            return { std::get<definition_types::index_of<TCategory>()>(definitions_)[id.value()] };
+            const auto& definitions = std::get<definition_types::index_of<TCategory>()>(definitions_);
+            if(id.value() >= definitions.size())
+            {
+                report(definition_metadata_error{ definition_types::index_of<TCategory>(), id.value(), definitions.size() });
+                return {};
+            }
+            return { definitions[id.value()] };
         }
 
         template<class TCategory>
@@ -333,47 +345,51 @@ namespace givm
 
         dynamic_history_field history_field(std::string_view name) const
         {
-            if(not history_layouts_ready_ || not own_history_)
-                throw std::invalid_argument{ "history fields are unavailable in this compilation phase" };
-            return history_layouts_[own_history_.value()].find(name);
+            const auto* field = find_history_field(name);
+            return field ? *field : dynamic_history_field{ history_field_key<bool>{ 0 } };
         }
 
         template<class T>
         history_field_key<T> history_field(std::string_view name) const
         {
-            const auto field = history_field(name);
-            detail::validate_history_field<T>(field);
-            return history_field_key<T>{ field.offset, field.count };
+            const auto* field = find_history_field(name);
+            if(field)
+            {
+                if(const auto* key = std::get_if<history_field_key<T>>(field)) return *key;
+                report(history_field_type_mismatch{ current_summary_name(), std::string{ name }, detail::history_type_name<T>(),
+                    std::visit([](auto key) { return detail::history_type_name<typename decltype(key)::value_type>(); }, *field) });
+            }
+            return history_field_key<T>{ 0, std::is_unbounded_array_v<T> ? 0 : 1 };
         }
 
-        dynamic_history_field resolve_history_field(std::string_view summary, std::string_view name) const
+        dynamic_history_value resolve_history_field(std::string_view summary, std::string_view name) const
         {
-            if(not history_layouts_ready_)
-                throw std::invalid_argument{ "history layouts have not been compiled" };
-            const auto id = resolve_id<history_summary_definition>(summary);
-            const auto& layout = history_layouts_[id.value()];
-            auto field = layout.find(name);
-            field.offset += layout.offset;
-            return field;
+            const auto result = find_history_value(summary, name);
+            if(not result.first) return history_value_key<bool>{ 0 };
+            return std::visit([&](auto key) -> dynamic_history_value
+            {
+                return history_value_key<typename decltype(key)::value_type>{ key.offset() + result.second, key.count() };
+            }, *result.first);
         }
 
         template<class T>
         history_value_key<T> resolve_history_field(std::string_view summary, std::string_view name) const
         {
-            const auto field = resolve_history_field(summary, name);
-            detail::validate_history_field<T>(field);
-            return history_value_key<T>{ field.offset, field.count };
+            const auto result = find_history_value(summary, name);
+            if(result.first)
+            {
+                if(const auto* key = std::get_if<history_field_key<T>>(result.first))
+                    return history_value_key<T>{ key->offset() + result.second, key->count() };
+                report(history_field_type_mismatch{ std::string{ summary }, std::string{ name }, detail::history_type_name<T>(),
+                    std::visit([](auto key) { return detail::history_type_name<typename decltype(key)::value_type>(); }, *result.first) });
+            }
+            return history_value_key<T>{ 0, std::is_unbounded_array_v<T> ? 0 : 1 };
         }
 
         template<class TCategory>
         definition_id<TCategory> resolve_id(std::string_view name) const
         {
-            const auto& declared = declarations_.dependencies[definition_types::index_of<TCategory>()];
-            if(not contains(declared, name) || not id_map_.has<TCategory>(name))
-            {
-                throw std::invalid_argument{ "undeclared definition dependency" };
-            }
-            return id_map_.get_id<TCategory>(name);
+            return resolve_definition<TCategory>(name).value_or(definition_id<TCategory>{});
         }
 
         std::optional<tag_id> find_tag(std::string_view name) const
@@ -397,7 +413,8 @@ namespace givm
             result.inputs_begin_ = input_markers_.size();
 #endif
             [[maybe_unused]] const auto inputs_count =
-                detail::append_commands(writer, std::forward<TCommands>(commands), mode_
+                detail::append_commands(writer, std::forward<TCommands>(commands), mode_, *this, program_kind::response, errors_,
+                    { compile_stage::program, source_, program_kind::response, program_count_++, {} }
 #ifndef NDEBUG
                     , &input_markers_
 #endif
@@ -410,6 +427,63 @@ namespace givm
         }
 
     private:
+        void report(compile_error_reason reason) const
+        {
+            errors_.push_back({ { stage_, source_, {}, {}, {} }, std::move(reason) });
+        }
+
+        std::string current_summary_name() const
+        {
+            return source_ ? source_->name : std::string{};
+        }
+
+        template<class TCategory>
+        std::optional<definition_id<TCategory>> resolve_definition(std::string_view name) const
+        {
+            const auto& declared = declarations_.dependencies[definition_types::index_of<TCategory>()];
+            if(not contains(declared, name))
+            {
+                report(definition_resolution_error{ { definition_types::index_of<TCategory>(), std::string{ name } },
+                    definition_resolution_error::reason::undeclared_dependency });
+                return std::nullopt;
+            }
+            if(not id_map_.has<TCategory>(name))
+            {
+                report(definition_resolution_error{ { definition_types::index_of<TCategory>(), std::string{ name } },
+                    definition_resolution_error::reason::not_found });
+                return std::nullopt;
+            }
+            return id_map_.get_id<TCategory>(name);
+        }
+
+        const dynamic_history_field* find_history_field(std::string_view name) const
+        {
+            if(not history_layouts_ready_ || not own_history_)
+            {
+                report(history_field_access_error{ current_summary_name(), std::string{ name }, not history_layouts_ready_
+                    ? history_field_access_error::reason::layouts_unavailable : history_field_access_error::reason::no_current_summary });
+                return nullptr;
+            }
+            const auto* field = history_layouts_[own_history_.value()].find(name);
+            if(not field) report(history_field_not_found{ current_summary_name(), std::string{ name } });
+            return field;
+        }
+
+        std::pair<const dynamic_history_field*, std::size_t> find_history_value(std::string_view summary, std::string_view name) const
+        {
+            if(not history_layouts_ready_)
+            {
+                report(history_field_access_error{ std::string{ summary }, std::string{ name }, history_field_access_error::reason::layouts_unavailable });
+                return {};
+            }
+            const auto id = resolve_definition<history_summary_definition>(summary);
+            if(not id) return {};
+            const auto& layout = history_layouts_[id->value()];
+            const auto* field = layout.find(name);
+            if(not field) report(history_field_not_found{ std::string{ summary }, std::string{ name } });
+            return { field, layout.offset };
+        }
+
         definition_compile_context(
             const issued_id_map& id_map,
             const detail::compile_definitions& definitions,
@@ -419,13 +493,16 @@ namespace givm
             compile_mode mode,
             std::span<const detail::compiled_history_summary> history_layouts,
             definition_id<history_summary_definition> own_history,
-            bool history_layouts_ready
+            bool history_layouts_ready,
+            std::vector<compile_error>& errors,
+            compile_stage stage,
+            std::optional<definition_name> source
 #ifndef NDEBUG
             , std::vector<std::size_t>& input_markers
 #endif
         )
         : id_map_{ id_map }, definitions_{ definitions }, basic_ids_{ basic_ids }, program_{ program }, declarations_{ declarations }, mode_{ mode },
-          history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }
+          history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }, errors_{ errors }, stage_{ stage }, source_{ std::move(source) }
 #ifndef NDEBUG
         , input_markers_{ input_markers }
 #endif
@@ -446,6 +523,10 @@ namespace givm
         std::span<const detail::compiled_history_summary> history_layouts_;
         definition_id<history_summary_definition> own_history_;
         bool history_layouts_ready_;
+        std::vector<compile_error>& errors_;
+        compile_stage stage_;
+        std::optional<definition_name> source_;
+        std::size_t program_count_ = 0;
 #ifndef NDEBUG
         std::vector<std::size_t>& input_markers_;
 #endif
@@ -635,20 +716,31 @@ namespace givm
         }
 
     public:
-        dynamic_history_field history_field(definition_id<history_summary_definition> id, std::string_view name) const
+        dynamic_history_value history_field(definition_id<history_summary_definition> id, std::string_view name) const
         {
+#ifndef NDEBUG
+            if(id.value() >= history_layouts_.size()) throw std::invalid_argument{ "history summary ID out of range" };
+#endif
             const auto& layout = history_layouts_[id.value()];
-            auto field = layout.find(name);
-            field.offset += layout.offset;
-            return field;
+            const auto* field = layout.find(name);
+#ifndef NDEBUG
+            if(not field) throw std::invalid_argument{ "unknown history field: " + std::string{ name } };
+#endif
+            return std::visit([&](auto key) -> dynamic_history_value
+            {
+                return history_value_key<typename decltype(key)::value_type>{ key.offset() + layout.offset, key.count() };
+            }, *field);
         }
 
         template<class T>
         history_value_key<T> history_field(definition_id<history_summary_definition> id, std::string_view name) const
         {
             const auto field = history_field(id, name);
-            detail::validate_history_field<T>(field);
-            return history_value_key<T>{ field.offset, field.count };
+            const auto* key = std::get_if<history_value_key<T>>(&field);
+#ifndef NDEBUG
+            if(not key) throw std::invalid_argument{ "history field type mismatch: " + std::string{ name } };
+#endif
+            return *key;
         }
 
         template<class TDefinitionType>
@@ -856,7 +948,8 @@ namespace givm
             const detail::compile_definition<TDefinitionType>& definition,
             const issued_id_map& id_map,
             const detail::compile_definitions& definitions,
-            compile_mode mode
+            compile_mode mode,
+            std::vector<compile_error>& errors
         )
         {
             auto& bucket = bucket_for<TDefinitionType>();
@@ -864,13 +957,16 @@ namespace givm
             if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
                 own_history = definition.id;
             definition_compile_context context{ id_map, definitions, basic_ids_, program_, *definition.declarations,
-                mode, history_layouts_, own_history, true
+                mode, history_layouts_, own_history, true, errors,
+                compile_stage::definition, definition_name{ definition_types::index_of<TDefinitionType>(), std::string{ bucket.names[definition.id.value()] } }
 #ifndef NDEBUG
                 , input_markers_
 #endif
             };
             auto& data = bucket.data[definition.id.value()];
+            const auto errors_before = errors.size();
             data = definition.source->compile(context);
+            if(errors.size() != errors_before) return;
             if constexpr(supported_queries<TDefinitionType>::size() != 0)
             {
                 supported_queries<TDefinitionType>::each([&]<class TQuery>
@@ -886,47 +982,81 @@ namespace givm
             }
         }
 
-        void prepare_history_layouts(const detail::compile_definitions& definitions, const issued_id_map& ids, compile_mode mode)
+        void prepare_history_layouts(const detail::compile_definitions& definitions, const issued_id_map& ids, compile_mode mode,
+            std::vector<compile_error>& errors)
         {
             history_layouts_.resize(ids.definition_count<history_summary_definition>());
-            for(const auto& definition : std::get<definition_types::index_of<history_summary_definition>()>(definitions))
+            const auto& summaries = std::get<definition_types::index_of<history_summary_definition>()>(definitions);
+            for(const auto& definition : summaries)
             {
                 const auto& source = *definition.source;
                 const auto id = definition.id;
-                definition_compile_context context{ ids, definitions, basic_ids_, program_, *definition.declarations, mode, history_layouts_, id, false
+                definition_compile_context context{ ids, definitions, basic_ids_, program_, *definition.declarations, mode, history_layouts_, id, false,
+                    errors, compile_stage::history_layout, definition_name{ definition_types::index_of<history_summary_definition>(),
+                        std::string{ definition.bucket->names[id.value()] } }
 #ifndef NDEBUG
                     , input_markers_
 #endif
                 };
                 auto& layout = history_layouts_[id.value()];
+                std::vector<std::size_t> field_indices;
+                std::size_t field_index = 0;
                 for(auto&& member : source.rtti_->history.layout(source.source_, context))
                 {
-                    const auto size = detail::history_value_size(member.type);
-                    const auto alignment = detail::history_value_alignment(member.type);
-                    if(size == 0 || (not member.is_array && member.count != 1) || member.name.empty()
-                        || std::ranges::find(layout.fields, member.name, &detail::compiled_history_field::name) != layout.fields.end())
-                        throw std::invalid_argument{ "invalid or duplicate history field declaration" };
-                    constexpr auto maximum = std::numeric_limits<std::size_t>::max();
-                    if(layout.size > maximum - (alignment - 1))
-                        throw std::length_error{ "history summary layout is too large" };
-                    const auto offset = (layout.size + alignment - 1) & ~(alignment - 1);
-                    if(member.count > (maximum - offset) / size)
-                        throw std::length_error{ "history summary array is too large" };
-                    layout.fields.push_back({ std::move(member.name),
-                        { member.type, member.is_array, offset, member.count } });
-                    layout.size = offset + size * member.count;
+                    std::visit([&](auto&& declaration)
+                    {
+                        using T = typename std::remove_cvref_t<decltype(declaration)>::value_type;
+                        constexpr auto size = sizeof(std::remove_extent_t<T>);
+                        constexpr auto alignment = alignof(std::remove_extent_t<T>);
+                        const auto count = [&] -> std::size_t
+                        {
+                            if constexpr(std::is_unbounded_array_v<T>) return declaration.count;
+                            else return 1;
+                        }();
+                        if(declaration.name.empty()) context.report(history_field_empty_name{ field_index });
+                        const auto found = std::ranges::find(layout.fields, declaration.name, &detail::compiled_history_field::name);
+                        const bool duplicate = found != layout.fields.end();
+                        if(duplicate) context.report(history_field_duplicate_name{ declaration.name,
+                            field_indices[static_cast<std::size_t>(found - layout.fields.begin())], field_index });
+                        constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+                        auto offset = layout.size;
+                        bool overflow = offset > maximum - (alignment - 1);
+                        if(not overflow)
+                        {
+                            offset = (offset + alignment - 1) & ~(alignment - 1);
+                            overflow = count > (maximum - offset) / size;
+                        }
+                        if(overflow) context.report(history_field_layout_overflow{ declaration.name, field_index, count, size, alignment, layout.size });
+                        if(not duplicate)
+                        {
+                            field_indices.push_back(field_index);
+                            layout.fields.push_back({ std::move(declaration.name), history_field_key<T>{ overflow ? 0 : offset,
+                                overflow && std::is_unbounded_array_v<T> ? 0 : count } });
+                            if(not overflow) layout.size = offset + size * count;
+                        }
+                    }, member);
+                    ++field_index;
                 }
             }
-            for(auto& layout : history_layouts_)
+            for(std::size_t index = 0; index != history_layouts_.size(); ++index)
             {
+                auto& layout = history_layouts_[index];
                 constexpr auto alignment = alignof(std::max_align_t);
                 constexpr auto maximum = std::numeric_limits<std::size_t>::max();
-                if(history_size_ > maximum - (alignment - 1))
-                    throw std::length_error{ "history storage is too large" };
-                layout.offset = (history_size_ + alignment - 1) & ~(alignment - 1);
-                if(layout.size > maximum - layout.offset)
-                    throw std::length_error{ "history storage is too large" };
-                history_size_ = layout.offset + layout.size;
+                const bool alignment_overflow = history_size_ > maximum - (alignment - 1);
+                const auto offset = alignment_overflow ? 0 : (history_size_ + alignment - 1) & ~(alignment - 1);
+                if(alignment_overflow || layout.size > maximum - offset)
+                {
+                    errors.push_back({ { compile_stage::history_layout,
+                        definition_name{ definition_types::index_of<history_summary_definition>(), std::string{ summaries[index].bucket->names[index] } }, {}, {}, {} },
+                        history_storage_layout_overflow{ history_size_, layout.size, alignment } });
+                    layout.offset = 0;
+                }
+                else
+                {
+                    layout.offset = offset;
+                    history_size_ = offset + layout.size;
+                }
             }
         }
 
@@ -1039,87 +1169,75 @@ namespace givm
 
     public:
         template<class TInitializationSequence, class TRoundSequence>
-        static auto compile(
-            const definition_source_library& sources,
-            const basic_definition_sources& basics,
-            TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program,
-            compile_mode mode)
+        static auto compile(const definition_source_library& sources, const basic_definition_sources& basics,
+            TInitializationSequence&& initialization_program, TRoundSequence&& round_program, compile_mode mode)
         {
-            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics);
+            std::vector<source_preparation_error> preparation_errors;
+            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics, preparation_errors);
             return compile_prepared(selected_sources, basic_names,
                 selected_sources.make_issued_id_map(selected_sources.make_full_selection()),
                 std::forward<TInitializationSequence>(initialization_program),
-                std::forward<TRoundSequence>(round_program), mode);
+                std::forward<TRoundSequence>(round_program), mode, std::move(preparation_errors));
         }
 
         template<class TInitializationSequence, class TRoundSequence>
-        static auto compile(
-            const definition_source_library& sources,
-            const basic_definition_sources& basics,
-            const definition_selection& selection,
-            TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program,
-            compile_mode mode)
+        static auto compile(const definition_source_library& sources, const basic_definition_sources& basics,
+            const definition_selection& selection, TInitializationSequence&& initialization_program,
+            TRoundSequence&& round_program, compile_mode mode)
         {
-            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics);
-            return compile_prepared(selected_sources, basic_names,
-                selected_sources.make_issued_id_map(selected_sources.resolve_selection(selection, basic_names)),
+            std::vector<source_preparation_error> preparation_errors;
+            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics, preparation_errors);
+            auto ids = selected_sources.make_issued_id_map(selected_sources.resolve_selection(selection, basic_names, preparation_errors));
+            return compile_prepared(selected_sources, basic_names, std::move(ids),
                 std::forward<TInitializationSequence>(initialization_program),
-                std::forward<TRoundSequence>(round_program), mode);
+                std::forward<TRoundSequence>(round_program), mode, std::move(preparation_errors));
         }
 
     private:
         template<class TInitializationSequence, class TRoundSequence>
-        static auto compile_prepared(
-            const definition_source_library& sources,
-            const detail::basic_definition_names& basics,
-            issued_id_map id_map,
-            TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program,
-            compile_mode mode
-        )
+        static auto compile_prepared(const definition_source_library& sources, const detail::basic_definition_names& basics,
+            issued_id_map id_map, TInitializationSequence&& initialization_program, TRoundSequence&& round_program,
+            compile_mode mode, std::vector<source_preparation_error> preparation_errors)
         {
             struct compile_result
             {
                 definition_library library;
                 issued_id_map id_map;
             };
-
+            using result_type = std::expected<compile_result, std::vector<compile_error>>;
+            std::vector<compile_error> errors;
+            for(auto& error : preparation_errors)
+                std::visit([&](auto&& reason) { errors.push_back({ { compile_stage::source_selection, {}, {}, {}, {} }, std::move(reason) }); }, error);
             definition_library library{ id_map, basics };
             const auto definitions = library.prepare_definitions(sources, id_map);
-            library.prepare_history_layouts(definitions, id_map, mode);
+            library.prepare_history_layouts(definitions, id_map, mode, errors);
+            const detail::definition_source_declarations root_declarations{};
+            definition_compile_context context{ id_map, definitions, library.basic_ids_, library.program_, root_declarations,
+                mode, library.history_layouts_, {}, true, errors, compile_stage::program, std::nullopt
+#ifndef NDEBUG
+                , library.input_markers_
+#endif
+            };
             detail::program_writer writer{ library.program_ };
-            [[maybe_unused]] const auto initialization_inputs_count =
-                detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode);
-#ifndef NDEBUG
-            if(initialization_inputs_count != 0)
-            {
-                throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
-            }
-#endif
+            detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode,
+                context, program_kind::initialization, errors, { compile_stage::program, {}, program_kind::initialization, 0, {} });
             const detail::execution_position round_start = writer.position();
-            detail::append_commands(writer, std::tuple{ detail::round_program_begin{} }, mode);
+            detail::append_commands(writer, std::tuple{ detail::round_program_begin{} }, mode,
+                context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} });
             const detail::execution_position round_entry = writer.position();
-            [[maybe_unused]] const auto round_inputs_count =
-                detail::append_commands(writer, std::forward<TRoundSequence>(round_program), mode);
-#ifndef NDEBUG
-            if(round_inputs_count != 0)
-            {
-                throw std::invalid_argument{ "root programs cannot consume invocation inputs" };
-            }
-#endif
-            detail::append_commands(writer, std::tuple{ detail::round_program_repeat{ round_start, round_entry } }, mode);
-
+            detail::append_commands(writer, std::forward<TRoundSequence>(round_program), mode,
+                context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} });
+            detail::append_commands(writer, std::tuple{ detail::round_program_repeat{ round_start, round_entry } }, mode,
+                context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} });
             definition_types::each([&]<class TCategory>
             {
                 for(const auto& definition : std::get<definition_types::index_of<TCategory>()>(definitions))
-                    library.compile_source(definition, id_map, definitions, mode);
+                    library.compile_source(definition, id_map, definitions, mode, errors);
             });
-
+            if(not errors.empty()) return result_type{ std::unexpected{ std::move(errors) } };
             library.complete_dynamic_queries();
             detail::finalize_program(library.program_);
-            return compile_result{ .library = std::move(library), .id_map = std::move(id_map) };
+            return result_type{ compile_result{ .library = std::move(library), .id_map = std::move(id_map) } };
         }
 
     private:

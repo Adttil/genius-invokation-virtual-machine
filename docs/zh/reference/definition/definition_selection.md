@@ -18,6 +18,7 @@ using definition_selection =
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <string_view>
@@ -49,7 +50,13 @@ int main()
     const std::array<std::string_view, 1> names{ "恢复药剂" };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = names;
-    const auto ids = sources.make_issued_id_map(basics, selection);
+    auto ids_result = sources.make_issued_id_map(basics, selection);
+    if(not ids_result)
+    {
+        std::println("{}", error_string(ids_result.error()));
+        return 1;
+    }
+    const auto ids = std::move(*ids_result);
     std::println("包含恢复药剂: {}", ids.has<givm::card_definition>("恢复药剂"));
     std::println("包含恢复料理: {}", ids.has<givm::card_definition>("恢复料理"));
 }

@@ -7,6 +7,7 @@
 #include <span>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include "entity_fwd.hpp"
 #include "../utils/debug.hpp"
@@ -129,8 +130,6 @@ namespace givm
         }
     }
 
-    struct dynamic_history_field;
-
     // Offsets in this key are relative to one summary's region.
     template<class T>
     class history_field_key : private detail::history_key_data<T>
@@ -138,9 +137,10 @@ namespace givm
         using base = detail::history_key_data<T>;
         friend class definition_compile_context;
         friend class definition_library;
-        friend struct dynamic_history_field;
 
     public:
+        using value_type = T;
+
         constexpr history_field_key() noexcept = default;
         using base::offset;
         using base::count;
@@ -158,9 +158,10 @@ namespace givm
         using base = detail::history_key_data<T>;
         friend class definition_compile_context;
         friend class definition_library;
-        friend struct dynamic_history_field;
 
     public:
+        using value_type = T;
+
         constexpr history_value_key() noexcept = default;
         using base::offset;
         using base::count;
@@ -171,30 +172,17 @@ namespace givm
         {}
     };
 
-    // The resolver determines whether offset is local or table-relative.
-    struct dynamic_history_field
+    namespace detail
     {
-        history_value_type type = history_value_type::u8;
-        bool is_array = false;
-        std::size_t offset = 0;
-        std::size_t count = 1;
+        template<class... T>
+        using history_field_keys_for = std::variant<history_field_key<T>..., history_field_key<T[]>...>;
 
-        template<class T>
-        constexpr history_field_key<T> as() const noexcept
-        {
-            GIVM_ASSERT(type == detail::history_value_type_of<std::remove_extent_t<T>>);
-            GIVM_ASSERT(is_array == std::is_unbounded_array_v<T>);
-            return history_field_key<T>{ offset, count };
-        }
+        template<class... T>
+        using history_value_keys_for = std::variant<history_value_key<T>..., history_value_key<T[]>...>;
+    }
 
-        template<class T>
-        constexpr history_value_key<T> as_value() const noexcept
-        {
-            GIVM_ASSERT(type == detail::history_value_type_of<std::remove_extent_t<T>>);
-            GIVM_ASSERT(is_array == std::is_unbounded_array_v<T>);
-            return history_value_key<T>{ offset, count };
-        }
-    };
+    using dynamic_history_field = detail::history_value_types::apply<detail::history_field_keys_for>;
+    using dynamic_history_value = detail::history_value_types::apply<detail::history_value_keys_for>;
 
     class history_summary_state
     {

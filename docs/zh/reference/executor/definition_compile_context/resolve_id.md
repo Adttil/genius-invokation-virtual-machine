@@ -25,17 +25,16 @@ definition_id<TCategory> resolve_id(std::string_view name) const;
 
 ## 返回值
 
-已编译选择范围中该定义的 ID。
+已编译选择范围中该定义的 ID。名称未在本源的对应依赖声明中出现，或该定义不存在时，返回无效 ID，并向本次编译记录 [`definition_resolution_error`](../definition_resolution_error.md)。最终 [`compile`](../compile.md) 返回失败诊断，不抛出验证异常。
 
-## 异常
+## 注意
 
-|  |  |
-| --- | --- |
-| `std::invalid_argument` | 名称未在本源的对应依赖声明中出现，或该定义不存在 |
+失败后源的 `compile` 仍可继续执行，以收集其他独立错误；不要用无效 ID 索引元数据或访问定义。
 
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <string_view>
@@ -77,10 +76,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(card, support)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
 }
 ```
 

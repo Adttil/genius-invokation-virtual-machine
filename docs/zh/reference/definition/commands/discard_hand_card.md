@@ -5,8 +5,12 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
+struct discard_hand_card_error;
+
 struct discard_hand_card
 {
+    using error_type = discard_hand_card_error;
+
     using input_type = discard_hand_card_input;
 
     relative_player player = relative_player::self;
@@ -22,6 +26,7 @@ struct discard_hand_card
 | | |
 | --- | --- |
 | `input_type` | [`discard_hand_card_input`](../command_inputs/discard_hand_card_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `discard_hand_card_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 参数形式
 
@@ -39,6 +44,32 @@ struct discard_hand_card
 自身效果和全场响应看到的所有本批目标都已离场。期间生成的新牌不加入本批；需要每张舍弃后重新选择目标时，使用多条独立命令。
 
 离场后的卡牌仍可通过 ID 读取其定义和状态，直到安全清理。自身舍弃效果与全场通知是两种事件：定义仅响应后者不代表它具有自身舍弃效果。
+
+## 编译检查
+
+```cpp
+struct discard_hand_card_error;
+```
+
+`discard_hand_card::error_type` 是 `givm::discard_hand_card_error` 的别名。`discard_hand_card_error` 是本命令的结构化编译错误，`discard_hand_card_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_player` | `player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_definition` | `definition` 的定义 ID 数值超出本次编译集合的 `card_definition` 定义数量 |
+
+### `discard_hand_card_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 参阅
 

@@ -4,3 +4,6 @@
 #include "queries.hpp"
 #include "source_library.hpp"
 #include "source_view.hpp"
+#include "command_checks.hpp"
+#include "history_compile_errors.hpp"
+#include "compile_metadata_errors.hpp"

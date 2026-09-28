@@ -10,6 +10,20 @@ struct start_battle;
 
 首回合战斗开始的通知命令，供相关效果在双方进入战斗时生效。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `start_battle_error` 的别名，即本命令的编译检查错误类型 |
+
+## 编译检查
+
+```cpp
+enum class start_battle_error {};
+```
+
+`start_battle::error_type` 是 `givm::start_battle_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+
 ## 注意
 
 只有牌桌回合数为 1 时发出 [`battle_started`](../events/battle_started.md)；在其他回合执行时直接继续。本命令不随机选择先手，自身不调用随机源；事件响应可以使用随机值。
@@ -17,6 +31,7 @@ struct start_battle;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstdint>
 #include <print>
@@ -75,13 +90,19 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
     if(not sources.add(character)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{},
         std::tuple{
             givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } },
             givm::start_round{}, givm::start_battle{}
         }, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 2 } };
     load_deck(table, library, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("character") }

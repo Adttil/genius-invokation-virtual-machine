@@ -12,13 +12,19 @@
 
 准确的成员与绑定顺序见 [`compile` 的返回值](../reference/executor/compile.md#返回值)；下文的非拥有关系在[定义编译备忘](definition_compilation.md#注册与生命周期)中分别说明源对象和字符存储。
 
-执行模块的非成员 `compile(source_library, ...)` 返回类型未指定的对象。其 `library` 成员是编译后的 `definition_library`，`id_map` 成员是同一次编译产生的 `issued_id_map`：
+执行模块的非成员 `compile(source_library, ...)` 返回 `expected`。成功值是类型未指定的对象，其 `library` 成员是编译后的 `definition_library`，`id_map` 成员是同一次编译产生的 `issued_id_map`：
 
 ```cpp
-auto [library, id_map] = compile(source_library, ...);
+auto result = compile(source_library, ...);
+if(not result)
+{
+    std::println("{}", error_string(result.error()));
+    return 1;
+}
+auto [library, id_map] = std::move(*result);
 ```
 
-两个成员对应同一个定义集合和 issued ID 分配结果；返回值也可以按该顺序结构化绑定。
+两个成员对应同一个定义集合和 issued ID 分配结果；检查成功后，成功值可以按该顺序结构化绑定。失败值保存编译诊断列表，不能用于链接牌组。
 
 `id_map` 用于链接牌组或其他对局前输入，不需要保存在 table 或 executor 中。table 只保存定义 ID，table 与 executor 均不持有 `library`；执行时由调用方显式传入，handler 通过定义 ID 比较识别已申请的依赖。进入对局后不再进行名称查询。
 
@@ -30,12 +36,13 @@ auto [library, id_map] = compile(source_library, ...);
 
 ```cpp
 template<class TCardNames, class TCharacterNames>
-linked_deck link_deck(const issued_id_map& id_map, TCardNames&& card_names, TCharacterNames&& character_names);
+std::expected<linked_deck, std::vector<deck_link_error>>
+link_deck(const issued_id_map& id_map, TCardNames&& card_names, TCharacterNames&& character_names);
 ```
 
 `card_names` 和 `character_names` 分别是卡牌 definition 名称与角色 definition 名称的可遍历序列。函数在返回前顺序消费两个序列，不保存序列、元素或字符串视图的引用。
 
-每个名称必须存在于 `id_map` 的对应定义类别中。缺少卡牌或角色 definition 时抛出 `std::invalid_argument`。链接只验证名称可解析，不负责检查牌组数量、同名数量、角色与卡牌组合等特定游戏模式的合法性。
+每个名称必须存在于 `id_map` 的对应定义类别中。缺少卡牌或角色 definition 时，返回包含全部缺失名称及其类别、输入下标的 `deck_link_error` 列表，不输出部分牌组，也不抛出验证异常。链接只验证名称可解析，不负责检查牌组数量、同名数量、角色与卡牌组合等特定游戏模式的合法性。
 
 若规则库只从指定根名称编译依赖闭包，上层必须在编译前把双方牌组中的卡牌和角色名称加入相应类别的根名称集合。也可以编译源库中的全部定义。没有被选入本次规则库的名称不能在之后的牌组链接中使用。
 

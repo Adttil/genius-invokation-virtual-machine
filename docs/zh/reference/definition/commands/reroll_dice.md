@@ -5,8 +5,12 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
+struct reroll_dice_error;
+
 struct reroll_dice
 {
+    using error_type = reroll_dice_error;
+
     using input_type = reroll_dice_input;
 
     relative_player player = static_cast<relative_player>(-1);
@@ -21,6 +25,7 @@ struct reroll_dice
 | | |
 | --- | --- |
 | `input_type` | [`reroll_dice_input`](../command_inputs/reroll_dice_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `reroll_dice_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 成员对象
 
@@ -28,6 +33,30 @@ struct reroll_dice
 | --- | --- | --- |
 | `player` | [`relative_player`](relative_player.md) | 固定模式下进行重投的一方；默认采用动态输入 |
 | `reroll_count` | `std::uint32_t` | 固定模式下最多可重投的次数，初始为 1 |
+
+## 编译检查
+
+```cpp
+struct reroll_dice_error;
+```
+
+`reroll_dice::error_type` 是 `givm::reroll_dice_error` 的别名。`reroll_dice_error` 是本命令的结构化编译错误，`reroll_dice_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_player` | `player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+
+### `reroll_dice_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 注意
 
@@ -46,6 +75,7 @@ struct reroll_dice
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <tuple>
@@ -61,11 +91,17 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    const auto [library, ids] = compile(sources, basics,
+    auto library_result = compile(sources, basics,
         std::tuple{
             givm::reroll_dice{ .player = givm::relative_player::self, .reroll_count = 2 },
             givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
 
     givm::dice_counts initial{};
     initial[givm::elemental_dice::cryo] = 2;

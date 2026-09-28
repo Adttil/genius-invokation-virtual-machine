@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_HEAL_HPP
 #define GIVM_EXECUTOR_COMMANDS_HEAL_HPP
 
+#include <vector>
+
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -10,7 +12,7 @@
 #include "../character_target.hpp"
 #include "../broadcast.hpp"
 #include "../instruction.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -239,6 +241,31 @@ namespace givm::detail
         }
         writer.write(execute_fn{ apply_healing });
         writer.write(execute_fn{ broadcast_healing_completed });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<heal::error_type> check(const heal& command, const definition_compile_context&, program_kind kind)
+    {
+        using reason = heal::error_type::reason;
+        std::vector<heal::error_type> errors;
+        if(command.target.offset == std::numeric_limits<std::int32_t>::max())
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.source.player != relative_player::self && command.source.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_source_player, .value = static_cast<std::size_t>(command.source.player) });
+        if(command.source.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_source_selection, .value = static_cast<std::size_t>(command.source.selection) });
+        if(command.target.player != relative_player::self && command.target.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_target_player, .value = static_cast<std::size_t>(command.target.player) });
+        if(command.target.selection != character_selection::character && command.target.selection != character_selection::others
+            && command.target.selection != character_selection::all)
+            errors.push_back({ .cause = reason::invalid_target_selection, .value = static_cast<std::size_t>(command.target.selection) });
+        return errors;
     }
 }
 

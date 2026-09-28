@@ -13,10 +13,10 @@
 | | |
 | --- | --- |
 | `history_summary_definition` | 历史摘要的定义类别 |
-| `history_field_descriptor` | 字段名称、数值类型、是否为数组及元素数量的描述 |
+| `history_scalar_field<T>` | 指定数值类型的标量字段描述，保存字段名称 |
+| `history_array_field<T>` | 指定数值类型的数组字段描述，保存字段名称和元素数量 |
 | `history_field_key<T>` | 摘要更新函数访问自身字段的键 |
 | `history_value_key<T>` | 效果或上层代码读取牌桌历史字段的键 |
-| `dynamic_history_field` | 尚未选择 C++ 数值类型的字段描述 |
 | `history_summary_state` | 一项历史摘要的可写状态视图 |
 
 ## 类型别名
@@ -24,6 +24,9 @@
 | | |
 | --- | --- |
 | `history_summary_layout` | `std::vector<history_field_descriptor>`，一项摘要的字段描述列表 |
+| `history_field_descriptor` | 全部受支持的 `history_scalar_field<T>` 与 `history_array_field<T>` 的 variant |
+| `dynamic_history_field` | 全部受支持的 `history_field_key<T>` 与 `history_field_key<T[]>` 的 variant |
+| `dynamic_history_value` | 全部受支持的 `history_value_key<T>` 与 `history_value_key<T[]>` 的 variant |
 
 ## 函数
 
@@ -36,7 +39,7 @@
 
 ## 枚举
 
-`history_value_type` 表示动态字段描述中的数值类型。
+`history_value_type` 列出受支持的数值类型。字段描述直接使用上述强类型 variant，不再同时保存数值类型枚举和数组标记。
 
 | | |
 | --- | --- |
@@ -55,7 +58,7 @@
 givm::history_summary_layout layout(const givm::definition_compile_context& context) const;
 ```
 
-编译先确定最终定义集合及其 ID，再取得所有摘要的 `layout`，最后调用各定义的 `compile`。因此 `layout` 可以通过 `context.definition_count<Category>()` 按最终定义数量决定数组长度，但此时不能查询历史字段。字段名称须在摘要内唯一，标量字段的 `count` 须为 1。
+编译先确定最终定义集合及其 ID，再取得所有摘要的 `layout`，最后调用各定义的 `compile`。因此 `layout` 可以通过 `context.definition_count<Category>()` 按最终定义数量决定数组长度，但此时不能查询历史字段。字段名称须非空且在摘要内唯一，标量字段不提供数组长度。
 
 在摘要自身的 `compile` 中，`context.history_field<T>(name)` 取得 `history_field_key<T>`。其他定义先声明摘要依赖，再通过 `context.resolve_history_field<T>(summary, name)` 取得 `history_value_key<T>`。这些键可以保存在 `compile` 返回的定义数据中，不需要运行时按名称查找。
 
@@ -86,24 +89,24 @@ static void handle(const D& definition, givm::history_summary_state state, const
 
 效果通过只读牌桌的 `table[key]` 读取 `history_value_key<T>`：标量返回 `const T&`，数组返回 `std::span<const T>`。上层可以通过 `library.history_field<T>(summary_id, name)` 取得相同的读取键。键须用于产生它的定义库及配套牌桌；不要使用默认构造或不匹配的键。复制牌桌会独立复制摘要状态，修改副本不影响原牌桌。
 
-两种键都提供返回 `std::size_t` 的 `offset()` 和 `count()`。`history_field_key<T>::offset()` 是字段在本摘要中的字节偏移，`history_value_key<T>::offset()` 是字段在牌桌历史区中的字节偏移；二者不能互换。`count()` 是元素数量，标量恒为 1，数组长度随键保存。
+两种键都提供 `value_type = T`，以及返回 `std::size_t` 的 `offset()` 和 `count()`。`history_field_key<T>::offset()` 是字段在本摘要中的字节偏移，`history_value_key<T>::offset()` 是字段在牌桌历史区中的字节偏移；二者不能互换。`count()` 是元素数量，标量恒为 1，数组长度随键保存。
 
 ## 动态字段描述
 
-Lua 等适配器可以直接生成 `history_field_descriptor{ name, type, is_array, count }`，不必让脚本使用 C++ 类型模板。未指定模板参数的 `context.history_field(name)`、`context.resolve_history_field(summary, name)` 和 `library.history_field(summary_id, name)` 返回 `dynamic_history_field`。
+Lua 等适配器根据脚本的数值类型选择 `history_scalar_field<T>{ name }` 或 `history_array_field<T>{ name, count }`，放入 `history_field_descriptor`，不必让脚本使用 C++ 类型模板。类型与标量/数组形态由 variant 的分支表示，不能组成不匹配的字段描述。
 
-适配器根据其 `type` 和 `is_array` 选择 C++ 类型：自身字段使用 `as<T>()` 转为 `history_field_key<T>`，供牌桌读取的字段使用 `as_value<T>()` 转为 `history_value_key<T>`。数组使用 `T[]`，标量使用 `T`；转换必须与描述相符，并按原查询接口选择对应的键种类。
+未指定模板参数时，`context.history_field(name)` 返回 `dynamic_history_field`；`context.resolve_history_field(summary, name)` 和 `library.history_field(summary_id, name)` 返回 `dynamic_history_value`。用 `std::get<givm::history_field_key<std::uint32_t>>(field)` 取得已知类型的本地键，或用 `std::visit` 处理所有可能类型。供牌桌读取时选择 `history_value_key<T>`；数组使用 `T[]`，标量使用 `T`。variant 的当前分支必须与 `std::get` 指定的键类型一致。
 
-## 异常
+## 编译错误
 
-| | |
-| --- | --- |
-| `std::invalid_argument` | 字段描述无效或重名、字段不存在、字段类型或数组形态不匹配、在 `layout` 阶段查询字段，或查询未声明依赖的摘要 |
-| `std::length_error` | 编译历史摘要时，字段数组或整体布局所需的长度溢出 |
+空字段名、重名、布局长度溢出，以及编译上下文中字段不存在、类型或数组形态不符、访问阶段错误、未声明摘要依赖，均记录为 [`compile_error`](../executor/compile_error.md)，由最终 `compile` 返回。失败查询得到的无效键不得用于访问状态。字段的数值类型与标量/数组形态由 C++ 类型表示，无需运行时验证类型枚举。
+
+编译后调用 `library.history_field` 须保证摘要 ID、字段名称、类型和数组形态正确。未定义 `NDEBUG` 时，违反这些条件会抛出 `std::invalid_argument`；发布构建中违反约定属于未定义行为。
 
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -153,7 +156,13 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(summary)) return 1;
-    const auto [library, ids] = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    auto library_result = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table;
     load_deck(table, library, {}, {});
     givm::executor execution;

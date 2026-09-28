@@ -7,8 +7,12 @@
 按增量调整一个角色附属实体的状态。可表达消耗、增加和次数恢复。
 
 ```cpp
+struct modify_attachment_state_error;
+
 struct modify_attachment_state
 {
+    using error_type = modify_attachment_state_error;
+
     using input_type = modify_attachment_state_input;
 
     relative_attachment_target target{};
@@ -22,6 +26,7 @@ struct modify_attachment_state
 | | |
 | --- | --- |
 | `input_type` | [`modify_attachment_state_input`](../command_inputs/modify_attachment_state_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `modify_attachment_state_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 输入
 
@@ -39,3 +44,31 @@ struct modify_attachment_state
 通知包含修改前和裁剪后的状态；返回的响应程序完整结算后才继续下一条命令。
 
 例如，动态输入 `modify_attachment_state_input{ .attachment = target, .round_usages = -1 }` 会在本命令实际执行时扣除一次可用次数；另一个字段的增量默认是零。
+
+## 编译检查
+
+```cpp
+struct modify_attachment_state_error;
+```
+
+`modify_attachment_state::error_type` 是 `givm::modify_attachment_state_error` 的别名。`modify_attachment_state_error` 是本命令的结构化编译错误，`modify_attachment_state_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_definition` | `target.selector` 的定义 ID 数值超出本次编译集合的 `attachment_view` 定义数量 |
+| `invalid_equipment_type` | `target.selector` 不是有效装备类型，包括使用了 `equipment_type::none` |
+| `invalid_target_character_player` | `target.character.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_target_character_selection` | `target.character.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+
+### `modify_attachment_state_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。

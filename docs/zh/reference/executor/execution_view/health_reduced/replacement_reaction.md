@@ -25,6 +25,7 @@ tag_id replacement_reaction() const noexcept;
 下面观察一次默认融化伤害。反应种类为融化，替代标签为空。
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstdint>
 #include <print>
@@ -63,7 +64,7 @@ int main()
             .source = givm::relative_character_target{ givm::relative_player::self, 0 },
             .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro }
     };
-    const auto [library, ids] = compile(sources, basics,
+    auto library_result = compile(sources, basics,
         std::tuple{
             givm::select_active_character_both{},
             givm::apply_element{
@@ -73,6 +74,12 @@ int main()
             givm::deal_damage{ .damages = damages }
         },
         std::tuple{}, givm::compile_mode::observed);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

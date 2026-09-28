@@ -2,7 +2,7 @@
 
 # givm::attach_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [attach](../commands/attach.md) 的动态输入，指定本次角色附属实体的目标、定义和状态。
 

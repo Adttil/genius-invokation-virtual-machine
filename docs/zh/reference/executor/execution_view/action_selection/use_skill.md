@@ -54,6 +54,7 @@ void use_skill(
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstdint>
 #include <print>
@@ -116,11 +117,17 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(skill)) return 1;
     if(not sources.add(character)) return 1;
-    const auto [library, ids] = compile(sources, basics,
+    auto library_result = compile(sources, basics,
         std::tuple{
             givm::select_active_character_both{},
             givm::begin_action{}, givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
 
     givm::table table{};
     const auto character_definition = ids.get_id<givm::character_view>("example_character");

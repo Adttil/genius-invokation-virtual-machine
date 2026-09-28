@@ -10,6 +10,12 @@ struct start_round;
 
 发送新回合开始的规则通知，供冻结解除、支援返还资源等回合开始效果响应。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `start_round_error` 的别名，即本命令的编译检查错误类型 |
+
 ## 结算
 
 本命令广播 [`round_started`](../events/round_started.md)，各响应及其返回程序完整结算后继续下一条命令。命令没有参数；不更新回合数、不清空骰子，也不自行处理投骰。
@@ -18,9 +24,18 @@ struct start_round;
 
 观察模式的 `execution_state::round_started` 由根回合推进产生，位于回合数增加之后、上限检查之前。本命令只发送规则通知，不额外返回同名观察现场。
 
+## 编译检查
+
+```cpp
+enum class start_round_error {};
+```
+
+`start_round::error_type` 是 `givm::start_round_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -37,13 +52,19 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{},
         std::tuple{
             givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } },
             givm::start_round{}
         }, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 2 } };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};

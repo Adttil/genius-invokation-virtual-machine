@@ -1,8 +1,9 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_REPLACE_CARDS_HPP
 #define GIVM_EXECUTOR_COMMANDS_REPLACE_CARDS_HPP
 
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 #include <algorithm>
 #include <bitset>
@@ -159,6 +160,18 @@ namespace givm::detail
         writer.write(command);
         writer.write(execute_fn{ &apply_card_selection });
         writer.write(execute_fn{ &broadcast_drawn_card<false> });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<replace_cards::error_type> check(const replace_cards& command, const definition_compile_context&, program_kind)
+    {
+        using reason = replace_cards::error_type::reason;
+        std::vector<replace_cards::error_type> errors;
+        if(command.player.index >= 2)
+            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index });
+        return errors;
     }
 }
 

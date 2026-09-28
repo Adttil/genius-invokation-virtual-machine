@@ -5,8 +5,11 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-issued_id_map make_issued_id_map(const basic_definition_sources& basics) const; // (1)
-issued_id_map make_issued_id_map(const basic_definition_sources& basics, const definition_selection& selection) const; // (2)
+std::expected<issued_id_map, std::vector<source_preparation_error>>
+make_issued_id_map(const basic_definition_sources& basics) const; // (1)
+
+std::expected<issued_id_map, std::vector<source_preparation_error>>
+make_issued_id_map(const basic_definition_sources& basics, const definition_selection& selection) const; // (2)
 ```
 
 为所需定义准备名称与 ID 的对应关系，便于在编写对局流程、准备牌组前取得定义 ID。
@@ -22,13 +25,9 @@ issued_id_map make_issued_id_map(const basic_definition_sources& basics, const d
 
 ## 返回值
 
-与选定定义对应的 [`issued_id_map`](../issued_id_map.md)。同一源库内容、相同 `basics` 及相同选择范围产生的映射可与随后编译的定义库配套。
+成功时返回含有 [`issued_id_map`](../issued_id_map.md) 的 `expected`。同一源库内容、相同 `basics` 及相同选择范围产生的映射可与随后编译的定义库配套。
 
-## 异常
-
-|  |  |
-| --- | --- |
-| `std::invalid_argument` | 选择了未知定义，基础定义与源库存在同类别名称冲突，或基础定义的名称依赖缺失 |
+选择了未知定义、基础定义与源库同类别名称冲突或名称依赖缺失时，返回 [`source_preparation_error`](../source_preparation_error.md) 列表；可通过 [`error_string`](../error_string.md) 输出。不为这些验证错误抛出异常，也不返回部分有效的映射。
 
 ## 注意
 
@@ -39,6 +38,7 @@ issued_id_map make_issued_id_map(const basic_definition_sources& basics, const d
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <string_view>
@@ -70,7 +70,13 @@ int main()
     const std::array<std::string_view, 1> names{ "恢复药剂" };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = names;
-    const auto ids = sources.make_issued_id_map(basics, selection);
+    auto ids_result = sources.make_issued_id_map(basics, selection);
+    if(not ids_result)
+    {
+        std::println("{}", error_string(ids_result.error()));
+        return 1;
+    }
+    const auto ids = std::move(*ids_result);
     std::println("包含恢复药剂: {}", ids.has<givm::card_definition>("恢复药剂"));
     std::println("包含恢复料理: {}", ids.has<givm::card_definition>("恢复料理"));
 }

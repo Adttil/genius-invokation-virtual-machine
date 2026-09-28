@@ -176,12 +176,12 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
         givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_2 },
         givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_2 }
     };
-    const auto [library, id_map] = compile(source_library, givm_test::basic_sources, initialization, round, givm::compile_mode::normal);
+    const auto [library, id_map] = givm_test::require_success(compile(source_library, givm_test::basic_sources, initialization, round, givm::compile_mode::normal));
     std::array<std::string_view, 10> card_names;
     card_names.fill(card_source.name());
     std::array<std::string_view, 3> character_names;
     character_names.fill(character_source.name());
-    const auto deck = link_deck(id_map, card_names, character_names);
+    const auto deck = givm_test::require_success(link_deck(id_map, card_names, character_names));
 
     givm::table table{
         givm::table_state{ .max_rounds = max_rounds, .self_player = givm::player_id{ 0 } }
@@ -284,7 +284,7 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     const test_character_definition_source character_source;
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(card_source, character_source));
-    const auto [library, id_map] = compile(sources, givm_test::basic_sources,
+    const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{
             givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_5 },
             givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_5 },
@@ -293,12 +293,12 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
             givm::begin_action{}
         },
         std::tuple{}, givm::compile_mode::observed
-    );
+    ));
     std::array<std::string_view, 10> cards;
     cards.fill(card_source.name());
     std::array<std::string_view, 3> characters;
     characters.fill(character_source.name());
-    const auto deck = link_deck(id_map, cards, characters);
+    const auto deck = givm_test::require_success(link_deck(id_map, cards, characters));
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 10 }, { .hand_limit = 10 } };
     load_deck(table, library, deck, deck);
     givm::executor target;

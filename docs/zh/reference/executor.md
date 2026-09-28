@@ -13,6 +13,12 @@
 | [`definition_compile_context`](executor/definition_compile_context.md) | 单项定义的编译上下文 |
 | [`definition_compile_context::definition_view`](executor/definition_compile_context/definition_view.md) | 编译集合中一项定义的元数据视图 |
 | [`definition_library`](executor/definition_library.md) | 对局使用的定义与流程 |
+| [`compile_error`](executor/compile_error.md) | 一项编译诊断 |
+| [`compile_location`](executor/compile_location.md) | 编译诊断的发生位置 |
+| [`definition_resolution_error`](executor/definition_resolution_error.md) | 定义硬依赖的解析诊断 |
+| [`definition_metadata_error`](executor/definition_metadata_error.md) | 定义元数据查询的 ID 诊断 |
+
+历史字段相关诊断类型见 [`compile_error_reason`](executor/compile_error_reason.md)。
 
 ### 对局执行
 
@@ -31,11 +37,19 @@
 | [`action_argument`](executor/action_argument.md) | 行动支付参数 |
 | [`action_target`](executor/action_target.md) | 行动目标 |
 
+## 类型别名
+
+| | |
+| --- | --- |
+| [`compile_error_reason`](executor/compile_error_reason.md) | 全部具体编译错误的 variant |
+
 ## 函数
 
 |  |  |
 | --- | --- |
 | [`compile`](executor/compile.md) | 编译选定定义与对局流程 |
+| [`check`](executor/check.md) | 检查命令的编译期参数与使用位置 |
+| [`error_string`](executor/error_string.md) | 格式化编译诊断 |
 | [`load_deck`](executor/load_deck.md) | 装载双方牌组并初始化角色状态与技能 |
 
 ## 枚举
@@ -43,6 +57,8 @@
 |  |  |
 | --- | --- |
 | [`compile_mode`](executor/compile_mode.md) | 编译时选择普通推进或额外观察 |
+| [`compile_stage`](executor/compile_stage.md) | 编译诊断的发生阶段 |
+| [`program_kind`](executor/program_kind.md) | 编译诊断中的程序类别 |
 | [`execution_state`](executor/execution_state.md) | 执行器交回控制权时的执行现场种类 |
 | [`initial_card_selection_validation`](executor/initial_card_selection_validation.md) | 首次换牌选择检查的结果 |
 | [`initial_active_character_selection_validation`](executor/initial_active_character_selection_validation.md) | 首次出战角色选择检查的结果 |

@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SUMMON_HPP
 #define GIVM_EXECUTOR_COMMANDS_SUMMON_HPP
 
+#include <vector>
+
 #include "add_summon.hpp"
 #include "../../macro_define.hpp"
 
@@ -81,6 +83,26 @@ namespace givm::detail
         else
             writer.write(execute_fn{ execute_summon<false> });
         writer.write(execute_fn{ finish_resummoning });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<summon::error_type> check(const summon& command, const definition_compile_context& context, program_kind kind)
+    {
+        using reason = summon::error_type::reason;
+        std::vector<summon::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<summon_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<summon_view>() });
+        return errors;
     }
 }
 

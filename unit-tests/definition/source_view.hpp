@@ -225,7 +225,7 @@ namespace
             return "UndeclaredDependency";
         }
 
-        definition_type compile(givm::definition_compile_context& context) const
+        definition_type compile(givm::definition_compile_context& context) const noexcept
         {
             (void)context.resolve_id<givm::support_view>("MissingDeclaration");
             return {};
@@ -544,7 +544,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, alpha, beta));
     const auto program = std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
+    const auto [library, id_map] = givm_test::require_success(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal));
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -573,7 +573,18 @@ TEST_CASE("definition compile context rejects undeclared dependency queries", "[
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(source, support));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    REQUIRE_THROWS_AS(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal), std::invalid_argument);
+    const auto result = compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
+    REQUIRE_FALSE(result);
+    REQUIRE(result.error().size() == 1);
+    const auto& error = result.error().front();
+    CHECK(error.location.stage == givm::compile_stage::definition);
+    REQUIRE(error.location.source);
+    CHECK(error.location.source->name == std::string{ source.name() });
+    const auto* reason = std::get_if<givm::definition_resolution_error>(&error.reason);
+    REQUIRE(reason);
+    CHECK(reason->cause == givm::definition_resolution_error::reason::undeclared_dependency);
+    CHECK(reason->definition.category_index == givm::definition_types::index_of<givm::support_view>());
+    CHECK(reason->definition.name == "MissingDeclaration");
 }
 
 TEST_CASE("compiled definitions expose only enabled source handlers", "[source_view]")
@@ -590,7 +601,7 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(enabled, disabled));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
+    const auto [library, id_map] = givm_test::require_success(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal));
 
     CHECK(library[id_map.get_id<givm::support_view>(enabled.name())].can_handle<givm::round_started, givm::support_view>());
     CHECK_FALSE(
@@ -614,7 +625,7 @@ TEST_CASE("static handler availability depends on the implementation alone", "[s
     const explicitly_static_handler_source explicit_source{ { "ExplicitStatic", &capability_checks } };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(implicit_source, explicit_source));
-    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
 
     CHECK(library[ids.get_id<givm::support_view>(implicit_source.name())]
         .can_handle<givm::round_started, givm::support_view>());
@@ -642,9 +653,9 @@ TEST_CASE("definition metadata reuses registered declarations before every layou
     const std::array<std::string_view, 1> roots{ "MetadataObserver" };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::history_summary_definition>()] = roots;
-    const auto [library, ids] = selected
+    const auto [library, ids] = givm_test::require_success(selected
         ? compile(sources, givm_test::basic_sources, selection, std::tuple{}, std::tuple{}, givm::compile_mode::normal)
-        : compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+        : compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(observation.declaration_reads == registered_reads);
     CHECK(observation.layout_reads == 1);
     CHECK(observation.compile_reads == 5);
@@ -671,7 +682,7 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, support));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
+    const auto [library, id_map] = givm_test::require_success(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal));
 
     CHECK(observation.event_compiled);
     CHECK(observation.onpay_compiled);
@@ -684,8 +695,7 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     CHECK(observation.onpay_entry_set);
 }
 
-#ifndef NDEBUG
-TEST_CASE("root programs reject commands that consume invocation inputs", "[source_view][program-input][debug]")
+TEST_CASE("root programs reject commands that consume invocation inputs", "[source_view][program-input]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const bool runtime_commands = GENERATE(false, true);
@@ -693,17 +703,29 @@ TEST_CASE("root programs reject commands that consume invocation inputs", "[sour
     CAPTURE(mode, runtime_commands, initialization);
     const auto sources = givm_test::make_source_library();
     const auto valid = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
+    const auto check_result = [&](const auto& result)
+    {
+        REQUIRE_FALSE(result);
+        REQUIRE(result.error().size() == 1);
+        const auto& error = result.error().front();
+        CHECK(error.location.stage == givm::compile_stage::program);
+        CHECK(error.location.program == (initialization ? givm::program_kind::initialization : givm::program_kind::round));
+        CHECK(error.location.command_index == 0);
+        CHECK_FALSE(error.location.source);
+        const auto* reason = std::get_if<givm::set_active_character::error_type>(&error.reason);
+        REQUIRE(reason);
+        CHECK(reason->cause == givm::set_active_character::error_type::reason::dynamic_input_in_root);
+    };
     const auto check = [&](const auto& invalid)
     {
         if(initialization)
-            REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, invalid, valid, mode), std::invalid_argument);
+            check_result(compile(sources, givm_test::basic_sources, invalid, valid, mode));
         else
-            REQUIRE_THROWS_AS(compile(sources, givm_test::basic_sources, valid, invalid, mode), std::invalid_argument);
+            check_result(compile(sources, givm_test::basic_sources, valid, invalid, mode));
     };
     if(runtime_commands)
         check(std::vector<givm::any_command>{ givm::set_active_character{} });
     else
         check(std::tuple{ givm::set_active_character{} });
 }
-#endif
 }

@@ -52,6 +52,7 @@ execution_state step(
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstdint>
 #include <print>
@@ -90,13 +91,19 @@ int main()
             .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
             .value = 999, .type = givm::damage_type::physical, .flags = {} }
     };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{
             givm::select_active_character_both{},
             givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::self, 1 } },
             givm::deal_damage{ .damages = damages } },
         std::tuple{}, givm::compile_mode::observed);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

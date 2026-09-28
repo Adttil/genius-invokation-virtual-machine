@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_ADD_COMBAT_STATUS_HPP
 #define GIVM_EXECUTOR_COMMANDS_ADD_COMBAT_STATUS_HPP
 
+#include <vector>
+
 #include <algorithm>
 
 #include "../executor.hpp"
@@ -51,6 +53,27 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ apply_combat_status_addition<false> });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<add_combat_status::error_type> check(const add_combat_status& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = add_combat_status::error_type::reason;
+        std::vector<add_combat_status::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<combat_status_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<combat_status_view>() });
+        return errors;
     }
 }
 

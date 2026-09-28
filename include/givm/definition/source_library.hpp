@@ -8,7 +8,6 @@
 #include <optional>
 #include <ranges>
 #include <span>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -51,6 +50,14 @@ namespace givm
     };
 
     using source_add_error = std::variant<source_conflict, source_missing_dependency>;
+
+    struct source_selection_error
+    {
+        definition_name definition;
+        std::optional<definition_name> required_by;
+    };
+
+    using source_preparation_error = std::variant<source_conflict, source_missing_dependency, source_selection_error>;
 
     namespace detail
     {
@@ -120,6 +127,39 @@ namespace givm
             text += " (input[" + std::to_string(error.input_index) + "]) requires ";
             text += source_definition_name_text(error.dependency);
         }
+
+        inline void append_source_error(std::string& text, const source_selection_error& error)
+        {
+            if(not text.empty()) text += '\n';
+            text += "missing selected definition: ";
+            text += source_definition_name_text(error.definition);
+            if(error.required_by)
+            {
+                text += "; required by ";
+                text += source_definition_name_text(*error.required_by);
+            }
+        }
+    }
+
+    inline std::string error_string(const source_conflict& error)
+    {
+        std::string result;
+        detail::append_source_error(result, error);
+        return result;
+    }
+
+    inline std::string error_string(const source_missing_dependency& error)
+    {
+        std::string result;
+        detail::append_source_error(result, error);
+        return result;
+    }
+
+    inline std::string error_string(const source_selection_error& error)
+    {
+        std::string result;
+        detail::append_source_error(result, error);
+        return result;
     }
 
     inline std::string error_string(const std::vector<source_add_error>& errors)
@@ -134,6 +174,14 @@ namespace givm
     {
         std::string result;
         for(const auto& error : errors) detail::append_source_error(result, error);
+        return result;
+    }
+
+    inline std::string error_string(const std::vector<source_preparation_error>& errors)
+    {
+        std::string result;
+        for(const auto& error : errors)
+            std::visit([&](const auto& item) { detail::append_source_error(result, item); }, error);
         return result;
     }
 
@@ -207,16 +255,22 @@ namespace givm
                 });
         }
 
-        issued_id_map make_issued_id_map(const basic_definition_sources& basics) const
+        std::expected<issued_id_map, std::vector<source_preparation_error>> make_issued_id_map(const basic_definition_sources& basics) const
         {
-            const auto [sources, names] = with_basic_definitions(basics);
+            std::vector<source_preparation_error> errors;
+            const auto [sources, names] = with_basic_definitions(basics, errors);
+            if(not errors.empty()) return std::unexpected{ std::move(errors) };
             return sources.make_issued_id_map(sources.make_full_selection());
         }
 
-        issued_id_map make_issued_id_map(const basic_definition_sources& basics, const definition_selection& selection) const
+        std::expected<issued_id_map, std::vector<source_preparation_error>> make_issued_id_map(
+            const basic_definition_sources& basics, const definition_selection& selection) const
         {
-            const auto [sources, names] = with_basic_definitions(basics);
-            return sources.make_issued_id_map(sources.resolve_selection(selection, names));
+            std::vector<source_preparation_error> errors;
+            const auto [sources, names] = with_basic_definitions(basics, errors);
+            const auto selected = sources.resolve_selection(selection, names, errors);
+            if(not errors.empty()) return std::unexpected{ std::move(errors) };
+            return sources.make_issued_id_map(selected);
         }
 
     private:
@@ -400,9 +454,9 @@ namespace givm
             return std::get<I>(buckets_).name_to_index.contains(name) || pending_names[I].contains(name);
         }
 
-        template<class TCategory>
-        void collect_dependency_errors(const pending_tuple& pending, const pending_sources_by_name& names,
-            std::optional<std::size_t> index, std::vector<source_add_error>& errors) const
+        template<class TCategory, class TPendingNames, class TError>
+        void collect_dependency_errors(const pending_tuple& pending, const TPendingNames& names,
+            std::optional<std::size_t> index, std::vector<TError>& errors) const
         {
             if(not index) return;
             constexpr auto category_index = index_of<TCategory>();
@@ -423,50 +477,6 @@ namespace givm
                     }
                 }
             });
-        }
-
-        template<class TEntry, size_t...I>
-        bool check_entry_dependencies(
-            const TEntry& entry,
-            const pending_names_type& pending_names,
-            std::index_sequence<I...>
-        ) const
-        {
-            bool valid = true;
-                ((valid = valid && std::ranges::all_of(entry.declarations.dependencies[I], [&](std::string_view name)
-            {
-                return dependency_exists<I>(name, pending_names);
-            })), ...);
-            return valid;
-        }
-
-        template<size_t I>
-        bool check_pending_bucket_dependencies(
-            const pending_tuple& pending,
-            const pending_names_type& pending_names
-        ) const
-        {
-            for(const auto& entry : std::get<I>(pending))
-            {
-                if(not check_entry_dependencies(entry, pending_names, std::make_index_sequence<definition_count>{}))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        bool check_pending_dependencies(
-            const pending_tuple& pending,
-            const pending_names_type& pending_names
-        ) const
-        {
-            bool valid = true;
-            [&]<size_t...I>(std::index_sequence<I...>)
-            {
-                ((valid = valid && check_pending_bucket_dependencies<I>(pending, pending_names)), ...);
-            }(std::make_index_sequence<definition_count>{});
-            return valid;
         }
 
         template<size_t I>
@@ -492,12 +502,14 @@ namespace givm
             }(std::make_index_sequence<definition_count>{});
         }
 
-        std::pair<definition_source_library, detail::basic_definition_names> with_basic_definitions(const basic_definition_sources& basics) const
+        std::pair<definition_source_library, detail::basic_definition_names> with_basic_definitions(
+            const basic_definition_sources& basics, std::vector<source_preparation_error>& errors) const
         {
             auto sources = *this;
             pending_tuple pending;
             pending_names_type pending_names;
-            const auto prepare = [&]<class TCategory>(const definition_source_view<TCategory>& source) -> std::string_view
+            const auto prepare = [&]<class TCategory>(
+                const definition_source_view<TCategory>& source, std::size_t input_index) -> std::string_view
             {
                 constexpr auto index = index_of<TCategory>();
                 const auto name = source.name();
@@ -506,7 +518,15 @@ namespace givm
                 {
                     const auto existing = bucket.entries[found->second].source;
                     if(existing.source_ != source.source_ || existing.rtti_ != source.rtti_)
-                        throw std::invalid_argument{ "conflicting basic definition source" };
+                    {
+                        errors.emplace_back(source_conflict{
+                            .definition = { index, std::string{ name } },
+                            .cause = existing.rtti_ != source.rtti_
+                                ? source_conflict::reason::different_type : source_conflict::reason::different_object,
+                            .first_input_index = std::nullopt,
+                            .second_input_index = input_index
+                        });
+                    }
                     return name;
                 }
                 auto& entries = std::get<index>(pending);
@@ -514,21 +534,34 @@ namespace givm
                 if(found != entries.end())
                 {
                     if(found->source.source_ != source.source_ || found->source.rtti_ != source.rtti_)
-                        throw std::invalid_argument{ "conflicting basic definition source" };
+                    {
+                        errors.emplace_back(source_conflict{
+                            .definition = { index, std::string{ name } },
+                            .cause = found->source.rtti_ != source.rtti_
+                                ? source_conflict::reason::different_type : source_conflict::reason::different_object,
+                            .first_input_index = found->input_index,
+                            .second_input_index = input_index
+                        });
+                    }
                     return name;
                 }
                 pending_names[index].insert(name);
-                entries.push_back({ .source = source, .name = name, .declarations = source.declarations() });
+                entries.push_back({ .source = source, .name = name,
+                    .declarations = source.declarations(), .input_index = input_index });
                 return name;
             };
             const detail::basic_definition_names names{
-                .dendro_core = prepare(basics.dendro_core),
-                .catalyzing_field = prepare(basics.catalyzing_field),
-                .burning_flame = prepare(basics.burning_flame),
-                .frozen = prepare(basics.frozen)
+                .dendro_core = prepare(basics.dendro_core, 0),
+                .catalyzing_field = prepare(basics.catalyzing_field, 1),
+                .burning_flame = prepare(basics.burning_flame, 2),
+                .frozen = prepare(basics.frozen, 3)
             };
-            if(not sources.check_pending_dependencies(pending, pending_names))
-                throw std::invalid_argument{ "missing basic definition dependency" };
+            definition_types::each([&]<class TCategory>
+            {
+                const auto& entries = std::get<index_of<TCategory>()>(pending);
+                for(std::size_t index = 0; index < entries.size(); ++index)
+                    sources.collect_dependency_errors<TCategory>(pending, pending_names, index, errors);
+            });
             sources.commit_pending(pending);
             return { std::move(sources), names };
         }
@@ -553,24 +586,25 @@ namespace givm
             return selected;
         }
 
-        selection_mask resolve_selection(const definition_selection& selection, const detail::basic_definition_names& basics) const
+        selection_mask resolve_selection(const definition_selection& selection,
+            const detail::basic_definition_names& basics, std::vector<source_preparation_error>& errors) const
         {
             auto selected = make_empty_selection();
             std::vector<queue_item> queue;
 
-            enqueue_name<index_of<combat_status_view>()>(basics.dendro_core, selected, queue);
-            enqueue_name<index_of<combat_status_view>()>(basics.catalyzing_field, selected, queue);
-            enqueue_name<index_of<summon_view>()>(basics.burning_flame, selected, queue);
-            enqueue_name<index_of<attachment_view>()>(basics.frozen, selected, queue);
+            enqueue_name<index_of<combat_status_view>()>(basics.dendro_core, selected, queue, errors);
+            enqueue_name<index_of<combat_status_view>()>(basics.catalyzing_field, selected, queue, errors);
+            enqueue_name<index_of<summon_view>()>(basics.burning_flame, selected, queue, errors);
+            enqueue_name<index_of<attachment_view>()>(basics.frozen, selected, queue, errors);
 
             [&]<size_t...I>(std::index_sequence<I...>)
             {
-                (enqueue_selected_names<I>(selection[I], selected, queue), ...);
+                (enqueue_selected_names<I>(selection[I], selected, queue, errors), ...);
             }(std::make_index_sequence<definition_count>{});
 
             for(size_t index = 0; index < queue.size(); ++index)
             {
-                process_queue_item(queue[index], selected, queue);
+                process_queue_item(queue[index], selected, queue, errors);
             }
 
             return selected;
@@ -590,14 +624,35 @@ namespace givm
         void enqueue_name(
             std::string_view name,
             selection_mask& selected,
-            std::vector<queue_item>& queue
+            std::vector<queue_item>& queue,
+            std::vector<source_preparation_error>& errors,
+            const definition_name* required_by = nullptr
         ) const
         {
             const auto& bucket = std::get<I>(buckets_);
             const auto iter = bucket.name_to_index.find(name);
             if(iter == bucket.name_to_index.end())
             {
-                throw std::invalid_argument{ "unknown definition source name" };
+                const auto already_reported = std::ranges::any_of(errors, [&](const auto& error)
+                {
+                    const auto same_owner = [&](const definition_name& source)
+                    {
+                        return required_by && source.category_index == required_by->category_index
+                            && source.name == required_by->name;
+                    };
+                    if(const auto* missing = std::get_if<source_missing_dependency>(&error))
+                        return same_owner(missing->source) && missing->dependency.category_index == I
+                            && missing->dependency.name == name;
+                    if(const auto* missing = std::get_if<source_selection_error>(&error))
+                        return missing->definition.category_index == I && missing->definition.name == name
+                            && (required_by ? missing->required_by && same_owner(*missing->required_by)
+                                : not missing->required_by);
+                    return false;
+                });
+                if(not already_reported)
+                    errors.emplace_back(source_selection_error{ { I, std::string{ name } },
+                        required_by ? std::optional{ *required_by } : std::nullopt });
+                return;
             }
             enqueue<I>(iter->second, selected, queue);
         }
@@ -606,24 +661,26 @@ namespace givm
         void enqueue_selected_names(
             std::span<const std::string_view> names,
             selection_mask& selected,
-            std::vector<queue_item>& queue
+            std::vector<queue_item>& queue,
+            std::vector<source_preparation_error>& errors
         ) const
         {
             for(std::string_view name : names)
             {
-                enqueue_name<I>(name, selected, queue);
+                enqueue_name<I>(name, selected, queue, errors);
             }
         }
 
         void process_queue_item(
             queue_item item,
             selection_mask& selected,
-            std::vector<queue_item>& queue
+            std::vector<queue_item>& queue,
+            std::vector<source_preparation_error>& errors
         ) const
         {
             [&]<size_t...I>(std::index_sequence<I...>)
             {
-                ((item.entity_index == I ? (process_selected_source<I>(item.source_index, selected, queue), 0) : 0), ...);
+                ((item.entity_index == I ? (process_selected_source<I>(item.source_index, selected, queue, errors), 0) : 0), ...);
             }(std::make_index_sequence<definition_count>{});
         }
 
@@ -631,13 +688,15 @@ namespace givm
         void process_selected_source(
             size_t source_index,
             selection_mask& selected,
-            std::vector<queue_item>& queue
+            std::vector<queue_item>& queue,
+            std::vector<source_preparation_error>& errors
         ) const
         {
             const auto& entry = std::get<I>(buckets_).entries[source_index];
+            const definition_name required_by{ I, std::string{ entry.name } };
             [&]<size_t...J>(std::index_sequence<J...>)
             {
-                (enqueue_dependencies<J>(entry.declarations.dependencies[J], selected, queue), ...);
+                (enqueue_dependencies<J>(entry.declarations.dependencies[J], selected, queue, errors, required_by), ...);
             }(std::make_index_sequence<definition_count>{});
         }
 
@@ -645,12 +704,14 @@ namespace givm
         void enqueue_dependencies(
             const std::vector<std::string_view>& dependencies,
             selection_mask& selected,
-            std::vector<queue_item>& queue
+            std::vector<queue_item>& queue,
+            std::vector<source_preparation_error>& errors,
+            const definition_name& required_by
         ) const
         {
             for(std::string_view name : dependencies)
             {
-                enqueue_name<I>(name, selected, queue);
+                enqueue_name<I>(name, selected, queue, errors, &required_by);
             }
         }
 

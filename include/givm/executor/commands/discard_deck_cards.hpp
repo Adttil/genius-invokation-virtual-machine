@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_DISCARD_DECK_CARDS_HPP
 #define GIVM_EXECUTOR_COMMANDS_DISCARD_DECK_CARDS_HPP
 
+#include <vector>
+
 #include <algorithm>
 #include <memory>
 
@@ -148,6 +150,25 @@ namespace givm::detail
             writer.write(execute_fn{ resume_observed_deck_card_discard });
         writer.write(execute_fn{ finish_deck_card_discard_effect });
         writer.write(execute_fn{ broadcast_deck_card_discards });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<discard_deck_cards::error_type> check(const discard_deck_cards& command,
+        const definition_compile_context&, program_kind kind)
+    {
+        using reason = discard_deck_cards::error_type::reason;
+        std::vector<discard_deck_cards::error_type> errors;
+        if(command.count == std::numeric_limits<std::uint32_t>::max())
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        return errors;
     }
 }
 

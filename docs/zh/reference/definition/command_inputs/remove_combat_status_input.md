@@ -2,7 +2,7 @@
 
 # givm::remove_combat_status_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [remove_combat_status](../commands/remove_combat_status.md) 的动态输入，指定要离场的出战状态。
 

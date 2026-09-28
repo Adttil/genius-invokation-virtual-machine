@@ -1,8 +1,10 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_START_DICE_ROLL_PHASE_HPP
 #define GIVM_EXECUTOR_COMMANDS_START_DICE_ROLL_PHASE_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include "reroll_dice.hpp"
 
 #include <array>
@@ -11,7 +13,6 @@
 #include <span>
 
 #include "../broadcast.hpp"
-#include "../../definition/events.hpp"
 
 #include "../../macro_define.hpp"
 
@@ -184,6 +185,15 @@ namespace givm::detail
         writer.write(command);
         writer.write(execute_fn{ &apply_dice_roll_preparation });
         writer.write(execute_fn{ &apply_dice_reroll });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<start_dice_roll_phase::error_type> check(const start_dice_roll_phase&,
+        const definition_compile_context&, program_kind)
+    {
+        return {};
     }
 }
 

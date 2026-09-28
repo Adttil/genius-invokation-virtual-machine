@@ -20,10 +20,10 @@ constexpr void clean_up() noexcept;
 
 清理可能改变实体 ID，并使已取得的实体访问对象、范围和状态引用失效。清理后应重新从牌桌获取它们；不要在结算仍持有这些对象时调用。牌库中尚未移除卡牌的先后顺序保持不变。
 
-
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstddef>
 #include <bitset>
@@ -57,10 +57,16 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(first, second)) return 1;
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions }, givm::replace_cards{ .player = givm::player_id{ 0 } } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");

@@ -21,7 +21,7 @@
 
 实际字节长度仍用于运行时分配与费用缓存。公开动态适配器通过 `span<const any_command_input>` 提交输入对象序列，数组以对象中的 span 表达；适配器不暴露原始字节协议。类型标记由 C++ 包装实现提供，Lua 脚本在两种构建模式下可以保持相同写法。
 
-初始化和回合根流程没有响应提供输入，其中的命令值必须选择固定模式。debug 编译检查这两段根流程不含动态输入标记，否则抛出 `std::invalid_argument`。响应程序正常完成后返回发起它的结算；期间终局则不再返回。无后续效果的响应返回空入口，不调用 `invoke`。
+初始化和回合根流程没有响应提供输入，其中的命令值必须选择固定模式。所有构建模式均验证这一条件，不符时记录该命令的 `dynamic_input_in_root` 诊断，最终 `compile` 返回错误列表。响应程序正常完成后返回发起它的结算；期间终局则不再返回。无后续效果的响应返回空入口，不调用 `invoke`。
 
 ## Handler 与调用
 
@@ -45,7 +45,7 @@ handler 读取编译后的 definition、自身实体 view、事件、只读 tabl
 
 出战状态护盾直接在 `damage_effect` 响应中减少伤害，并提交 `modify_combat_status_state_input`，通过负的 `count` 增量交给 `modify_combat_status_state` 扣层，`round_usages` 增量保持零。命令在执行时从目标当前状态扣除，并先写入再通知自身，不借用外层伤害事件或隐含响应者。
 
-默认构造的 `set_active_character{}` 消费 `set_active_character_input`，显式提供 `target` 时使用固定目标；默认构造的 `add_attachment{}` 消费 `add_attachment_input`，显式提供 `definition` 时使用固定参数。`deal_damage` 使用非空 `damages` 作为固定描述；否则消费一个 `deal_damage_input`，其中的伤害数组长度在响应时确定，允许为空。以上选择均在编译时完成。其他动态命令同样通过 `input_type` 指定输入，字段相符的事件可显式复用为输入别名。输入声明紧邻命令放在 `definition/commands.hpp`，不再拆成独立头文件。
+默认构造的 `set_active_character{}` 消费 `set_active_character_input`，显式提供 `target` 时使用固定目标；默认构造的 `add_attachment{}` 消费 `add_attachment_input`，显式提供 `definition` 时使用固定参数。`deal_damage` 使用非空 `damages` 作为固定描述；否则消费一个 `deal_damage_input`，其中的伤害数组长度在响应时确定，允许为空。以上选择均在编译时完成。其他动态命令同样通过 `input_type` 指定输入，字段相符的事件可显式复用为输入别名。输入声明紧邻命令放在 `definition/commands/` 的对应命令文件中，不另拆输入头文件。
 
 `summon`、`generate_combat_status`、`attach` 及对应直接添加命令携带本次 `state`，固定参数和动态输入均默认两个字段为 `UINT32_MAX`。执行时逐字段裁剪到定义通过 `*_state_limit` 查询提供的上限，缺少查询时上限同样为 `UINT32_MAX`；它是普通数值，不是省略状态的哨兵。绝对赋值同样裁剪到上限，相对修改以 `std::int64_t` 增量在执行时按当前值饱和到 `[0, 上限]`。详细生成、重复生成、耗尽与通知边界见[实体事件](event_dispatch/entity_events.md)。
 
@@ -95,7 +95,11 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 整库 `compile` 显式接收 `compile_mode::normal` 或 `compile_mode::observed`。编译上下文保存该选择，所有 `add_program` 使用同一模式。两种模式生成相同的 `definition_library` 类型；内部指令类型、数量、数据类型与布局都可以不同。运行时统一通过 `executor::step` 推进，不再选择另一套分派入口。
 
-每个 command 的编译重载与执行指令集中在 [`executor/commands/`](../../../include/givm/executor/commands) 的对应实现文件内，由 [`commands.hpp`](../../../include/givm/executor/commands.hpp) 统一汇总。编译函数和执行函数直接定义在 `givm::detail`，函数名称描述具体操作。ADL 通过实际的 `detail::program_writer` 类型找到 `detail::compile(writer, command, mode)`；无需 command_backend 类或全局 opcode 编号。函数直接在定义处提供实现，汇总头包含各 command 实现后，编译上下文才实例化统一遍历。
+每个 command 的公开描述、输入、独立的 `xxx_error` 类型及其 `error_string` 放在 [`definition/commands/`](../../../include/givm/definition/commands) 对应文件中；命令只用 `using error_type = xxx_error` 关联错误类型。编译检查重载、编译重载与执行指令放在 [`executor/commands/`](../../../include/givm/executor/commands) 的同名文件中。两侧 [`definition/commands.hpp`](../../../include/givm/definition/commands.hpp) 与 [`executor/commands.hpp`](../../../include/givm/executor/commands.hpp) 都只聚合包含，不在汇总头中实现格式化或其他函数。
+
+编译函数和执行函数直接定义在 `givm::detail`，函数名称描述具体操作。ADL 通过实际的 `detail::program_writer` 类型找到 `detail::compile(writer, command, mode)`；无需 command_backend 类或全局 opcode 编号。函数直接在定义处提供实现，汇总头包含各 command 实现后，编译上下文才实例化统一遍历。
+
+[`definition/any_command.hpp`](../../../include/givm/definition/any_command.hpp) 集中保存命令及输入的内部类型列表，并从列表生成公开的 `any_command`、`any_command_input`。[`executor/compile_error.hpp`](../../../include/givm/executor/compile_error.hpp) 使用命令各自的错误别名生成整库错误 variant，同时实现带源和程序位置的 `compile_error` 格式化。单命令错误不依赖编译上下文或 executor，因此其文本转换属于 definition 模块。
 
 多个 command 使用的基础执行指令仍随其所属 command 放置：抽牌通知推进及相关辅助函数放在 [`draw_cards.hpp`](../../../include/givm/executor/commands/draw_cards.hpp)，[`replace_cards.hpp`](../../../include/givm/executor/commands/replace_cards.hpp) 直接包含并复用；元素反应推进及相关辅助函数放在 [`apply_element.hpp`](../../../include/givm/executor/commands/apply_element.hpp)，[`deal_damage.hpp`](../../../include/givm/executor/commands/deal_damage.hpp) 直接包含并复用。各 command 的其他专属执行函数保留在各自文件中，共用关系由这些直接依赖表达。
 

@@ -7,8 +7,12 @@
 使出战角色立即使用一次技能，完整处理技能效果及使用后的通知。用于天赋牌等效果，不计算或支付技能本身的费用。
 
 ```cpp
+struct use_skill_error;
+
 struct use_skill
 {
+    using error_type = use_skill_error;
+
     using input_type = use_skill_input;
 
     relative_player player = relative_player::self;
@@ -21,6 +25,7 @@ struct use_skill
 | | |
 | --- | --- |
 | `input_type` | [`use_skill_input`](../command_inputs/use_skill_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `use_skill_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 输入
 
@@ -44,6 +49,32 @@ struct use_skill
 技能使用不会自动增加充能。需要获得充能的技能应在自身效果程序中显式安排 [`modify_energy`](modify_energy.md)，其执行位置由程序中的命令顺序决定。
 
 本命令的 `skill_will_be_used::speed` 初始为 `action_speed::fast`，响应可修改它，`skill_used` 保留修改后的值。该值不会改变外层行动的速度、当前行动玩家或下落攻击机会。天赋牌是否为战斗行动仍由牌的费用及出牌流程决定；本命令不读取技能费用。
+
+## 编译检查
+
+```cpp
+struct use_skill_error;
+```
+
+`use_skill::error_type` 是 `givm::use_skill_error` 的别名。`use_skill_error` 是本命令的结构化编译错误，`use_skill_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_player` | `player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_definition` | `definition` 的定义 ID 数值超出本次编译集合的 `skill_view` 定义数量 |
+
+### `use_skill_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 示例
 

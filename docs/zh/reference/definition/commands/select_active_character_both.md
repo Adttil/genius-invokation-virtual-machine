@@ -10,6 +10,20 @@ struct select_active_character_both;
 
 双方开局出战角色的选择命令。双方提交后，同时设置两边的出战角色，再通知相关效果。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `select_active_character_both_error` 的别名，即本命令的编译检查错误类型 |
+
+## 编译检查
+
+```cpp
+enum class select_active_character_both_error {};
+```
+
+`select_active_character_both::error_type` 是 `givm::select_active_character_both_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+
 ## 注意
 
 尚未接受任何一方的选择时，执行器返回 `execution_state::initial_active_character_selection`，通过相应的[现场视图](../../executor/execution_view/initial_active_character_selection.md)提交任意一方的有效角色。首次选择被接受后返回 `execution_state::remaining_active_character_selection`；此时相应[视图](../../executor/execution_view/remaining_active_character_selection.md)提供已接受的选择和待选玩家，第二次输入提交该玩家的有效角色 ID。两种视图都提供独立的 `selection_validate`，提交及继续推进不会自动检查。
@@ -21,6 +35,7 @@ struct select_active_character_both;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -52,10 +67,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::select_active_character_both{} },
         std::tuple{}, givm::compile_mode::observed);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0 } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

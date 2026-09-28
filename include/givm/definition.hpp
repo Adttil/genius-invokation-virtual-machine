@@ -6,6 +6,7 @@
 #include "definition/events.hpp"
 #include "definition/queries.hpp"
 #include "definition/commands.hpp"
+#include "definition/any_command.hpp"
 #include "definition/source_view.hpp"
 #include "definition/source_library.hpp"
 #include "definition/issued_id_map.hpp"

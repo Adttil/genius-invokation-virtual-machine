@@ -51,9 +51,15 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto id = ids.get_id<givm::skill_view>("observer");
     std::println("提供此事件的响应: {}", library.can_handle<givm::battle_started, givm::skill_view>(id));
 }

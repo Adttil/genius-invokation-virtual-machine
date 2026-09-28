@@ -21,6 +21,7 @@ definition_id<combat_status_view> dendro_core_id() const noexcept;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <print>
 #include <tuple>
 
@@ -35,9 +36,15 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics, givm::definition_selection{}, std::tuple{},
         std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto id = library.dendro_core_id();
     std::println("采用指定的草原核源: {}", id == ids.get_id<givm::combat_status_view>(
         givm::genshin_impact::dendro_core_3_3_0.name()));

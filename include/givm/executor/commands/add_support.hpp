@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_ADD_SUPPORT_HPP
 #define GIVM_EXECUTOR_COMMANDS_ADD_SUPPORT_HPP
 
+#include <vector>
+
 #include <algorithm>
 #include <utility>
 
@@ -60,6 +62,27 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ apply_support_addition<false> });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<add_support::error_type> check(const add_support& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = add_support::error_type::reason;
+        std::vector<add_support::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<support_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<support_view>() });
+        return errors;
     }
 }
 

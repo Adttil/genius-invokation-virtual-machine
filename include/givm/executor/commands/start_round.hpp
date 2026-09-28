@@ -1,10 +1,11 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_START_ROUND_HPP
 #define GIVM_EXECUTOR_COMMANDS_START_ROUND_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
 #include "../broadcast.hpp"
-#include "../../definition/commands.hpp"
-#include "../../definition/events.hpp"
+#include "../../definition.hpp"
 
 namespace givm::detail
 {
@@ -90,6 +91,14 @@ namespace givm::detail
     {
         writer.write(execute_fn{ prepare_round_start });
         writer.write(execute_fn{ broadcast_round_start });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<start_round::error_type> check(const start_round&, const definition_compile_context&, program_kind)
+    {
+        return {};
     }
 }
 

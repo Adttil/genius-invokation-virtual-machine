@@ -40,6 +40,7 @@ void load_deck(table& table, const definition_library& library, const linked_dec
 ## 示例
 
 ```cpp
+#include <utility>
 #include <print>
 #include <ranges>
 #include <string_view>
@@ -69,7 +70,13 @@ int main()
     const example_source<givm::card_definition> card_source{};
     const example_source<givm::character_view> character_source{};
     if(not sources.add(card_source, character_source)) return 1;
-    const auto [library, id_map] = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    auto library_result = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, id_map] = std::move(*library_result);
     givm::table table{};
     givm::linked_deck deck{};
     deck.cards.push_back(id_map.get_id<givm::card_definition>("示例"));

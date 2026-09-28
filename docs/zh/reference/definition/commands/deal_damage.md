@@ -5,8 +5,12 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
+struct deal_damage_error;
+
 struct deal_damage
 {
+    using error_type = deal_damage_error;
+
     using input_type = deal_damage_input;
 
     std::span<const fixed_damage> damages{};
@@ -20,6 +24,7 @@ struct deal_damage
 | | |
 | --- | --- |
 | `input_type` | [`deal_damage_input`](../command_inputs/deal_damage_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `deal_damage_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 成员对象
 
@@ -77,9 +82,40 @@ struct deal_damage
 
 该视图同时提供原始反应与替代标签。组末超载确实改变出战角色时，还会到达 `execution_state::active_character_changed` 现场；其观察与切人通知都先于本组反应后和伤害后通知。
 
+## 编译检查
+
+```cpp
+struct deal_damage_error;
+```
+
+`deal_damage::error_type` 是 `givm::deal_damage_error` 的别名。`deal_damage_error` 是本命令的结构化编译错误，`deal_damage_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_source_player` | `damages[index].source.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_source_selection` | `damages[index].source.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+| `invalid_target_player` | `damages[index].target.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_target_selection` | `damages[index].target.selection` 不是 `character_selection::character`、`others` 或 `all` |
+| `zero_multiplier_denominator` | `damages[index].multiplier_denominator` 为零 |
+| `invalid_damage_type` | `damages[index].type` 不是已声明的 `damage_type` 枚举值 |
+
+### `deal_damage_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `index` | `std::size_t` | 出错伤害在 `damages` 中从零开始的索引 |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。`zero_multiplier_denominator` 只使用 `index`，不使用 `value`。
+
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstdint>
 #include <print>
@@ -122,10 +158,16 @@ int main()
             .target = givm::relative_character_target{ givm::relative_player::opponent, 0, givm::character_selection::others },
             .value = 1, .type = givm::damage_type::piercing, .flags = {} }
     };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::select_active_character_both{}, givm::deal_damage{ .damages = damages } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

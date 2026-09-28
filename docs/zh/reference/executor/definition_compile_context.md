@@ -41,11 +41,12 @@ class definition_compile_context;
 
 本次集合在任何定义的 `compile` 或历史摘要的 `layout` 开始前已经确定。所有定义的名称、标签和能力信息均可查询，无须等待被查询定义完成编译。元数据视图不提供执行响应或查询结果的接口，且只能在本次编译期间使用；可以保存取得的 ID，不能把视图或其借用的范围保存到对局运行期。
 
-历史摘要的 `layout` 也接收只读编译上下文，此时可以查询最终定义数量，但不能取得字段键。所有摘要字段描述完成后才调用定义的 `compile`；此时 `history_field<T>` 返回摘要自身使用的 `history_field_key<T>`，`resolve_history_field<T>` 返回通过牌桌读取的 `history_value_key<T>`。数组字段使用 `T[]`。省略模板参数的重载返回 `dynamic_history_field`，供脚本适配器按描述的类型选择对应键。字段名称、类型、数组形态或声明依赖不符时抛出 `std::invalid_argument`。
+历史摘要的 `layout` 也接收只读编译上下文，此时可以查询最终定义数量，但不能取得字段键。所有摘要字段描述完成后才调用定义的 `compile`；此时 `history_field<T>` 返回摘要自身使用的 `history_field_key<T>`，`resolve_history_field<T>` 返回通过牌桌读取的 `history_value_key<T>`。数组字段使用 `T[]`。省略模板参数时，前者返回 `dynamic_history_field`，后者返回 `dynamic_history_value`，均为各强类型键的 variant。字段访问阶段、名称、类型、数组形态或声明依赖不符时记录结构化诊断，最终由 [`compile`](compile.md) 返回失败；本次取得的无效键不能用于访问状态。
 
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <string_view>
@@ -87,10 +88,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(card, support)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
 }
 ```
 

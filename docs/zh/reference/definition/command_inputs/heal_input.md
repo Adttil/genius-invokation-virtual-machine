@@ -2,7 +2,7 @@
 
 # givm::heal_input
 
-定义于头文件 `<givm/definition/commands.hpp>`。
+定义于头文件 `<givm/definition.hpp>`。
 
 `heal{}` 的动态输入。它描述来源、目标和初始治疗量；目标可以是精确的 `character_id`，也可以是带 `selection` 范围的 [`relative_character_target`](../events/relative_character_target.md)。精确角色目标只治疗该角色。
 

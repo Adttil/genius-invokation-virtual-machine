@@ -10,11 +10,40 @@ struct shuffle_deck;
 
 洗牌命令，用于随机重排指定玩家的牌堆。牌的内容和牌堆数量保持不变。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `shuffle_deck_error` 的别名，即本命令的编译检查错误类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 要洗牌的玩家 |
+
+## 编译检查
+
+```cpp
+struct shuffle_deck_error;
+```
+
+`shuffle_deck::error_type` 是 `givm::shuffle_deck_error` 的别名。`shuffle_deck_error` 是本命令的结构化编译错误，`shuffle_deck_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `invalid_player` | `player.index` 不是固定席位 `0` 或 `1` |
+
+### `shuffle_deck_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错的 `player.index` |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。
 
 ## 注意
 
@@ -29,6 +58,7 @@ struct shuffle_deck;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -57,10 +87,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(first, second)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0 } };
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");

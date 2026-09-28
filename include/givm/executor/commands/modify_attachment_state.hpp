@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_MODIFY_ATTACHMENT_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_MODIFY_ATTACHMENT_STATE_HPP
 
+#include <vector>
+
 #include "set_attachment_state.hpp"
 #include "../../macro_define.hpp"
 
@@ -77,6 +79,39 @@ namespace givm::detail
                 { command.target.character, selector }, command.count, command.round_usages });
         }, command.target.selector);
         writer.write(execute_fn{ finish_attachment_state_change });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<modify_attachment_state::error_type> check(const modify_attachment_state& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = modify_attachment_state::error_type::reason;
+        std::vector<modify_attachment_state::error_type> errors;
+        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        if(definition && not *definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(definition)
+        {
+            if(definition->value() >= context.definition_count<attachment_view>())
+                errors.push_back({ .cause = reason::invalid_definition, .value = definition->value(), .limit = context.definition_count<attachment_view>() });
+        }
+        else
+        {
+            const auto equipment = std::get<equipment_type>(command.target.selector);
+            if(equipment >= equipment_type::none)
+                errors.push_back({ .cause = reason::invalid_equipment_type, .value = static_cast<std::size_t>(equipment) });
+        }
+        if(command.target.character.player != relative_player::self && command.target.character.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_target_character_player, .value = static_cast<std::size_t>(command.target.character.player) });
+        if(command.target.character.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_target_character_selection, .value = static_cast<std::size_t>(command.target.character.selection) });
+        return errors;
     }
 }
 

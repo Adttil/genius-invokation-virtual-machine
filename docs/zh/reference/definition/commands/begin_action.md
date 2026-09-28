@@ -10,6 +10,20 @@ struct begin_action;
 
 行动阶段的处理命令，涵盖玩家选择行动至双方宣布结束的过程。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `begin_action_error` 的别名，即本命令的编译检查错误类型 |
+
+## 编译检查
+
+```cpp
+enum class begin_action_error {};
+```
+
+`begin_action::error_type` 是 `givm::begin_action_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+
 ## 注意
 
 先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持使用技能或特技、打出手牌、元素调和、主动切换出战角色和宣布结束；当前行动方必须已有出战角色。双方均宣布结束后，本命令才结束行动阶段。
@@ -47,6 +61,7 @@ struct begin_action;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -91,10 +106,16 @@ int main()
     if(not sources.add(source)) return 1;
     if(not sources.add(card)) return 1;
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::select_active_character_both{}, givm::draw_cards{ .positions = draw_positions }, givm::begin_action{} },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     const auto card_definition = ids.get_id<givm::card_definition>("card");

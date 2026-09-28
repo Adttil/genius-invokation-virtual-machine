@@ -1,12 +1,14 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_REROLL_DICE_HPP
 #define GIVM_EXECUTOR_COMMANDS_REROLL_DICE_HPP
 
+#include <vector>
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
 
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -140,6 +142,24 @@ namespace givm::detail
             writer.write(command);
         }
         writer.write(execute_fn{ apply_single_player_dice_reroll });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<reroll_dice::error_type> check(const reroll_dice& command, const definition_compile_context&, program_kind kind)
+    {
+        using reason = reroll_dice::error_type::reason;
+        std::vector<reroll_dice::error_type> errors;
+        if(command.player == static_cast<relative_player>(-1))
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        return errors;
     }
 }
 

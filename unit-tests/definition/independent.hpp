@@ -106,7 +106,7 @@ TEST_CASE("definition sources can be registered and enumerated without executor 
     check_sources<givm::skill_view>(sources, { "Skill" });
     check_sources<givm::attachment_view>(sources, { "Attachment" });
 
-    const auto ids = sources.make_issued_id_map(givm_test::basic_sources);
+    const auto ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
     CHECK(ids.has<givm::card_definition>("Another card"));
     CHECK(ids.has<givm::character_view>("Character"));
     CHECK(ids.has<givm::attachment_view>("Attachment"));
@@ -124,7 +124,7 @@ TEST_CASE("reaction definitions can be selected without changing the source coll
 
     check_sources<givm::combat_status_view>(sources, {});
     check_sources<givm::summon_view>(sources, {});
-    const auto ids = sources.make_issued_id_map(basics, givm::definition_selection{});
+    const auto ids = givm_test::require_success(sources.make_issued_id_map(basics, givm::definition_selection{}));
     CHECK(ids.has<givm::combat_status_view>(core.name()));
     CHECK(ids.has<givm::combat_status_view>(field.name()));
     CHECK(ids.has<givm::summon_view>(flame.name()));

@@ -61,6 +61,7 @@ program_entry invoke(substack_t, program_entry entry, std::span<const any_comman
 下例由角色的被动技能响应事件，依次提交一组伤害和设置出战的目标。伤害数组在响应内准备，`invoke` 复制其内容；两个动态命令各对应一个输入对象。
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstdint>
 #include <print>
@@ -127,9 +128,15 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
     if(not sources.add(character)) return 1;
-    const auto [library, ids] = compile(sources, basics,
+    auto library_result = compile(sources, basics,
         std::tuple{ givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{};
     load_deck(table, library, givm::linked_deck{
         .characters = { ids.get_id<givm::character_view>("角色") }

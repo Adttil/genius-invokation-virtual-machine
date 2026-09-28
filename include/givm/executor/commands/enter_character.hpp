@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_ENTER_CHARACTER_HPP
 #define GIVM_EXECUTOR_COMMANDS_ENTER_CHARACTER_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
 #include "../../definition.hpp"
 
@@ -30,6 +32,21 @@ namespace givm::detail
     {
         writer.write(execute_fn{ &enter_character_execute });
         writer.write(command);
+    }
+}
+
+namespace givm
+{
+    inline std::vector<enter_character::error_type> check(const enter_character& command,
+        const definition_compile_context& context, program_kind)
+    {
+        using reason = enter_character::error_type::reason;
+        std::vector<enter_character::error_type> errors;
+        if(command.player.index >= 2)
+            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index });
+        if(command.definition.value() >= context.definition_count<character_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<character_view>() });
+        return errors;
     }
 }
 

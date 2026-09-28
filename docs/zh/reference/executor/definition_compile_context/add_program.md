@@ -25,7 +25,7 @@ program_entry add_program(TCommands&& commands);
 
 ## 返回值
 
-登记效果的非空 [`program_entry`](../../definition/program_entry.md)。
+返回登记效果的 [`program_entry`](../../definition/program_entry.md)。命令参数验证失败时，将诊断加入本次 [`compile`](../compile.md) 的错误列表；诊断包含当前源、响应程序编号和命令下标。只有整库编译成功后，返回入口才可用于执行。
 
 ## 注意
 
@@ -34,6 +34,7 @@ program_entry add_program(TCommands&& commands);
 ## 示例
 
 ```cpp
+#include <utility>
 #include <print>
 #include <string_view>
 #include <tuple>
@@ -76,10 +77,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
 }
 ```
 

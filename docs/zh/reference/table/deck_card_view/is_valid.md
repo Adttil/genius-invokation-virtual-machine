@@ -18,10 +18,10 @@ constexpr bool is_valid() const;
 
 访问对象本身必须仍可安全访问；本函数不能用来检查已经悬空的对象。
 
-
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <ranges>
@@ -49,9 +49,15 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto definition = ids.get_id<givm::card_definition>("示例");
     givm::table table{};
     load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});

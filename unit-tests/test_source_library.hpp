@@ -2,11 +2,25 @@
 #define GIVM_TEST_SOURCE_LIBRARY_HPP
 
 #include <string_view>
+#include <utility>
+
+#include <catch2/catch_test_macros.hpp>
 
 #include <givm/definition.hpp>
 
 namespace givm_test
 {
+    template<class TResult>
+    auto require_success(TResult&& result)
+    {
+        if(not result)
+        {
+            INFO(error_string(result.error()));
+            REQUIRE(result.has_value());
+        }
+        return std::move(*result);
+    }
+
     template<class TCategory>
     struct reaction_source
     {

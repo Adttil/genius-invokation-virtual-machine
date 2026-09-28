@@ -2,7 +2,7 @@
 
 # givm::add_attachment_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [add_attachment](../commands/add_attachment.md) 的动态输入，指定本次角色附属实体的目标、定义和状态。
 

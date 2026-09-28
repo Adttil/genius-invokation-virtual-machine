@@ -2,7 +2,7 @@
 
 # givm::add_summon_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [add_summon](../commands/add_summon.md) 的动态输入，指定本次召唤物的目标、定义和状态。
 

@@ -49,14 +49,18 @@ auto compile(
 
 ## 返回值
 
-返回一个类型未指定的对象，包含以下公开成员，按表中顺序支持结构化绑定：
+返回 `std::expected<编译结果, std::vector<compile_error>>`。成功时的编译结果类型未指定，包含以下公开成员，按表中顺序支持结构化绑定：
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `library` | [`definition_library`](definition_library.md) | 编译后的实体定义与对局流程 |
 | `id_map` | [`issued_id_map`](../definition/issued_id_map.md) | 同一次编译产生的定义及标签名称映射 |
 
-两者对应同一个定义集合和 ID 分配结果。调用方可以通过 `auto` 保存结果，或使用 `auto [library, id_map] = compile(...);` 分别取得两者。
+两者对应同一个定义集合和 ID 分配结果。先检查返回的 `expected`，成功后可通过 `result->library`、`result->id_map` 访问，或以 `auto [library, id_map] = std::move(*result);` 取得两者。
+
+失败时返回 [`compile_error`](compile_error.md) 列表，不发布部分编译的定义库。诊断包含发生阶段、定义源、程序与命令位置，以及具体错误类型；可交给 [`error_string`](error_string.md) 输出。能继续检查的错误会聚合，不通过验证异常中断。
+
+某个定义源的 `compile` 产生诊断后，不再对该定义执行无参数的静态查询，以免继续使用未能成功编译的结果；其他定义仍继续编译和收集诊断。
 
 ## 自动回合推进
 
@@ -75,13 +79,13 @@ auto compile(
 
 |  |  |
 | --- | --- |
-| `std::invalid_argument` | 选择了未知定义，基础源名称冲突或依赖缺失，或定义源编译时通过 `resolve_id` 查询了未声明的名称依赖；未定义 `NDEBUG` 时，初始化或回合流程需要响应输入也会抛出 |
+| 定义源或用户范围抛出的异常 | 原样向调用方传播，不转换为验证诊断 |
 
 ## 注意
 
 基础定义不必事先登记到 `sources`，它们及其依赖参与本次编译的选择与 ID 分配。需要在编译前取得 ID 时，调用 [`sources.make_issued_id_map(basics, ...)`](../definition/definition_source_library/make_issued_id_map.md)，并与本次编译使用相同的源库内容、基础定义配置及选择范围。
 
-两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。空回合流程也会自动推进回合，直至超过牌桌配置的上限而结束。定义源的编译操作抛出的异常继续向调用者传播。
+两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。此限制在所有构建模式下检查，错误通过返回值报告。空回合流程也会自动推进回合，直至超过牌桌配置的上限而结束。
 
 `mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 `executor::step` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
 
@@ -90,6 +94,7 @@ auto compile(
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <tuple>
@@ -105,10 +110,16 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 2 } };
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };

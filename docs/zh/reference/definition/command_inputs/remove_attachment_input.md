@@ -2,7 +2,7 @@
 
 # givm::remove_attachment_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [remove_attachment](../commands/remove_attachment.md) 的动态输入，指定要离场的角色附属实体。
 

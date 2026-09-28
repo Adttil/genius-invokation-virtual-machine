@@ -17,10 +17,13 @@
 | [`definition_name`](definition/definition_name.md) | 定义类别及名称 |
 | [`source_conflict`](definition/source_conflict.md) | 同类别同名源的冲突诊断 |
 | [`source_missing_dependency`](definition/source_missing_dependency.md) | 定义源的缺失依赖诊断 |
+| [`source_selection_error`](definition/source_selection_error.md) | 选定定义不存在的诊断 |
+| [`deck_link_error`](definition/deck_link_error.md) | 牌组名称无法链接的诊断 |
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
 | [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
 | [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |
-| [`history_field_descriptor`](definition/history_summary.md#类) | 历史摘要字段的描述 |
+| [`history_scalar_field<T>`](definition/history_summary.md#类) | 历史摘要的标量字段描述 |
+| [`history_array_field<T>`](definition/history_summary.md#类) | 历史摘要的数组字段描述 |
 
 ### 名称、ID 与标签
 
@@ -42,6 +45,8 @@
 |  |  |
 | --- | --- |
 | [`source_add_error`](definition/source_add_error.md) | 定义源登记诊断的 variant |
+| [`source_preparation_error`](definition/source_preparation_error.md) | 定义选择及 ID 准备诊断的 variant |
+| [`history_field_descriptor`](definition/history_summary.md#类型别名) | 历史摘要字段描述的 variant |
 | [`any_command`](definition/any_command.md) | 核心命令 variant |
 | [`any_command_input`](definition/any_command_input.md) | 核心命令输入 variant |
 | [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
@@ -54,7 +59,7 @@
 |  |  |
 | --- | --- |
 | [`make_definition_source_library`](definition/make_definition_source_library.md) | 创建源库并批量登记定义源 |
-| [`error_string`](definition/error_string.md) | 将源库登记或合并诊断转换为文本 |
+| [`error_string`](definition/error_string.md) | 将源准备、牌组链接或单命令诊断转换为文本 |
 | [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
 | [`query_default`](definition/query_default.md) | 定义源未提供查询时的默认结果 |
 

@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_DEAL_DAMAGE_HPP
 #define GIVM_EXECUTOR_COMMANDS_DEAL_DAMAGE_HPP
 
+#include <vector>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -704,6 +706,39 @@ namespace givm::detail
             if(mode == compile_mode::observed) compile_damage_group<false, true>(writer, command);
             else compile_damage_group<false, false>(writer, command);
         }
+    }
+}
+
+namespace givm
+{
+    inline std::vector<deal_damage::error_type> check(const deal_damage& command, const definition_compile_context&, program_kind kind)
+    {
+        using reason = deal_damage::error_type::reason;
+        std::vector<deal_damage::error_type> errors;
+        if(command.damages.empty())
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        for(std::size_t index = 0; index < command.damages.size(); ++index)
+        {
+            const auto& damage = command.damages[index];
+            if(damage.source.player != relative_player::self && damage.source.player != relative_player::opponent)
+                errors.push_back({ .cause = reason::invalid_source_player, .value = static_cast<std::size_t>(damage.source.player), .index = index });
+            if(damage.source.selection != character_selection::character)
+                errors.push_back({ .cause = reason::invalid_source_selection, .value = static_cast<std::size_t>(damage.source.selection), .index = index });
+            if(damage.target.player != relative_player::self && damage.target.player != relative_player::opponent)
+                errors.push_back({ .cause = reason::invalid_target_player, .value = static_cast<std::size_t>(damage.target.player), .index = index });
+            if(damage.target.selection != character_selection::character && damage.target.selection != character_selection::others
+                && damage.target.selection != character_selection::all)
+                errors.push_back({ .cause = reason::invalid_target_selection, .value = static_cast<std::size_t>(damage.target.selection), .index = index });
+            if(damage.multiplier_denominator == 0)
+                errors.push_back({ .cause = reason::zero_multiplier_denominator, .index = index });
+            if(damage.type > damage_type::true_damage)
+                errors.push_back({ .cause = reason::invalid_damage_type, .value = static_cast<std::size_t>(damage.type), .index = index });
+        }
+        return errors;
     }
 }
 

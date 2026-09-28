@@ -9,7 +9,7 @@
 #include <variant>
 #include <vector>
 
-#include "../definition/events.hpp"
+#include "../definition.hpp"
 #include "executor.hpp"
 
 namespace givm::detail

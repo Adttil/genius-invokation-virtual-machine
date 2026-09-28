@@ -1,6 +1,7 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_BEGIN_ACTION_HPP
 #define GIVM_EXECUTOR_COMMANDS_BEGIN_ACTION_HPP
 
+
 #include "../executor.hpp"
 
 #include <array>
@@ -17,8 +18,7 @@
 #include "remove_dice.hpp"
 #include "set_active_character.hpp"
 #include "use_skill.hpp"
-#include "../../definition/events.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 #include "../../macro_define.hpp"
 
@@ -1475,6 +1475,14 @@ namespace givm::detail
         {
             compile_begin_action<false>(writer);
         }
+    }
+}
+
+namespace givm
+{
+    inline std::vector<begin_action::error_type> check(const begin_action&, const definition_compile_context&, program_kind)
+    {
+        return {};
     }
 }
 

@@ -10,6 +10,20 @@ struct end_round;
 
 回合结束命令，负责本回合的收尾与下一回合的先手准备。它应放在双方的结束声明已经结算完毕之后。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `end_round_error` 的别名，即本命令的编译检查错误类型 |
+
+## 编译检查
+
+```cpp
+enum class end_round_error {};
+```
+
+`end_round::error_type` 是 `givm::end_round_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+
 ## 注意
 
 将行动玩家从最后宣布结束的一方切换为另一方，清除已有人宣布结束的标记，然后发出 [`round_ended`](../events/round_ended.md)。回合结束抽牌等其他效果可在本命令之后另行安排。
@@ -19,6 +33,7 @@ struct end_round;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -50,10 +65,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::select_active_character_both{}, givm::begin_action{}, givm::end_round{} },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0 } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

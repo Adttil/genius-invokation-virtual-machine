@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_REMOVE_COMBAT_STATUS_HPP
 #define GIVM_EXECUTOR_COMMANDS_REMOVE_COMBAT_STATUS_HPP
 
+#include <vector>
+
 #include <algorithm>
 
 #include "../broadcast.hpp"
@@ -72,6 +74,27 @@ namespace givm::detail
         else
             writer.write(execute_fn{ prepare_combat_status_removal<false> });
         writer.write(execute_fn{ broadcast_combat_status_removal });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<remove_combat_status::error_type> check(const remove_combat_status& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = remove_combat_status::error_type::reason;
+        std::vector<remove_combat_status::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<combat_status_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<combat_status_view>() });
+        return errors;
     }
 }
 

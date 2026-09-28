@@ -2,7 +2,7 @@
 
 # givm::set_skill_state_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 struct set_skill_state_input

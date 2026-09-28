@@ -2,7 +2,7 @@
 
 # givm::modify_attachment_state_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [modify_attachment_state](../commands/modify_attachment_state.md) 的动态输入，指定要修改的角色附属实体以及本次变化。
 

@@ -29,6 +29,7 @@ bool is_controlled(character_view character) const noexcept;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -60,10 +61,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(character)) return 1;
-    const auto issued = sources.make_issued_id_map(basics);
+    auto issued_result = sources.make_issued_id_map(basics);
+    if(not issued_result)
+    {
+        std::println("{}", error_string(issued_result.error()));
+        return 1;
+    }
+    const auto issued = std::move(*issued_result);
     const auto frozen = issued.get_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name());
     const givm::character_id target{ givm::player_id{ 0 }, 0 };
-    const auto [library, ids] = compile(sources, basics,
+    auto library_result = compile(sources, basics,
         std::tuple{
             givm::select_active_character_both{},
             givm::attach{ .definition = frozen }
@@ -73,6 +80,12 @@ int main()
             givm::start_round{},
             givm::end_game{ .result = givm::game_result::both_loss }
         }, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 2, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

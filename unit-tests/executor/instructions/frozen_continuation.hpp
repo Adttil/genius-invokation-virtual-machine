@@ -53,18 +53,18 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
         givm::genshin_impact::burning_flame_3_3_0, frozen };
     givm::definition_source_library sources;
     REQUIRE(sources.add(character));
-    const auto prepared_ids = sources.make_issued_id_map(basics);
+    const auto prepared_ids = givm_test::require_success(sources.make_issued_id_map(basics));
     const std::array damages{
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical }
     };
-    const auto [library, ids] = compile(sources, basics, std::tuple{
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{
         givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } }, givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent, 0 } },
         givm::attach{ .player = givm::relative_player::opponent,
             .definition = prepared_ids.get_id<givm::attachment_view>(frozen.name()) },
         givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro },
         givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss }
-    }, std::tuple{}, givm::compile_mode::observed);
+    }, std::tuple{}, givm::compile_mode::observed));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };

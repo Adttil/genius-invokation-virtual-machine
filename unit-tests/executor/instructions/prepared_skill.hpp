@@ -227,9 +227,9 @@ namespace
             givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
         givm::definition_source_library sources;
         REQUIRE(sources.add(observer, character, ordinary, fast, combat, later, immunity, plain));
-        const auto ids = sources.make_issued_id_map(basics);
-        return compile(sources, basics, program(ids), round,
-            observed ? givm::compile_mode::observed : givm::compile_mode::normal);
+        const auto ids = givm_test::require_success(sources.make_issued_id_map(basics));
+        return givm_test::require_success(compile(sources, basics, program(ids), round,
+            observed ? givm::compile_mode::observed : givm::compile_mode::normal));
     }
 
     givm::table make_table(prepared_log& log, const givm::definition_library& library, const givm::issued_id_map& ids)

@@ -2,7 +2,7 @@
 
 # givm::apply_element_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 响应通过 `invoke` 向默认构造的 [`apply_element`](../commands/apply_element.md) 提交的直接附着输入。此结构仅用于命令输入，不广播，也不在任何类别的订阅列表中；命令根据目标此时的附着判定反应。
 

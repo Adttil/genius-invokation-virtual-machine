@@ -2,7 +2,7 @@
 
 # givm::use_skill_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 using use_skill_input = skill_effect;

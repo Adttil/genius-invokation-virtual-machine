@@ -7,8 +7,12 @@
 使一个或多个召唤物依次离场，并通知其他实体处理相应效果。
 
 ```cpp
+struct remove_summon_error;
+
 struct remove_summon
 {
+    using error_type = remove_summon_error;
+
     using input_type = remove_summon_input;
 
     relative_player player = relative_player::self;
@@ -21,6 +25,7 @@ struct remove_summon
 | | |
 | --- | --- |
 | `input_type` | [`remove_summon_input`](../command_inputs/remove_summon_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `remove_summon_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 输入
 
@@ -36,3 +41,29 @@ struct remove_summon
 命令不清空可用次数，也不改变效果量，不检查 `remove_at_zero_usages` 标签。目标的离场状态就是移除时的当前状态；需要统一归零等处理时，应在本命令之前显式安排 [set_summon_state](set_summon_state.md)。
 
 前面响应已移除的后续目标跳过；新产生的召唤物不加入本批。离场后不再参与通常遍历和广播，但在 cleanup 前，其定义和状态仍可由旧 ID 读取。空目标列表无效果。
+
+## 编译检查
+
+```cpp
+struct remove_summon_error;
+```
+
+`remove_summon::error_type` 是 `givm::remove_summon_error` 的别名。`remove_summon_error` 是本命令的结构化编译错误，`remove_summon_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_player` | `player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_definition` | `definition` 的定义 ID 数值超出本次编译集合的 `summon_view` 定义数量 |
+
+### `remove_summon_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。

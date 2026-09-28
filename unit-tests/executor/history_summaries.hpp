@@ -8,6 +8,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -171,9 +172,9 @@ namespace
             const TEvent&, const givm::table&, const givm::definition_library&)
         {
             if constexpr(std::same_as<TEvent, givm::history_summary_initialization>)
-                state[data.hits.as<std::uint32_t>()] = 0;
+                state[std::get<givm::history_field_key<std::uint32_t>>(data.hits)] = 0;
             else
-                ++state[data.hits.as<std::uint32_t>()];
+                ++state[std::get<givm::history_field_key<std::uint32_t>>(data.hits)];
         }
     };
 
@@ -192,7 +193,7 @@ namespace
         auto history_summary_dependencies() const { return std::array{ std::string_view{ "DynamicEnabled" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_history_field("DynamicEnabled", "hits").as_value<std::uint32_t>(),
+            return { std::get<givm::history_value_key<std::uint32_t>>(context.resolve_history_field("DynamicEnabled", "hits")),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }), observed };
         }
         static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
@@ -462,9 +463,9 @@ TEST_CASE("starting initializes history after both decks and copies preserve ini
     const plain_card_source first{ "FirstCard" }, second{ "SecondCard" };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(summary, first, second));
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
-        std::tuple{}, givm::compile_mode::normal);
+        std::tuple{}, givm::compile_mode::normal));
     const auto id = ids.get_id<givm::history_summary_definition>(mixed_name);
     const auto small = library.history_field<std::uint8_t>(id, "small");
     const auto wide = library.history_field<std::uint64_t>(id, "wide");
@@ -508,9 +509,11 @@ TEST_CASE("starting initializes history after both decks and copies preserve ini
     CHECK(another[counts][0] == 0);
     CHECK(another[counts][1] == 0);
 
+#ifndef NDEBUG
     CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "wide"), std::invalid_argument);
     CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "counts"), std::invalid_argument);
     CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "missing"), std::invalid_argument);
+#endif
 }
 
 TEST_CASE("history without initialization writes fields before reading them", "[history_summary]")
@@ -519,9 +522,9 @@ TEST_CASE("history without initialization writes fields before reading them", "[
     const deferred_summary_source summary{ &recordings };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(summary));
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
-        std::tuple{}, givm::compile_mode::normal);
+        std::tuple{}, givm::compile_mode::normal));
     givm::table table;
     load_deck(table, library, {}, {});
     givm::executor executor;
@@ -546,7 +549,7 @@ TEST_CASE("history dependencies select only needed summaries and validate field 
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = roots;
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, ids] = compile(sources, givm_test::basic_sources, selection, program, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, selection, program, std::tuple{}, givm::compile_mode::normal));
     CHECK(ids.has<givm::history_summary_definition>(mixed_name));
     CHECK_FALSE(ids.has<givm::history_summary_definition>(unused.name()));
     CHECK_FALSE(ids.has<givm::card_definition>(unrelated.name()));
@@ -565,7 +568,35 @@ TEST_CASE("history dependencies select only needed summaries and validate field 
     const invalid_consumer_source invalid{ error };
     auto invalid_sources = givm_test::make_source_library();
     REQUIRE(invalid_sources.add(invalid, summary));
-    CHECK_THROWS_AS(compile(invalid_sources, givm_test::basic_sources, program, std::tuple{}, givm::compile_mode::normal), std::invalid_argument);
+    const auto result = compile(invalid_sources, givm_test::basic_sources, program, std::tuple{}, givm::compile_mode::normal);
+    REQUIRE_FALSE(result);
+    REQUIRE(result.error().size() == 1);
+    const auto& diagnostic = result.error().front();
+    CHECK(diagnostic.location.stage == givm::compile_stage::definition);
+    REQUIRE(diagnostic.location.source);
+    CHECK(diagnostic.location.source->name == std::string{ invalid.name() });
+    if(error == field_error::missing)
+    {
+        const auto* reason = std::get_if<givm::history_field_not_found>(&diagnostic.reason);
+        REQUIRE(reason);
+        CHECK(reason->summary == std::string{ mixed_name });
+        CHECK(reason->field == "missing");
+    }
+    else if(error == field_error::type || error == field_error::shape)
+    {
+        const auto* reason = std::get_if<givm::history_field_type_mismatch>(&diagnostic.reason);
+        REQUIRE(reason);
+        CHECK(reason->summary == std::string{ mixed_name });
+        CHECK(reason->expected_type == "uint32_t");
+        CHECK(reason->actual_type == (error == field_error::type ? "uint64_t" : "uint32_t[]"));
+    }
+    else
+    {
+        const auto* reason = std::get_if<givm::definition_resolution_error>(&diagnostic.reason);
+        REQUIRE(reason);
+        CHECK(reason->cause == givm::definition_resolution_error::reason::undeclared_dependency);
+        CHECK(reason->definition.name == std::string{ error == field_error::undeclared ? mixed_name : "Missing" });
+    }
 }
 
 TEST_CASE("dynamic history adapters update once after resumable ordinary responses", "[history_summary]")
@@ -578,9 +609,9 @@ TEST_CASE("dynamic history adapters update once after resumable ordinary respons
     const history_observer_source observer{ &observed };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(observer, enabled, disabled));
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
-        std::tuple{}, mode);
+        std::tuple{}, mode));
     REQUIRE(capability_checks != 0);
     const auto compiled_checks = capability_checks;
     const auto enabled_id = ids.get_id<givm::history_summary_definition>(enabled.name());
@@ -615,9 +646,9 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
         const dynamic_summary_source summary{ "DynamicHistory", true, payload_count, &capability_checks };
         auto sources = givm_test::make_source_library();
         REQUIRE(sources.add(summary));
-        return compile(sources, givm_test::basic_sources,
+        return givm_test::require_success(compile(sources, givm_test::basic_sources,
             std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
-            std::tuple{}, givm::compile_mode::normal);
+            std::tuple{}, givm::compile_mode::normal));
     };
     const auto [small_library, small_ids] = make_library(1);
     const auto [large_library, large_ids] = make_library(33);
@@ -665,8 +696,8 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
     {
         auto sources = givm_test::make_source_library();
         REQUIRE(sources.add(scalar_summary_source<T>{ value }));
-        return compile(sources, givm_test::basic_sources, std::tuple{ givm::end_game{ givm::game_result::both_loss } },
-            std::tuple{}, givm::compile_mode::normal);
+        return givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{ givm::end_game{ givm::game_result::both_loss } },
+            std::tuple{}, givm::compile_mode::normal));
     };
     const auto [double_library, double_ids] = make_scalar_library(1.25);
     const auto [integer_library, integer_ids] = make_scalar_library(std::int32_t{ 42 });
@@ -698,8 +729,8 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
     const generation_driver_source driver{ &observed };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(driver, future, summary, initial, first, second, character));
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::begin_action{} }, std::tuple{}, mode);
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
+        std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::begin_action{} }, std::tuple{}, mode));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -759,9 +790,9 @@ TEST_CASE("defeat history records only confirmed nonterminal defeats after ordin
     const std::array damages{ givm::fixed_damage{
         .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
-        std::tuple{}, mode);
+        std::tuple{}, mode));
     const auto victim_id = ids.get_id<givm::character_view>(victim.name());
     givm::linked_deck defenders{ .characters = { victim_id } };
     if(expected == outcome::defeated) defenders.characters.push_back(victim_id);

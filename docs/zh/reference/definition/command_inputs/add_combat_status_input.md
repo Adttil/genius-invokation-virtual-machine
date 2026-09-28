@@ -2,7 +2,7 @@
 
 # givm::add_combat_status_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [add_combat_status](../commands/add_combat_status.md) 的动态输入，指定本次出战状态的目标、定义和状态。
 

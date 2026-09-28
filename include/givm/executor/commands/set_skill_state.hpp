@@ -1,11 +1,13 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SET_SKILL_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_SET_SKILL_STATE_HPP
 
+#include <vector>
+
 #include <algorithm>
 
 #include "../executor.hpp"
 #include "../character_target.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -51,6 +53,29 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_skill_state_change<false> });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<set_skill_state::error_type> check(const set_skill_state& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = set_skill_state::error_type::reason;
+        std::vector<set_skill_state::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.character.player != relative_player::self && command.character.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_character_player, .value = static_cast<std::size_t>(command.character.player) });
+        if(command.character.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_character_selection, .value = static_cast<std::size_t>(command.character.selection) });
+        if(command.definition.value() >= context.definition_count<skill_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<skill_view>() });
+        return errors;
     }
 }
 

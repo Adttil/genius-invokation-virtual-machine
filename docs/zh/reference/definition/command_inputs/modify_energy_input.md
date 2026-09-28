@@ -2,7 +2,7 @@
 
 # givm::modify_energy_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 struct modify_energy_input

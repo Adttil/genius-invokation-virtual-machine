@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "random_fn.hpp"
-#include "../definition/events.hpp"
+#include "../definition.hpp"
 #include "library.hpp"
 #include "handle_context.hpp"
 #include "../table.hpp"

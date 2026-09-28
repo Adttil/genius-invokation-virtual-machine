@@ -2,7 +2,7 @@
 
 # givm::attachment_target、givm::equipment_target、givm::relative_attachment_target
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 附属实体定位描述状态修改、移除和转移命令要操作的角色附属实体。动态输入可以指定具体实体，也可以指定某角色当前的一类装备；固定命令使用相对角色位置，再按定义或装备类别定位。
 

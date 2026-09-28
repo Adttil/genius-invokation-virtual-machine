@@ -2,7 +2,7 @@
 
 # givm::increase_max_health_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 using increase_max_health_input = healing;

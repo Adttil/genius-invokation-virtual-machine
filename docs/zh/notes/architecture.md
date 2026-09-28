@@ -67,6 +67,8 @@ executor ----------------> table
 
 跨核心模块包含公共入口，依赖方向保持一致。definition 使用 table 提供的游戏数据类型，不包含 executor 实现。跨模块包含保持从上层指向下层。table 的直接及传递包含均不进入 definition 或 executor；definition 使用 table 提供的游戏数据类型，executor 通过 source view 完成最终编译。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
 
+命令拆分为文件后仍遵守这一边界：definition 的命令文件通过 `table.hpp` 使用牌桌类型，executor 的命令实现通过 `definition.hpp` 使用公开命令和错误类型，不穿过模块聚合头直接包含另一模块的叶文件。同模块的命令文件可以直接包含有实际复用关系的其他命令文件。`definition/commands.hpp` 与 `executor/commands.hpp` 均只汇总包含；命令错误的类型和单项格式化留在 definition，编译总错误的位置和格式化留在 executor，不形成反向依赖。
+
 table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 
 definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者可以仅包含 `definition.hpp` 保存入口与命令输入；实际调用 `add_program` 或 `handle_context` 成员时包含 `givm.hpp`，取得完整实现。source 适配仅传递 `handle_context&`，因此同样可以前置声明，保持单向依赖。

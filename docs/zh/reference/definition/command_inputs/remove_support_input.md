@@ -2,7 +2,7 @@
 
 # givm::remove_support_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [remove_support](../commands/remove_support.md) 的动态输入，指定要离场的支援。
 

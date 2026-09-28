@@ -2,7 +2,7 @@
 
 # givm::set_active_character_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 using set_active_character_input = active_character_changed;

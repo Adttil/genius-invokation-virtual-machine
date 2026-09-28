@@ -38,6 +38,7 @@ TQuery::result_t query(definition_id<TDefinitionType> id, const TQuery& paramete
 ## 示例
 
 ```cpp
+#include <utility>
 #include <print>
 #include <string_view>
 #include <tuple>
@@ -68,8 +69,14 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics, std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto id = ids.get_id<givm::character_view>("角色");
     const auto state = library.query(id, givm::character_initial_state{});
     std::println("初始生命: {}", state.health);

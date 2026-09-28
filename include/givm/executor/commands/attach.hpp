@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_ATTACH_HPP
 #define GIVM_EXECUTOR_COMMANDS_ATTACH_HPP
 
+#include <vector>
+
 #include <utility>
 
 #include "add_attachment.hpp"
@@ -79,6 +81,26 @@ namespace givm::detail
             writer.write(execute_fn{ execute_attachment_application<false> });
         writer.write(execute_fn{ finish_attachment_reapplication });
         writer.write(execute_fn{ finish_replaced_attachment_removal });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<attach::error_type> check(const attach& command, const definition_compile_context& context, program_kind kind)
+    {
+        using reason = attach::error_type::reason;
+        std::vector<attach::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<attachment_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<attachment_view>() });
+        return errors;
     }
 }
 

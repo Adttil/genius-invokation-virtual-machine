@@ -192,11 +192,11 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
 TEST_CASE("rerolls continue each player's random dice sequence across partial selections", "[random][dice]")
 {
     auto sources = givm_test::make_source_library();
-    const auto [library, ids] = compile(sources, givm_test::basic_sources,
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::start_dice_roll_phase{ .count = 6, .reroll_count = { 3, 1 } },
                     givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal
-    );
+    ));
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     givm::executor execution;
     execution.start(library, table);

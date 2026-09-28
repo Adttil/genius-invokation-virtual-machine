@@ -2,7 +2,7 @@
 
 # givm::damage
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 一段伤害的动态初始描述。作为 [`deal_damage_input`](deal_damage_input.md) 的数组元素，由响应通过 `invoke` 提交给 [`deal_damage`](../commands/deal_damage.md)；编译时的固定描述使用 [`fixed_damage`](../commands/fixed_damage.md)。一段描述可以选择一个角色、该角色以外的其他角色或全部角色。它本身不广播；命令先定位角色并通过一次 [`damage_preparation`](../events/damage_preparation.md) 修饰属性，再将范围展开为具体伤害。
 

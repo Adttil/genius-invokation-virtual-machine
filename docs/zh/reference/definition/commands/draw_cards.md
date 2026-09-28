@@ -5,8 +5,12 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
+struct draw_cards_error;
+
 struct draw_cards
 {
+    using error_type = draw_cards_error;
+
     using input_type = draw_cards_input;
 
     relative_player player = relative_player::self;
@@ -21,6 +25,7 @@ struct draw_cards
 | | |
 | --- | --- |
 | `input_type` | [`draw_cards_input`](../command_inputs/draw_cards_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `draw_cards_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 成员对象
 
@@ -28,6 +33,33 @@ struct draw_cards
 | --- | --- | --- |
 | `player` | [`relative_player`](relative_player.md) | 固定模式下相对于当前效果本方的抽牌方，初始为 `self` |
 | `positions` | `std::span<const std::size_t>` | 固定模式下按抽取顺序排列的牌堆顶相对位置，初始为空 |
+
+## 编译检查
+
+```cpp
+struct draw_cards_error;
+```
+
+`draw_cards::error_type` 是 `givm::draw_cards_error` 的别名。`draw_cards_error` 是本命令的结构化编译错误，`draw_cards_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_player` | `player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `duplicate_position` | `positions[index]` 与之前的位置重复；本次抽取的固定位置不得重复 |
+
+### `draw_cards_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | `invalid_player` 时为玩家枚举的数值；`duplicate_position` 时为重复的牌堆位置 |
+| `index` | `std::size_t` | `duplicate_position` 中重复元素在 `positions` 内从零开始的索引 |
+| `first_index` | `std::size_t` | `duplicate_position` 中相同位置首次出现在 `positions` 内的索引 |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 注意
 
@@ -46,6 +78,7 @@ struct draw_cards
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -77,10 +110,16 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(first, second)) return 1;
     constexpr std::array<std::size_t, 2> draw_positions{ 0, 1 };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::draw_cards{ .positions = draw_positions } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     auto player = table[givm::player_id{ 0 }];
     const auto card = ids.get_id<givm::card_definition>("first");

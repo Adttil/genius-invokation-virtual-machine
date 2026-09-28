@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SET_SUPPORT_STATE_HPP
 #define GIVM_EXECUTOR_COMMANDS_SET_SUPPORT_STATE_HPP
 
+#include <vector>
+
 #include "add_support.hpp"
 #include "remove_support.hpp"
 #include "../../macro_define.hpp"
@@ -73,6 +75,27 @@ namespace givm::detail
         else
             writer.write(execute_fn{ execute_support_state_change<false> });
         writer.write(execute_fn{ finish_support_state_change });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<set_support_state::error_type> check(const set_support_state& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = set_support_state::error_type::reason;
+        std::vector<set_support_state::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<support_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<support_view>() });
+        return errors;
     }
 }
 

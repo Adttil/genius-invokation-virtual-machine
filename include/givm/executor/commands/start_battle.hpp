@@ -1,10 +1,11 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_START_BATTLE_HPP
 #define GIVM_EXECUTOR_COMMANDS_START_BATTLE_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
 #include "../broadcast.hpp"
-#include "../../definition/events.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 namespace givm::detail
 {
@@ -39,6 +40,14 @@ namespace givm::detail
     {
         writer.write<execute_fn>(&prepare_battle_start);
         writer.write<execute_fn>(&broadcast_battle_start);
+    }
+}
+
+namespace givm
+{
+    inline std::vector<start_battle::error_type> check(const start_battle&, const definition_compile_context&, program_kind)
+    {
+        return {};
     }
 }
 

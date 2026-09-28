@@ -10,11 +10,40 @@ struct replace_cards;
 
 单方换牌命令，包括选择待换手牌、放回所选牌及抽取等量新牌。抽取时优先避开本次换回的同名牌。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `replace_cards_error` 的别名，即本命令的编译检查错误类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 替换手牌的玩家 |
+
+## 编译检查
+
+```cpp
+struct replace_cards_error;
+```
+
+`replace_cards::error_type` 是 `givm::replace_cards_error` 的别名。`replace_cards_error` 是本命令的结构化编译错误，`replace_cards_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `invalid_player` | `player.index` 不是固定席位 `0` 或 `1` |
+
+### `replace_cards_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错的 `player.index` |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。
 
 ## 注意
 
@@ -37,6 +66,7 @@ struct replace_cards;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstddef>
 #include <bitset>
@@ -69,10 +99,16 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(first, second)) return 1;
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions }, givm::replace_cards{ .player = givm::player_id{ 0 } } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");

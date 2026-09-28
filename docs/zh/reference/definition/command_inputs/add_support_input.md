@@ -2,7 +2,7 @@
 
 # givm::add_support_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [add_support](../commands/add_support.md) 的动态输入，指定本次支援的目标、定义和状态。
 

@@ -1,8 +1,10 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_DRAW_CARDS_HPP
 #define GIVM_EXECUTOR_COMMANDS_DRAW_CARDS_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 
 #include <algorithm>
 #include <array>
@@ -11,7 +13,6 @@
 #include <span>
 
 #include "../broadcast.hpp"
-#include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -229,6 +230,30 @@ namespace givm::detail
         if(not from_top)
             for(const auto position : command.positions) writer.write(position);
         writer.write(execute_fn{ broadcast_drawn_card<false> });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<draw_cards::error_type> check(const draw_cards& command, const definition_compile_context&, program_kind kind)
+    {
+        using reason = draw_cards::error_type::reason;
+        std::vector<draw_cards::error_type> errors;
+        if(command.positions.empty())
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        for(std::size_t index = 0; index < command.positions.size(); ++index)
+        {
+            const auto earlier = std::ranges::find(command.positions.first(index), command.positions[index]);
+            if(earlier != command.positions.first(index).end())
+                errors.push_back({ .cause = reason::duplicate_position, .value = command.positions[index], .index = index, .first_index = static_cast<std::size_t>(earlier - command.positions.first(index).begin()) });
+        }
+        return errors;
     }
 }
 

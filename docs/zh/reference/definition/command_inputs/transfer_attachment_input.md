@@ -2,7 +2,7 @@
 
 # givm::transfer_attachment_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [`transfer_attachment`](../commands/transfer_attachment.md) 的动态输入，指定被转移的附属实体和接收它的角色。
 

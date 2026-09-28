@@ -15,6 +15,7 @@ struct heal;
 | | |
 | --- | --- |
 | `input_type` | [`heal_input`](../command_inputs/heal_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `heal_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 成员对象
 
@@ -38,6 +39,33 @@ struct heal;
 每个目标的 `healing` 响应和响应程序完成后，以此时的生命值和生命上限截断治疗量并立即加血；范围治疗会先完成全部目标，再按目标顺序发送 `healed`。恢复量为 `min(value, max_health - health)`，`healed::value` 记录这一实际值。
 
 满血或治疗量为 `0` 时仍完整处理两次广播；完成通知中的实际值为 `0`。响应程序可以暂停等待输入，恢复后继续本次治疗。
+
+## 编译检查
+
+```cpp
+struct heal_error;
+```
+
+`heal::error_type` 是 `givm::heal_error` 的别名。`heal_error` 是本命令的结构化编译错误，`heal_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_source_player` | `source.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_source_selection` | `source.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+| `invalid_target_player` | `target.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_target_selection` | `target.selection` 不是 `character_selection::character`、`others` 或 `all` |
+
+### `heal_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 示例
 

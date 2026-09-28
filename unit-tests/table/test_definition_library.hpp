@@ -45,7 +45,7 @@ namespace givm::test
         }
 
         const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-        return compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal);
+        return givm_test::require_success(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal));
     }
 
     template<class TInitialization, class TRound, class... TSources>
@@ -63,10 +63,10 @@ namespace givm::test
             throw std::logic_error{ "invalid unit-test definition sources" };
         }
 
-        return compile(source_library, givm_test::basic_sources,
+        return givm_test::require_success(compile(source_library, givm_test::basic_sources,
             std::forward<TInitialization>(initialization),
             std::forward<TRound>(round), mode
-        );
+        ));
     }
 }
 

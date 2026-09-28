@@ -10,6 +10,20 @@ struct replace_cards_both;
 
 双方开局换牌命令。每方提交后即可得到该方的替换结果；双方都提交后结束这项准备。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `replace_cards_both_error` 的别名，即本命令的编译检查错误类型 |
+
+## 编译检查
+
+```cpp
+enum class replace_cards_both_error {};
+```
+
+`replace_cards_both::error_type` 是 `givm::replace_cards_both_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+
 ## 注意
 
 尚未接受任何一方的选择时，执行器返回 `execution_state::initial_card_selection`，通过相应的[现场视图](../../executor/execution_view/initial_card_selection.md)指定首先换牌的玩家及其选择。该方换牌完成后返回 `execution_state::card_selection`，由相应[视图](../../executor/execution_view/card_selection.md)读取剩余玩家并提交其选择。
@@ -37,6 +51,7 @@ struct replace_cards_both;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <cstddef>
 #include <bitset>
@@ -69,10 +84,16 @@ int main()
     givm::definition_source_library sources{};
     if(not sources.add(first, second)) return 1;
     constexpr std::array<std::size_t, 1> draw_positions{ 0 };
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions }, givm::replace_cards_both{} },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto a = ids.get_id<givm::card_definition>("first");
     const auto b = ids.get_id<givm::card_definition>("second");

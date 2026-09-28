@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_APPLY_ELEMENT_HPP
 #define GIVM_EXECUTOR_COMMANDS_APPLY_ELEMENT_HPP
 
+#include <vector>
+
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -281,6 +283,34 @@ namespace givm::detail
             if(mode == compile_mode::observed) compile_element_application<true, true>(writer, command);
             else compile_element_application<true, false>(writer, command);
         }
+    }
+}
+
+namespace givm
+{
+    inline std::vector<apply_element::error_type> check(const apply_element& command, const definition_compile_context&, program_kind kind)
+    {
+        using reason = apply_element::error_type::reason;
+        std::vector<apply_element::error_type> errors;
+        if(command.target.offset == std::numeric_limits<std::int32_t>::max())
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.source.player != relative_player::self && command.source.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_source_player, .value = static_cast<std::size_t>(command.source.player) });
+        if(command.source.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_source_selection, .value = static_cast<std::size_t>(command.source.selection) });
+        if(command.target.player != relative_player::self && command.target.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_target_player, .value = static_cast<std::size_t>(command.target.player) });
+        if(command.target.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_target_selection, .value = static_cast<std::size_t>(command.target.selection) });
+        if(command.element > element::none)
+            errors.push_back({ .cause = reason::invalid_element, .value = static_cast<std::size_t>(command.element) });
+        if(command.cause != element_application_cause::effect && command.cause != element_application_cause::damage)
+            errors.push_back({ .cause = reason::invalid_cause, .value = static_cast<std::size_t>(command.cause) });
+        return errors;
     }
 }
 

@@ -92,12 +92,12 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(alpha, beta, first, second));
     const auto program = std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(sources, givm_test::basic_sources, program, program, givm::compile_mode::normal);
-    const auto deck = link_deck(
+    const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, program, program, givm::compile_mode::normal));
+    const auto deck = givm_test::require_success(link_deck(
         id_map,
         std::array<std::string_view, 3>{ "Beta", "Alpha", "Beta" },
         std::array<std::string_view, 2>{ "Second", "First" }
-    );
+    ));
 
     givm::table table{};
     load_deck(table, library, deck, {});
@@ -120,14 +120,25 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
         id_map.get_id<givm::character_view>("First").value()
     });
 
-    CHECK_THROWS_AS(
-        link_deck(
-            id_map,
-            std::array<std::string_view, 1>{ "Missing" },
-            std::array<std::string_view, 0>{}
-        ),
-        std::invalid_argument
-    );
+    const auto invalid_deck = link_deck(id_map,
+        std::array<std::string_view, 4>{ "MissingCard", "Alpha", "MissingCard", "OtherMissingCard" },
+        std::array<std::string_view, 2>{ "Second", "MissingCharacter" });
+    REQUIRE_FALSE(invalid_deck);
+    const auto& errors = invalid_deck.error();
+    REQUIRE(errors.size() == 4);
+    CHECK(errors[0].kind == givm::deck_link_error::definition_kind::card);
+    CHECK(errors[0].index == 0);
+    CHECK(errors[0].name == "MissingCard");
+    CHECK(errors[1].kind == givm::deck_link_error::definition_kind::card);
+    CHECK(errors[1].index == 2);
+    CHECK(errors[1].name == "MissingCard");
+    CHECK(errors[2].kind == givm::deck_link_error::definition_kind::card);
+    CHECK(errors[2].index == 3);
+    CHECK(errors[2].name == "OtherMissingCard");
+    CHECK(errors[3].kind == givm::deck_link_error::definition_kind::character);
+    CHECK(errors[3].index == 1);
+    CHECK(errors[3].name == "MissingCharacter");
+    CHECK_FALSE(error_string(errors).empty());
 }
 
 TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
@@ -139,10 +150,10 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
 
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(alpha, beta, gamma, delta));
-    const auto [library, id_map] = compile(sources, givm_test::basic_sources,
+    const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
         std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, givm::compile_mode::normal
-    );
+    ));
     const givm::linked_deck deck{
         .cards = {
             id_map.get_id<givm::card_definition>("Alpha"),
@@ -201,10 +212,10 @@ TEST_CASE("loading decks immediately initializes characters from cached states i
 
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(alpha, beta));
-    const auto [library, id_map] = compile(sources, givm_test::basic_sources,
+    const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{},
         std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } }, givm::compile_mode::normal
-    );
+    ));
     CHECK(initial_state_queries == 2);
     const givm::linked_deck deck{
         .characters = {

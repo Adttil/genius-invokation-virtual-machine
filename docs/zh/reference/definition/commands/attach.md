@@ -7,8 +7,12 @@
 向角色附属状态或装备；已有同定义实体时，由它决定本次请求如何影响现有效果。
 
 ```cpp
+struct attach_error;
+
 struct attach
 {
+    using error_type = attach_error;
+
     using input_type = attach_input;
 
     relative_player player = relative_player::self;
@@ -25,6 +29,7 @@ struct attach
 | | |
 | --- | --- |
 | `input_type` | [`attach_input`](../command_inputs/attach_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `attach_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 输入
 
@@ -48,3 +53,29 @@ struct attach
 已有实体的响应可以通过 [modify_attachment_state](modify_attachment_state.md)、[set_attachment_state](set_attachment_state.md)、[remove_attachment](remove_attachment.md) 或 [add_attachment](add_attachment.md) 表达累加、刷新、删除重建和独立创建。
 
 显式指定 `.state = {}` 时，两个字段均为零；部分初始化 `state` 时，省略的字段也会初始化为零。
+
+## 编译检查
+
+```cpp
+struct attach_error;
+```
+
+`attach::error_type` 是 `givm::attach_error` 的别名。`attach_error` 是本命令的结构化编译错误，`attach_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_player` | `player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_definition` | `definition` 的定义 ID 数值超出本次编译集合的 `attachment_view` 定义数量 |
+
+### `attach_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。

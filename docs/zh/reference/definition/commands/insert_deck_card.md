@@ -10,6 +10,12 @@ struct insert_deck_card;
 
 向牌堆插入指定牌的命令。它适用于准备初始牌堆，或由游戏效果向牌堆添加指定牌。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `insert_deck_card_error` 的别名，即本命令的编译检查错误类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
@@ -17,6 +23,31 @@ struct insert_deck_card;
 | `player` | [`player_id`](../../table/player_id.md) | 接收牌的玩家 |
 | `definition` | `definition_id<card_definition>` | 要插入的牌定义 |
 | `position` | `std::int32_t` | 插入位置，初始为 -1，即牌堆顶 |
+
+## 编译检查
+
+```cpp
+struct insert_deck_card_error;
+```
+
+`insert_deck_card::error_type` 是 `givm::insert_deck_card_error` 的别名。`insert_deck_card_error` 是本命令的结构化编译错误，`insert_deck_card_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `invalid_player` | `player.index` 不是固定席位 `0` 或 `1` |
+| `invalid_definition` | `definition` 的定义 ID 数值超出本次编译集合的 `card_definition` 定义数量 |
+
+### `insert_deck_card_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错的 `player.index` 或定义 ID 的 `value()` |
+| `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。
 
 ## 注意
 
@@ -27,6 +58,7 @@ struct insert_deck_card;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -55,12 +87,24 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(first, second)) return 1;
-    const auto issued = sources.make_issued_id_map(basics);
+    auto issued_result = sources.make_issued_id_map(basics);
+    if(not issued_result)
+    {
+        std::println("{}", error_string(issued_result.error()));
+        return 1;
+    }
+    const auto issued = std::move(*issued_result);
     const auto card = issued.get_id<givm::card_definition>("first");
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = card } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0 } };
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};

@@ -23,6 +23,7 @@ friend constexpr bool operator==(program_entry, program_entry) noexcept = defaul
 ## 示例
 
 ```cpp
+#include <utility>
 #include <print>
 #include <string_view>
 #include <tuple>
@@ -64,9 +65,15 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
 }
 ```
 

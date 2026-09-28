@@ -36,6 +36,7 @@ bool can_handle(definition_id<TDefinitionType> id) const noexcept;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <print>
 #include <string_view>
 #include <tuple>
@@ -71,10 +72,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto id = ids.get_id<givm::support_view>("重投助手");
     std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::support_view>(id));
     std::println("响应回合结束: {}", library.can_handle<givm::round_ended, givm::support_view>(id));

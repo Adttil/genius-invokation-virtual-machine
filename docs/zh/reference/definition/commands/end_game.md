@@ -10,11 +10,40 @@ struct end_game;
 
 以指定胜负结果结束对局的命令，可用于游戏流程或事件响应中的终局判定。
 
+## 成员类型
+
+| | |
+| --- | --- |
+| [`error_type`](#编译检查) | `end_game_error` 的别名，即本命令的编译检查错误类型 |
+
 ## 成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | [`result`](end_game/result.md) | [`game_result`](../../enums/game_result.md) | 本次结束对局的胜负结果 |
+
+## 编译检查
+
+```cpp
+struct end_game_error;
+```
+
+`end_game::error_type` 是 `givm::end_game_error` 的别名。`end_game_error` 是本命令的结构化编译错误，`end_game_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `invalid_result` | `result` 不是 `player_0_win`、`player_1_win` 或 `both_loss` |
+
+### `end_game_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。
 
 ## 注意
 
@@ -27,6 +56,7 @@ struct end_game;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <tuple>
@@ -42,10 +72,16 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } },
         std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{};
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};
@@ -57,10 +93,16 @@ int main()
         execution.view_in<givm::execution_state::finished>().result()
             == givm::game_result::player_0_win);
 
-    const auto [observed_library, observed_ids] = compile(
+    auto observed_library_result = compile(
         sources, basics,
         std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } },
         std::tuple{}, givm::compile_mode::observed);
+    if(not observed_library_result)
+    {
+        std::println("{}", error_string(observed_library_result.error()));
+        return 1;
+    }
+    const auto [observed_library, observed_ids] = std::move(*observed_library_result);
     execution.start(observed_library, table);
     std::println("观察推进到终局: {}",
         execution.step(observed_library, table, random) == givm::execution_state::finished);

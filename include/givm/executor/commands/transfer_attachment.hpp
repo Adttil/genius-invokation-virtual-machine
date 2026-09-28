@@ -1,6 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_TRANSFER_ATTACHMENT_HPP
 #define GIVM_EXECUTOR_COMMANDS_TRANSFER_ATTACHMENT_HPP
 
+#include <vector>
+
 #include <optional>
 #include <utility>
 
@@ -105,6 +107,43 @@ namespace givm::detail
                 { command.source.character, selector }, command.target });
         }, command.source.selector);
         writer.write(execute_fn{ broadcast_attachment_removal });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<transfer_attachment::error_type> check(const transfer_attachment& command,
+        const definition_compile_context& context, program_kind kind)
+    {
+        using reason = transfer_attachment::error_type::reason;
+        std::vector<transfer_attachment::error_type> errors;
+        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.source.selector);
+        if(definition && not *definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(definition)
+        {
+            if(definition->value() >= context.definition_count<attachment_view>())
+                errors.push_back({ .cause = reason::invalid_definition, .value = definition->value(), .limit = context.definition_count<attachment_view>() });
+        }
+        else
+        {
+            const auto equipment = std::get<equipment_type>(command.source.selector);
+            if(equipment >= equipment_type::none)
+                errors.push_back({ .cause = reason::invalid_equipment_type, .value = static_cast<std::size_t>(equipment) });
+        }
+        if(command.source.character.player != relative_player::self && command.source.character.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_source_character_player, .value = static_cast<std::size_t>(command.source.character.player) });
+        if(command.source.character.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_source_character_selection, .value = static_cast<std::size_t>(command.source.character.selection) });
+        if(command.target.player != relative_player::self && command.target.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_target_player, .value = static_cast<std::size_t>(command.target.player) });
+        if(command.target.selection != character_selection::character)
+            errors.push_back({ .cause = reason::invalid_target_selection, .value = static_cast<std::size_t>(command.target.selection) });
+        return errors;
     }
 }
 

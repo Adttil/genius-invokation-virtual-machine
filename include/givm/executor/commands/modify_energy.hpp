@@ -1,12 +1,14 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_MODIFY_ENERGY_HPP
 #define GIVM_EXECUTOR_COMMANDS_MODIFY_ENERGY_HPP
 
+#include <vector>
+
 #include <cstddef>
 #include <cstdint>
 
 #include "../executor.hpp"
 #include "../character_target.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -98,6 +100,27 @@ namespace givm::detail
             }
             writer.write(command);
         }
+    }
+}
+
+namespace givm
+{
+    inline std::vector<modify_energy::error_type> check(const modify_energy& command, const definition_compile_context&, program_kind kind)
+    {
+        using reason = modify_energy::error_type::reason;
+        std::vector<modify_energy::error_type> errors;
+        if(command.target.offset == std::numeric_limits<std::int32_t>::max())
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.target.player != relative_player::self && command.target.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_target_player, .value = static_cast<std::size_t>(command.target.player) });
+        if(command.target.selection != character_selection::character && command.target.selection != character_selection::others
+            && command.target.selection != character_selection::all)
+            errors.push_back({ .cause = reason::invalid_target_selection, .value = static_cast<std::size_t>(command.target.selection) });
+        return errors;
     }
 }
 

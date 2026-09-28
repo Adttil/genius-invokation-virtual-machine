@@ -30,6 +30,7 @@ auto definitions() const noexcept;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <ranges>
@@ -84,8 +85,14 @@ int main()
         givm::genshin_impact::burning_flame_3_3_0,
         givm::genshin_impact::frozen_3_3_0
     };
-    const auto [library, ids] = compile(*sources, basics,
+    auto library_result = compile(*sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
 }
 ```
 

@@ -1,11 +1,13 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_USE_SKILL_HPP
 #define GIVM_EXECUTOR_COMMANDS_USE_SKILL_HPP
 
+#include <vector>
+
 #include <algorithm>
 #include <utility>
 
 #include "../broadcast.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -110,6 +112,26 @@ namespace givm::detail
         writer.write(execute_fn{ broadcast_skill_will_be_used<false> });
         writer.write(execute_fn{ finish_skill_effect });
         writer.write(execute_fn{ finish_skill_use });
+    }
+}
+
+namespace givm
+{
+    inline std::vector<use_skill::error_type> check(const use_skill& command, const definition_compile_context& context, program_kind kind)
+    {
+        using reason = use_skill::error_type::reason;
+        std::vector<use_skill::error_type> errors;
+        if(not command.definition)
+        {
+            if(kind != program_kind::response)
+                errors.push_back({ .cause = reason::dynamic_input_in_root });
+            return errors;
+        }
+        if(command.player != relative_player::self && command.player != relative_player::opponent)
+            errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
+        if(command.definition.value() >= context.definition_count<skill_view>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<skill_view>() });
+        return errors;
     }
 }
 

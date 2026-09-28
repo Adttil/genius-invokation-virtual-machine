@@ -211,7 +211,7 @@ TEST_CASE("empty queries cache each compiled definition and survive library copi
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second));
     CHECK(counts.initial_cost == 0);
-    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     const auto first_id = ids.get_id<givm::card_definition>(first.name());
     const auto second_id = ids.get_id<givm::card_definition>(second.name());
     REQUIRE(counts.initial_cost == 2);
@@ -345,16 +345,16 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
     const queried_card_source second{ "TunableCard", &counts, 3, 0 };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second));
-    const auto prepared_ids = sources.make_issued_id_map(givm_test::basic_sources);
+    const auto prepared_ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
     const auto first_id = prepared_ids.get_id<givm::card_definition>(first.name());
     const auto second_id = prepared_ids.get_id<givm::card_definition>(second.name());
-    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
         givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = first_id },
         givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = second_id },
         givm::draw_cards{ .positions = draw_positions_1 },
         givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 },
         givm::end_game{ givm::game_result::both_loss }
-    }, std::tuple{}, givm::compile_mode::normal);
+    }, std::tuple{}, givm::compile_mode::normal));
     REQUIRE(ids.get_id<givm::card_definition>(first.name()) == first_id);
     REQUIRE(ids.get_id<givm::card_definition>(second.name()) == second_id);
     REQUIRE(counts.initial_cost == 2);

@@ -2,7 +2,7 @@
 
 # givm::add_dice_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 using add_dice_input = dice_added;

@@ -278,9 +278,9 @@ TEST_CASE("selected definitions include transitive named dependencies", "[source
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
 
-    const auto prepared_ids = sources.make_issued_id_map(givm_test::basic_sources, selection);
+    const auto prepared_ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources, selection));
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, id_map] = compile(sources, givm_test::basic_sources, selection, program, program, givm::compile_mode::normal);
+    const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, selection, program, program, givm::compile_mode::normal));
     CHECK(id_map.has<givm::card_definition>("Root"));
     CHECK(id_map.has<givm::support_view>("Support"));
     CHECK_FALSE(id_map.has<givm::card_definition>("Unused"));
@@ -325,13 +325,13 @@ TEST_CASE("soft tag filters query selected definitions without expanding the clo
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
 
-    const auto ids = library.make_issued_id_map(givm_test::basic_sources, selection);
+    const auto ids = givm_test::require_success(library.make_issued_id_map(givm_test::basic_sources, selection));
     CHECK(ids.has<givm::card_definition>("Root"));
     CHECK(ids.has<givm::card_definition>("Alpha") == (card_roots.size() > 1));
     CHECK(ids.has<givm::card_definition>("Beta") == (card_roots.size() > 1));
     CHECK_FALSE(ids.has<givm::card_definition>("Gamma"));
-    const auto [compiled, compiled_ids] = compile(library, givm_test::basic_sources, selection,
-        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [compiled, compiled_ids] = givm_test::require_success(compile(library, givm_test::basic_sources, selection,
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     if(card_roots.size() == 1)
     {
         CHECK(matches.empty());
@@ -362,9 +362,9 @@ TEST_CASE("issued ids address the definitions produced by compilation", "[source
         auto sources = givm_test::make_source_library();
         REQUIRE((reverse_order ? sources.add(alpha, zulu) : sources.add(zulu, alpha)));
 
-        const auto prepared_ids = sources.make_issued_id_map(givm_test::basic_sources);
+        const auto prepared_ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
         const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
-        const auto [library, id_map] = compile(sources, givm_test::basic_sources, program, program, givm::compile_mode::normal);
+        const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, program, program, givm::compile_mode::normal));
         const auto alpha_id = prepared_ids.get_id<givm::card_definition>("Alpha");
         const auto zulu_id = prepared_ids.get_id<givm::card_definition>("Zulu");
         const auto alpha_tag = prepared_ids.get_tag_id("alpha");
@@ -389,8 +389,8 @@ TEST_CASE("basic definitions are supplied at compile time and survive compiled l
     const plain_source<givm::attachment_view> frozen{ .source_name = "Custom frozen" };
     const givm::basic_definition_sources basics{ core, field, flame, frozen };
     const givm::definition_source_library sources;
-    const auto [library, ids] = compile(sources, basics, givm::definition_selection{},
-        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, givm::definition_selection{},
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     const auto check = [&](const givm::definition_library& compiled)
     {
         CHECK(compiled.dendro_core_id() == ids.get_id<givm::combat_status_view>(core.name()));
@@ -426,13 +426,31 @@ TEST_CASE("partial compilation includes basic dependencies before issuing ids", 
     const plain_source<givm::card_definition> unused{ .source_name = "Unused card" };
     const givm::basic_definition_sources basics{ core, field, flame, givm_test::frozen };
     const givm::definition_source_library missing;
-    CHECK_THROWS_AS(missing.make_issued_id_map(basics), std::invalid_argument);
-    CHECK_THROWS_AS(compile(missing, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal), std::invalid_argument);
+    const auto missing_ids = missing.make_issued_id_map(basics);
+    REQUIRE_FALSE(missing_ids);
+    REQUIRE(missing_ids.error().size() == 1);
+    const auto* missing_dependency = std::get_if<givm::source_missing_dependency>(&missing_ids.error().front());
+    REQUIRE(missing_dependency);
+    CHECK(missing_dependency->source.name == std::string{ core.name() });
+    CHECK(missing_dependency->dependency.name == std::string{ support.name() });
+    const auto missing_library = compile(missing, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    REQUIRE_FALSE(missing_library);
+    REQUIRE(missing_library.error().size() == 2);
+    CHECK(missing_library.error().front().location.stage == givm::compile_stage::source_selection);
+    CHECK(std::holds_alternative<givm::source_missing_dependency>(missing_library.error().front().reason));
+    const auto& resolution = missing_library.error()[1];
+    CHECK(resolution.location.stage == givm::compile_stage::definition);
+    REQUIRE(resolution.location.source);
+    CHECK(resolution.location.source->name == std::string{ core.name() });
+    const auto* unresolved = std::get_if<givm::definition_resolution_error>(&resolution.reason);
+    REQUIRE(unresolved);
+    CHECK(unresolved->cause == givm::definition_resolution_error::reason::not_found);
+    CHECK(unresolved->definition.name == std::string{ support.name() });
     givm::definition_source_library sources;
     REQUIRE(sources.add(support, unused));
-    const auto prepared = sources.make_issued_id_map(basics, givm::definition_selection{});
-    const auto [library, ids] = compile(sources, basics, givm::definition_selection{},
-        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto prepared = givm_test::require_success(sources.make_issued_id_map(basics, givm::definition_selection{}));
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, givm::definition_selection{},
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(ids.has<givm::combat_status_view>(core.name()));
     CHECK(ids.has<givm::combat_status_view>(field.name()));
     CHECK(ids.has<givm::summon_view>(flame.name()));
@@ -450,9 +468,9 @@ TEST_CASE("basic definitions can depend on each other in the same compile config
     const core_with_field_dependency field{ "Field", "Core" };
     const givm::basic_definition_sources basics{ core, field, givm_test::burning_flame, givm_test::frozen };
     const givm::definition_source_library sources;
-    const auto prepared = sources.make_issued_id_map(basics, givm::definition_selection{});
-    const auto [library, ids] = compile(sources, basics, givm::definition_selection{},
-        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto prepared = givm_test::require_success(sources.make_issued_id_map(basics, givm::definition_selection{}));
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, givm::definition_selection{},
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(library.dendro_core_id() == prepared.get_id<givm::combat_status_view>(core.name()));
     CHECK(library.catalyzing_field_id() == ids.get_id<givm::combat_status_view>(field.name()));
 }
@@ -480,8 +498,8 @@ TEST_CASE("one source library can compile different basic versions without retai
         CAPTURE(use_new);
         const givm::basic_definition_sources basics{
             core, use_new ? new_field : old_field, flame, use_new ? new_frozen : old_frozen };
-        const auto prepared = sources.make_issued_id_map(basics);
-        const auto [library, ids] = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+        const auto prepared = givm_test::require_success(sources.make_issued_id_map(basics));
+        const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
         CHECK(observed.core == library.dendro_core_id());
         CHECK(observed.field == library.catalyzing_field_id());
         CHECK(observed.flame == library.burning_flame_id());
@@ -509,7 +527,7 @@ TEST_CASE("source library merging reuses ordinary shared dependencies and permit
     REQUIRE(base.add(extension));
     REQUIRE(base.add(extension));
     REQUIRE(base.add(base));
-    const auto [library, ids] = compile(base, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(base, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(ids.definition_count<givm::support_view>() == 1);
     CHECK(ids.definition_count<givm::card_definition>() == 2);
     CHECK(bool(library.name(ids.get_id<givm::card_definition>(first.name())) == first.name()));
@@ -525,12 +543,22 @@ TEST_CASE("basic injection reuses identical sources and rejects different source
     REQUIRE(sources.add(field));
     const givm::basic_definition_sources matching{ core, field, givm_test::burning_flame, givm_test::frozen };
     const givm::basic_definition_sources conflicting{ core, different_field, givm_test::burning_flame, givm_test::frozen };
-    const auto prepared = sources.make_issued_id_map(matching);
-    const auto [library, ids] = compile(sources, matching, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto prepared = givm_test::require_success(sources.make_issued_id_map(matching));
+    const auto [library, ids] = givm_test::require_success(compile(sources, matching, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(ids.definition_count<givm::combat_status_view>() == 2);
     CHECK(library.catalyzing_field_id() == prepared.get_id<givm::combat_status_view>(field.name()));
-    CHECK_THROWS_AS(sources.make_issued_id_map(conflicting), std::invalid_argument);
-    CHECK_THROWS_AS(compile(sources, conflicting, std::tuple{}, std::tuple{}, givm::compile_mode::normal), std::invalid_argument);
+    const auto conflicting_ids = sources.make_issued_id_map(conflicting);
+    REQUIRE_FALSE(conflicting_ids);
+    REQUIRE(conflicting_ids.error().size() == 1);
+    const auto* conflict = std::get_if<givm::source_conflict>(&conflicting_ids.error().front());
+    REQUIRE(conflict);
+    CHECK(conflict->definition.name == std::string{ field.name() });
+    CHECK(conflict->cause == givm::source_conflict::reason::different_object);
+    const auto conflicting_library = compile(sources, conflicting, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    REQUIRE_FALSE(conflicting_library);
+    REQUIRE(conflicting_library.error().size() == 1);
+    CHECK(conflicting_library.error().front().location.stage == givm::compile_stage::source_selection);
+    CHECK(std::holds_alternative<givm::source_conflict>(conflicting_library.error().front().reason));
     CHECK_FALSE(sources.has<givm::combat_status_view>(core.name()));
     CHECK(sources.has<givm::combat_status_view>(field.name()));
 }
@@ -548,7 +576,7 @@ TEST_CASE("dynamic source instances can be shared but same-named distinct instan
     givm::definition_source_library conflicting;
     REQUIRE(conflicting.add(other_dynamic, summon));
     REQUIRE(sources.add(shared));
-    const auto [library, ids] = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(ids.definition_count<givm::card_definition>() == 1);
     CHECK(bool(library.name(ids.get_id<givm::card_definition>(dynamic.name())) == dynamic.name()));
     const auto object_result = sources.add(conflicting);

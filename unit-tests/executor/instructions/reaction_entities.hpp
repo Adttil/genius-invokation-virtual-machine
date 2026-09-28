@@ -197,8 +197,8 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
     commands.emplace_back(givm::deal_damage{ .damages = group });
     commands.emplace_back(givm::deal_damage{ .damages = next });
     commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
-    const auto [library, ids] = compile(sources, basics, commands, std::tuple{},
-        observed ? givm::compile_mode::observed : givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, commands, std::tuple{},
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal));
     const givm::linked_deck source_deck{ .characters = { ids.get_id<givm::character_view>(source_definition.name()) } };
     const auto target_id = ids.get_id<givm::character_view>(victim.name());
     const givm::linked_deck target_deck{ .characters = { target_id, target_id } };
@@ -267,7 +267,7 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
         else commands.emplace_back(givm::deal_damage{ .damages = damages });
     }
     commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
-    const auto [library, ids] = compile(sources, basics, commands, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, commands, std::tuple{}, givm::compile_mode::normal));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -317,8 +317,8 @@ TEST_CASE("reaction replacement suppresses default numbers and entities while co
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
     const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::dendro } };
-    const auto [library, ids] = compile(sources, basics, std::tuple{ givm::deal_damage{ .damages = damages },
-        givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{ givm::deal_damage{ .damages = damages },
+        givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -345,10 +345,10 @@ TEST_CASE("a self-applied reaction creates its entity for the affected player's 
     givm::definition_source_library sources;
     REQUIRE(sources.add(target_definition));
     constexpr givm::character_id self{ givm::player_id{ 0 }, 0 };
-    const auto [library, ids] = compile(sources, basics, std::tuple{
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{
         givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::self, 0 }, .element = givm::element::dendro },
         givm::end_game{ givm::game_result::both_loss }
-    }, std::tuple{}, givm::compile_mode::normal);
+    }, std::tuple{}, givm::compile_mode::normal));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -383,9 +383,9 @@ TEST_CASE("the first damage completion can use a field produced by a later hit",
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical },
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::dendro }
     };
-    const auto [library, ids] = compile(sources, basics, std::tuple_cat(select_fronts(), std::tuple{
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple_cat(select_fronts(), std::tuple{
         givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss }
-    }), std::tuple{}, givm::compile_mode::normal);
+    }), std::tuple{}, givm::compile_mode::normal));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -419,10 +419,10 @@ TEST_CASE("burning flame finishes its damage before exhausting and broadcasting 
     REQUIRE(sources.add(source_definition, observer, victim));
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
-    const auto [library, ids] = compile(sources, basics, std::tuple_cat(select_fronts(), std::tuple{
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple_cat(select_fronts(), std::tuple{
         givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::dendro },
         givm::end_round{}, givm::end_game{ givm::game_result::both_loss }
-    }), std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal);
+    }), std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -485,8 +485,8 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 1, .type = givm::damage_type::dendro },
         givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical }
     };
-    const auto [library, ids] = compile(sources, basics, std::tuple{ givm::deal_damage{ .damages = damages },
-        givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::observed);
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{ givm::deal_damage{ .damages = damages },
+        givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::observed));
     const auto target_id = ids.get_id<givm::character_view>(victim.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },

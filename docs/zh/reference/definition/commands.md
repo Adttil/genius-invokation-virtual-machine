@@ -6,6 +6,10 @@
 
 规则流程与事件效果只能组合核心给定集合中的命令；公开接口不支持自行定义新的命令类型。
 
+每个命令对应独立的 `givm::命令名_error` 类型，表示它在编译时可能产生的参数错误；命令的 `error_type` 是该类型的别名。例如 `draw_cards::error_type` 与 `draw_cards_error` 是同一类型。错误字段及原因见各命令页面；只包含 `<givm/definition.hpp>` 即可使用这些类型及其 [`error_string`](error_string.md) 格式化函数。
+
+[`check(command, context, kind)`](../executor/check.md) 使用本次编译上下文与程序类别返回该命令的错误列表；每个命令有自己的重载和检查规则。最终 [`compile`](../executor/compile.md) 自动执行这些检查，将错误与程序、命令位置一起收集，失败时返回 [`compile_error`](../executor/compile_error.md) 列表。命令错误直接作为 `compile_error_reason` 的候选类型；没有编译参数错误的命令使用空的错误枚举。
+
 命令是否消费响应输入，由编译时给出的具体命令值决定。每个动态命令要求响应通过 `invoke` 提交一个由其成员类型 `input_type` 指定的 [命令输入](command_inputs.md) 对象；使用固定参数的命令不占输入位置。每个已编译入口所需输入对象的数量、类型和顺序固定，对象中的数组长度可以在响应时决定。仅支持固定模式的命令没有 `input_type`。输入类型可以显式复用事件类型，但命令不借用外层响应事件。相对玩家参数以当前效果的本方为基准。命令的内部执行函数不属于公开接口；对局通过 [执行器](../executor/executor.md) 推进，并通过执行现场观察结果和提交行动输入。
 
 `set_active_character{}`、`use_skill{}`、`set_skill_state{}`、`set_energy{}`、`modify_energy{}`、`deal_damage{}`、`apply_element{}`、`heal{}`、`increase_max_health{}`、`create_hand_card{}`、`add_dice{}`、`remove_dice{}`、`reroll_dice{}`，以及实体生成、添加、转移、状态设置、按增量修改和移除命令默认构造时采用动态输入；也可以显式指定固定参数，具体用法见各自页面。角色附属实体的状态修改、移除和转移命令使用 [relative_attachment_target](commands/attachment_target.md) 按定义或装备类别定位；其他按定义定位的命令显式指定 `definition`。

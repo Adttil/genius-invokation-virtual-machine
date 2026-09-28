@@ -31,6 +31,7 @@ bool matches_tags(
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <string_view>
@@ -58,10 +59,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
     );
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     const auto card = ids.get_id<givm::card_definition>("恢复药剂");
     const std::array healing{ ids.get_tag_id("治疗") };
     std::println("要求治疗标签: {}", library[card].matches_tags(healing));

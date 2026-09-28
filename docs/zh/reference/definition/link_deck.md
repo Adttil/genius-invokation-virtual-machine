@@ -6,7 +6,7 @@
 
 ```cpp
 template<class TCardNames, class TCharacterNames>
-linked_deck link_deck(
+std::expected<linked_deck, std::vector<deck_link_error>> link_deck(
     const issued_id_map& id_map,
     TCardNames&& card_names,
     TCharacterNames&& character_names
@@ -32,13 +32,9 @@ linked_deck link_deck(
 
 ## 返回值
 
-持有对应定义 ID 的 [`linked_deck`](../table/linked_deck.md)。
+成功时，`expected` 保存持有对应定义 ID 的 [`linked_deck`](../table/linked_deck.md)。名称不在映射中时，返回全部 [`deck_link_error`](deck_link_error.md)，不返回部分链接的牌组，也不抛出验证异常。
 
-## 异常
-
-|  |  |
-| --- | --- |
-| `std::invalid_argument` | 卡牌或角色名称不在映射中 |
+诊断先按卡牌输入顺序，再按角色输入顺序排列。重复的缺失名称分别保留各自位置，可使用 [`error_string`](error_string.md) 输出。
 
 ## 注意
 
@@ -47,6 +43,7 @@ linked_deck link_deck(
 ## 示例
 
 ```cpp
+#include <utility>
 #include <array>
 #include <print>
 #include <string_view>
@@ -58,11 +55,17 @@ int main()
     givm::issued_id_map ids{};
     ids.add<givm::card_definition>("恢复药剂", {});
     ids.add<givm::character_view>("测试角色", {});
-    const auto deck = link_deck(
+    auto deck_result = link_deck(
         ids,
         std::array<std::string_view, 2>{ "恢复药剂", "恢复药剂" },
         std::array<std::string_view, 1>{ "测试角色" }
     );
+    if(not deck_result)
+    {
+        std::println("{}", error_string(deck_result.error()));
+        return 1;
+    }
+    const auto deck = std::move(*deck_result);
     std::println("卡牌数量: {}", deck.cards.size());
     std::println("角色数量: {}", deck.characters.size());
     std::println("两张牌采用同一定义: {}", deck.cards[0].value() == deck.cards[1].value());

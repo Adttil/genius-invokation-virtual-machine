@@ -2,7 +2,7 @@
 
 # givm::reroll_dice_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 struct reroll_dice_input

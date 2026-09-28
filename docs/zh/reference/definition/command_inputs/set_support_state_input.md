@@ -2,7 +2,7 @@
 
 # givm::set_support_state_input
 
-定义于头文件 `<givm/definition/commands.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 [set_support_state](../commands/set_support_state.md) 的动态输入，指定要修改的支援以及本次变化。
 

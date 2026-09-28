@@ -15,6 +15,7 @@ struct set_active_character;
 | | |
 | --- | --- |
 | `input_type` | [`set_active_character_input`](../command_inputs/set_active_character_input.md)，动态模式下的输入类型 |
+| [`error_type`](#编译检查) | `set_active_character_error` 的别名，即本命令的编译检查错误类型 |
 
 ## 成员对象
 
@@ -33,6 +34,31 @@ struct set_active_character;
 
 固定目标仅支持相对于当前出战角色的偏移；开局选择由 [`select_active_character_both`](select_active_character_both.md) 完成。
 
+## 编译检查
+
+```cpp
+struct set_active_character_error;
+```
+
+`set_active_character::error_type` 是 `givm::set_active_character_error` 的别名。`set_active_character_error` 是本命令的结构化编译错误，`set_active_character_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+
+### 错误原因
+
+| | |
+| --- | --- |
+| `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
+| `invalid_target_player` | `target.player` 不是 `relative_player::self` 或 `relative_player::opponent` |
+| `invalid_target_selection` | `target.selection` 不是 `character_selection::character`；此处只允许单个角色 |
+
+### `set_active_character_error` 的成员对象
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `cause` | `reason` | 上表中的错误原因 |
+| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+
+仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
+
 ## 注意
 
 执行时，若该玩家当前出战角色具有 `control_immunity` 附属，则忽略此次设置，不产生变更通知或观察现场。没有出战角色时，动态输入仍可指定初始角色。此限制针对本命令；玩家在行动选择中[主动切换](../../executor/execution_view/action_selection/switch_active_character.md)不受免控保护限制。
@@ -46,6 +72,7 @@ struct set_active_character;
 ## 示例
 
 ```cpp
+#include <utility>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -77,10 +104,16 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;
-    const auto [library, ids] = compile(
+    auto library_result = compile(
         sources, basics,
         std::tuple{ givm::select_active_character_both{}, givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, 1 } } },
         std::tuple{}, givm::compile_mode::observed);
+    if(not library_result)
+    {
+        std::println("{}", error_string(library_result.error()));
+        return 1;
+    }
+    const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,

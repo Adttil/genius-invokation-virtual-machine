@@ -1,8 +1,10 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_SHUFFLE_DECK_HPP
 #define GIVM_EXECUTOR_COMMANDS_SHUFFLE_DECK_HPP
 
+#include <vector>
+
 #include "../executor.hpp"
-#include "../../definition/commands.hpp"
+#include "../../definition.hpp"
 #include <cstddef>
 #include <cstdint>
 
@@ -29,6 +31,18 @@ namespace givm::detail
     {
         writer.write(execute_fn{ &shuffle_deck_execute });
         writer.write(command);
+    }
+}
+
+namespace givm
+{
+    inline std::vector<shuffle_deck::error_type> check(const shuffle_deck& command, const definition_compile_context&, program_kind)
+    {
+        using reason = shuffle_deck::error_type::reason;
+        std::vector<shuffle_deck::error_type> errors;
+        if(command.player.index >= 2)
+            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index });
+        return errors;
     }
 }
 
