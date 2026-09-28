@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <utility>
 
 #include "add_attachment.hpp"
@@ -56,6 +60,9 @@ namespace givm::detail
         if constexpr(not std::is_void_v<Selector>)
         {
             const auto& data = context.instruction_data<1, attachment_state_change_data<Selector>>(library);
+#ifndef NDEBUG
+            debug_validate_attachment_target(library, table, data.target, "set_attachment_state", "target");
+#endif
             id = require_attachment(library, table, data.target);
             state = data.state;
             context.advance(instruction_extent<1, attachment_state_change_data<Selector>>);
@@ -63,6 +70,9 @@ namespace givm::detail
         else
         {
             const auto& input = get<0>(context.stack().top<set_attachment_state_input>());
+#ifndef NDEBUG
+            debug_validate_attachment_target(table, input.attachment, "set_attachment_state", "attachment");
+#endif
             id = require_attachment(table, input.attachment);
             state = input.state;
             context.stack().pop<set_attachment_state_input>();

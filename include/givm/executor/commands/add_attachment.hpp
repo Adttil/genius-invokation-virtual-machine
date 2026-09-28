@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 #include <optional>
 #include <utility>
@@ -78,6 +82,9 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, add_attachment>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
+#ifndef NDEBUG
+            debug_validate_active_character(table, player, "add_attachment");
+#endif
             input = {
                 .target = *table[player].state().active_character,
                 .definition = command.definition, .state = command.state
@@ -90,6 +97,10 @@ namespace givm::detail
             context.stack().pop<add_attachment_input>();
             context.enter_next();
         }
+#ifndef NDEBUG
+        debug_validate_entity(table, input.target, "add_attachment", "target");
+        debug_validate_definition(library, input.definition, "add_attachment", "definition");
+#endif
         if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))
             return context.enter_next();
         input.state = clamp_attachment_state(input.state, library[input.definition].query(attachment_state_limit{}));

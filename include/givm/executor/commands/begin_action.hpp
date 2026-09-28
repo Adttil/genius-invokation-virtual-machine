@@ -213,7 +213,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, library, card_table, random);
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
@@ -265,7 +265,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, library, card_table, random);
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
@@ -318,7 +318,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, library, card_table, random);
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
@@ -370,7 +370,7 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context(stack, library, card_table, random);
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {

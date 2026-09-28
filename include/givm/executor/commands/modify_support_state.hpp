@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <cstdint>
 
 #include "set_support_state.hpp"
@@ -21,6 +25,9 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, modify_support_state>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
+#ifndef NDEBUG
+            debug_validate_required_entity(table, player, command.definition, "modify_support_state", "support");
+#endif
             input = { require_support(table, player, command.definition), command.count, command.round_usages };
             context.advance(instruction_extent<1, modify_support_state>);
         }
@@ -31,6 +38,9 @@ namespace givm::detail
             context.enter_next();
         }
 
+#ifndef NDEBUG
+        debug_validate_entity(table, input.support, "modify_support_state", "support");
+#endif
         const bool valid = static_cast<bool>(table[input.support]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];

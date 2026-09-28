@@ -13,6 +13,10 @@
 #include "../broadcast.hpp"
 #include "../instruction.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -72,6 +76,11 @@ namespace givm::detail
     {
         if(not continue_broadcast<healing>(library, table, context, random)) return continue_execution;
         const auto event = get<0>(context.stack().top<healing, response_return>());
+#ifndef NDEBUG
+        debug_validate_entity(table, event.target, "heal", "target", true);
+        if(table[event.target].state().health > table[event.target].state().max_health)
+            throw command_input_error{ "heal", invalid_numeric_argument{ "health", table[event.target].state().health, table[event.target].state().max_health } };
+#endif
         pop_broadcast<healing>(context);
         auto& state = table[event.target].state();
         GIVM_ASSERT(state.health <= state.max_health);
@@ -114,6 +123,11 @@ namespace givm::detail
         {
             if(not continue_broadcast<healing>(library, table, context, random)) return continue_execution;
             const auto event = get<0>(context.stack().top<healing, response_return>());
+#ifndef NDEBUG
+            debug_validate_entity(table, event.target, "heal", "target", true);
+            if(table[event.target].state().health > table[event.target].state().max_health)
+                throw command_input_error{ "heal", invalid_numeric_argument{ "health", table[event.target].state().health, table[event.target].state().max_health } };
+#endif
             pop_broadcast<healing>(context);
             auto& state = table[event.target].state();
             GIVM_ASSERT(state.health <= state.max_health);
@@ -162,6 +176,13 @@ namespace givm::detail
         else
         {
             input = get<0>(context.stack().top<heal_input>());
+#ifndef NDEBUG
+            debug_validate_entity(table, input.source, "heal", "source", true);
+            if(const auto* id = std::get_if<character_id>(&input.target))
+                debug_validate_entity(table, *id, "heal", "target", true);
+            else
+                debug_validate_relative_character_target(table, std::get<relative_character_target>(input.target), "heal", "target");
+#endif
             context.stack().pop<heal_input>();
             context.enter_next();
             if(const auto* id = std::get_if<character_id>(&input.target))

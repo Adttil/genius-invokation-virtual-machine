@@ -13,6 +13,10 @@
 #include <span>
 
 #include "../broadcast.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -61,6 +65,9 @@ namespace givm::detail
     )
     {
         const auto& command = context.instruction_data<1, fixed_draw_cards_parameters>(library);
+#ifndef NDEBUG
+        debug_validate_entity(table, table.state().self_player, "draw_cards", "self_player");
+#endif
         const auto target_player = command.player == relative_player::self
             ? table.state().self_player
             : other_player(table.state().self_player);
@@ -107,6 +114,9 @@ namespace givm::detail
         execution_context& context, random_fn& random)
     {
         const auto& command = context.instruction_data<1, fixed_draw_cards_parameters>(library);
+#ifndef NDEBUG
+        debug_validate_entity(table, table.state().self_player, "draw_cards", "self_player");
+#endif
         const auto target_player = command.player == relative_player::self
             ? table.state().self_player : other_player(table.state().self_player);
         context.advance(instruction_extent<1, fixed_draw_cards_parameters>);
@@ -151,6 +161,10 @@ namespace givm::detail
         execution_context& context, random_fn& random)
     {
         std::span<const deck_card_id> cards = get<0>(context.stack().top<deck_card_id[]>());
+#ifndef NDEBUG
+        debug_validate_unique(cards, "draw_cards", "cards");
+        for(const auto card : cards) debug_validate_entity(table, card, "draw_cards", "cards");
+#endif
         context.enter_next();
         if(cards.empty())
         {

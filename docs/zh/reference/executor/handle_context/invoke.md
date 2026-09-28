@@ -40,15 +40,21 @@ program_entry invoke(substack_t, program_entry entry, std::span<const any_comman
 
 ## 异常
 
-未定义 `NDEBUG` 时，在写入前检查输入对象的数量、具体类型和顺序；与入口要求不符时抛出 `std::invalid_argument`。发布构建不进行这些检查，违反输入约定属于未定义行为。
+未定义 `NDEBUG` 时，在写入本次输入前检查入口、提交方式、重复提交以及输入对象的数量、具体类型和顺序；违反协议时抛出 [`program_input_error`](../program_input_error.md)。其中 `reason` 区分具体错误，可直接读取结构化字段，也可用 `what()` 或 [`error_string`](../error_string.md) 取得文本。发布构建不进行这些检查，也不保留对应诊断元数据；违反输入约定属于未定义行为。
+
+协议检查失败时不写入本次输入，但不回滚此前响应对事件的修改，也不回滚本次 `step` 已执行的其他效果。捕获异常用于定位定义错误，不应在原现场继续推进执行器。
+
+目标实体、资源数量及具体输入值等前提在命令实际执行时检查，错误以 [`command_input_error`](../command_input_error.md) 报告；不会因为提交时尚未满足、但前序命令会使其满足而拒绝提交。
 
 ## 注意
 
-`cost_of_switch`、`cost_of_card`、`cost_of_skill` 和 `cost_of_technique` 响应若提交后续效果，必须调用 `context.invoke(substack_t{}, entry, inputs...)`，没有输入时也须传这个标记；普通响应使用 `context.invoke(entry, inputs...)`。库不检查是否选对重载，违反此前提属于未定义行为。
+`cost_of_switch`、`cost_of_card`、`cost_of_skill` 和 `cost_of_technique` 响应若提交后续效果，必须调用 `context.invoke(substack_t{}, entry, inputs...)`，没有输入时也须传这个标记；普通响应使用 `context.invoke(entry, inputs...)`。调试构建检查是否选对重载。
 
 程序要求的输入对象数量、类型和顺序由编译时的具体命令值决定。数组长度属于本次输入值，不参与类型匹配。例如 `deal_damage_input` 不论包含零条、一条还是多条伤害描述，都占一个输入位置。输入须与命令的 `input_type` 相同；字段相同本身不代表类型兼容，显式别名则是同一个类型。
 
-入口必须非空，每次响应最多调用一次，且必须使用尾调用形式，例如 `return context.invoke(entry, set_active_character_input{ target });`。调用前完成对当前事件与现场的全部读取，调用后立即返回。这些使用前提不进行运行期检查，违反时行为未定义。
+入口必须非空并属于当前定义库，每次响应最多调用一次。定义库复制保留入口对应关系，原库的入口可用于其副本；独立重新编译的库不能混用入口。调试构建检查这些条件。
+
+必须使用尾调用形式，例如 `return context.invoke(entry, set_active_character_input{ target });`。调用前完成对当前事件与现场的全部读取，调用后立即返回。尾调用与引用生命周期约定不自动检查，违反时行为未定义。
 
 逐项输入对象在提交前按值取得；输入对象中作为命令数组的 span，其内容也在调用时复制，返回后不再借用原数组。源数组以及 variant span 本身须在复制期间保持有效，不能指向可能因本次调用而移动的执行现场。复制数组不会延长其元素中其他借用对象的生命周期。
 

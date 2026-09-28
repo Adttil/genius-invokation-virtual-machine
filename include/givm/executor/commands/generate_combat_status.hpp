@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "add_combat_status.hpp"
 
 namespace givm::detail
@@ -11,6 +15,10 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table, execution_context& context,
         random_fn& random, generate_combat_status_input input, execution_position resume)
     {
+#ifndef NDEBUG
+        debug_validate_entity(table, input.player, "generate_combat_status", "player");
+        debug_validate_definition(library, input.definition, "generate_combat_status", "definition");
+#endif
         const auto definition = library[input.definition];
         input.state = clamp_combat_status_state(input.state, definition.query(combat_status_state_limit{}));
         for(const auto existing : std::as_const(table)[input.player].combat_statuses())

@@ -3,6 +3,7 @@
 #include "history_summaries.hpp"
 #include "library.hpp"
 #include "program_inputs.hpp"
+#include "runtime_argument_errors.hpp"
 #include "round_flow.hpp"
 #include "selection.hpp"
 #include "target_validation.hpp"

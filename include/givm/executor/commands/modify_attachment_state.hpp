@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "set_attachment_state.hpp"
 #include "../../macro_define.hpp"
 
@@ -27,6 +31,9 @@ namespace givm::detail
         if constexpr(not std::is_void_v<Selector>)
         {
             const auto& data = context.instruction_data<1, attachment_state_modification_data<Selector>>(library);
+#ifndef NDEBUG
+            debug_validate_attachment_target(library, table, data.target, "modify_attachment_state", "target");
+#endif
             id = require_attachment(library, table, data.target);
             count = data.count;
             round_usages = data.round_usages;
@@ -35,6 +42,9 @@ namespace givm::detail
         else
         {
             const auto& input = get<0>(context.stack().top<modify_attachment_state_input>());
+#ifndef NDEBUG
+            debug_validate_attachment_target(table, input.attachment, "modify_attachment_state", "attachment");
+#endif
             id = require_attachment(table, input.attachment);
             count = input.count;
             round_usages = input.round_usages;

@@ -20,6 +20,8 @@
 
 #include "instruction.hpp"
 #include "compile_error.hpp"
+#include "program_input_error.hpp"
+#include "history_access_error.hpp"
 #include "../definition.hpp"
 #include "../enums/equipment_type.hpp"
 #include "../utils/stack.hpp"
@@ -149,7 +151,7 @@ namespace givm::detail
     inline std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode,
         const TContext& context, program_kind kind, std::vector<compile_error>& errors, compile_location location
 #ifndef NDEBUG
-        , std::vector<std::size_t>* input_markers = nullptr
+        , std::vector<debug_input_requirement>* input_markers = nullptr
 #endif
     )
     {
@@ -169,7 +171,7 @@ namespace givm::detail
             if(marker != size_t(-1))
             {
                 ++inputs_count;
-                if(input_markers) input_markers->push_back(marker);
+                if(input_markers) input_markers->push_back({ marker, *location.command_index, debug_command_name<std::remove_cvref_t<decltype(command)>> });
             }
 #endif
             compile(writer, command, mode);
@@ -410,7 +412,9 @@ namespace givm
             program_entry result{ program_.size() };
             detail::program_writer writer{ program_ };
 #ifndef NDEBUG
-            result.inputs_begin_ = input_markers_.size();
+            result.library_identity_ = library_identity_;
+            result.debug_index_ = debug_programs_.size();
+            debug_programs_.push_back({ source_, program_count_, program_.size(), input_markers_.size(), 0 });
 #endif
             [[maybe_unused]] const auto inputs_count =
                 detail::append_commands(writer, std::forward<TCommands>(commands), mode_, *this, program_kind::response, errors_,
@@ -420,7 +424,7 @@ namespace givm
 #endif
                 );
 #ifndef NDEBUG
-            result.inputs_count_ = inputs_count;
+            debug_programs_[result.debug_index_].inputs_count = inputs_count;
 #endif
             writer.write(detail::execute_fn{ detail::execute_return });
             return result;
@@ -498,13 +502,13 @@ namespace givm
             compile_stage stage,
             std::optional<definition_name> source
 #ifndef NDEBUG
-            , std::vector<std::size_t>& input_markers
+            , std::vector<detail::debug_input_requirement>& input_markers, std::vector<detail::debug_program_info>& debug_programs, std::size_t library_identity
 #endif
         )
         : id_map_{ id_map }, definitions_{ definitions }, basic_ids_{ basic_ids }, program_{ program }, declarations_{ declarations }, mode_{ mode },
           history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }, errors_{ errors }, stage_{ stage }, source_{ std::move(source) }
 #ifndef NDEBUG
-        , input_markers_{ input_markers }
+        , input_markers_{ input_markers }, debug_programs_{ debug_programs }, library_identity_{ library_identity }
 #endif
         {}
 
@@ -528,7 +532,9 @@ namespace givm
         std::optional<definition_name> source_;
         std::size_t program_count_ = 0;
 #ifndef NDEBUG
-        std::vector<std::size_t>& input_markers_;
+        std::vector<detail::debug_input_requirement>& input_markers_;
+        std::vector<detail::debug_program_info>& debug_programs_;
+        std::size_t library_identity_;
 #endif
 
         friend class definition_library;
@@ -543,7 +549,7 @@ namespace givm
         definition_library(const definition_library& other)
         : program_{ other.program_ },
 #ifndef NDEBUG
-          input_markers_{ other.input_markers_ },
+          input_markers_{ other.input_markers_ }, debug_programs_{ other.debug_programs_ }, debug_library_identity_{ other.debug_library_identity_ },
 #endif
           tag_names_{ other.tag_names_ },
           equipment_tags_{ other.equipment_tags_ }, skill_tags_{ other.skill_tags_ }, control_tag_{ other.control_tag_ },
@@ -571,7 +577,9 @@ namespace givm
         definition_library& operator=(definition_library&&) noexcept = default;
         ~definition_library() = default;
 
-        static constexpr size_t definition_count = definition_types::size();
+        template<class T>
+        std::size_t definition_count() const noexcept { return bucket_for<T>().data.size(); }
+        std::size_t tag_count() const noexcept { return tag_names_.size(); }
 
         definition_id<combat_status_view> dendro_core_id() const noexcept
         {
@@ -719,12 +727,13 @@ namespace givm
         dynamic_history_value history_field(definition_id<history_summary_definition> id, std::string_view name) const
         {
 #ifndef NDEBUG
-            if(id.value() >= history_layouts_.size()) throw std::invalid_argument{ "history summary ID out of range" };
+            if(id.value() >= history_layouts_.size())
+                throw history_access_error{ definition_metadata_error{ definition_types::index_of<history_summary_definition>(), id.value(), history_layouts_.size() } };
 #endif
             const auto& layout = history_layouts_[id.value()];
             const auto* field = layout.find(name);
 #ifndef NDEBUG
-            if(not field) throw std::invalid_argument{ "unknown history field: " + std::string{ name } };
+            if(not field) throw history_access_error{ history_field_not_found{ std::string{ this->name(id) }, std::string{ name } } };
 #endif
             return std::visit([&](auto key) -> dynamic_history_value
             {
@@ -738,7 +747,8 @@ namespace givm
             const auto field = history_field(id, name);
             const auto* key = std::get_if<history_value_key<T>>(&field);
 #ifndef NDEBUG
-            if(not key) throw std::invalid_argument{ "history field type mismatch: " + std::string{ name } };
+            if(not key) throw history_access_error{ history_field_type_mismatch{ std::string{ this->name(id) }, std::string{ name },
+                detail::history_type_name<T>(), std::visit([](auto value) { return detail::history_type_name<typename decltype(value)::value_type>(); }, field) } };
 #endif
             return *key;
         }
@@ -960,7 +970,7 @@ namespace givm
                 mode, history_layouts_, own_history, true, errors,
                 compile_stage::definition, definition_name{ definition_types::index_of<TDefinitionType>(), std::string{ bucket.names[definition.id.value()] } }
 #ifndef NDEBUG
-                , input_markers_
+                , input_markers_, debug_programs_, debug_library_identity_
 #endif
             };
             auto& data = bucket.data[definition.id.value()];
@@ -995,7 +1005,7 @@ namespace givm
                     errors, compile_stage::history_layout, definition_name{ definition_types::index_of<history_summary_definition>(),
                         std::string{ definition.bucket->names[id.value()] } }
 #ifndef NDEBUG
-                    , input_markers_
+                    , input_markers_, debug_programs_, debug_library_identity_
 #endif
                 };
                 auto& layout = history_layouts_[id.value()];
@@ -1215,7 +1225,7 @@ namespace givm
             definition_compile_context context{ id_map, definitions, library.basic_ids_, library.program_, root_declarations,
                 mode, library.history_layouts_, {}, true, errors, compile_stage::program, std::nullopt
 #ifndef NDEBUG
-                , library.input_markers_
+                , library.input_markers_, library.debug_programs_, library.debug_library_identity_
 #endif
             };
             detail::program_writer writer{ library.program_ };
@@ -1243,7 +1253,9 @@ namespace givm
     private:
         detail::program_bytes program_;
 #ifndef NDEBUG
-        std::vector<std::size_t> input_markers_;
+        std::vector<detail::debug_input_requirement> input_markers_;
+        std::vector<detail::debug_program_info> debug_programs_;
+        std::size_t debug_library_identity_ = detail::next_program_library_identity.fetch_add(1, std::memory_order_relaxed);
 #endif
         std::vector<std::string_view> tag_names_;
         std::array<tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};

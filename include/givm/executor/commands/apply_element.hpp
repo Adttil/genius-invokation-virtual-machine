@@ -16,6 +16,10 @@
 #include "summon.hpp"
 #include "set_active_character.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -189,6 +193,10 @@ namespace givm::detail
     {
         if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random)) return continue_execution;
         const auto event = get<0>(context.stack().top<elemental_reaction_will_occur, response_return>());
+#ifndef NDEBUG
+        if(event.replacement_reaction && event.replacement_reaction.value() >= library.tag_count())
+            throw command_input_error{ "apply_element", invalid_numeric_argument{ "replacement_reaction", event.replacement_reaction.value(), library.tag_count(), invalid_numeric_argument::constraint_kind::less_than } };
+#endif
         pop_broadcast<elemental_reaction_will_occur>(context);
         auto& frame = get<0>(context.stack().top<element_application_frame>());
         std::construct_at(&frame.event, after_elemental_reaction{
@@ -234,6 +242,14 @@ namespace givm::detail
         else
         {
             input = get<0>(context.stack().top<apply_element_input>());
+#ifndef NDEBUG
+            debug_validate_entity(table, input.source, "apply_element", "source", true);
+            debug_validate_entity(table, input.target, "apply_element", "target", true);
+            if(input.element > element::none)
+                throw command_input_error{ "apply_element", invalid_enum_argument{ "element", static_cast<std::size_t>(input.element) } };
+            if(input.cause != element_application_cause::effect && input.cause != element_application_cause::damage)
+                throw command_input_error{ "apply_element", invalid_enum_argument{ "cause", static_cast<std::size_t>(input.cause) } };
+#endif
             context.stack().pop<apply_element_input>();
             position = context.position() + sizeof(execute_fn);
         }

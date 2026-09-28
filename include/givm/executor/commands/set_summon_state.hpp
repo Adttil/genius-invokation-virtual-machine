@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "add_summon.hpp"
 #include "remove_summon.hpp"
 #include "../../macro_define.hpp"
@@ -19,6 +23,9 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, set_summon_state>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
+#ifndef NDEBUG
+            debug_validate_required_entity(table, player, command.definition, "set_summon_state", "summon");
+#endif
             const auto summon = require_summon(table, player, command.definition);
             table[summon].state() = clamp_summon_state(command.state,
                 library[command.definition].query(summon_state_limit{}));
@@ -27,6 +34,15 @@ namespace givm::detail
         else
         {
             const auto changes = get<0>(context.stack().top<set_summon_state_input::change[]>());
+#ifndef NDEBUG
+            for(std::size_t index = 0; index != changes.size(); ++index)
+            {
+                debug_validate_entity(table, changes[index].summon, "set_summon_state", "changes[" + std::to_string(index) + "].summon");
+                for(std::size_t first = 0; first != index; ++first)
+                    if(changes[first].summon == changes[index].summon)
+                        throw command_input_error{ "set_summon_state", duplicate_entity_argument{ "changes", first, index } };
+            }
+#endif
             for(const auto& change : changes)
             {
                 auto summon = table[change.summon];

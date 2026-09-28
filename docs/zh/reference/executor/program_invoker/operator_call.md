@@ -26,4 +26,6 @@ program_entry operator()(substack_t, program_entry entry, std::span<const any_co
 
 普通响应使用不带标记的重载；费用响应必须在入口前传 `substack_t{}`。每个动态命令对应一个由 `input_type` 指定的输入对象，固定模式不占输入位置。逐项提交按值接收对象，动态适配器可用 [`any_command_input`](../../definition/any_command_input.md) 的 span 提交同样的序列。
 
-命令数组的内容在调用中复制。未定义 `NDEBUG` 时，在写入前检查输入数量、具体类型及顺序，不符时抛出 `std::invalid_argument`；数组长度可变。发布构建不检查，错误输入属于未定义行为。
+命令数组的内容在调用中复制，数组长度可变。未定义 `NDEBUG` 时，在写入前检查入口、普通与费用提交方式、重复提交、输入数量、具体类型及顺序，失败时抛出 [`program_input_error`](../program_input_error.md)。发布构建不保留检查及对应诊断元数据，错误输入属于未定义行为。
+
+检查失败不会写入本次输入，但不保证整个响应或 `step` 回滚；捕获异常后不应在原现场继续推进。尾调用与借用对象生命周期仍由定义源保证，见 [`invoke`](../handle_context/invoke.md)。

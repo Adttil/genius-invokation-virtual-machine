@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "add_summon.hpp"
 #include "../../macro_define.hpp"
 
@@ -12,6 +16,10 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table, execution_context& context,
         random_fn& random, summon_input input, execution_position resume)
     {
+#ifndef NDEBUG
+        debug_validate_entity(table, input.player, "summon", "player");
+        debug_validate_definition(library, input.definition, "summon", "definition");
+#endif
         const auto definition = library[input.definition];
         input.state = clamp_summon_state(input.state, definition.query(summon_state_limit{}));
         const auto player = std::as_const(table)[input.player];

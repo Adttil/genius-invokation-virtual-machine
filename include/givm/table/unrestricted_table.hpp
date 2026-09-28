@@ -248,6 +248,35 @@ namespace givm::detail
             return character.template attachments<false>()[attachment_id.index];
         }
 
+#ifndef NDEBUG
+        bool debug_entity_in_range(deck_card_id id) const noexcept
+        {
+            return id.player_id.index < 2
+                && id.index < storage_.player_datas[id.player_id.index].deck_card_datas.size();
+        }
+
+        bool debug_entity_in_range(hand_card_status_id id) const noexcept
+        {
+            if(id.card_id.player_id.index >= 2 || id.index >= storage_.status_slots.size()) return false;
+            const auto& cards = storage_.player_datas[id.card_id.player_id.index].hand_card_datas;
+            if(id.card_id.index >= cards.size()) return false;
+            for(auto index = cards[id.card_id.index].first_status; index != invalid_status_index;
+                index = storage_.status_slots[index].next)
+                if(index == id.index) return true;
+            return false;
+        }
+
+        bool debug_entity_in_range(deck_card_status_id id) const noexcept
+        {
+            if(not debug_entity_in_range(id.card_id) || id.index >= storage_.status_slots.size()) return false;
+            const auto& card = storage_.player_datas[id.card_id.player_id.index].deck_card_datas[id.card_id.index];
+            for(auto index = card.first_status; index != invalid_status_index;
+                index = storage_.status_slots[index].next)
+                if(index == id.index) return true;
+            return false;
+        }
+#endif
+
         constexpr void clean_up() noexcept
         {
             for(auto player : players())

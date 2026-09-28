@@ -16,18 +16,14 @@ class definition_library;
 | --- | --- |
 | [`definition_view`](definition_library/definition_view.md) | 一项定义的只读视图 |
 
-## 成员常量
-
-|  |  |
-| --- | --- |
-| [`definition_count`](definition_library/definition_count.md) | 支持的定义类别数量 |
-
 ## 成员函数
 
 |  |  |
 | --- | --- |
 | [`operator[]`](definition_library/operator_at.md) | 查看指定定义 |
 | [`name`](definition_library/name.md) | 取得定义名称 |
+| [`definition_count`](definition_library/definition_count.md) | 取得指定类别的定义数量 |
+| [`tag_count`](definition_library/tag_count.md) | 取得标签数量 |
 | [`tag_name`](definition_library/tag_name.md) | 取得标签名称 |
 | [`skill_flags`](definition_library/skill_flags.md) | 取得技能定义标签对应的固有分类 |
 | [`equipment_type`](definition_library/equipment_type.md) | 取得附着实体定义的装备类别 |
@@ -50,9 +46,9 @@ class definition_library;
 
 ## 注意
 
-通过 [`compile`](compile.md) 创建。配套 ID 与程序入口应始终用于产生它们的定义库；定义视图的使用期不能超出定义库的生命期。牌桌不持有定义库，执行时由调用方显式传入配套的库。名称和标签的字符存储仍须保持有效。
+通过 [`compile`](compile.md) 创建。配套 ID 与程序入口应始终用于产生它们的定义库或其副本，不能混用于独立重新编译的库；定义视图的使用期不能超出所属定义库的生命期。牌桌不持有定义库，执行时由调用方显式传入配套的库。名称和标签的字符存储仍须保持有效。
 
-`history_field<T>` 的摘要 ID 为 `definition_id<history_summary_definition>`；返回 `history_value_key<T>`，可通过配套牌桌的 `table[key]` 读取。数组使用 `T[]`。省略模板参数时返回各强类型键的 variant `dynamic_history_value`。摘要 ID、字段名称、类型和数组形态须匹配；未定义 `NDEBUG` 时，不符会抛出 `std::invalid_argument`，发布构建中违反约定属于未定义行为。编译上下文的同名查询则将错误记录到编译结果中。详见[历史摘要](../definition/history_summary.md)。
+`history_field<T>` 的摘要 ID 为 `definition_id<history_summary_definition>`；返回 `history_value_key<T>`，可通过配套牌桌的 `table[key]` 读取。数组使用 `T[]`。省略模板参数时返回各强类型键的 variant `dynamic_history_value`。摘要 ID、字段名称、类型和数组形态须匹配；未定义 `NDEBUG` 时，不符会抛出 [`history_access_error`](history_access_error.md)，发布构建中违反约定属于未定义行为。编译上下文的同名查询则将错误记录到编译结果中。详见[历史摘要](../definition/history_summary.md)。
 
 ## 示例
 

@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <cstdint>
 
 #include "set_summon_state.hpp"
@@ -44,6 +48,9 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, modify_summon_state>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
+#ifndef NDEBUG
+            debug_validate_required_entity(table, player, command.definition, "modify_summon_state", "summon");
+#endif
             const auto summon = require_summon(table, player, command.definition);
             const auto changed = modify(summon, command.value, command.usages);
             context.advance(instruction_extent<1, modify_summon_state>);
@@ -54,6 +61,11 @@ namespace givm::detail
         else
         {
             const auto [summons, value, usages] = context.stack().top<summon_id[], std::int64_t, std::int64_t>();
+#ifndef NDEBUG
+            debug_validate_unique(std::span<const summon_id>{ summons }, "modify_summon_state", "summons");
+            for(std::size_t index = 0; index != summons.size(); ++index)
+                debug_validate_entity(table, summons[index], "modify_summon_state", "summons[" + std::to_string(index) + "]");
+#endif
             auto first = summons.size();
             for(std::size_t index = 0; index != summons.size(); ++index)
             {

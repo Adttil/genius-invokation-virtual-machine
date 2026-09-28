@@ -7,6 +7,10 @@
 
 #include "../broadcast.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -32,9 +36,17 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, remove_dice>(library);
+#ifndef NDEBUG
+            debug_validate_entity(table, table.state().self_player, "remove_dice", "self_player");
+#endif
             player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
             dice = command.dice;
+#ifndef NDEBUG
+            debug_validate_entity(table, player, "remove_dice", "player");
+            if(not table[player].state().dice.contains(dice))
+                throw command_input_error{ "remove_dice", insufficient_dice_argument{ player, dice, table[player].state().dice } };
+#endif
             context.advance(instruction_extent<1, remove_dice>);
         }
         else
@@ -42,6 +54,11 @@ namespace givm::detail
             const auto& input = get<0>(context.stack().top<remove_dice_input>());
             player = input.player;
             dice = input.dice;
+#ifndef NDEBUG
+            debug_validate_entity(table, player, "remove_dice", "player");
+            if(not table[player].state().dice.contains(dice))
+                throw command_input_error{ "remove_dice", insufficient_dice_argument{ player, dice, table[player].state().dice } };
+#endif
             context.stack().pop<remove_dice_input>();
             context.enter_next();
             if(dice.total() == 0)

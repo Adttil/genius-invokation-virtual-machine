@@ -5,6 +5,10 @@
 
 #include "../broadcast.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -29,9 +33,22 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, add_dice>(library);
+#ifndef NDEBUG
+            debug_validate_entity(table, table.state().self_player, "add_dice", "self_player");
+#endif
             player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
             dice = command.dice;
+#ifndef NDEBUG
+            debug_validate_entity(table, player, "add_dice", "player");
+            for(std::uint8_t index = 0; index <= std::to_underlying(elemental_dice::omni); ++index)
+            {
+                const auto kind = static_cast<elemental_dice>(index);
+                const auto value = static_cast<std::uint64_t>(table[player].state().dice[kind]) + dice[kind];
+                if(value > std::numeric_limits<std::uint8_t>::max())
+                    throw command_input_error{ "add_dice", invalid_numeric_argument{ "dice", value, std::numeric_limits<std::uint8_t>::max() } };
+            }
+#endif
             context.advance(instruction_extent<1, add_dice>);
         }
         else
@@ -39,6 +56,16 @@ namespace givm::detail
             const auto& input = get<0>(context.stack().top<add_dice_input>());
             player = input.player;
             dice = input.dice;
+#ifndef NDEBUG
+            debug_validate_entity(table, player, "add_dice", "player");
+            for(std::uint8_t index = 0; index <= std::to_underlying(elemental_dice::omni); ++index)
+            {
+                const auto kind = static_cast<elemental_dice>(index);
+                const auto value = static_cast<std::uint64_t>(table[player].state().dice[kind]) + dice[kind];
+                if(value > std::numeric_limits<std::uint8_t>::max())
+                    throw command_input_error{ "add_dice", invalid_numeric_argument{ "dice", value, std::numeric_limits<std::uint8_t>::max() } };
+            }
+#endif
             context.stack().pop<add_dice_input>();
             context.enter_next();
             if(dice.total() == 0)

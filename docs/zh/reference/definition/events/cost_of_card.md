@@ -23,5 +23,5 @@ struct cost_of_card;
 
 报价先复制该牌当前 [`card_state::cost`](../../table/card_state.md) 作为基础费用，再依次处理费用响应；费用修正不会写回卡牌自身状态。响应不得调用随机函数，违反此前提属于未定义行为。
 
-需要确认行动后执行的效果由响应通过 [`handle_context::invoke`](../../executor/handle_context/invoke.md) 提交，必须采用 `return context.invoke(givm::substack_t{}, entry, inputs...);` 的形式，没有输入时也须传这个标记。报价时只保留入口和输入，确认后在扣除骰子与充能之前执行所选候选的效果；误用普通重载属于未定义行为，不进行运行期检查。
+需要确认行动后执行的效果由响应通过 [`handle_context::invoke`](../../executor/handle_context/invoke.md) 提交，必须采用 `return context.invoke(givm::substack_t{}, entry, inputs...);` 的形式，没有输入时也须传这个标记。报价时只保留入口和输入，确认后在扣除骰子与充能之前执行所选候选的效果；调试构建中误用重载会抛出 [`program_input_error`](../../executor/program_input_error.md)；发布构建不检查，违反约定属于未定义行为。
 

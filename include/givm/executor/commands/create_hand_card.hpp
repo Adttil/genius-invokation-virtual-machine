@@ -6,6 +6,10 @@
 #include "../broadcast.hpp"
 #include "../../definition.hpp"
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 namespace givm::detail
 {
     inline execution_state broadcast_hand_card_added(
@@ -27,6 +31,9 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, create_hand_card>(library);
+#ifndef NDEBUG
+            debug_validate_entity(table, table.state().self_player, "create_hand_card", "self_player");
+#endif
             input = {
                 .player = command.player == relative_player::self
                     ? table.state().self_player : other_player(table.state().self_player),
@@ -37,6 +44,10 @@ namespace givm::detail
         else
         {
             input = get<0>(context.stack().top<create_hand_card_input>());
+#ifndef NDEBUG
+            debug_validate_entity(table, input.player, "create_hand_card", "player");
+            debug_validate_definition(library, input.definition, "create_hand_card", "definition");
+#endif
             context.stack().pop<create_hand_card_input>();
             context.enter_next();
         }

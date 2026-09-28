@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 #include <type_traits>
 #include <variant>
@@ -20,6 +24,52 @@ namespace givm::detail
         relative_character_target character;
         Selector selector;
     };
+
+#ifndef NDEBUG
+    inline void debug_validate_attachment_target(const unrestricted_table& table, const attachment_target& target,
+        std::string_view command, std::string_view field)
+    {
+        std::visit([&](const auto& selection)
+        {
+            using selector_type = std::remove_cvref_t<decltype(selection)>;
+            if constexpr(std::is_same_v<selector_type, attachment_id>)
+                debug_validate_entity(table, selection, command, field);
+            else
+            {
+                debug_validate_entity(table, selection.character, command, std::string{ field } + ".character");
+                if(selection.type >= equipment_type::none)
+                    throw command_input_error{ command, invalid_enum_argument{
+                        std::string{ field } + ".type", static_cast<std::size_t>(selection.type) } };
+                if(not table[selection.character].has(selection.type))
+                    throw command_input_error{ command, missing_entity_argument{
+                        std::string{ field }, command_entity_id{ selection.character }, {}, selection.type } };
+            }
+        }, target);
+    }
+
+    template<bool SkipDefeated = false, class Selector>
+    inline void debug_validate_attachment_target(const definition_library& library, const unrestricted_table& table,
+        const fixed_attachment_target<Selector>& target, std::string_view command, std::string_view field)
+    {
+        const auto character = resolve_character_target<SkipDefeated>(table, target.character);
+        if(not character)
+            throw command_input_error{ command, missing_entity_argument{ std::string{ field } + ".character" } };
+        if constexpr(std::is_same_v<Selector, equipment_type>)
+            debug_validate_attachment_target(table, attachment_target{ equipment_target{ *character, target.selector } }, command, field);
+        else
+        {
+            debug_validate_definition(library, target.selector, command, std::string{ field } + ".definition");
+            const auto owner = table[*character];
+            const auto type = library.equipment_type(target.selector);
+            const bool found = type != equipment_type::none
+                ? owner.has(type) && owner.get(type).definition_id() == target.selector
+                : std::ranges::any_of(owner.attachments(), [&](const auto entity) { return entity.definition_id() == target.selector; });
+            if(not found)
+                throw command_input_error{ command, missing_entity_argument{
+                    std::string{ field }, command_entity_id{ *character }, target.selector.value() } };
+        }
+    }
+#endif
 
     inline attachment_id require_attachment(
         const unrestricted_table& table, character_id character, equipment_type type)
@@ -92,11 +142,17 @@ namespace givm::detail
         if constexpr(not std::is_void_v<Selector>)
         {
             const auto& target = context.instruction_data<1, fixed_attachment_target<Selector>>(library);
+#ifndef NDEBUG
+            debug_validate_attachment_target(library, table, target, "remove_attachment", "target");
+#endif
             attachment = require_attachment(library, table, target);
             context.advance(instruction_extent<1, fixed_attachment_target<Selector>>);
         }
         else
         {
+#ifndef NDEBUG
+            debug_validate_attachment_target(table, get<0>(context.stack().top<remove_attachment_input>()).attachment, "remove_attachment", "attachment");
+#endif
             attachment = require_attachment(table, get<0>(context.stack().top<remove_attachment_input>()).attachment);
             context.stack().pop<remove_attachment_input>();
             context.enter_next();

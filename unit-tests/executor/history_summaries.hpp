@@ -510,9 +510,9 @@ TEST_CASE("starting initializes history after both decks and copies preserve ini
     CHECK(another[counts][1] == 0);
 
 #ifndef NDEBUG
-    CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "wide"), std::invalid_argument);
-    CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "counts"), std::invalid_argument);
-    CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "missing"), std::invalid_argument);
+    CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "wide"), givm::history_access_error);
+    CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "counts"), givm::history_access_error);
+    CHECK_THROWS_AS(library.history_field<std::uint32_t>(id, "missing"), givm::history_access_error);
 #endif
 }
 

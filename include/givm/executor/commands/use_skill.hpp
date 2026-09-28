@@ -8,6 +8,10 @@
 
 #include "../broadcast.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -30,6 +34,10 @@ namespace givm::detail
         if(not continue_broadcast<skill_will_be_used>(library, table, context, random))
             return continue_execution;
         const auto event = get<0>(context.stack().top<skill_will_be_used, response_return>());
+#ifndef NDEBUG
+        if(event.speed != action_speed::fast && event.speed != action_speed::combat)
+            throw command_input_error{ "use_skill", invalid_enum_argument{ "speed", static_cast<std::size_t>(event.speed) } };
+#endif
         pop_broadcast<skill_will_be_used>(context);
         if constexpr(ActionSelection)
         {
@@ -73,11 +81,17 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, use_skill>(library);
+#ifndef NDEBUG
+            debug_validate_entity(table, table.state().self_player, "use_skill", "self_player");
+#endif
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
             context.advance(instruction_extent<1, use_skill>);
             const auto character = table[player].state().active_character;
             if(not character) return context.advance(3 * sizeof(execute_fn));
+#ifndef NDEBUG
+            debug_validate_entity(table, *character, "use_skill", "active_character");
+#endif
             auto skills = table[*character].skills();
             const auto found = std::ranges::find_if(skills,
                 [&](const auto skill) { return skill.definition_id() == command.definition; });
@@ -90,6 +104,11 @@ namespace givm::detail
         else
         {
             const auto effect = get<0>(context.stack().top<use_skill_input>());
+#ifndef NDEBUG
+            debug_validate_entity(table, effect.skill, "use_skill", "skill");
+            if(table[effect.skill.character_id.player_id].state().active_character != effect.skill.character_id)
+                throw command_input_error{ "use_skill", invalid_entity_relation{ "skill", invalid_entity_relation::reason::inactive_character } };
+#endif
             context.stack().pop<use_skill_input>();
             context.enter_next();
             GIVM_ASSERT(table[effect.skill.character_id.player_id].state().active_character == effect.skill.character_id);

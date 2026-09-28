@@ -134,7 +134,7 @@ namespace givm::detail
         {
             return program_invoker{ stack_
 #ifndef NDEBUG
-                , input_markers_
+                , debug_
 #endif
             };
         }
@@ -144,12 +144,13 @@ namespace givm::detail
             return handle_context{ table, random, make_program_invoker() };
         }
 
+        template<bool Substack = false>
         static handle_context make_handle_context(
             frame_stack& stack, const definition_library& library, const table& table, random_fn& random)
         {
             return handle_context{ table, random, program_invoker{ stack
 #ifndef NDEBUG
-                , library.input_markers_
+                , detail::program_debug_view{ library.debug_library_identity_, library.debug_programs_, library.input_markers_ }, Substack
 #endif
             } };
         }
@@ -179,7 +180,7 @@ namespace givm::detail
         execution_position position_ = null_program_position;
         frame_stack stack_;
 #ifndef NDEBUG
-        std::span<const std::size_t> input_markers_;
+        program_debug_view debug_;
 #endif
     };
 }
@@ -240,7 +241,7 @@ namespace givm
             detail::unrestricted_table& runtime_table = table;
             random_fn random{ random_source };
 #ifndef NDEBUG
-            context_.input_markers_ = library.input_markers_;
+            context_.debug_ = { library.debug_library_identity_, library.debug_programs_, library.input_markers_ };
 #endif
             while(true)
             {

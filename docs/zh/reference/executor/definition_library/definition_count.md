@@ -5,32 +5,25 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
-static constexpr size_t definition_count = definition_types::size();
+template<class T>
+std::size_t definition_count() const noexcept;
 ```
 
-定义系统支持的类别数量，不是某个库中已登记定义的数量。可用于为每个类别准备统计或配置项。
+取得定义库中指定类别的定义数量。
 
-## 示例
+## 模板参数
 
-```cpp
-#include <array>
-#include <cstddef>
-#include <print>
+|  |  |
+| --- | --- |
+| `T` | 定义类别，须为 [`definition_types`](../../definition/definition_types.md) 中的一种类型 |
 
-#include <givm/givm.hpp>
+## 返回值
 
-int main()
-{
-    std::array<std::size_t, givm::definition_library::definition_count> selected_counts{};
-    selected_counts[givm::definition_types::index_of<givm::card_definition>()] = 30;
-    std::println("类别数量: {}", selected_counts.size());
-    std::println("计划选择的卡牌数: {}", selected_counts[givm::definition_types::index_of<givm::card_definition>()]);
-}
-```
+本定义库中属于 `T` 类别的定义总数。
 
-输出
+## 参阅
 
-```text
-类别数量: 9
-计划选择的卡牌数: 30
-```
+|  |  |
+| --- | --- |
+| [`operator[]`](operator_at.md) | 查看指定定义 |
+| [`tag_count`](tag_count.md) | 取得标签数量 |

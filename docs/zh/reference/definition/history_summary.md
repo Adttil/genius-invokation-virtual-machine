@@ -101,7 +101,7 @@ Lua 等适配器根据脚本的数值类型选择 `history_scalar_field<T>{ name
 
 空字段名、重名、布局长度溢出，以及编译上下文中字段不存在、类型或数组形态不符、访问阶段错误、未声明摘要依赖，均记录为 [`compile_error`](../executor/compile_error.md)，由最终 `compile` 返回。失败查询得到的无效键不得用于访问状态。字段的数值类型与标量/数组形态由 C++ 类型表示，无需运行时验证类型枚举。
 
-编译后调用 `library.history_field` 须保证摘要 ID、字段名称、类型和数组形态正确。未定义 `NDEBUG` 时，违反这些条件会抛出 `std::invalid_argument`；发布构建中违反约定属于未定义行为。
+编译后调用 `library.history_field` 须保证摘要 ID、字段名称、类型和数组形态正确。未定义 `NDEBUG` 时，违反这些条件会抛出 [`history_access_error`](../executor/history_access_error.md)，可读取具体原因或用 `what()` 取得文本；发布构建中违反约定属于未定义行为。
 
 ## 示例
 

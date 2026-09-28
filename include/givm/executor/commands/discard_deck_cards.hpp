@@ -9,6 +9,10 @@
 #include "../broadcast.hpp"
 #include "../../definition.hpp"
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 namespace givm::detail
 {
     inline void prepare_deck_card_discard_notification(
@@ -103,6 +107,9 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, discard_deck_cards>(library);
+#ifndef NDEBUG
+            debug_validate_entity(table, table.state().self_player, "discard_deck_cards", "self_player");
+#endif
             player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
             requested_count = command.count;
@@ -113,6 +120,9 @@ namespace givm::detail
             const auto input = get<0>(context.stack().top<discard_deck_cards_input>());
             player = input.player;
             requested_count = input.count;
+#ifndef NDEBUG
+            debug_validate_entity(table, player, "discard_deck_cards", "player");
+#endif
             context.stack().pop<discard_deck_cards_input>();
             context.enter_next();
         }

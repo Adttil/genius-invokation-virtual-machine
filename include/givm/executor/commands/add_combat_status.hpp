@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 
 #include "../executor.hpp"
@@ -38,6 +42,10 @@ namespace givm::detail
             context.stack().pop<add_combat_status_input>();
             context.enter_next();
         }
+#ifndef NDEBUG
+        debug_validate_entity(table, input.player, "add_combat_status", "player");
+        debug_validate_definition(library, input.definition, "add_combat_status", "definition");
+#endif
         input.state = clamp_combat_status_state(
             input.state, library[input.definition].query(combat_status_state_limit{}));
         table[input.player].add(input.definition, input.state);

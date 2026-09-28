@@ -374,7 +374,11 @@ namespace
         typed_wrong_type,
         runtime_wrong_type,
         typed_wrong_order,
-        runtime_wrong_order
+        runtime_wrong_order,
+        null_entry,
+        wrong_mode,
+        repeated,
+        foreign_entry
     };
 
     struct mismatched_input_source
@@ -384,12 +388,16 @@ namespace
         {
             input_mismatch error;
             givm::program_entry entry;
+            givm::program_entry* foreign;
         };
         input_mismatch error;
+        givm::program_entry* exported = nullptr;
+        givm::program_entry* foreign = nullptr;
 
         std::string_view name() const noexcept { return "MismatchedInput"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
+            context.add_program(std::tuple{});
             givm::program_entry entry;
             switch(error)
             {
@@ -403,13 +411,14 @@ namespace
                 break;
             case input_mismatch::typed_wrong_order:
             case input_mismatch::runtime_wrong_order:
-                entry = context.add_program(std::tuple{ givm::set_active_character{}, givm::remove_summon{} });
+                entry = context.add_program(std::tuple{ givm::set_active_character{ { givm::relative_player::self, 0 } }, givm::set_active_character{}, givm::remove_summon{} });
                 break;
             default:
                 entry = context.add_program(std::tuple{
                     givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } } });
             }
-            return { error, entry };
+            if(exported) *exported = entry;
+            return { error, entry, foreign };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -423,9 +432,9 @@ namespace
             const auto invoke = [&](auto... inputs)
             {
                 if constexpr(std::same_as<TEvent, givm::cost_of_switch>)
-                    return context.invoke(givm::substack_t{}, data.entry, inputs...);
+                    return context.invoke(givm::substack_t{}, data.foreign ? *data.foreign : data.entry, inputs...);
                 else
-                    return context.invoke(data.entry, inputs...);
+                    return context.invoke(data.foreign ? *data.foreign : data.entry, inputs...);
             };
             const givm::set_active_character_input active{ self.id() };
             const std::array summon_ids{ givm::summon_id{ self.id().player_id, 0 } };
@@ -434,6 +443,16 @@ namespace
             static_assert(sizeof(summon) == sizeof(support));
             switch(data.error)
             {
+            case input_mismatch::null_entry:
+                return context.invoke(givm::program_entry{});
+            case input_mismatch::wrong_mode:
+                if constexpr(std::same_as<TEvent, givm::cost_of_switch>) return context.invoke(data.entry);
+                else return context.invoke(givm::substack_t{}, data.entry);
+            case input_mismatch::repeated:
+                invoke();
+                return invoke();
+            case input_mismatch::foreign_entry:
+                return invoke();
             case input_mismatch::typed_missing:
                 return invoke();
             case input_mismatch::typed_extra:
@@ -472,7 +491,8 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
     const auto error = GENERATE(input_mismatch::typed_missing, input_mismatch::typed_extra,
                                input_mismatch::runtime_missing, input_mismatch::runtime_extra,
                                input_mismatch::typed_wrong_type, input_mismatch::runtime_wrong_type,
-                               input_mismatch::typed_wrong_order, input_mismatch::runtime_wrong_order);
+                               input_mismatch::typed_wrong_order, input_mismatch::runtime_wrong_order,
+                               input_mismatch::null_entry, input_mismatch::wrong_mode, input_mismatch::repeated);
     CAPTURE(mode, cached, error);
     const auto source = givm::test::with_passive_skill(mismatched_input_source{ error });
     const givm::test::initialized_character_source plain;
@@ -490,20 +510,89 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
     givm::executor execution;
     execution.start(library, table);
     zero_random random;
+    const auto verify_error = [&](auto&& operation)
+    {
+        try { operation(); FAIL("expected structured invocation error"); }
+        catch(const std::exception& exception)
+        {
+            const auto* diagnostic = dynamic_cast<const givm::program_input_error*>(&exception);
+            REQUIRE(diagnostic);
+            CHECK(givm::error_string(*diagnostic) == exception.what());
+            if(error == input_mismatch::null_entry)
+            {
+                CHECK(std::get<givm::invalid_program_entry>(diagnostic->reason) == givm::invalid_program_entry::null_entry);
+                return;
+            }
+            REQUIRE(diagnostic->source);
+            CHECK(diagnostic->source->name == std::string{ source.name() });
+            CHECK(diagnostic->program_index == 1);
+            if(error == input_mismatch::wrong_mode)
+            {
+                const auto& reason = std::get<givm::program_invocation_mode_mismatch>(diagnostic->reason);
+                CHECK(reason.expected_substack == cached);
+                CHECK(reason.actual_substack != cached);
+            }
+            else if(error == input_mismatch::repeated)
+                CHECK(std::holds_alternative<givm::repeated_program_invocation>(diagnostic->reason));
+            else if(const auto* reason = std::get_if<givm::program_input_count_mismatch>(&diagnostic->reason))
+            {
+                const bool missing = error == input_mismatch::typed_missing || error == input_mismatch::runtime_missing;
+                CHECK(reason->expected == (missing ? 1 : 0));
+                CHECK(reason->actual == (missing ? 0 : 1));
+            }
+            else
+            {
+                const auto& mismatch = std::get<givm::program_input_type_mismatch>(diagnostic->reason);
+                const bool order = error == input_mismatch::typed_wrong_order || error == input_mismatch::runtime_wrong_order;
+                CHECK(mismatch.input_index == 0);
+                CHECK(mismatch.command_index == (order ? 1 : 0));
+                CHECK(mismatch.expected == (order ? "set_active_character_input" : "remove_summon_input"));
+                CHECK(mismatch.actual == (order ? "remove_summon_input" : "remove_support_input"));
+            }
+        }
+    };
     if(cached)
     {
         REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
         const auto action = execution.view_in<givm::execution_state::action_selection>();
         REQUIRE(action.switch_target_count() == 1);
-        REQUIRE_THROWS_AS(action.calculate_switch_cost(library, table, 0), std::invalid_argument);
+        verify_error([&] { action.calculate_switch_cost(library, table, 0); });
         CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 0 });
     }
     else
     {
         REQUIRE_FALSE(table[givm::player_id{ 0 }].state().active_character);
-        REQUIRE_THROWS_AS(execution.step(library, table, random), std::invalid_argument);
+        verify_error([&] { execution.step(library, table, random); });
         CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character);
     }
+}
+
+TEST_CASE("debug entries reject foreign libraries and remain usable in library copies", "[program-input][debug]")
+{
+    givm::program_entry exported;
+    givm::program_entry foreign;
+    const auto source = givm::test::with_passive_skill(mismatched_input_source{ input_mismatch::foreign_entry, &exported, &foreign });
+    const auto init = std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const auto [first, first_ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal, init, std::tuple{}, source);
+    foreign = exported;
+    const auto [second, second_ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal, init, std::tuple{}, source);
+    const auto run = [&](const givm::definition_library& library, const givm::issued_id_map& ids)
+    {
+        const givm::character_id owner{ givm::player_id{0}, 0 };
+        givm::table table{ { .self_player = owner.player_id }, { .active_character = owner } };
+        load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } }, {});
+        givm::executor execution;
+        execution.start(library, table);
+        zero_random random;
+        return execution.step(library, table, random);
+    };
+    try { run(second, second_ids); FAIL("expected foreign entry error"); }
+    catch(const givm::program_input_error& error)
+    {
+        CHECK(std::get<givm::invalid_program_entry>(error.reason) == givm::invalid_program_entry::different_library);
+    }
+    const auto copied = first;
+    CHECK(run(copied, first_ids) == givm::execution_state::finished);
 }
 #endif
 }

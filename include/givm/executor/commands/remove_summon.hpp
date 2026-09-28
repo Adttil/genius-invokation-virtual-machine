@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 #include <cstdint>
 #include <type_traits>
@@ -105,6 +109,9 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, remove_summon>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
+#ifndef NDEBUG
+            debug_validate_required_entity(table, player, command.definition, "remove_summon", "summon");
+#endif
             const auto summon = require_summon(table, player, command.definition);
             context.advance(instruction_extent<1, remove_summon>);
             return remove_summon_and_broadcast(library, table, context, random, summon);
@@ -112,6 +119,11 @@ namespace givm::detail
         else
         {
             const auto summons = get<0>(context.stack().top<summon_id[]>());
+#ifndef NDEBUG
+            debug_validate_unique(std::span<const summon_id>{ summons }, "remove_summon", "summons");
+            for(std::size_t index = 0; index != summons.size(); ++index)
+                debug_validate_entity(table, summons[index], "remove_summon", "summons[" + std::to_string(index) + "]");
+#endif
             GIVM_ASSERT(std::ranges::all_of(summons,
                 [&](summon_id id) { return static_cast<bool>(table[id]); }));
             context.enter_next();

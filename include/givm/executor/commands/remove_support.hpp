@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 
 #include "../broadcast.hpp"
@@ -44,6 +48,9 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, remove_support>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
+#ifndef NDEBUG
+            debug_validate_required_entity(table, player, command.definition, "remove_support", "support");
+#endif
             support = require_support(table, player, command.definition);
             context.advance(instruction_extent<1, remove_support>);
         }
@@ -53,6 +60,9 @@ namespace givm::detail
             context.stack().pop<remove_support_input>();
             context.enter_next();
         }
+#ifndef NDEBUG
+        debug_validate_entity(table, support, "remove_support", "support");
+#endif
         const bool valid = static_cast<bool>(table[support]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];

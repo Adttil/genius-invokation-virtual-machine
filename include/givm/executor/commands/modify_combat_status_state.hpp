@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <cstdint>
 
 #include "set_combat_status_state.hpp"
@@ -21,6 +25,9 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, modify_combat_status_state>(library);
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
+#ifndef NDEBUG
+            debug_validate_required_entity(table, player, command.definition, "modify_combat_status_state", "status");
+#endif
             input = {
                 require_combat_status(table, player, command.definition), command.count, command.round_usages
             };
@@ -33,6 +40,9 @@ namespace givm::detail
             context.enter_next();
         }
 
+#ifndef NDEBUG
+        debug_validate_entity(table, input.status, "modify_combat_status_state", "status");
+#endif
         const bool valid = static_cast<bool>(table[input.status]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];

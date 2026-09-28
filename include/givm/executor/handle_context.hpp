@@ -8,9 +8,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#ifndef NDEBUG
-#include <stdexcept>
-#endif
+#include "program_input_error.hpp"
 
 #include "../definition.hpp"
 #include "../utils/stack.hpp"
@@ -98,16 +96,36 @@ namespace givm
 
     private:
 #ifndef NDEBUG
-        template<class TMarker>
-        void validate_inputs(program_entry entry, std::size_t count, TMarker marker) const
+        template<bool InSubstack, class TMarker>
+        void validate_inputs(program_entry entry, std::size_t count, TMarker marker)
         {
-            if(entry.inputs_count_ != count)
-                throw std::invalid_argument{ "program input count does not match the entry" };
+            if(not entry) throw program_input_error{ invalid_program_entry::null_entry };
+            if(entry.library_identity_ != debug_.library_identity)
+                throw program_input_error{ invalid_program_entry::different_library };
+            if(entry.debug_index_ >= debug_.programs.size())
+                throw program_input_error{ invalid_program_entry::unknown_entry };
+            const auto& program = debug_.programs[entry.debug_index_];
+            if(program.position != entry.position_ || program.inputs_begin > debug_.inputs.size()
+                || program.inputs_count > debug_.inputs.size() - program.inputs_begin)
+                throw program_input_error{ invalid_program_entry::unknown_entry };
+            const auto fail = [&](program_input_error_reason reason)
+            {
+                throw program_input_error{ std::move(reason), program.source, program.program_index };
+            };
+            if(invoked_) fail(repeated_program_invocation{});
+            if(InSubstack != substack_) fail(program_invocation_mode_mismatch{ substack_, InSubstack });
+            if(program.inputs_count != count)
+                fail(program_input_count_mismatch{ program.inputs_count, count });
             for(std::size_t index = 0; index != count; ++index)
             {
-                if(input_markers_[entry.inputs_begin_ + index] != marker(index))
-                    throw std::invalid_argument{ "program input type does not match the entry" };
+                const auto& expected = debug_.inputs[program.inputs_begin + index];
+                const auto actual = marker(index);
+                if(expected.marker != actual)
+                    fail(program_input_type_mismatch{ index, expected.command_index, std::string{ expected.command },
+                        std::string{ expected.command } + "_input", actual < detail::debug_input_command_names.size()
+                            ? std::string{ detail::debug_input_command_names[actual] } + "_input" : "valueless input" });
             }
+            invoked_ = true;
         }
 #endif
 
@@ -126,7 +144,7 @@ namespace givm
         program_entry invoke_sequence(program_entry entry, std::span<const any_command_input> inputs)
         {
 #ifndef NDEBUG
-            validate_inputs(entry, inputs.size(), [&](std::size_t index) { return inputs[index].index(); });
+            validate_inputs<InSubstack>(entry, inputs.size(), [&](std::size_t index) { return inputs[index].index(); });
 #endif
             const auto push = [&](auto& destination)
             {
@@ -150,7 +168,7 @@ namespace givm
         {
 #ifndef NDEBUG
             constexpr std::array<std::size_t, sizeof...(T)> markers{ detail::command_input_types::index_of<T>()... };
-            validate_inputs(entry, markers.size(), [&](std::size_t index) { return markers[index]; });
+            validate_inputs<InSubstack>(entry, markers.size(), [&](std::size_t index) { return markers[index]; });
 #endif
             // Scalar inputs are copied before a push can relocate the stack.
             // Ranges borrowed by an input must remain valid until their contents have been copied.
@@ -178,18 +196,20 @@ namespace givm
 
         explicit program_invoker(frame_stack& stack
 #ifndef NDEBUG
-            , std::span<const std::size_t> input_markers
+            , detail::program_debug_view debug, bool substack = false
 #endif
         ) noexcept
         : stack_{ stack }
 #ifndef NDEBUG
-        , input_markers_{ input_markers }
+        , debug_{ debug }, substack_{ substack }
 #endif
         {}
 
         frame_stack& stack_;
 #ifndef NDEBUG
-        std::span<const std::size_t> input_markers_;
+        detail::program_debug_view debug_;
+        bool substack_ = false;
+        bool invoked_ = false;
 #endif
     };
 

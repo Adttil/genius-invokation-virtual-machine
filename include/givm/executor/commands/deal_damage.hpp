@@ -16,10 +16,24 @@
 #include "../character_target.hpp"
 #include "apply_element.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
 {
+#ifndef NDEBUG
+    inline void debug_validate_damage_values(damage_type type, std::uint16_t denominator)
+    {
+        if(type > damage_type::true_damage)
+            throw command_input_error{ "deal_damage", invalid_enum_argument{ "type", static_cast<std::size_t>(type) } };
+        if(denominator == 0)
+            throw command_input_error{ "deal_damage", invalid_numeric_argument{ "multiplier_denominator", 0, 0, invalid_numeric_argument::constraint_kind::nonzero } };
+    }
+#endif
+
     inline constexpr std::uint8_t no_overloaded_player = 2;
 
     // Each child frame has exactly this stride; resolution walks it linearly.
@@ -275,6 +289,9 @@ namespace givm::detail
     {
         if(not continue_broadcast<damage_calculation>(library, table, context, random)) return continue_execution;
         auto event = get<0>(context.stack().top<damage_calculation, response_return>());
+#ifndef NDEBUG
+        debug_validate_damage_values(event.type, event.multiplier_denominator);
+#endif
         pop_broadcast<damage_calculation>(context);
         auto& group = get<0>(context.stack().top<damage_group, substack_t>());
         if(table[event.target].state().health == 0)
@@ -335,6 +352,10 @@ namespace givm::detail
     {
         if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random)) return continue_execution;
         const auto event = get<0>(context.stack().top<elemental_reaction_will_occur, response_return>());
+#ifndef NDEBUG
+        if(event.replacement_reaction && event.replacement_reaction.value() >= library.tag_count())
+            throw command_input_error{ "deal_damage", invalid_numeric_argument{ "replacement_reaction", event.replacement_reaction.value(), library.tag_count(), invalid_numeric_argument::constraint_kind::less_than } };
+#endif
         pop_broadcast<elemental_reaction_will_occur>(context);
         auto& group = get<0>(context.stack().top<damage_group, substack_t>());
         auto& record = damage_record_at(group, group.count - 1);
@@ -381,6 +402,11 @@ namespace givm::detail
     {
         if(not continue_broadcast<damage_preparation>(library, table, context, random)) return continue_execution;
         const auto event = get<0>(context.stack().top<damage_preparation, response_return>());
+#ifndef NDEBUG
+        debug_validate_entity(table, event.source, "deal_damage", "source", true);
+        debug_validate_entity(table, event.target, "deal_damage", "target", true);
+        debug_validate_damage_values(event.type, event.multiplier_denominator);
+#endif
         pop_broadcast<damage_preparation>(context);
         auto& group = get<0>(context.stack().top<damage_group, substack_t>());
         std::construct_at(&group.input, event);
@@ -652,6 +678,22 @@ namespace givm::detail
         if constexpr(Inputs)
         {
             count = get<0>(context.stack().top<damage[]>()).size();
+#ifndef NDEBUG
+            for(const auto& input : get<0>(context.stack().top<damage[]>()))
+            {
+                debug_validate_entity(table, input.source, "deal_damage", "source", true);
+                debug_validate_damage_values(input.type, input.multiplier_denominator);
+                if(const auto* id = std::get_if<character_id>(&input.target))
+                {
+                    debug_validate_entity(table, *id, "deal_damage", "target", true);
+                    if(input.selection != character_selection::character && input.selection != character_selection::others
+                        && input.selection != character_selection::all)
+                        throw command_input_error{ "deal_damage", invalid_enum_argument{ "selection", static_cast<std::size_t>(input.selection) } };
+                }
+                else
+                    debug_validate_relative_character_target(table, std::get<relative_character_target>(input.target), "deal_damage", "target");
+            }
+#endif
             position = context.position() + sizeof(execute_fn);
         }
         else

@@ -21,7 +21,7 @@ class program_entry;
 
 ## 注意
 
-非空入口由 [`definition_compile_context::add_program`](../executor/definition_compile_context/add_program.md) 产生，不能跨定义库使用。入口不绑定外层响应事件或实体类别；调用方须通过 [`handle_context::invoke`](../executor/handle_context/invoke.md) 提供完整匹配的输入。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](commands/end_game.md) 编入其程序。
+非空入口由 [`definition_compile_context::add_program`](../executor/definition_compile_context/add_program.md) 产生，可以用于该定义库及其副本，不能用于另一份独立编译的定义库。入口不绑定外层响应事件或实体类别；调用方须通过 [`handle_context::invoke`](../executor/handle_context/invoke.md) 提供完整匹配的输入。空入口表示“不进入任何后续效果”。需要结束对局的响应可将 [`end_game`](commands/end_game.md) 编入其程序。
 
 ## 非成员函数
 

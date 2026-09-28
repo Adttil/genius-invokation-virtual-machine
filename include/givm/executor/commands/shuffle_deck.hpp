@@ -8,6 +8,10 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 namespace givm::detail
 {
     inline execution_state shuffle_deck_execute(
@@ -16,6 +20,9 @@ namespace givm::detail
     )
     {
         const auto& instruction = context.instruction_data<1, givm::shuffle_deck>(library);
+#ifndef NDEBUG
+        debug_validate_entity(table, instruction.player, "shuffle_deck", "player");
+#endif
         const auto target = table[instruction.player];
         for(size_t remaining = target.deck_card_count(); remaining > 1; --remaining)
         {

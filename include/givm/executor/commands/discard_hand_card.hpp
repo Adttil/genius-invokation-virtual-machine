@@ -8,6 +8,10 @@
 
 #include "../broadcast.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -100,6 +104,9 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, discard_hand_card>(library);
+#ifndef NDEBUG
+            debug_validate_entity(table, table.state().self_player, "discard_hand_card", "self_player");
+#endif
             const auto player = command.player == relative_player::self
                 ? table.state().self_player : other_player(table.state().self_player);
             const auto capacity = std::min<std::size_t>(command.count, table[player].hand_cards<false>().size());
@@ -119,6 +126,11 @@ namespace givm::detail
         else
         {
             count = get<0>(context.stack().top<hand_card_id[]>()).size();
+#ifndef NDEBUG
+            const std::span<const hand_card_id> cards = get<0>(context.stack().top<hand_card_id[]>());
+            debug_validate_unique(cards, "discard_hand_card", "cards");
+            for(const auto card : cards) debug_validate_entity(table, card, "discard_hand_card", "cards");
+#endif
             context.enter_next();
         }
         if(count == 0)

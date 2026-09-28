@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <cstddef>
 #include <cstdint>
 
@@ -39,6 +43,9 @@ namespace givm::detail
             else
             {
                 const auto self = table.state().self_player;
+#ifndef NDEBUG
+                debug_validate_entity(table, self, "modify_energy", "self_player");
+#endif
                 GIVM_ASSERT(self.index < 2);
                 [[assume(self.index < 2)]];
                 const auto player = table[command.target.player == relative_player::self ? self : other_player(self)];
@@ -46,6 +53,9 @@ namespace givm::detail
                 const auto count = characters.size();
                 if(count == 0 || not player.state().active_character) return continue_execution;
 
+#ifndef NDEBUG
+                debug_validate_entity(table, *player.state().active_character, "modify_energy", "active_character", true);
+#endif
                 std::size_t anchor = 0;
                 if constexpr(Selection == character_selection::others)
                 {
@@ -68,6 +78,10 @@ namespace givm::detail
         else
         {
             const auto [targets, delta] = context.stack().top<character_id[], std::int64_t>();
+#ifndef NDEBUG
+            for(std::size_t index = 0; index != targets.size(); ++index)
+                debug_validate_entity(table, targets[index], "modify_energy", "targets[" + std::to_string(index) + "]");
+#endif
             for(const auto target : targets)
             {
                 const auto character = table[target];

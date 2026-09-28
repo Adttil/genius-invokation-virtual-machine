@@ -6,6 +6,10 @@
 #include "../executor.hpp"
 #include "../../definition.hpp"
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 namespace givm::detail
 {
     inline execution_state enter_character_execute(
@@ -14,6 +18,10 @@ namespace givm::detail
     )
     {
         const auto& instruction = context.instruction_data<1, givm::enter_character>(library);
+#ifndef NDEBUG
+        debug_validate_entity(table, instruction.player, "enter_character", "player");
+        debug_validate_definition(library, instruction.definition, "enter_character", "definition");
+#endif
         const auto definition = library[instruction.definition];
         const auto state = definition.query(character_initial_state{});
         const auto character = table[instruction.player].add(instruction.definition, state);
@@ -22,6 +30,9 @@ namespace givm::detail
             const auto skill = definition.query(character_initial_skill{ skill_index });
             if(not skill)
                 break;
+#ifndef NDEBUG
+            debug_validate_definition(library, skill, "enter_character", "initial_skill");
+#endif
             character.add(skill, {});
         }
 

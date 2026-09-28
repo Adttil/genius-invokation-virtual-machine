@@ -29,6 +29,9 @@
 | [`random_fn`](executor/random_fn.md) | 随机函数视图 |
 | [`handle_context`](executor/handle_context.md) | 事件响应使用的牌桌、随机源及效果提交接口 |
 | [`program_invoker`](executor/program_invoker.md) | 响应提交后续效果的调用对象 |
+| [`program_input_error`](executor/program_input_error.md) | 程序入口或输入协议的调试异常 |
+| [`command_input_error`](executor/command_input_error.md) | 命令输入值或执行前提的调试异常 |
+| [`history_access_error`](executor/history_access_error.md) | 历史摘要字段访问的调试异常 |
 
 ### 行动输入
 
@@ -42,6 +45,10 @@
 | | |
 | --- | --- |
 | [`compile_error_reason`](executor/compile_error_reason.md) | 全部具体编译错误的 variant |
+| [`program_input_error_reason`](executor/program_input_error_reason.md) | 程序提交协议错误的 variant |
+| [`command_input_error_reason`](executor/command_input_error_reason.md) | 命令执行前提错误的 variant |
+| [`command_entity_id`](executor/command_input_error_reason.md#command_entity_id) | 命令诊断中的实体 ID variant |
+| [`history_access_error_reason`](executor/history_access_error.md#相关类型别名) | 历史字段访问错误的 variant |
 
 ## 函数
 

@@ -9,6 +9,10 @@
 
 #include "../executor.hpp"
 #include "../../definition.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -51,6 +55,11 @@ namespace givm::detail
         std::uint32_t selected_count
     )
     {
+#ifndef NDEBUG
+        debug_validate_entity(table, player, "reroll_dice", "player");
+        if(not table[player].state().dice.contains(selected))
+            throw command_input_error{ "reroll_dice", insufficient_dice_argument{ player, selected, table[player].state().dice } };
+#endif
         auto& state = table[player].state();
         GIVM_ASSERT(pool.size() * packed_dice_per_random >= static_cast<size_t>(lane.cursor) + selected_count);
 
@@ -64,6 +73,16 @@ namespace givm::detail
         state.dice += drawn;
     }
 
+#ifndef NDEBUG
+    inline void debug_validate_dice_reroll(const unrestricted_table& table, const reroll_dice_input& input)
+    {
+        debug_validate_entity(table, input.player, "reroll_dice", "player");
+        const auto total_draws = static_cast<std::uint64_t>(table[input.player].state().dice.total()) * input.reroll_count;
+        if(total_draws > std::numeric_limits<std::uint32_t>::max())
+            throw command_input_error{ "reroll_dice", invalid_numeric_argument{ "reroll_count * dice_count", total_draws, std::numeric_limits<std::uint32_t>::max() } };
+    }
+#endif
+
     template<bool Fixed>
     inline execution_state prepare_single_player_dice_reroll(
         const definition_library& library, unrestricted_table& table,
@@ -73,16 +92,25 @@ namespace givm::detail
         if constexpr(Fixed)
         {
             const auto& command = context.instruction_data<1, reroll_dice>(library);
+#ifndef NDEBUG
+            debug_validate_entity(table, table.state().self_player, "reroll_dice", "self_player");
+#endif
             input = {
                 .player = command.player == relative_player::self
                     ? table.state().self_player : other_player(table.state().self_player),
                 .reroll_count = command.reroll_count
             };
+#ifndef NDEBUG
+            debug_validate_dice_reroll(table, input);
+#endif
             context.advance(instruction_extent<1, reroll_dice>);
         }
         else
         {
             input = get<0>(context.stack().top<reroll_dice_input>());
+#ifndef NDEBUG
+            debug_validate_dice_reroll(table, input);
+#endif
             context.stack().pop<reroll_dice_input>();
             context.enter_next();
         }

@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 
 #include "../executor.hpp"
@@ -38,6 +42,10 @@ namespace givm::detail
             context.stack().pop<add_summon_input>();
             context.enter_next();
         }
+#ifndef NDEBUG
+        debug_validate_entity(table, input.player, "add_summon", "player");
+        debug_validate_definition(library, input.definition, "add_summon", "definition");
+#endif
         const auto player = std::as_const(table)[input.player];
         auto remaining_capacity = player.state().summon_limit;
         if(remaining_capacity == 0)

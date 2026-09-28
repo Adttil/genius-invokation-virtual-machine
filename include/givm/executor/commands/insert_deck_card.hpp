@@ -8,6 +8,10 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -18,8 +22,20 @@ namespace givm::detail
     )
     {
         const auto& instruction = context.instruction_data<1, givm::insert_deck_card>(library);
+#ifndef NDEBUG
+        debug_validate_entity(table, instruction.player, "insert_deck_card", "player");
+        debug_validate_definition(library, instruction.definition, "insert_deck_card", "definition");
+#endif
         auto player_entity = table[instruction.player];
         const auto size = player_entity.deck_card_count();
+#ifndef NDEBUG
+        const auto requested = instruction.position >= 0 ? static_cast<std::uint64_t>(instruction.position)
+            : static_cast<std::uint64_t>(-static_cast<std::int64_t>(instruction.position) - 1);
+        if(requested > size)
+            throw command_input_error{ "insert_deck_card", invalid_numeric_argument{ "position", requested, size } };
+        if(instruction.position == std::numeric_limits<std::int32_t>::min())
+            throw command_input_error{ "insert_deck_card", invalid_numeric_argument{ "position", requested, std::numeric_limits<std::int32_t>::max() - 1u } };
+#endif
         size_t index;
         if(instruction.position >= 0)
         {

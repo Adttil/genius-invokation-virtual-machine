@@ -13,6 +13,10 @@
 #include "../instruction.hpp"
 #include "../../utils/debug.hpp"
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -141,6 +145,11 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
         const auto input = get<0>(context.stack().top<set_active_character_input>());
+#ifndef NDEBUG
+        debug_validate_entity(table, input.current, "set_active_character", "current");
+        if(table[input.current].state().health == 0)
+            throw command_input_error{ "set_active_character", invalid_entity_relation{ "current", invalid_entity_relation::reason::defeated_character } };
+#endif
         context.stack().pop<set_active_character_input>();
         const active_character_changed event{ input.current };
         GIVM_ASSERT(static_cast<bool>(table[event.current]));

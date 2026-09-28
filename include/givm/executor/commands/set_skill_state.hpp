@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 
 #include "../executor.hpp"
@@ -21,12 +25,20 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, set_skill_state>(library);
             const auto character = resolve_character_target<false>(table, command.character);
             const bool has_character = character.has_value();
+#ifndef NDEBUG
+            if(not has_character)
+                throw command_input_error{ "set_skill_state", missing_entity_argument{ "character" } };
+#endif
             GIVM_ASSERT(has_character);
             [[assume(has_character)]];
             auto skills = table[*character].skills();
             const auto found = std::ranges::find_if(skills,
                 [&](const auto skill) { return skill.definition_id() == command.definition; });
             const bool has_skill = found != skills.end();
+#ifndef NDEBUG
+            if(not has_skill)
+                throw command_input_error{ "set_skill_state", missing_entity_argument{ "skill", command_entity_id{ *character }, command.definition.value() } };
+#endif
             GIVM_ASSERT(has_skill);
             [[assume(has_skill)]];
             (*found).state() = command.state;
@@ -36,6 +48,9 @@ namespace givm::detail
         {
             const auto input = get<0>(context.stack().top<set_skill_state_input>());
             context.stack().pop<set_skill_state_input>();
+#ifndef NDEBUG
+            debug_validate_entity(table, input.skill, "set_skill_state", "skill");
+#endif
             GIVM_ASSERT(table[input.skill].is_valid());
             table[input.skill].state() = input.state;
             return context.enter_next();

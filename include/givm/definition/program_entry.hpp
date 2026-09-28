@@ -43,8 +43,8 @@ namespace givm
 
         std::size_t position_ = detail::null_program_position;
 #ifndef NDEBUG
-        std::size_t inputs_begin_ = 0;
-        std::size_t inputs_count_ = 0;
+        std::size_t debug_index_ = 0;
+        std::size_t library_identity_ = 0;
 #endif
 
         friend class definition_compile_context;

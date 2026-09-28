@@ -4,6 +4,10 @@
 #include <vector>
 
 #include "heal.hpp"
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include "../../macro_define.hpp"
 
 namespace givm::detail
@@ -26,6 +30,12 @@ namespace givm::detail
             else
             {
                 const auto event = get<0>(context.stack().top<increase_max_health_input>());
+#ifndef NDEBUG
+                debug_validate_entity(table, event.source, "increase_max_health", "source", true);
+                debug_validate_entity(table, event.target, "increase_max_health", "target");
+                if(table[event.target].state().health > table[event.target].state().max_health)
+                    throw command_input_error{ "increase_max_health", invalid_numeric_argument{ "health", table[event.target].state().health, table[event.target].state().max_health } };
+#endif
                 context.stack().pop<increase_max_health_input>();
                 context.enter_next();
                 return event;
@@ -36,6 +46,10 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         auto& state = table[input->target].state();
+#ifndef NDEBUG
+        if(state.health > state.max_health)
+            throw command_input_error{ "increase_max_health", invalid_numeric_argument{ "health", state.health, state.max_health } };
+#endif
         GIVM_ASSERT(state.health <= state.max_health);
         [[assume(state.health <= state.max_health)]];
         const auto value = std::min(input->value, std::numeric_limits<std::uint32_t>::max() - state.max_health);

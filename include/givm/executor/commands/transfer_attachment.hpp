@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <optional>
 #include <utility>
 
@@ -30,9 +34,16 @@ namespace givm::detail
         if constexpr(not std::is_void_v<Selector>)
         {
             const auto& data = context.instruction_data<1, attachment_transfer_data<Selector>>(library);
+#ifndef NDEBUG
+            debug_validate_attachment_target<true>(library, table, data.source, "transfer_attachment", "source");
+#endif
             id = require_attachment<true>(library, table, data.source);
             const auto target = resolve_character_target<true>(table, data.target);
             const bool has_target = target.has_value();
+#ifndef NDEBUG
+            if(not has_target)
+                throw command_input_error{ "transfer_attachment", missing_entity_argument{ "target" } };
+#endif
             GIVM_ASSERT(has_target);
             [[assume(has_target)]];
             target_id = *target;
@@ -42,12 +53,24 @@ namespace givm::detail
         else
         {
             const auto& input = get<0>(context.stack().top<transfer_attachment_input>());
+#ifndef NDEBUG
+            debug_validate_attachment_target(table, input.attachment, "transfer_attachment", "attachment");
+#endif
             id = require_attachment(table, input.attachment);
             target_id = input.target;
             reset_round_usages = input.reset_round_usages;
             context.stack().pop<transfer_attachment_input>();
             context.enter_next();
         }
+#ifndef NDEBUG
+        debug_validate_entity(table, target_id, "transfer_attachment", "target");
+        if(table[target_id].state().health == 0)
+            throw command_input_error{ "transfer_attachment", invalid_entity_relation{
+                "target", invalid_entity_relation::reason::defeated_character } };
+        if(id.character_id == target_id)
+            throw command_input_error{ "transfer_attachment", invalid_entity_relation{
+                "target", invalid_entity_relation::reason::same_character } };
+#endif
         GIVM_ASSERT(table[id].is_valid());
         GIVM_ASSERT(table[target_id].is_valid() && table[target_id].state().health != 0);
         GIVM_ASSERT(id.character_id != target_id);

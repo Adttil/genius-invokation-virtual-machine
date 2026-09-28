@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 #include <utility>
 
@@ -39,6 +43,10 @@ namespace givm::detail
             context.enter_next();
         }
 
+#ifndef NDEBUG
+        debug_validate_entity(table, input.player, "add_support", "player");
+        debug_validate_definition(library, input.definition, "add_support", "definition");
+#endif
         const auto player = std::as_const(table)[input.player];
         auto remaining_capacity = player.state().support_limit;
         if(remaining_capacity == 0)

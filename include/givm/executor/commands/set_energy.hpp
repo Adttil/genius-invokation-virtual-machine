@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include "../debug_validation.hpp"
+#endif
+
 #include <algorithm>
 
 #include "../executor.hpp"
@@ -31,6 +35,9 @@ namespace givm::detail
             context.stack().pop<set_energy_input>();
             context.enter_next();
         }
+#ifndef NDEBUG
+        debug_validate_entity(table, input.target, "set_energy", "target");
+#endif
         GIVM_ASSERT(table[input.target].is_valid());
         auto& state = table[input.target].state();
         state.energy = std::min(input.value, state.max_energy);
