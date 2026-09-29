@@ -60,16 +60,4 @@ namespace givm
     };
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes>
-    constexpr std::size_t input_marker(const remove_attachment& command) noexcept
-    {
-        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
-        return definition && not *definition ? TInputTypes::template index_of<remove_attachment::input_type>() : std::size_t(-1);
-    }
-}
-#endif
-
 #endif

@@ -77,13 +77,4 @@ namespace givm
     using any_command_input = detail::command_input_types::apply<std::variant>;
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes, class T>
-    requires (not requires { typename T::input_type; })
-    constexpr std::size_t input_marker(const T&) noexcept { return std::size_t(-1); }
-}
-#endif
-
 #endif

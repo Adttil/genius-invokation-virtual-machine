@@ -22,7 +22,7 @@ struct select_active_character_both;
 enum class select_active_character_both_error {};
 ```
 
-`select_active_character_both::error_type` 是 `givm::select_active_character_both_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+`select_active_character_both::error_type` 是 `givm::select_active_character_both_error` 的别名。这是没有枚举项的空枚举类型，本命令没有编译期参数错误。
 
 ## 注意
 

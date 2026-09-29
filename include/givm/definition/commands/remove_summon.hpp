@@ -55,15 +55,4 @@ namespace givm
     };
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes>
-    constexpr std::size_t input_marker(const remove_summon& command) noexcept
-    {
-        return not command.definition ? TInputTypes::template index_of<remove_summon::input_type>() : std::size_t(-1);
-    }
-}
-#endif
-
 #endif

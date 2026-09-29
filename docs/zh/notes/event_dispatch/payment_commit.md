@@ -74,4 +74,4 @@
 
 旧 `calculating_card_payment`、`calculating_skill_payment`、`calculating_switch_payment` 的 table payment 槽位方案见[历史 payment 设计](resource_events.md)，不能代替当前的调用输入缓存。
 
-实现核对位置：[begin_action.hpp](../../../../include/givm/executor/commands/begin_action.hpp)、[handle_context.hpp](../../../../include/givm/executor/handle_context.hpp)。
+实现核对位置：[begin_action.hpp](../../../../src/executor/commands/begin_action.hpp)、[handle_context.hpp](../../../../include/givm/executor/handle_context.hpp)。

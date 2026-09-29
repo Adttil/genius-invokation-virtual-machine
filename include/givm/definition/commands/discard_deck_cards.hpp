@@ -53,15 +53,4 @@ namespace givm
     };
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes>
-    constexpr std::size_t input_marker(const discard_deck_cards& command) noexcept
-    {
-        return command.count == std::numeric_limits<std::uint32_t>::max() ? TInputTypes::template index_of<discard_deck_cards::input_type>() : std::size_t(-1);
-    }
-}
-#endif
-
 #endif

@@ -63,15 +63,4 @@ namespace givm
     };
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes>
-    constexpr std::size_t input_marker(const heal& command) noexcept
-    {
-        return command.target.offset == std::numeric_limits<std::int32_t>::max() ? TInputTypes::template index_of<heal::input_type>() : std::size_t(-1);
-    }
-}
-#endif
-
 #endif

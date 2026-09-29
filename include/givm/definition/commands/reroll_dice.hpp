@@ -52,15 +52,4 @@ namespace givm
     };
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes>
-    constexpr std::size_t input_marker(const reroll_dice& command) noexcept
-    {
-        return command.player == static_cast<relative_player>(-1) ? TInputTypes::template index_of<reroll_dice::input_type>() : std::size_t(-1);
-    }
-}
-#endif
-
 #endif

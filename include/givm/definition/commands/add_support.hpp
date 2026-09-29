@@ -59,15 +59,4 @@ namespace givm
     };
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes>
-    constexpr std::size_t input_marker(const add_support& command) noexcept
-    {
-        return not command.definition ? TInputTypes::template index_of<add_support::input_type>() : std::size_t(-1);
-    }
-}
-#endif
-
 #endif

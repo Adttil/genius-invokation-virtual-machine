@@ -131,15 +131,6 @@ namespace givm::detail
         execution_position position;
     };
 
-    // Internal compilation inputs; definition sources do not expose these commands.
-    struct round_program_begin {};
-
-    struct round_program_repeat
-    {
-        execution_position round_start;
-        execution_position round_entry;
-    };
-
     template<class T>
     concept command_sequence = std::ranges::input_range<T>
         || requires { std::tuple_size<std::remove_cvref_t<T>>::value; };

@@ -31,7 +31,7 @@ inline std::string error_string(const view_input_error<Reason>& error);
 
 按原列表顺序格式化的文本，包含错误原因与可用的源、程序、命令位置信息。各诊断之间换行，末尾不追加换行；空列表得到空字符串。
 
-单项重载返回该诊断的文本，不追加换行。单独调用 [`check`](check.md) 得到的命令错误可使用定义模块的 [`error_string`](../definition/error_string.md)；它只格式化原因，不包含尚未关联的程序位置信息。
+单项重载返回该诊断的文本，不追加换行。从 `compile_error::reason` 中取得的具体命令错误也可使用定义模块的 [`error_string`](../definition/error_string.md)；它只格式化原因，不包含编译诊断的程序位置信息。
 
 异常重载返回与 `what()` 相同的文本。程序输入错误的各个具体原因也有独立重载，不包含异常对象附带的定义及程序位置。
 

@@ -53,7 +53,7 @@ handler 不能通过 `context.table()` 修改持久状态，持久副作用由�
 
 ## 与当前实现逐项核对
 
-源码为 [`broadcast.hpp`](../../../../include/givm/executor/broadcast.hpp)。`handler_id<E>` 的 variant 不是手写通用实体引用：它依次展开 `definition_types`、`views_of_definition`，仅纳入 `subscribed_events<View>` 包含事件 `E` 的 view 所对应的实体 ID。实体身份为何区分区域，见[实体身份与区域](../entity_identity.md)。
+源码为 [`broadcast.hpp`](../../../../src/executor/broadcast.hpp)。`handler_id<E>` 的 variant 不是手写通用实体引用：它依次展开 `definition_types`、`views_of_definition`，仅纳入 `subscribed_events<View>` 包含事件 `E` 的 view 所对应的实体 ID。实体身份为何区分区域，见[实体身份与区域](../entity_identity.md)。
 
 `prepare_broadcast` 在调用时完成目标列表采样；`continue_broadcast` 不重新采样。调用前推进游标，调用阶段检查实体是否仍有效，不重新扫描全体订阅关系。
 
@@ -67,10 +67,10 @@ handler 不能通过 `context.table()` 修改持久状态，持久副作用由�
 
 ### 多个预备广播的快照边界
 
-[`select_active_character_both`](../../../../include/givm/executor/commands/select_active_character_both.hpp) 在收齐双方选择、同时写入出战角色之后，先压玩家 1 的广播，再压玩家 0 的广播。观察模式先报告初选完成，下一次推进才用仍保留的原选择帧准备这两个广播；外部从牌桌读取双方结果。栈顶先处理玩家 0 的通知，但两个响应者快照此前都已建立。因此玩家 0 的响应新建的实体不会进入已经预备好的玩家 1 快照。这个例子解释为什么不能把“每个事件有自己的快照”误写成“前一个广播结束后才采样下一个”。
+[`select_active_character_both`](../../../../src/executor/commands/select_active_character_both.hpp) 在收齐双方选择、同时写入出战角色之后，先压玩家 1 的广播，再压玩家 0 的广播。观察模式先报告初选完成，下一次推进才用仍保留的原选择帧准备这两个广播；外部从牌桌读取双方结果。栈顶先处理玩家 0 的通知，但两个响应者快照此前都已建立。因此玩家 0 的响应新建的实体不会进入已经预备好的玩家 1 快照。这个例子解释为什么不能把“每个事件有自己的快照”误写成“前一个广播结束后才采样下一个”。
 
 相比之下，`draw_cards`、单方 `replace_cards` 和元素反应后的通知，是推进到后一个广播时才重新调用 `prepare_broadcast`；后一个广播可采样之前响应创建的实体。
 
 ### 角色初始状态的读取
 
-[`enter_character`](../../../../include/givm/executor/commands/enter_character.hpp) 与 [`load_deck`](../../reference/executor/load_deck.md) 通过 `query` 取得已编译定义的初始状态，直接写回角色，并通过有参 `character_initial_skill` 查询逐项加载初始技能。空查询在库编译期间求值，运行时不再构造初始化事件或进入响应函数；缺少源查询时采用 `query_default` 的空状态。
+[`enter_character`](../../../../src/executor/commands/enter_character.hpp) 与 [`load_deck`](../../reference/executor/load_deck.md) 通过 `query` 取得已编译定义的初始状态，直接写回角色，并通过有参 `character_initial_skill` 查询逐项加载初始技能。空查询在库编译期间求值，运行时不再构造初始化事件或进入响应函数；缺少源查询时采用 `query_default` 的空状态。

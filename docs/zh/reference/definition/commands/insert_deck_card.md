@@ -30,7 +30,7 @@ struct insert_deck_card;
 struct insert_deck_card_error;
 ```
 
-`insert_deck_card::error_type` 是 `givm::insert_deck_card_error` 的别名。`insert_deck_card_error` 是本命令的结构化编译错误，`insert_deck_card_error::reason` 是原因枚举。[编译检查 `check`](../../executor/check.md) 使用本次定义集合与程序种类检查以下条件；[`compile`](../../executor/compile.md) 自动收集这些错误。
+`insert_deck_card::error_type` 是 `givm::insert_deck_card_error` 的别名。`insert_deck_card_error` 是本命令的结构化编译错误，`insert_deck_card_error::reason` 是原因枚举。[`compile`](../../executor/compile.md) 根据本次定义集合与程序种类检查以下条件，并收集相应的结构化错误。
 
 ### 错误原因
 

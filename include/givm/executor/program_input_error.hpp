@@ -91,66 +91,7 @@ namespace givm
 #ifndef NDEBUG
 namespace givm::detail
 {
-    template<class T> inline constexpr std::string_view debug_command_name;
-    template<> inline constexpr std::string_view debug_command_name<insert_deck_card> = "insert_deck_card";
-    template<> inline constexpr std::string_view debug_command_name<enter_character> = "enter_character";
-    template<> inline constexpr std::string_view debug_command_name<shuffle_deck> = "shuffle_deck";
-    template<> inline constexpr std::string_view debug_command_name<set_active_character> = "set_active_character";
-    template<> inline constexpr std::string_view debug_command_name<select_active_character_both> = "select_active_character_both";
-    template<> inline constexpr std::string_view debug_command_name<draw_cards> = "draw_cards";
-    template<> inline constexpr std::string_view debug_command_name<create_hand_card> = "create_hand_card";
-    template<> inline constexpr std::string_view debug_command_name<discard_hand_card> = "discard_hand_card";
-    template<> inline constexpr std::string_view debug_command_name<discard_deck_cards> = "discard_deck_cards";
-    template<> inline constexpr std::string_view debug_command_name<add_support> = "add_support";
-    template<> inline constexpr std::string_view debug_command_name<set_support_state> = "set_support_state";
-    template<> inline constexpr std::string_view debug_command_name<modify_support_state> = "modify_support_state";
-    template<> inline constexpr std::string_view debug_command_name<remove_support> = "remove_support";
-    template<> inline constexpr std::string_view debug_command_name<summon> = "summon";
-    template<> inline constexpr std::string_view debug_command_name<add_summon> = "add_summon";
-    template<> inline constexpr std::string_view debug_command_name<set_summon_state> = "set_summon_state";
-    template<> inline constexpr std::string_view debug_command_name<modify_summon_state> = "modify_summon_state";
-    template<> inline constexpr std::string_view debug_command_name<remove_summon> = "remove_summon";
-    template<> inline constexpr std::string_view debug_command_name<generate_combat_status> = "generate_combat_status";
-    template<> inline constexpr std::string_view debug_command_name<add_combat_status> = "add_combat_status";
-    template<> inline constexpr std::string_view debug_command_name<set_combat_status_state> = "set_combat_status_state";
-    template<> inline constexpr std::string_view debug_command_name<modify_combat_status_state> = "modify_combat_status_state";
-    template<> inline constexpr std::string_view debug_command_name<remove_combat_status> = "remove_combat_status";
-    template<> inline constexpr std::string_view debug_command_name<attach> = "attach";
-    template<> inline constexpr std::string_view debug_command_name<set_attachment_state> = "set_attachment_state";
-    template<> inline constexpr std::string_view debug_command_name<modify_attachment_state> = "modify_attachment_state";
-    template<> inline constexpr std::string_view debug_command_name<add_attachment> = "add_attachment";
-    template<> inline constexpr std::string_view debug_command_name<transfer_attachment> = "transfer_attachment";
-    template<> inline constexpr std::string_view debug_command_name<remove_attachment> = "remove_attachment";
-    template<> inline constexpr std::string_view debug_command_name<replace_cards> = "replace_cards";
-    template<> inline constexpr std::string_view debug_command_name<replace_cards_both> = "replace_cards_both";
-    template<> inline constexpr std::string_view debug_command_name<start_round> = "start_round";
-    template<> inline constexpr std::string_view debug_command_name<begin_action> = "begin_action";
-    template<> inline constexpr std::string_view debug_command_name<use_skill> = "use_skill";
-    template<> inline constexpr std::string_view debug_command_name<set_skill_state> = "set_skill_state";
-    template<> inline constexpr std::string_view debug_command_name<set_energy> = "set_energy";
-    template<> inline constexpr std::string_view debug_command_name<modify_energy> = "modify_energy";
-    template<> inline constexpr std::string_view debug_command_name<end_round> = "end_round";
-    template<> inline constexpr std::string_view debug_command_name<end_game> = "end_game";
-    template<> inline constexpr std::string_view debug_command_name<start_dice_roll_phase> = "start_dice_roll_phase";
-    template<> inline constexpr std::string_view debug_command_name<reroll_dice> = "reroll_dice";
-    template<> inline constexpr std::string_view debug_command_name<add_dice> = "add_dice";
-    template<> inline constexpr std::string_view debug_command_name<remove_dice> = "remove_dice";
-    template<> inline constexpr std::string_view debug_command_name<start_battle> = "start_battle";
-    template<> inline constexpr std::string_view debug_command_name<deal_damage> = "deal_damage";
-    template<> inline constexpr std::string_view debug_command_name<apply_element> = "apply_element";
-    template<> inline constexpr std::string_view debug_command_name<heal> = "heal";
-    template<> inline constexpr std::string_view debug_command_name<increase_max_health> = "increase_max_health";
-
-    inline constexpr auto debug_input_command_names = []
-    {
-        std::array<std::string_view, command_input_types::size()> result{};
-        command_types::each([&]<class T>
-        {
-            if constexpr(requires { typename T::input_type; })
-                result[command_input_types::index_of<typename T::input_type>()] = debug_command_name<T>;
-        });
-        return result;
-    }();
+    extern const std::array<std::string_view, command_input_types::size()> debug_input_command_names;
 
     struct debug_input_requirement
     {

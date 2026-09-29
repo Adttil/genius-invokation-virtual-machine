@@ -50,4 +50,4 @@ handler 通过 `return context.invoke(...)` 写入输入并返回入口。逐项
 
 debug 为每个程序记录按命令顺序排列的输入类型标记；固定模式不贡献标记，动态模式恰好贡献一个。入口保存标记区间的起点和数量。invoke 写入前核对输入数量和每项类型，类型相同但数组长度不同仍匹配。原生输入和动态适配器输入使用相同标记。Release 不保存这些元数据，也不检查输入；错误输入属于未定义行为。命令消费完整输入帧及清理临时状态的正确性仍由实现保证。
 
-实现核对位置：[handle_context.hpp](../../../../include/givm/executor/handle_context.hpp)、[executor.hpp](../../../../include/givm/executor/executor.hpp)、[broadcast.hpp](../../../../include/givm/executor/broadcast.hpp)。
+实现核对位置：[handle_context.hpp](../../../../include/givm/executor/handle_context.hpp)、[executor.hpp](../../../../include/givm/executor/executor.hpp)、[broadcast.hpp](../../../../src/executor/broadcast.hpp)。

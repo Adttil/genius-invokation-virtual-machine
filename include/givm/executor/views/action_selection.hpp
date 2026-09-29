@@ -10,13 +10,380 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+#include <type_traits>
+#include <variant>
 
 #include "../executor.hpp"
 #include "../execution_view_error.hpp"
-#include "../debug_validation.hpp"
-#include "../commands/begin_action.hpp"
+#include "../command_input_error.hpp"
 
 #include "../../macro_define.hpp"
+
+namespace givm
+{
+    namespace detail
+    {
+        struct switch_selection
+        {
+            stack_count_t switch_cost_index = 0;
+            dice_counts paid_dice;
+        };
+
+        struct round_end_selection {};
+
+        struct card_selection
+        {
+            stack_count_t card_cost_index = 0;
+            std::array<card_target_id, 2> targets;
+            dice_counts paid_dice;
+        };
+
+        struct skill_selection
+        {
+            stack_count_t skill_cost_index = 0;
+            std::array<skill_target_id, 2> targets;
+            dice_counts paid_dice;
+        };
+
+        struct technique_selection
+        {
+            std::array<technique_target_id, 2> targets;
+            dice_counts paid_dice;
+        };
+
+        struct elemental_tuning_selection
+        {
+            stack_count_t card_index = 0;
+            elemental_dice from;
+        };
+
+        using action_selection = std::variant<
+            round_end_selection, switch_selection, card_selection, skill_selection, technique_selection, elemental_tuning_selection
+        >;
+    }
+
+    enum class action_target_kind : std::uint8_t
+    {
+        none,
+        character,
+        support,
+        summon
+    };
+
+    struct action_target
+    {
+        action_target_kind kind = action_target_kind::none;
+        character_id character{};
+        support_id support{};
+        summon_id summon{};
+    };
+
+    struct action_argument
+    {
+        dice_counts paid_dice;
+    };
+}
+
+namespace givm::detail
+{
+    template<class TEvent>
+    using handler_id = decltype([]<class... TDefinition>(type_list<TDefinition...>)
+    {
+        using views = type_list_cat<views_of_definition<TDefinition>...>;
+        return []<class... TView>(type_list<TView...>)
+        {
+            using ids = type_list_cat<
+                std::conditional_t<
+                    requires { subscribed_events<TView>::template index_of<TEvent>(); },
+                    type_list<decltype(std::declval<TView>().id())>,
+                    type_list<>
+                >...
+            >;
+            return typename ids::template apply<std::variant>{};
+        }(views{});
+    }(definition_types{}));
+
+    using switch_handler_id = handler_id<cost_of_switch>;
+    using card_cost_handler_id = handler_id<cost_of_card>;
+    using skill_cost_handler_id = handler_id<cost_of_skill>;
+    using technique_cost_handler_id = handler_id<cost_of_technique>;
+
+#ifndef NDEBUG
+    template<class TTable, class TId>
+    inline void debug_validate_entity(const TTable& table, TId id, std::string_view command,
+        std::string_view field, bool allow_removed = false)
+    {
+        if constexpr(requires { std::variant_size<TId>::value; })
+            std::visit([&](auto value) { debug_validate_entity(table, value, command, field, allow_removed); }, id);
+        else if constexpr(std::is_same_v<TId, std::monostate>)
+            return;
+        else
+        {
+            bool in_range;
+            if constexpr(std::is_same_v<TId, player_id>)
+                in_range = id.index < 2;
+            else if constexpr(requires { id.character_id; })
+            {
+                debug_validate_entity(table, id.character_id, command, std::string{ field } + ".character", allow_removed);
+                const auto character = table[id.character_id];
+                if constexpr(std::is_same_v<TId, skill_id>)
+                    in_range = id.index < character.template skills<false>().size();
+                else
+                    in_range = id.index < character.template attachments<false>().size();
+            }
+            else if constexpr(requires { id.card_id; })
+            {
+                debug_validate_entity(table, id.card_id, command, std::string{ field } + ".card", allow_removed);
+                in_range = table.debug_entity_in_range(id);
+            }
+            else
+            {
+                debug_validate_entity(table, id.player_id, command, std::string{ field } + ".player", allow_removed);
+                const auto player = table[id.player_id];
+                if constexpr(std::is_same_v<TId, character_id>)
+                    in_range = id.index < player.template characters<false>().size();
+                else if constexpr(std::is_same_v<TId, hand_card_id>)
+                    in_range = id.index < player.template hand_cards<false>().size();
+                else if constexpr(std::is_same_v<TId, deck_card_id>)
+                    in_range = table.debug_entity_in_range(id);
+                else if constexpr(std::is_same_v<TId, support_id>)
+                    in_range = id.index < player.template supports<false>().size();
+                else if constexpr(std::is_same_v<TId, summon_id>)
+                    in_range = id.index < player.template summons<false>().size();
+                else
+                    in_range = id.index < player.template combat_statuses<false>().size();
+            }
+            if(not in_range)
+                throw command_input_error{ command, invalid_entity_argument{
+                    std::string{ field }, id, invalid_entity_argument::reason::out_of_range } };
+            if constexpr(not std::is_same_v<TId, player_id>)
+                if(not allow_removed && not table[id].is_valid())
+                    throw command_input_error{ command, invalid_entity_argument{
+                        std::string{ field }, id, invalid_entity_argument::reason::removed } };
+        }
+    }
+
+#endif
+
+    inline cost_of_switch default_switch_cost(character_id target) noexcept
+    {
+        action_cost_requirement requirement;
+        requirement.dice_requirement.any = 1;
+        requirement.speed = action_speed::combat;
+        return {
+            .target = target,
+            .requirement = requirement
+        };
+    }
+
+    inline const cost_of_switch& calculate_switch_cost(
+        const definition_library& library,
+        stack_count_t cost_index,
+        const table& card_table,
+        frame_stack& stack
+    )
+    {
+        auto frame = stack.top<
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        GIVM_ASSERT(cost_index < get<1>(frame).size());
+        auto& initial_cost = get<1>(frame)[cost_index];
+        initial_cost.requirement = default_switch_cost(initial_cost.target).requirement;
+
+        auto zero_random = []() -> std::uint32_t { return 0; };
+        random_fn random{ zero_random };
+        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
+        const auto row_begin = cost_index * handler_count;
+        for(stack_count_t column = 0; column < handler_count; ++column)
+        {
+            const auto initial_size = stack.size();
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
+            const auto handler_id = get<0>(frame)[column];
+            const auto entry = std::visit([&](auto handler) -> program_entry
+            {
+                const auto entity = card_table[handler];
+                if(entity)
+                {
+                    return library[entity.definition_id()].template handle<cost_of_switch>(
+                        entity, get<1>(frame)[cost_index], response
+                    );
+                }
+                return {};
+            }, handler_id);
+            const auto index = row_begin + column;
+            const auto size = stack.size() - initial_size;
+            get<2>(frame)[index] = entry;
+            get<3>(frame)[index] = 0;
+            get<4>(frame)[index] = size;
+            if(size != 0)
+            {
+                const auto cache = get<0>(stack.top<substack_t>());
+                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
+                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
+            }
+        }
+        return get<1>(frame)[cost_index];
+    }
+
+    inline const cost_of_card& calculate_card_cost(
+        const definition_library& library,
+        stack_count_t cost_index,
+        const table& card_table,
+        frame_stack& stack
+    )
+    {
+        auto frame = stack.top<
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        GIVM_ASSERT(cost_index < get<1>(frame).size());
+        auto& initial_cost = get<1>(frame)[cost_index];
+        const auto card = card_table[initial_cost.card];
+        auto zero_random = []() -> std::uint32_t { return 0; };
+        random_fn random{ zero_random };
+        initial_cost.requirement = card.state().cost;
+
+        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
+        const auto row_begin = cost_index * handler_count;
+        for(stack_count_t column = 0; column < handler_count; ++column)
+        {
+            const auto initial_size = stack.size();
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
+            const auto handler_id = get<0>(frame)[column];
+            const auto entry = std::visit([&](auto handler) -> program_entry
+            {
+                const auto entity = card_table[handler];
+                if(entity)
+                {
+                    return library[entity.definition_id()].template handle<cost_of_card>(
+                        entity, get<1>(frame)[cost_index], response
+                    );
+                }
+                return {};
+            }, handler_id);
+            const auto index = row_begin + column;
+            const auto size = stack.size() - initial_size;
+            get<2>(frame)[index] = entry;
+            get<3>(frame)[index] = 0;
+            get<4>(frame)[index] = size;
+            if(size != 0)
+            {
+                const auto cache = get<0>(stack.top<substack_t>());
+                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
+                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
+            }
+        }
+        return get<1>(frame)[cost_index];
+    }
+
+    inline const cost_of_skill& calculate_skill_cost(
+        const definition_library& library,
+        stack_count_t cost_index,
+        const table& card_table,
+        frame_stack& stack
+    )
+    {
+        auto frame = stack.top<
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        GIVM_ASSERT(cost_index < get<1>(frame).size());
+        auto& initial_cost = get<1>(frame)[cost_index];
+        const auto skill = card_table[initial_cost.skill];
+        auto zero_random = []() -> std::uint32_t { return 0; };
+        random_fn random{ zero_random };
+        initial_cost.requirement = library[skill.definition_id()].query(skill_initial_cost{});
+
+        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
+        const auto row_begin = cost_index * handler_count;
+        for(stack_count_t column = 0; column < handler_count; ++column)
+        {
+            const auto initial_size = stack.size();
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
+            const auto handler_id = get<0>(frame)[column];
+            const auto entry = std::visit([&](auto handler) -> program_entry
+            {
+                const auto entity = card_table[handler];
+                if(entity)
+                {
+                    return library[entity.definition_id()].template handle<cost_of_skill>(
+                        entity, get<1>(frame)[cost_index], response
+                    );
+                }
+                return {};
+            }, handler_id);
+            const auto index = row_begin + column;
+            const auto size = stack.size() - initial_size;
+            get<2>(frame)[index] = entry;
+            get<3>(frame)[index] = 0;
+            get<4>(frame)[index] = size;
+            if(size != 0)
+            {
+                const auto cache = get<0>(stack.top<substack_t>());
+                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
+                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
+            }
+        }
+        return get<1>(frame)[cost_index];
+    }
+
+    inline const cost_of_technique& calculate_technique_cost(
+        const definition_library& library,
+        const table& card_table,
+        frame_stack& stack
+    )
+    {
+        auto frame = stack.top<
+            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
+            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
+            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
+            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
+            stack_count_t, action_selection, substack_t
+        >();
+        GIVM_ASSERT(0 < get<1>(frame).size());
+        auto& initial_cost = get<1>(frame)[0];
+        const auto technique = card_table[initial_cost.technique];
+        auto zero_random = []() -> std::uint32_t { return 0; };
+        random_fn random{ zero_random };
+        initial_cost.requirement = library[technique.definition_id()].query(technique_initial_cost{});
+
+        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
+        for(stack_count_t column = 0; column < handler_count; ++column)
+        {
+            const auto initial_size = stack.size();
+            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
+            const auto handler_id = get<0>(frame)[column];
+            const auto entry = std::visit([&](auto handler) -> program_entry
+            {
+                const auto entity = card_table[handler];
+                if(entity)
+                {
+                    return library[entity.definition_id()].template handle<cost_of_technique>(
+                        entity, get<1>(frame)[0], response
+                    );
+                }
+                return {};
+            }, handler_id);
+            const auto index = column;
+            const auto size = stack.size() - initial_size;
+            get<2>(frame)[index] = entry;
+            get<3>(frame)[index] = 0;
+            get<4>(frame)[index] = size;
+            if(size != 0)
+            {
+                const auto cache = get<0>(stack.top<substack_t>());
+                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
+                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
+            }
+        }
+        return get<1>(frame)[0];
+    }
+
+}
 
 namespace givm
 {

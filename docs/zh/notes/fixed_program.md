@@ -63,13 +63,13 @@ Debug 的 `command_input_error` 检查保留在各命令实际使用参数之前
 
 ## 程序的内部连接
 
-核对位置：[library.hpp](../../../include/givm/executor/library.hpp)、[start_round.hpp](../../../include/givm/executor/commands/start_round.hpp) 与 [executor.hpp](../../../include/givm/executor/executor.hpp)。
+核对位置：[library.hpp](../../../include/givm/executor/library.hpp)、[start_round.hpp](../../../src/executor/commands/start_round.hpp) 与 [executor.hpp](../../../include/givm/executor/executor.hpp)。
 
 执行位置、入口、返回位置和跳转目标统一为字节偏移，执行位置指向当前 execute 函数指针。空入口使用内部哨兵；其数值以及根入口位置均不公开。编译和执行不保存指向 vector 元素的长期地址，因此扩容和定义库移动不会改变已记录的偏移。
 
 初始化段结束处自动添加首次回合推进；普通模式的回合末尾将递增回合数、判限、清骰和回跳合在一个 opcode 中，直接回到回合命令序列。观察模式在递增后暂停，首轮与后续回合共用判限和清骰的恢复点，不会重复递增。`start_round` 仅广播规则通知，由回合命令序列显式安排在投骰之后。
 
-根编译用两个内部编译值标记首次进入和回合末尾，沿用 `append_commands` 的命令编译机制；它们不属于公开命令集合。相关 opcode 及编译重载完整定义在 `commands/start_round.hpp`，根编译只提供位置，不解释回合指令布局。通用 executor 不包含回合规则，也不依靠分开的函数声明和定义来绕过头文件依赖。
+根编译用 `round_program_begin`、`round_program_repeat` 两个内部编译值标记首次进入和回合末尾，直接调用对应的编译重载；它们不属于公开命令集合，也不加入 `any_command`。这两个类型、相关 opcode 及编译重载完整定义在 [`src/executor/commands/start_round.hpp`](../../../src/executor/commands/start_round.hpp)，根编译只提供位置，不解释回合指令布局。通用 executor 不包含回合规则，也不依靠分开的函数声明和定义来绕过头文件依赖。
 
 每段响应程序末尾追加返回。调用方先保存外层本方和恢复位置，在返回记录之上反序放置全部输入；进入响应程序时将 `table.state().self_player` 设为响应实体所属玩家。响应程序逐项消费输入，末尾返回函数恢复外层本方并跳转，不弹出返回记录。一轮广播或支付循环复用同一返回记录，由调用方结束该流程时清理；内层广播另行准备自己的记录。handler 调用本身与费用预览均不切换本方。费用缓存提交时只复制当前要执行的一段输入，不反转整个候选缓存。
 
@@ -77,7 +77,7 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 ## 指令存储的实现约束
 
-[instruction.hpp](../../../include/givm/executor/instruction.hpp) 提供借用字节 vector 的 `detail::program_writer`，并集中定义执行函数指针类型、编译模式及字节存储的对齐规则，没有独立的拥有型 program 类。编译结果直接保存 execute 函数指针与就地数据，不保存 opcode 编号、函数表索引或每条 command 的 RTTI。
+[instruction.hpp](../../../include/givm/executor/instruction.hpp) 定义执行函数指针类型、编译模式及字节存储的对齐规则。借用字节 vector 的 `detail::program_writer` 与写入时的尺寸计算位于私有头 [src/executor/program_writer.hpp](../../../src/executor/program_writer.hpp)，没有独立的拥有型 program 类。编译结果直接保存 execute 函数指针与就地数据，不保存 opcode 编号、函数表索引或每条 command 的 RTTI。
 
 每次 `write(value)` 从当前已对齐位置写入完整对象，再把末尾补齐到 `alignof(execute_fn)`。函数指针连续写入正好相接；数据结构体整体写入，保留其内部布局。字节缓冲区也满足这个对齐，数据类型的对齐不能超过它。
 
@@ -97,14 +97,20 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 整库 `compile` 显式接收 `compile_mode::normal` 或 `compile_mode::observed`。编译上下文保存该选择，所有 `add_program` 使用同一模式。两种模式生成相同的 `definition_library` 类型；内部指令类型、数量、数据类型与布局都可以不同。视图的提交与 `resume` 统一调用 executor 内部推进循环，不再选择另一套分派入口。
 
-每个 command 的公开描述、输入、独立的 `xxx_error` 类型及其 `error_string` 放在 [`definition/commands/`](../../../include/givm/definition/commands) 对应文件中；命令只用 `using error_type = xxx_error` 关联错误类型。编译检查重载、编译重载与执行指令放在 [`executor/commands/`](../../../include/givm/executor/commands) 的同名文件中。两侧 [`definition/commands.hpp`](../../../include/givm/definition/commands.hpp) 与 [`executor/commands.hpp`](../../../include/givm/executor/commands.hpp) 都只聚合包含，不在汇总头中实现格式化或其他函数。
+每个 command 的公开描述、输入、独立的 `xxx_error` 类型及其 `error_string` 放在 [`definition/commands/`](../../../include/givm/definition/commands) 对应文件中；命令只用 `using error_type = xxx_error` 关联错误类型。编译检查、编译重载、调试输入标记生成与执行指令放在 [`src/executor/commands/`](../../../src/executor/commands) 的同名私有头中。两侧 [`definition/commands.hpp`](../../../include/givm/definition/commands.hpp) 与 [`src/executor/commands.hpp`](../../../src/executor/commands.hpp) 都只聚合包含，不在汇总头中实现格式化或其他函数。
 
-编译函数和执行函数直接定义在 `givm::detail`，函数名称描述具体操作。ADL 通过实际的 `detail::program_writer` 类型找到 `detail::compile(writer, command, mode)`；无需 command_backend 类或全局 opcode 编号。函数直接在定义处提供实现，汇总头包含各 command 实现后，编译上下文才实例化统一遍历。
+检查、编译和执行函数直接定义在 `givm::detail`，函数名称描述具体操作。非模板编译入口在 cpp 中遍历 `span<const any_command>`，通过 variant 访问对应命令的检查与编译重载；调用方不需要这些重载的声明。无需 command_backend 类或全局 opcode 编号。私有头中的函数直接在定义处提供实现，统一编译循环仅在后端编译单元中实例化。
+
+`input_marker` 同样在各私有命令头中按命令值决定调试输入要求，不再由公开命令头提供。角色目标解析工具位于 [`src/executor/character_target.hpp`](../../../src/executor/character_target.hpp)，后端调试校验位于 [`src/executor/debug_validation.hpp`](../../../src/executor/debug_validation.hpp)。
 
 [`definition/any_command.hpp`](../../../include/givm/definition/any_command.hpp) 集中保存命令及输入的内部类型列表，并从列表生成公开的 `any_command`、`any_command_input`。[`executor/compile_error.hpp`](../../../include/givm/executor/compile_error.hpp) 使用命令各自的错误别名生成整库错误 variant，同时实现带源和程序位置的 `compile_error` 格式化。单命令错误不依赖编译上下文或 executor，因此其文本转换属于 definition 模块。
 
-多个 command 使用的基础执行指令仍随其所属 command 放置：抽牌通知推进及相关辅助函数放在 [`draw_cards.hpp`](../../../include/givm/executor/commands/draw_cards.hpp)，[`replace_cards.hpp`](../../../include/givm/executor/commands/replace_cards.hpp) 直接包含并复用；元素反应推进及相关辅助函数放在 [`apply_element.hpp`](../../../include/givm/executor/commands/apply_element.hpp)，[`deal_damage.hpp`](../../../include/givm/executor/commands/deal_damage.hpp) 直接包含并复用。各 command 的其他专属执行函数保留在各自文件中，共用关系由这些直接依赖表达。
+多个 command 使用的基础执行指令仍随其所属 command 放置：抽牌通知推进及相关辅助函数放在 [`draw_cards.hpp`](../../../src/executor/commands/draw_cards.hpp)，[`replace_cards.hpp`](../../../src/executor/commands/replace_cards.hpp) 直接包含并复用；元素反应推进及相关辅助函数放在 [`apply_element.hpp`](../../../src/executor/commands/apply_element.hpp)，[`deal_damage.hpp`](../../../src/executor/commands/deal_damage.hpp) 直接包含并复用。各 command 的其他专属执行函数保留在各自文件中，共用关系由这些直接依赖表达。
 
-definition 保留 command、variant、事件与程序入口类型。入口索引的生成与解释由 executor 负责。编译上下文、定义库、整体编译入口及返回、跳转控制函数集中在 executor 的 `library.hpp` 中；各 command 的编译与执行由上述文件组织。
+definition 保留 command、variant、事件与程序入口类型。入口索引的生成与解释由 executor 负责。编译上下文、定义库与整体编译入口的公开部分位于 executor 的 `library.hpp`，实际命令编译与程序装配由 `src/executor/library.cpp` 完成；各 command 的编译与执行由上述私有头组织。广播实现同样位于 [`src/executor/broadcast.hpp`](../../../src/executor/broadcast.hpp)。
+
+行动选择、投骰选择和重投选择视图使用的类型与工具直接保存在各自公开视图头中，相关命令实现按需包含这些头。这样公开视图不再依赖私有命令或广播实现，原有报价等内联操作也无需增加额外调用层。
+
+`debug_validate_entity` 直接内联定义在 [`views/action_selection.hpp`](../../../include/givm/executor/views/action_selection.hpp)，供三个目标验证接口使用；其余后端调试校验不随公开头交付。这里保留的是视图所需的实现细节，不增加公开校验接口。
 
 [返回架构总览](architecture.md)

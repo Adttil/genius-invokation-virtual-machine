@@ -22,7 +22,7 @@ struct start_battle;
 enum class start_battle_error {};
 ```
 
-`start_battle::error_type` 是 `givm::start_battle_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+`start_battle::error_type` 是 `givm::start_battle_error` 的别名。这是没有枚举项的空枚举类型，本命令没有编译期参数错误。
 
 ## 注意
 

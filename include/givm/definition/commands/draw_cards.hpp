@@ -56,15 +56,4 @@ namespace givm
     };
 }
 
-#ifndef NDEBUG
-namespace givm::detail
-{
-    template<class TInputTypes>
-    constexpr std::size_t input_marker(const draw_cards& command) noexcept
-    {
-        return command.positions.empty() ? TInputTypes::template index_of<draw_cards::input_type>() : std::size_t(-1);
-    }
-}
-#endif
-
 #endif

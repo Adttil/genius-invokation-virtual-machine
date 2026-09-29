@@ -67,7 +67,9 @@ executor ----------------> table
 
 跨核心模块包含公共入口，依赖方向保持一致。definition 使用 table 提供的游戏数据类型，不包含 executor 实现。跨模块包含保持从上层指向下层。table 的直接及传递包含均不进入 definition 或 executor；definition 使用 table 提供的游戏数据类型，executor 通过 source view 完成最终编译。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
 
-命令拆分为文件后仍遵守这一边界：definition 的命令文件通过 `table.hpp` 使用牌桌类型，executor 的命令实现通过 `definition.hpp` 使用公开命令和错误类型，不穿过模块聚合头直接包含另一模块的叶文件。同模块的命令文件可以直接包含有实际复用关系的其他命令文件。`definition/commands.hpp` 与 `executor/commands.hpp` 均只汇总包含；命令错误的类型和单项格式化留在 definition，编译总错误的位置和格式化留在 executor，不形成反向依赖。
+命令拆分为文件后仍遵守这一边界：definition 的命令文件通过 `table.hpp` 使用牌桌类型，`src/executor/commands` 中的命令实现通过 `definition.hpp` 使用公开命令和错误类型，不穿过模块聚合头直接包含另一模块的叶文件。移动到 `src` 不改变模块归属或依赖方向；同模块的私有头仍可以直接包含有实际复用关系的其他文件。[`definition/commands.hpp`](../../../include/givm/definition/commands.hpp) 与 [`src/executor/commands.hpp`](../../../src/executor/commands.hpp) 均只汇总包含；命令错误的类型和单项格式化留在 definition，编译总错误的位置和格式化留在 executor，不形成反向依赖。
+
+命令的 `check`、编译函数、opcode、调试输入标记生成和广播实现仅供后端使用，声明也不向用户交付。公开 `compile` 收集并返回命令的结构化错误。视图需要的类型和内联工具直接放在各自视图头中，命令实现可以包含本模块视图头，公开视图不再包含私有命令头。
 
 table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 

@@ -1,11 +1,26 @@
 #ifndef GIVM_EXECUTOR_VIEWS_DICE_REROLL_SELECTION_HPP
 #define GIVM_EXECUTOR_VIEWS_DICE_REROLL_SELECTION_HPP
 
+#include <cstdint>
 #include <utility>
 
 #include "../executor.hpp"
 #include "../command_input_error.hpp"
-#include "../commands/reroll_dice.hpp"
+
+namespace givm::detail
+{
+    struct dice_reroll_lane
+    {
+        std::uint32_t remaining = 0;
+        std::uint32_t cursor = 0;
+    };
+
+    struct single_player_dice_reroll
+    {
+        player_id player;
+        dice_reroll_lane lane;
+    };
+}
 
 namespace givm
 {

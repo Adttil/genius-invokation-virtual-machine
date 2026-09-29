@@ -59,7 +59,6 @@
 |  |  |
 | --- | --- |
 | [`compile`](executor/compile.md) | 编译选定定义与对局流程 |
-| [`check`](executor/check.md) | 检查命令的编译期参数与使用位置 |
 | [`error_string`](executor/error_string.md) | 格式化编译诊断 |
 | [`load_deck`](executor/load_deck.md) | 装载双方牌组并初始化角色状态与技能 |
 

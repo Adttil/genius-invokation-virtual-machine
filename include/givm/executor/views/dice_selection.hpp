@@ -6,7 +6,24 @@
 
 #include "../executor.hpp"
 #include "../command_input_error.hpp"
-#include "../commands/start_dice_roll_phase.hpp"
+#include "dice_reroll_selection.hpp"
+
+namespace givm::detail
+{
+    struct dice_reroll_phase
+    {
+        std::uint32_t dice_count = 0;
+        std::uint32_t player0_random_count = 0;
+        dice_reroll_lane first;
+        dice_reroll_lane second;
+    };
+
+    struct dice_selector
+    {
+        player_id player;
+        dice_counts selected;
+    };
+}
 
 namespace givm
 {

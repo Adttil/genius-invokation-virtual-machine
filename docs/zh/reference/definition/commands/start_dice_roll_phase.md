@@ -29,7 +29,7 @@ struct start_dice_roll_phase;
 enum class start_dice_roll_phase_error {};
 ```
 
-`start_dice_roll_phase::error_type` 是 `givm::start_dice_roll_phase_error` 的别名。这是没有枚举项的空枚举类型，本命令的 [`check`](../../executor/check.md) 重载总是返回空错误列表。
+`start_dice_roll_phase::error_type` 是 `givm::start_dice_roll_phase_error` 的别名。这是没有枚举项的空枚举类型，本命令没有编译期参数错误。
 
 ## 注意
 
