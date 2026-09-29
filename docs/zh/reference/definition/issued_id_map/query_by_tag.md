@@ -2,7 +2,7 @@
 
 # givm::issued_id_map::query_by_tag
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/source_library.hpp>`
 
 ```cpp
 template<class TDefinition>

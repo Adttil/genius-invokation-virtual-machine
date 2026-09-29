@@ -2,7 +2,7 @@
 
 # givm::definition_source_library::make_issued_id_map
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/source_library.hpp>`
 
 ```cpp
 std::expected<issued_id_map, std::vector<source_preparation_error>>

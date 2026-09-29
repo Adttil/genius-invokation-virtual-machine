@@ -22,4 +22,6 @@ target_link_libraries(your_target PRIVATE givm::givm)
 
 也可以单独引入 `givm/` 下的接口，例如 `<givm/definition.hpp>`、`<givm/table.hpp>` 和 `<givm/executor.hpp>`。
 
+定义源库的公共接口头可以使用 `<givm/source_library.hpp>`。它提供完整的 `definition_source_library` 及其登记、合并、查询和 ID 映射能力，因此使用方只需包含定义源库的公共头并链接相应库，就能实际接收和使用返回的源库对象。`<givm/definition.hpp>` 继续提供这些接口及其余定义模块能力。
+
 公开接口见[参考手册](docs/zh/reference.md)。设计取舍、历史方案和源码问题见[开发备忘](docs/zh/notes.md)。

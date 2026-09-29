@@ -8,6 +8,8 @@
 
 可通过 [`make_definition_source_library`](make_definition_source_library.md) 创建库并一次登记多个源，也可向空库或已有库调用 [`add`](definition_source_library/add.md)。两者都通过 `expected` 返回登记结果；失败时可以读取结构化诊断，或使用 [`error_string`](error_string.md) 输出文本。
 
+源库的完整接口可通过 `<givm/source_library.hpp>` 引入。这个入口保留具体定义源的登记方式；源的编译函数若需要调用编译上下文成员，仍需相应的执行模块接口。
+
 最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。[`program_entry`](program_entry.md) 由定义模块提供，定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 在执行模块中完整定义；编写需要调用编译上下文的定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开命令和事件。
 
 ## 必需成员

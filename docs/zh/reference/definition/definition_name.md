@@ -2,7 +2,7 @@
 
 # givm::definition_name
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/source_library.hpp>`
 
 ```cpp
 struct definition_name;

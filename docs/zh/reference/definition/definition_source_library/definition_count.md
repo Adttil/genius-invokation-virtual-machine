@@ -2,7 +2,7 @@
 
 # givm::definition_source_library::definition_count
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/source_library.hpp>`
 
 ```cpp
 static constexpr size_t definition_count = definition_types::size();

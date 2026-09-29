@@ -61,6 +61,7 @@ executor ----------------> table
 ```
 
 - `definition.hpp`：定义源协议、源库及其视图、依赖选择、ID 映射、公开 command 与命令 variant、事件、程序入口，以及牌组名称链接。
+- `source_library.hpp`：definition 模块的源库公开入口，提供完整的源库登记、持有、合并、查询、基础定义配置、ID 映射和源准备诊断能力；不包含命令集合或执行器。
 - `table.hpp`：牌桌状态、`issued_id` 及其 `definition_id`、`tag_id` 别名、定义类别、实体 ID、实体访问对象、`linked_deck` 和 `table`。
 - `executor.hpp`：最终编译、编译上下文、编译后的定义库、随机输入和 `executor`。
 - `utils/stack.hpp`：可独立使用的栈与 frame view 工具；其公开性不意味着 executor 提供原始栈访问。
@@ -76,6 +77,8 @@ table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 defin
 definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者可以仅包含 `definition.hpp` 保存入口与命令输入；实际调用 `add_program` 或 `handle_context` 成员时包含 `givm.hpp`，取得完整实现。source 适配仅传递 `handle_context&`，因此同样可以前置声明，保持单向依赖。
 
 源库提供登记、名称查找、按类别遍历 source view 和建立 ID 映射的能力，不提供成员编译函数。成员 `sources.make_issued_id_map(...)` 使用登记时保留的声明信息完成选择、依赖闭包和 ID 分配；executor 中的非成员 `compile(sources, ..., initialization_program, round_program, mode)` 调用这个成员取得映射，再通过 source view 构建完整定义库。`source.compile(context)` 仍是单项定义源协议，不与整库编译入口混淆。
+
+源库的公开模板保留在头文件中，合并冲突检查、依赖解析、定义选择、基础定义补入、ID 映射构建及格式化等较重实现位于 `src/definition/source_library.cpp`。有限定义类别的算法可以在 cpp 中显式实例化，调用方不重复实例化其实现。ID 映射的标签筛选实现位于 `src/definition/issued_id_map.cpp`。`source_view` 的源码模板和原有两指针表示保持不变；源库仍依赖源协议中的 table、事件和查询类型，本阶段不引入独立的注册接口或拆分 table。
 
 `definition_library` 与公开编译接口声明位于 [`executor/library.hpp`](../../../include/givm/executor/library.hpp)，非模板程序编译后端在 `src` 中实现。命令序列先统一为 `span<const any_command>`，因此定义源编译单元不必实例化命令编译循环。内部类型按功能放在所属模块的文件中，可继续使用 `givm::detail` 命名空间，不另建 `detail/` 目录；较大的内部实现块直接写成 `namespace givm::detail`，保持单层命名空间缩进。
 

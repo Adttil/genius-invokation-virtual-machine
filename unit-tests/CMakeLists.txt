@@ -1,4 +1,10 @@
-add_executable(givm_unit_tests tests.cpp executor/compile_boundary_fixture.cpp)
+add_executable(givm_unit_tests
+    tests.cpp
+    executor/compile_boundary_fixture.cpp
+    definition/source_library_provider.cpp
+    definition/source_library_peer.cpp
+    definition/source_library_client.cpp
+)
 target_link_libraries(
     givm_unit_tests
     PRIVATE

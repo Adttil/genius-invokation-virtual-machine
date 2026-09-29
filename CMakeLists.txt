@@ -17,7 +17,12 @@ option(
     ${PROJECT_IS_TOP_LEVEL}
 )
 
-add_library(givm STATIC src/executor/library.cpp)
+add_library(
+    givm STATIC
+    src/definition/source_library.cpp
+    src/definition/issued_id_map.cpp
+    src/executor/library.cpp
+)
 add_library(givm::givm ALIAS givm)
 target_compile_features(givm PUBLIC cxx_std_23)
 target_include_directories(

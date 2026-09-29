@@ -2,12 +2,12 @@
 
 # givm::error_string
 
-定义于头文件 `<givm/definition.hpp>`
+源准备诊断的重载 (1)—(3) 定义于头文件 `<givm/source_library.hpp>`；全部重载也可通过 `<givm/definition.hpp>` 引入。
 
 ```cpp
-inline std::string error_string(const std::vector<source_add_error>& errors); // (1)
-inline std::string error_string(const std::vector<source_conflict>& errors); // (2)
-inline std::string error_string(const std::vector<source_preparation_error>& errors); // (3)
+std::string error_string(const std::vector<source_add_error>& errors); // (1)
+std::string error_string(const std::vector<source_conflict>& errors); // (2)
+std::string error_string(const std::vector<source_preparation_error>& errors); // (3)
 inline std::string error_string(const std::vector<deck_link_error>& errors); // (4)
 
 inline std::string error_string(const draw_cards_error& error); // (5)

@@ -2,7 +2,7 @@
 
 # givm::definition_source_library
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/source_library.hpp>`
 
 ```cpp
 class definition_source_library;
@@ -35,6 +35,8 @@ class definition_source_library;
 | [`compile`](../executor/compile.md) | 编译选定定义与对局流程 |
 
 ## 注意
+
+`<givm/source_library.hpp>` 提供完整类型，可以构造、析构、复制、移动和合并源库，也保留登记具体定义源的模板接口。内容库的公共头可直接包含它并声明返回本类型的函数；调用方链接内容库及 GIVM 后即可使用返回值。原有 `<givm/definition.hpp>` 仍可使用。
 
 源库不拥有定义源。登记的源对象及名称、标签、依赖名称的字符存储必须在源库使用期间保持有效；编译出的定义库仍会使用名称和标签的字符存储。
 

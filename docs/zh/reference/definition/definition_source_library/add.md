@@ -2,7 +2,7 @@
 
 # givm::definition_source_library::add
 
-定义于头文件 `<givm/definition.hpp>`
+定义于头文件 `<givm/source_library.hpp>`
 
 ```cpp
 std::expected<void, std::vector<source_add_error>> add(); // (1)
@@ -63,7 +63,7 @@ std::expected<void, std::vector<source_add_error>> add(
 #include <print>
 #include <string_view>
 
-#include <givm/givm.hpp>
+#include <givm/source_library.hpp>
 
 struct card_source
 {
