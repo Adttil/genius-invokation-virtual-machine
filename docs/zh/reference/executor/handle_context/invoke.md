@@ -2,7 +2,7 @@
 
 # givm::handle_context::invoke
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/source.hpp>`
 
 ```cpp
 template<class... T> // 每个 T 均须为核心命令声明的 input_type

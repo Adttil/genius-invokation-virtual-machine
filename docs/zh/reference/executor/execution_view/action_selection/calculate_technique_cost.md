@@ -2,7 +2,7 @@
 
 # calculate_technique_cost
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 const cost_of_technique& calculate_technique_cost(const definition_library& library, const table& card_table) const;

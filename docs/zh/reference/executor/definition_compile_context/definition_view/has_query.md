@@ -2,7 +2,7 @@
 
 # givm::definition_compile_context::definition_view::has_query
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/source.hpp>`
 
 ```cpp
 template<class TQuery>

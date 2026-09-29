@@ -107,7 +107,7 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 多个 command 使用的基础执行指令仍随其所属 command 放置：抽牌通知推进及相关辅助函数放在 [`draw_cards.hpp`](../../../src/executor/commands/draw_cards.hpp)，[`replace_cards.hpp`](../../../src/executor/commands/replace_cards.hpp) 直接包含并复用；元素反应推进及相关辅助函数放在 [`apply_element.hpp`](../../../src/executor/commands/apply_element.hpp)，[`deal_damage.hpp`](../../../src/executor/commands/deal_damage.hpp) 直接包含并复用。各 command 的其他专属执行函数保留在各自文件中，共用关系由这些直接依赖表达。
 
-definition 保留 command、variant、事件与程序入口类型。入口索引的生成与解释由 executor 负责。编译上下文、定义库与整体编译入口的公开部分位于 executor 的 `library.hpp`，实际命令编译与程序装配由 `src/executor/library.cpp` 完成；各 command 的编译与执行由上述私有头组织。广播实现同样位于 [`src/executor/broadcast.hpp`](../../../src/executor/broadcast.hpp)。
+definition 保留 command、variant、事件与程序入口类型。入口索引的生成与解释由 executor 负责。定义库、完整编译上下文和整库编译入口的公开部分分别位于 executor 的 `library.hpp`、`definition_compile_context.hpp` 和 `compile.hpp`，实际命令编译与程序装配由 `src/executor/library.cpp` 完成；各 command 的编译与执行由上述私有头组织。广播实现同样位于 [`src/executor/broadcast.hpp`](../../../src/executor/broadcast.hpp)。
 
 行动选择、投骰选择和重投选择视图使用的类型与工具直接保存在各自公开视图头中，相关命令实现按需包含这些头。这样公开视图不再依赖私有命令或广播实现，原有报价等内联操作也无需增加额外调用层。
 

@@ -122,6 +122,257 @@ namespace givm::detail
 
 namespace givm
 {
+    definition_library::definition_library(const issued_id_map& id_map, const detail::basic_definition_names& basics)
+    : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end()),
+      basic_ids_{
+          id_map.get_id<combat_status_view>(basics.dendro_core),
+          id_map.get_id<combat_status_view>(basics.catalyzing_field),
+          id_map.get_id<summon_view>(basics.burning_flame),
+          id_map.get_id<attachment_view>(basics.frozen) }
+    {
+        constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
+            "weapon", "artifact", "talent", "technique"
+        };
+        for(size_t index = 0; index != equipment_tags_.size(); ++index)
+        {
+            if(id_map.has_tag(equipment_tag_names[index]))
+            {
+                equipment_tags_[index] = id_map.get_tag_id(equipment_tag_names[index]);
+            }
+        }
+        constexpr std::array<std::string_view, 3> skill_tag_names{ "normal_attack", "elemental_skill", "elemental_burst" };
+        for(size_t index = 0; index != skill_tags_.size(); ++index)
+            if(id_map.has_tag(skill_tag_names[index])) skill_tags_[index] = id_map.get_tag_id(skill_tag_names[index]);
+        if(id_map.has_tag("control")) control_tag_ = id_map.get_tag_id("control");
+        if(id_map.has_tag("control_immunity")) control_immunity_tag_ = id_map.get_tag_id("control_immunity");
+        if(id_map.has_tag("remove_at_zero_usages"))
+            remove_at_zero_usages_tag_ = id_map.get_tag_id("remove_at_zero_usages");
+    }
+
+    template<class TDefinitionType>
+    void definition_library::compile_source(
+        const detail::compile_definition<TDefinitionType>& definition,
+        const issued_id_map& id_map,
+        const detail::compile_definitions& definitions,
+        compile_mode mode,
+        std::vector<compile_error>& errors
+    )
+    {
+        auto& bucket = bucket_for<TDefinitionType>();
+        definition_id<history_summary_definition> own_history;
+        if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
+            own_history = definition.id;
+        definition_compile_context context{ id_map, definitions, basic_ids_, program_, *definition.declarations,
+            mode, history_layouts_, own_history, true, errors,
+            compile_stage::definition, definition_name{ definition_types::index_of<TDefinitionType>(), std::string{ bucket.names[definition.id.value()] } }
+#ifndef NDEBUG
+            , input_markers_, debug_programs_, debug_library_identity_
+#endif
+        };
+        auto& data = bucket.data[definition.id.value()];
+        const auto errors_before = errors.size();
+        data = definition.source->compile(context);
+        if(errors.size() != errors_before) return;
+        if constexpr(supported_queries<TDefinitionType>::size() != 0)
+        {
+            supported_queries<TDefinitionType>::each([&]<class TQuery>
+            {
+                if constexpr(std::is_empty_v<TQuery>)
+                {
+                    constexpr auto index = supported_queries<TDefinitionType>::template index_of<TQuery>();
+                    auto query_fn = std::get<index>(definition.static_queries);
+                    if(not query_fn) query_fn = detail::default_query<TQuery>;
+                    std::get<index>(bucket.queries).push_back(query_fn(data, TQuery{}));
+                }
+            });
+        }
+    }
+
+    void definition_library::prepare_history_layouts(const detail::compile_definitions& definitions, const issued_id_map& ids, compile_mode mode,
+        std::vector<compile_error>& errors)
+    {
+        history_layouts_.resize(ids.definition_count<history_summary_definition>());
+        const auto& summaries = std::get<definition_types::index_of<history_summary_definition>()>(definitions);
+        for(const auto& definition : summaries)
+        {
+            const auto& source = *definition.source;
+            const auto id = definition.id;
+            definition_compile_context context{ ids, definitions, basic_ids_, program_, *definition.declarations, mode, history_layouts_, id, false,
+                errors, compile_stage::history_layout, definition_name{ definition_types::index_of<history_summary_definition>(),
+                    std::string{ definition.bucket->names[id.value()] } }
+#ifndef NDEBUG
+                , input_markers_, debug_programs_, debug_library_identity_
+#endif
+            };
+            auto& layout = history_layouts_[id.value()];
+            std::vector<std::size_t> field_indices;
+            std::size_t field_index = 0;
+            for(auto&& member : source.rtti_->history.layout(source.source_, context))
+            {
+                std::visit([&](auto&& declaration)
+                {
+                    using T = typename std::remove_cvref_t<decltype(declaration)>::value_type;
+                    constexpr auto size = sizeof(std::remove_extent_t<T>);
+                    constexpr auto alignment = alignof(std::remove_extent_t<T>);
+                    const auto count = [&] -> std::size_t
+                    {
+                        if constexpr(std::is_unbounded_array_v<T>) return declaration.count;
+                        else return 1;
+                    }();
+                    if(declaration.name.empty()) context.report(history_field_empty_name{ field_index });
+                    const auto found = std::ranges::find(layout.fields, declaration.name, &detail::compiled_history_field::name);
+                    const bool duplicate = found != layout.fields.end();
+                    if(duplicate) context.report(history_field_duplicate_name{ declaration.name,
+                        field_indices[static_cast<std::size_t>(found - layout.fields.begin())], field_index });
+                    constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+                    auto offset = layout.size;
+                    bool overflow = offset > maximum - (alignment - 1);
+                    if(not overflow)
+                    {
+                        offset = (offset + alignment - 1) & ~(alignment - 1);
+                        overflow = count > (maximum - offset) / size;
+                    }
+                    if(overflow) context.report(history_field_layout_overflow{ declaration.name, field_index, count, size, alignment, layout.size });
+                    if(not duplicate)
+                    {
+                        field_indices.push_back(field_index);
+                        layout.fields.push_back({ std::move(declaration.name), history_field_key<T>{ overflow ? 0 : offset,
+                            overflow && std::is_unbounded_array_v<T> ? 0 : count } });
+                        if(not overflow) layout.size = offset + size * count;
+                    }
+                }, member);
+                ++field_index;
+            }
+        }
+        for(std::size_t index = 0; index != history_layouts_.size(); ++index)
+        {
+            auto& layout = history_layouts_[index];
+            constexpr auto alignment = alignof(std::max_align_t);
+            constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+            const bool alignment_overflow = history_size_ > maximum - (alignment - 1);
+            const auto offset = alignment_overflow ? 0 : (history_size_ + alignment - 1) & ~(alignment - 1);
+            if(alignment_overflow || layout.size > maximum - offset)
+            {
+                errors.push_back({ { compile_stage::history_layout,
+                    definition_name{ definition_types::index_of<history_summary_definition>(), std::string{ summaries[index].bucket->names[index] } }, {}, {}, {} },
+                    history_storage_layout_overflow{ history_size_, layout.size, alignment } });
+                layout.offset = 0;
+            }
+            else
+            {
+                layout.offset = offset;
+                history_size_ = offset + layout.size;
+            }
+        }
+    }
+
+    tag_mask definition_library::make_tag_mask(
+        const std::vector<std::string_view>& tags,
+        const issued_id_map& id_map
+    )
+    {
+        tag_mask result{ id_map.tag_names().size() };
+        for(std::string_view tag : tags)
+        {
+            result.set(id_map.get_tag_id(tag));
+        }
+        return result;
+    }
+
+    detail::compile_definitions definition_library::prepare_definitions(const definition_source_library& sources, const issued_id_map& ids)
+    {
+        detail::compile_definitions result;
+        definition_types::each([&]<class TCategory>
+        {
+            auto& definitions = std::get<definition_types::index_of<TCategory>()>(result);
+            auto& bucket = bucket_for<TCategory>();
+            const auto count = ids.definition_count<TCategory>();
+            definitions.reserve(count);
+            bucket.names.resize(count);
+            bucket.data.resize(count);
+            bucket.tags.resize(count);
+            for(const auto& entry : sources.bucket_for<TCategory>().entries)
+            {
+                if(not ids.has<TCategory>(entry.name)) continue;
+                const auto id = ids.get_id<TCategory>(entry.name);
+                definitions.push_back({ &entry.source, id, &entry.declarations, &bucket });
+                bucket.names[id.value()] = entry.name;
+                bucket.tags[id.value()] = make_tag_mask(entry.declarations.tags, ids);
+            }
+            std::ranges::sort(definitions, {}, [](const auto& definition) { return definition.id.value(); });
+            if constexpr(views_of_definition<TCategory>::size() != 0)
+            {
+                views_of_definition<TCategory>::each([&]<class TView>
+                {
+                    if constexpr(subscribed_events<TView>::size() != 0)
+                    {
+                        auto& handles = std::get<views_of_definition<TCategory>::template index_of<TView>()>(bucket.handle_fns);
+                        subscribed_events<TView>::each([&]<class TEvent>
+                        {
+                            auto& functions = std::get<subscribed_events<TView>::template index_of<TEvent>()>(handles);
+                            functions.reserve(count);
+                            for(const auto& definition : definitions)
+                                functions.push_back(definition.source->template get_handle_fn<TView, TEvent>());
+                        });
+                    }
+                });
+            }
+            if constexpr(supported_queries<TCategory>::size() != 0)
+            {
+                supported_queries<TCategory>::each([&]<class TQuery>
+                {
+                    constexpr auto index = supported_queries<TCategory>::template index_of<TQuery>();
+                    auto& queries = std::get<index>(bucket.queries);
+                    queries.reserve(count);
+                    for(auto& definition : definitions)
+                    {
+                        const auto query_fn = definition.source->template get_query_fn<TQuery>();
+                        if constexpr(std::is_empty_v<TQuery>)
+                            std::get<index>(definition.static_queries) = query_fn;
+                        else
+                            queries.push_back(query_fn);
+                    }
+                });
+            }
+            if constexpr(std::same_as<TCategory, history_summary_definition>)
+            {
+                for(auto& definition : definitions) definition.history = &history_handlers_;
+                subscribed_events<TCategory>::each([&]<class TEvent>
+                {
+                    constexpr auto index = subscribed_events<TCategory>::template index_of<TEvent>();
+                    auto& handlers = std::get<index>(history_handlers_);
+                    for(const auto& definition : definitions)
+                    {
+                        const auto& source = *definition.source;
+                        if(const auto handler = std::get<index>(source.rtti_->history.handles)(source.source_))
+                            handlers.push_back({ definition.id.value(), handler });
+                    }
+                });
+            }
+        });
+        return result;
+    }
+
+    void definition_library::complete_dynamic_queries()
+    {
+        definition_types::each([&]<class TCategory>
+        {
+            if constexpr(supported_queries<TCategory>::size() != 0)
+            {
+                supported_queries<TCategory>::each([&]<class TQuery>
+                {
+                    if constexpr(not std::is_empty_v<TQuery>)
+                    {
+                        auto& queries = std::get<supported_queries<TCategory>::template index_of<TQuery>()>(
+                            bucket_for<TCategory>().queries);
+                        for(auto& query : queries)
+                            if(not query) query = detail::default_query<TQuery>;
+                    }
+                });
+            }
+        });
+    }
+
     program_entry definition_compile_context::add_program(std::span<const any_command> commands)
     {
         program_entry result{ program_.size() };

@@ -2,7 +2,7 @@
 
 # givm::definition_library::definition_view::has_all_tags
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 bool has_all_tags(std::span<const tag_id> tags) const;

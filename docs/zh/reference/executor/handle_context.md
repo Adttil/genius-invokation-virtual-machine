@@ -2,7 +2,7 @@
 
 # givm::handle_context
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/source.hpp>`
 
 ```cpp
 class handle_context;

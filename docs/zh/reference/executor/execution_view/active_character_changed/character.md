@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::active_character_changed>::character
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 character_id character() const noexcept(/* Release 为 true，Debug 为 false */);

@@ -2,7 +2,7 @@
 
 # givm::execution_state
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 enum class execution_state : std::uint8_t

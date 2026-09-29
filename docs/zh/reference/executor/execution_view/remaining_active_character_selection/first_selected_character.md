@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::remaining_active_character_selection>::first_selected_character
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr character_id first_selected_character() const noexcept(/* Release 为 true，Debug 为 false */);

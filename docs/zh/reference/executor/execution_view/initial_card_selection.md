@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::initial_card_selection>
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 template<>

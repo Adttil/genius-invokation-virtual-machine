@@ -4,9 +4,9 @@
 
 定义模块描述卡牌、角色及其他实体的规则，并准备一场对局所需的内容。这里的“定义”是同类实体共用的规则；牌桌上的某张卡牌、某个召唤物是采用定义的实体，各自的当前状态另由[牌桌模块](table.md)保存。
 
-定义源适合按游戏内容逐项编写；源库负责汇集、访问和选择所需定义，并建立名称与 ID 的映射。[执行模块的编译函数](executor/compile.md)将定义源和对局流程编译为对局使用的定义库。初次编写卡牌或角色效果可以先阅读[定义源协议](definition/source_protocol.md)。
+定义源适合按游戏内容逐项编写；源库负责汇集和访问所需定义。[执行模块的编译函数](executor/compile.md)选择定义、建立名称与 ID 的映射，并将定义源和对局流程编译为对局使用的定义库。初次编写卡牌或角色效果可以先阅读[定义源协议](definition/source_protocol.md)。
 
-`<givm/source_library.hpp>` 提供完整的源库接口，包括登记、合并、查询、基础定义配置、名称与 ID 映射和源准备诊断。提供源库工厂函数的内容库可以在其公共头中包含这个入口，使调用方直接使用返回的源库。`<givm/definition.hpp>` 仍包含这些接口，并另外提供命令等定义模块能力；最终编译及对局执行使用执行模块。
+`<givm/source_library.hpp>` 提供完整的源库接口，包括登记、合并、查询、基础定义配置和源准备诊断。提供源库工厂函数的内容库可以在其公共头中包含这个入口，使调用方直接使用返回的源库。编写定义源时使用 `<givm/source.hpp>`，获得命令、事件、编译上下文与响应上下文；整库编译使用 `<givm/compile.hpp>`。原有 `<givm/definition.hpp>` 继续提供完整定义模块接口。
 
 ## 类
 
@@ -51,7 +51,6 @@
 | [`history_field_descriptor`](definition/history_summary.md#类型别名) | 历史摘要字段描述的 variant |
 | [`any_command`](definition/any_command.md) | 核心命令 variant |
 | [`any_command_input`](definition/any_command_input.md) | 核心命令输入 variant |
-| [`definition_selection`](definition/definition_selection.md) | 按类别指定的定义名称集合 |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
 | [`handle_fn_t`](definition/handle_fn_t.md) | 统一的事件响应函数指针类型 |

@@ -10,7 +10,7 @@
 #include <utility>
 #include "program_input_error.hpp"
 
-#include "../definition.hpp"
+#include "../definition_common.hpp"
 #include "../utils/stack.hpp"
 #include "random_fn.hpp"
 

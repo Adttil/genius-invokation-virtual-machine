@@ -1,4 +1,5 @@
 #include <givm/definition/source_library.hpp>
+#include <givm/definition/issued_id_map.hpp>
 
 #include <algorithm>
 
@@ -135,24 +136,6 @@ namespace givm
 
         append_library(library);
         return {};
-    }
-
-    std::expected<issued_id_map, std::vector<source_preparation_error>> definition_source_library::make_issued_id_map(const basic_definition_sources& basics) const
-    {
-        std::vector<source_preparation_error> errors;
-        const auto [sources, names] = with_basic_definitions(basics, errors);
-        if(not errors.empty()) return std::unexpected{ std::move(errors) };
-        return sources.make_issued_id_map(sources.make_full_selection());
-    }
-
-    std::expected<issued_id_map, std::vector<source_preparation_error>> definition_source_library::make_issued_id_map(
-        const basic_definition_sources& basics, const definition_selection& selection) const
-    {
-        std::vector<source_preparation_error> errors;
-        const auto [sources, names] = with_basic_definitions(basics, errors);
-        const auto selected = sources.resolve_selection(selection, names, errors);
-        if(not errors.empty()) return std::unexpected{ std::move(errors) };
-        return sources.make_issued_id_map(selected);
     }
 
     template<size_t I>
@@ -389,7 +372,8 @@ namespace givm
         return selected;
     }
 
-    definition_source_library::selection_mask definition_source_library::resolve_selection(const definition_selection& selection,
+    definition_source_library::selection_mask definition_source_library::resolve_selection(
+        const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
         const detail::basic_definition_names& basics, std::vector<source_preparation_error>& errors) const
     {
         auto selected = make_empty_selection();

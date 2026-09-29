@@ -17,46 +17,13 @@
 #include <vector>
 
 #include "source_view.hpp"
-#include "issued_id_map.hpp"
+#include "source_error.hpp"
 #include "definition_categories.hpp"
 #include "../utils/type_list.hpp"
 
 namespace givm
 {
-    using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
-
-    struct definition_name
-    {
-        std::size_t category_index;
-        std::string name;
-    };
-
-    struct source_conflict
-    {
-        enum class reason { different_object, different_type };
-
-        definition_name definition;
-        reason cause;
-        std::optional<std::size_t> first_input_index;
-        std::optional<std::size_t> second_input_index;
-    };
-
-    struct source_missing_dependency
-    {
-        definition_name source;
-        std::size_t input_index;
-        definition_name dependency;
-    };
-
-    using source_add_error = std::variant<source_conflict, source_missing_dependency>;
-
-    struct source_selection_error
-    {
-        definition_name definition;
-        std::optional<definition_name> required_by;
-    };
-
-    using source_preparation_error = std::variant<source_conflict, source_missing_dependency, source_selection_error>;
+    class issued_id_map;
 
     namespace detail
     {
@@ -67,22 +34,7 @@ namespace givm
             std::string_view burning_flame;
             std::string_view frozen;
         };
-
-        std::string source_definition_name_text(const definition_name& definition);
-
     }
-
-    std::string error_string(const source_conflict& error);
-
-    std::string error_string(const source_missing_dependency& error);
-
-    std::string error_string(const source_selection_error& error);
-
-    std::string error_string(const std::vector<source_add_error>& errors);
-
-    std::string error_string(const std::vector<source_conflict>& errors);
-
-    std::string error_string(const std::vector<source_preparation_error>& errors);
 
     struct basic_definition_sources
     {
@@ -141,11 +93,6 @@ namespace givm
                     return entry.source;
                 });
         }
-
-        std::expected<issued_id_map, std::vector<source_preparation_error>> make_issued_id_map(const basic_definition_sources& basics) const;
-
-        std::expected<issued_id_map, std::vector<source_preparation_error>> make_issued_id_map(
-            const basic_definition_sources& basics, const definition_selection& selection) const;
 
     private:
         using definition_type_list = definition_types;
@@ -256,7 +203,7 @@ namespace givm
 
         selection_mask make_full_selection() const;
 
-        selection_mask resolve_selection(const definition_selection& selection,
+        selection_mask resolve_selection(const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
             const detail::basic_definition_names& basics, std::vector<source_preparation_error>& errors) const;
 
         template<size_t I>

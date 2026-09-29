@@ -2,7 +2,7 @@
 
 # technique_cost
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 const cost_of_technique& technique_cost() const noexcept(/* Release 为 true，Debug 为 false */);

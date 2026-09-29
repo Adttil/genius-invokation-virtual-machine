@@ -2,7 +2,7 @@
 
 # givm::issued_id_map::has
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
 template<class TDefinition>

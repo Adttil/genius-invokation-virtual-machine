@@ -55,7 +55,8 @@
 #include <print>
 #include <tuple>
 
-#include <givm/givm.hpp>
+#include <givm/basic_definitions.hpp>
+#include <givm/compile.hpp>
 
 int main()
 {

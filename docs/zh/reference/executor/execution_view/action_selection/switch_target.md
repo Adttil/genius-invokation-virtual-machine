@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::switch_target
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr character_id switch_target(std::size_t target_index) const noexcept(/* Release 为 true，Debug 为 false */);

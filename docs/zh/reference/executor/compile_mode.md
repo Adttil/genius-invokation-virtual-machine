@@ -2,7 +2,7 @@
 
 # givm::compile_mode
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 enum class compile_mode : std::uint8_t

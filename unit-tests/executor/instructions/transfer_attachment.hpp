@@ -213,20 +213,28 @@ namespace
         const attachment_source replacement{ &log, "Replacement" };
         const givm::test::initialized_character_source character;
         REQUIRE(sources.add(controller, moving, old, replacement, character));
-        const auto ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+        const std::array support_names{ controller.name() };
+        const givm::test::initialization_skill_source initialization{
+            [](givm::definition_compile_context& context)
+            {
+                return std::tuple{ givm::add_support{
+                    .definition = context.resolve_id<givm::support_view>("TransferController"), .state = {} } };
+            }, {}, support_names };
+        const givm::test::initialization_character_source driver;
+        REQUIRE(sources.add(initialization, driver));
         return givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
-            givm::add_support{ .definition = ids.get_id<givm::support_view>("TransferController"), .state = {} },
-            givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
+            givm::start_battle{}, givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, mode));
     }
 
     givm::table make_table(const givm::definition_library& library, const givm::issued_id_map& ids)
     {
-        givm::table table{ { .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
+        givm::table table{ { .round_number = 1, .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
             { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
             { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
         const auto character = ids.get_id<givm::character_view>("Character");
-        load_deck(table, library, { .characters = { character, character } }, { .characters = { character, character } });
+        load_deck(table, library, { .characters = { character, character } },
+            { .characters = { ids.get_id<givm::character_view>("InitializationCharacter"), character } });
         return table;
     }
 
@@ -452,15 +460,22 @@ TEST_CASE("fixed attachment state and removal commands retain a zero-health char
     const givm::test::initialized_character_source living;
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(controller, attachment, zero_health, living));
-    const auto prepared = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+    const std::array support_names{ controller.name() };
+    const givm::test::initialization_skill_source initialization{
+        [](givm::definition_compile_context& context)
+        {
+            return std::tuple{ givm::add_support{
+                .definition = context.resolve_id<givm::support_view>("ZeroHealthController") } };
+        }, {}, support_names };
+    const givm::test::initialization_character_source driver;
+    REQUIRE(sources.add(initialization, driver));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
-        givm::add_support{ .definition = prepared.get_id<givm::support_view>(controller.name()) },
-        givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
+        givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, mode));
-    givm::table table{ { .self_player = givm::player_id{ 0 } },
+    givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } }, {} };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(zero_health.name()),
-        ids.get_id<givm::character_view>(living.name()) } }, {});
+        ids.get_id<givm::character_view>(driver.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);

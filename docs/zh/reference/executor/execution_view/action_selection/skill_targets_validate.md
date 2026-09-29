@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::skill_targets_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 target_validation skill_targets_validate(

@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::calculate_skill_cost
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 const cost_of_skill& calculate_skill_cost(

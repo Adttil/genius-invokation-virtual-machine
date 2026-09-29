@@ -1,15 +1,15 @@
-[givm](../../reference.md) / [定义](../definition.md) / **definition_selection**
+[givm](../../reference.md) / [执行](../executor.md) / **definition_selection**
 
 # givm::definition_selection
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 using definition_selection =
     std::array<std::span<const std::string_view>, definition_types::size()>;
 ```
 
-一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。建立 [ID 映射](definition_source_library/make_issued_id_map.md)或[编译定义库](../executor/compile.md)时，会自动补入同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，以及这些定义和所选定义声明的依赖，无须调用方逐一列出。
+一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。[编译定义库](compile.md)时，会自动补入同次调用的 [`basic_definition_sources`](../definition/basic_definition_sources.md) 指定的四个默认反应定义，以及这些定义和所选定义声明的依赖，无须调用方逐一列出。
 
 ## 注意
 
@@ -22,6 +22,7 @@ using definition_selection =
 #include <array>
 #include <print>
 #include <string_view>
+#include <tuple>
 
 #include <givm/givm.hpp>
 
@@ -50,13 +51,15 @@ int main()
     const std::array<std::string_view, 1> names{ "恢复药剂" };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = names;
-    auto ids_result = sources.make_issued_id_map(basics, selection);
-    if(not ids_result)
+    auto library_result = compile(sources, basics, selection, std::tuple{},
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } },
+        givm::compile_mode::normal);
+    if(not library_result)
     {
-        std::println("{}", error_string(ids_result.error()));
+        std::println("{}", error_string(library_result.error()));
         return 1;
     }
-    const auto ids = std::move(*ids_result);
+    const auto [library, ids] = std::move(*library_result);
     std::println("包含恢复药剂: {}", ids.has<givm::card_definition>("恢复药剂"));
     std::println("包含恢复料理: {}", ids.has<givm::card_definition>("恢复料理"));
 }

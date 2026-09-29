@@ -64,4 +64,4 @@ int main()
 |  |  |
 | --- | --- |
 | [`get`](get.md) | 按名称查看定义源 |
-| [`make_issued_id_map`](make_issued_id_map.md) | 为选定定义建立 ID 映射 |
+| [`compile`](../../executor/compile.md) | 编译选定定义与对局流程 |

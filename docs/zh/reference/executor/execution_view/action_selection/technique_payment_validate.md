@@ -2,7 +2,7 @@
 
 # technique_payment_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 technique_payment_validation technique_payment_validate(const table& card_table, const dice_counts& paid_dice) const noexcept(/* Release 为 true，Debug 为 false */);

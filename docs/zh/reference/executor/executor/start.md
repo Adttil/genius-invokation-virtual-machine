@@ -2,7 +2,7 @@
 
 # givm::executor::start
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 auto start(const definition_library& library, table& card_table);

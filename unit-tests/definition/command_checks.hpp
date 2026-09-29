@@ -144,9 +144,10 @@ TEST_CASE("fixed commands reject definition IDs outside the selected library", "
     const givm_test::reaction_source<givm::card_definition> card{ "Outside card" };
     auto other_sources = givm_test::make_source_library();
     REQUIRE(other_sources.add(card));
-    const auto issued = other_sources.make_issued_id_map(givm_test::basic_sources);
-    REQUIRE(issued);
-    const auto card_id = issued->get_id<givm::card_definition>(card.name());
+    const auto compiled = givm::compile(other_sources, givm_test::basic_sources,
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal);
+    REQUIRE(compiled);
+    const auto card_id = compiled->id_map.get_id<givm::card_definition>(card.name());
     auto sources = givm_test::make_source_library();
     const auto result = givm::compile(sources, givm_test::basic_sources,
         std::tuple{ givm::insert_deck_card{ givm::player_id{ 0 }, card_id } },

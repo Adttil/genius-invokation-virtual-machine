@@ -2,7 +2,7 @@
 
 # givm::random_fn
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 class random_fn;
@@ -31,7 +31,7 @@ class random_fn;
 #include <print>
 #include <cstdint>
 
-#include <givm/givm.hpp>
+#include <givm/runtime.hpp>
 
 int main()
 {

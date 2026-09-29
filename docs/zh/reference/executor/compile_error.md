@@ -2,7 +2,7 @@
 
 # givm::compile_error
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 struct compile_error;

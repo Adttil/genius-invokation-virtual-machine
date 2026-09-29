@@ -58,11 +58,12 @@ struct insert_deck_card_error;
 ## 示例
 
 ```cpp
-#include <utility>
+#include <array>
 #include <cstdint>
 #include <print>
 #include <string_view>
 #include <tuple>
+#include <utility>
 
 #include <givm/givm.hpp>
 
@@ -70,15 +71,35 @@ struct card_source
 {
     using definition_category = givm::card_definition;
     struct definition_type {};
-    std::string_view source_name;
-    std::string_view name() const { return source_name; }
+    std::string_view name() const { return "first"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
+};
+
+struct effect_source
+{
+    using definition_category = givm::card_definition;
+    std::string_view name() const { return "second"; }
+    auto card_dependencies() const
+    { return std::array<std::string_view, 1>{ "first" }; }
+
+    givm::program_entry compile(givm::definition_compile_context& context) const
+    {
+        const auto definition = context.resolve_id<givm::card_definition>("first");
+        return context.add_program(
+            givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = definition });
+    }
+
+    static givm::program_entry handle(const givm::program_entry& entry, const givm::deck_card_view&,
+        givm::round_started&, givm::handle_context& context)
+    {
+        return context.invoke(entry);
+    }
 };
 
 int main()
 {
-    card_source first{ "first" };
-    card_source second{ "second" };
+    const card_source first{};
+    const effect_source second{};
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
@@ -87,37 +108,35 @@ int main()
     };
     givm::definition_source_library sources{};
     if(not sources.add(first, second)) return 1;
-    auto issued_result = sources.make_issued_id_map(basics);
-    if(not issued_result)
-    {
-        std::println("{}", error_string(issued_result.error()));
-        return 1;
-    }
-    const auto issued = std::move(*issued_result);
-    const auto card = issued.get_id<givm::card_definition>("first");
-    auto library_result = compile(
-        sources, basics,
-        std::tuple{ givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = card } },
-        std::tuple{}, givm::compile_mode::normal);
+    auto library_result = compile(sources, basics, std::tuple{},
+        std::tuple{
+            givm::start_round{},
+            givm::end_game{ .result = givm::game_result::both_loss }
+        }, givm::compile_mode::normal);
     if(not library_result)
     {
         std::println("{}", error_string(library_result.error()));
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    givm::table table{ { .max_rounds = 0 } };
-    auto random = []() -> std::uint32_t { return 0; };
+    givm::table table{};
+    load_deck(table, library,
+        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>("second") } },
+        givm::linked_deck{});
     givm::executor execution{};
+    auto random = []() -> std::uint32_t { return 0; };
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
-    std::println("牌堆数量: {}", table[givm::player_id{ 0 }].deck_card_count());
-    std::println("插入指定牌: {}", table[givm::player_id{ 0 }].deck_card_definition(0).value() == card.value());
+    const auto player = table[givm::player_id{ 0 }];
+    const auto card = ids.get_id<givm::card_definition>("first");
+    std::println("牌堆数量: {}", player.deck_card_count());
+    std::println("插入指定牌: {}", player.deck_card_definition(1) == card);
 }
 ```
 
 输出
 
 ```text
-牌堆数量: 1
+牌堆数量: 2
 插入指定牌: true
 ```

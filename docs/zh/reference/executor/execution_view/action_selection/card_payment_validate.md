@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::card_payment_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr card_payment_validation card_payment_validate(

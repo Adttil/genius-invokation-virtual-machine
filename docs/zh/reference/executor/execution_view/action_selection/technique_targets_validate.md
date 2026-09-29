@@ -2,7 +2,7 @@
 
 # technique_targets_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 target_validation technique_targets_validate(const definition_library& library, const table& card_table, std::span<const technique_target_id> targets = {}) const;

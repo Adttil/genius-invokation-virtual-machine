@@ -2,7 +2,7 @@
 
 # givm::program_input_error_reason
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 using program_input_error_reason = std::variant<program_input_count_mismatch,

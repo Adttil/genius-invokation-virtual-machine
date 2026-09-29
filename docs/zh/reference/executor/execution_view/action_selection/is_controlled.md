@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::is_controlled
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 bool is_controlled(const definition_library& library, const table& card_table) const noexcept(/* Release 为 true，Debug 为 false */);

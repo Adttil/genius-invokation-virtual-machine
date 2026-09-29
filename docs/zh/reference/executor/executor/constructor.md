@@ -2,7 +2,7 @@
 
 # givm::executor::executor
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr executor() noexcept;                     // (1)

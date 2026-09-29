@@ -2,7 +2,7 @@
 
 # givm::handle_context::table
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/source.hpp>`
 
 ```cpp
 const givm::table& table() const noexcept;

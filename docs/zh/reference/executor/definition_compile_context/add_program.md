@@ -2,7 +2,7 @@
 
 # givm::definition_compile_context::add_program
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/source.hpp>`
 
 ```cpp
 program_entry add_program(std::span<const any_command> commands); // (1)
@@ -52,7 +52,9 @@ program_entry add_program(TCommands&&... commands); // (3)
 #include <string_view>
 #include <tuple>
 
-#include <givm/givm.hpp>
+#include <givm/basic_definitions.hpp>
+#include <givm/compile.hpp>
+#include <givm/source.hpp>
 
 struct support_source
 {

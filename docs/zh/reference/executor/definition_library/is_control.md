@@ -2,7 +2,7 @@
 
 # givm::definition_library::is_control
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 bool is_control(definition_id<attachment_view> id) const noexcept;

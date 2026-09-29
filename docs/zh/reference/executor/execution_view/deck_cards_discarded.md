@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::deck_cards_discarded>
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 template<>

@@ -14,14 +14,18 @@ target_link_libraries(your_target PRIVATE givm::givm)
 
 本库需要编译并链接，不能只复制头文件使用。使用方与 GIVM 必须保持 `NDEBUG` 定义一致；调试检查会影响部分公开类型的布局，不能混用调试与发布配置的二进制。
 
-完整的公开接口可以通过以下头文件引入：
+按使用场景选择公开聚合头：
 
-```cpp
-#include <givm/givm.hpp>
-```
+| 头文件 | 用途 |
+| --- | --- |
+| `<givm/source_library.hpp>` | 持有、登记、查询和合并定义源库，适合声明源库工厂的公共头 |
+| `<givm/source.hpp>` | 编写定义源，使用命令、事件、编译上下文及响应上下文 |
+| `<givm/compile.hpp>` | 将源库和对局流程编译为定义库，处理编译结果与诊断 |
+| `<givm/runtime.hpp>` | 使用编译后的定义库、牌桌、执行器和视图推进游戏 |
+| `<givm/givm.hpp>` | 全部公开能力及官方基础定义 |
 
-也可以单独引入 `givm/` 下的接口，例如 `<givm/definition.hpp>`、`<givm/table.hpp>` 和 `<givm/executor.hpp>`。
+`source_library.hpp` 提供完整的 `definition_source_library`。内容库的公共头包含它后，调用方链接相应库即可接收、复制、移动、合并和查询工厂返回的源库，无须额外包含定义源的实现。
 
-定义源库的公共接口头可以使用 `<givm/source_library.hpp>`。它提供完整的 `definition_source_library` 及其登记、合并、查询和 ID 映射能力，因此使用方只需包含定义源库的公共头并链接相应库，就能实际接收和使用返回的源库对象。`<givm/definition.hpp>` 继续提供这些接口及其余定义模块能力。
+只使用牌桌时仍可包含 `<givm/table.hpp>`。原有 `<givm/definition.hpp>`、`<givm/executor.hpp>` 保留完整模块接口。官方基础定义也可单独通过 `<givm/basic_definitions.hpp>` 引入。
 
 公开接口见[参考手册](docs/zh/reference.md)。设计取舍、历史方案和源码问题见[开发备忘](docs/zh/notes.md)。

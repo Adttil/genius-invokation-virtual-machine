@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::switch_target_count
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr std::size_t switch_target_count() const noexcept(/* Release 为 true，Debug 为 false */);

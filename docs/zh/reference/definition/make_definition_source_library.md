@@ -34,7 +34,7 @@ make_definition_source_library(const TSources&... sources);
 
 函数使用与 `add` 相同的去重、依赖和生命周期规则，不拥有源对象。源对象及其名称、标签等借用存储必须覆盖对应使用期。
 
-本函数接收定义源，用于创建库；合并已有源库使用 [`definition_source_library::add`](definition_source_library/add.md)。默认反应的 [`basic_definition_sources`](basic_definition_sources.md) 仍在准备 ID 映射和编译时单独提供。
+本函数接收定义源，用于创建库；合并已有源库使用 [`definition_source_library::add`](definition_source_library/add.md)。默认反应的 [`basic_definition_sources`](basic_definition_sources.md) 在编译时单独提供。
 
 ## 示例
 

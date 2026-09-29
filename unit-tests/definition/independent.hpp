@@ -1,6 +1,7 @@
 #include "../test_source_library.hpp"
 
 #include <givm/definition.hpp>
+#include <givm/executor.hpp>
 
 #include <algorithm>
 #include <concepts>
@@ -8,6 +9,7 @@
 #include <ranges>
 #include <string_view>
 #include <type_traits>
+#include <tuple>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -60,7 +62,7 @@ namespace
     }
 }
 
-TEST_CASE("program entries can be constructed without executor headers", "[definition][program]")
+TEST_CASE("program entries default to the null entry", "[definition][program]")
 {
     using entry_type = givm::program_entry;
     const entry_type entry{};
@@ -68,7 +70,7 @@ TEST_CASE("program entries can be constructed without executor headers", "[defin
     CHECK(entry.is_null());
 }
 
-TEST_CASE("query parameters and defaults are available without executor headers", "[definition][query]")
+TEST_CASE("query parameters expose their result types and defaults", "[definition][query]")
 {
     STATIC_REQUIRE(std::same_as<givm::character_initial_state::result_t, givm::character_state>);
     STATIC_REQUIRE(std::same_as<givm::card_initial_state::result_t, givm::card_state>);
@@ -79,7 +81,7 @@ TEST_CASE("query parameters and defaults are available without executor headers"
     CHECK(query_default(givm::card_initial_state{}).cost.speed == givm::action_speed::fast);
 }
 
-TEST_CASE("definition sources can be registered and enumerated without executor headers", "[definition][source_library]")
+TEST_CASE("definition sources can be registered and enumerated by category", "[definition][source_library]")
 {
     STATIC_REQUIRE(std::is_default_constructible_v<givm::definition_source_library>);
     const named_source<givm::card_definition> card{ "Card" };
@@ -105,11 +107,6 @@ TEST_CASE("definition sources can be registered and enumerated without executor 
     check_sources<givm::character_view>(sources, { "Character" });
     check_sources<givm::skill_view>(sources, { "Skill" });
     check_sources<givm::attachment_view>(sources, { "Attachment" });
-
-    const auto ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
-    CHECK(ids.has<givm::card_definition>("Another card"));
-    CHECK(ids.has<givm::character_view>("Character"));
-    CHECK(ids.has<givm::attachment_view>("Attachment"));
 }
 
 TEST_CASE("reaction definitions can be selected without changing the source collection", "[definition][source_library]")
@@ -124,7 +121,8 @@ TEST_CASE("reaction definitions can be selected without changing the source coll
 
     check_sources<givm::combat_status_view>(sources, {});
     check_sources<givm::summon_view>(sources, {});
-    const auto ids = givm_test::require_success(sources.make_issued_id_map(basics, givm::definition_selection{}));
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, givm::definition_selection{},
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(ids.has<givm::combat_status_view>(core.name()));
     CHECK(ids.has<givm::combat_status_view>(field.name()));
     CHECK(ids.has<givm::summon_view>(flame.name()));

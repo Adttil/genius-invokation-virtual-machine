@@ -2,7 +2,7 @@
 
 # givm::program_kind
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 enum class program_kind { initialization, round, response };

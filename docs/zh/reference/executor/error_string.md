@@ -2,7 +2,7 @@
 
 # givm::error_string
 
-定义于头文件 `<givm/executor.hpp>`
+编译诊断的重载可通过 `<givm/compile.hpp>` 引入，运行时诊断的重载可通过 `<givm/runtime.hpp>` 引入。`<givm/executor.hpp>` 保留全部重载。
 
 ```cpp
 inline std::string error_string(const compile_error& error);

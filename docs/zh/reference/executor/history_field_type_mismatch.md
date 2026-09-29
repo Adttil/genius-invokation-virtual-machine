@@ -2,7 +2,7 @@
 
 # givm::history_field_type_mismatch
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 struct history_field_type_mismatch;

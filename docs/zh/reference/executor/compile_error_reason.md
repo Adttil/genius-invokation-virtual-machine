@@ -2,7 +2,7 @@
 
 # givm::compile_error_reason
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 using compile_error_reason = std::variant</* 下表中的全部错误类型 */>;

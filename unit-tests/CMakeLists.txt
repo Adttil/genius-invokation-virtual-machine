@@ -4,6 +4,9 @@ add_executable(givm_unit_tests
     definition/source_library_provider.cpp
     definition/source_library_peer.cpp
     definition/source_library_client.cpp
+    definition/interface_layer_author.cpp
+    definition/interface_layer_compile.cpp
+    definition/interface_layer_client.cpp
 )
 target_link_libraries(
     givm_unit_tests

@@ -1,5 +1,17 @@
 # Genius Invokation Virtual Machine 参考
 
+## 公开头文件
+
+| 头文件 | 用途 |
+| --- | --- |
+| `<givm/source_library.hpp>` | 使用完整的[定义源库](reference/definition/definition_source_library.md)及源准备诊断 |
+| `<givm/source.hpp>` | 编写[定义源](reference/definition/source_protocol.md)，登记效果程序并响应事件 |
+| `<givm/compile.hpp>` | [编译](reference/executor/compile.md)源库与对局流程，处理编译结果和诊断 |
+| `<givm/runtime.hpp>` | 使用[定义库](reference/executor/definition_library.md)、牌桌、执行器与视图推进对局 |
+| `<givm/givm.hpp>` | 全部公开能力及官方基础定义 |
+
+这些入口可以按需组合。原有 `<givm/definition.hpp>`、`<givm/executor.hpp>` 保留完整模块接口；牌桌仍可单独通过 `<givm/table.hpp>` 使用。
+
 ## [枚举值](reference/enums.md)
 
 | | |
@@ -20,7 +32,6 @@
 | [`make_definition_source_library`](reference/definition/make_definition_source_library.md) | 创建源库并批量登记定义源 |
 | [`error_string`](reference/definition/error_string.md) | 将源库登记或合并诊断转换为文本 |
 | [`basic_definition_sources`](reference/definition/basic_definition_sources.md) | 默认元素反应的基础定义源配置 |
-| [`definition_source_library::make_issued_id_map`](reference/definition/definition_source_library/make_issued_id_map.md) | 为选定定义建立 ID 映射 |
 | [命令](reference/definition/commands.md) | 游戏规则的操作描述 |
 | [`any_command`](reference/definition/any_command.md) | 核心命令 variant |
 | [命令输入](reference/definition/command_inputs.md) | 响应提交的动态命令参数 |

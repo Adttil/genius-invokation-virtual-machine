@@ -2,7 +2,7 @@
 
 # has_technique
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 bool has_technique() const noexcept(/* Release 为 true，Debug 为 false */);

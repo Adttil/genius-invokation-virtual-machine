@@ -24,7 +24,7 @@ inline std::string error_string(start_round_error error); // (6)
 
 | | |
 | --- | --- |
-| `errors` | [`add`](definition_source_library/add.md)、[`make_definition_source_library`](make_definition_source_library.md)、[`make_issued_id_map`](definition_source_library/make_issued_id_map.md) 或 [`link_deck`](link_deck.md) 返回的诊断列表 |
+| `errors` | [`add`](definition_source_library/add.md)、[`make_definition_source_library`](make_definition_source_library.md) 或 [`link_deck`](link_deck.md) 返回的诊断列表，也可格式化从编译诊断中提取的源准备错误 |
 | `error` | [`compile`](../executor/compile.md) 诊断中一条命令的具体参数错误，与该命令的 `error_type` 别名为同一类型 |
 
 ## 返回值

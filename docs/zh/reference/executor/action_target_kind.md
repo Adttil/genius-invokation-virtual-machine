@@ -2,7 +2,7 @@
 
 # givm::action_target_kind
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 enum class action_target_kind : std::uint8_t

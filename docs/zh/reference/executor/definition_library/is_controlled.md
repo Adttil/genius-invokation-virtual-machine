@@ -2,7 +2,7 @@
 
 # givm::definition_library::is_controlled
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 bool is_controlled(character_view character) const noexcept;
@@ -30,6 +30,7 @@ bool is_controlled(character_view character) const noexcept;
 
 ```cpp
 #include <utility>
+#include <array>
 #include <cstdint>
 #include <print>
 #include <string_view>
@@ -50,9 +51,27 @@ struct character_source
     }
 };
 
+struct effect_source
+{
+    using definition_category = givm::card_definition;
+    std::string_view name() const { return "freeze"; }
+
+    givm::program_entry compile(givm::definition_compile_context& context) const
+    {
+        return context.add_program(givm::attach{ .definition = context.frozen_id() });
+    }
+
+    static givm::program_entry handle(const givm::program_entry& entry, const givm::deck_card_view&,
+        givm::battle_started&, givm::handle_context& context)
+    {
+        return context.invoke(entry);
+    }
+};
+
 int main()
 {
     character_source character{};
+    const effect_source effect{};
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
@@ -60,22 +79,12 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    if(not sources.add(character)) return 1;
-    auto issued_result = sources.make_issued_id_map(basics);
-    if(not issued_result)
-    {
-        std::println("{}", error_string(issued_result.error()));
-        return 1;
-    }
-    const auto issued = std::move(*issued_result);
-    const auto frozen = issued.get_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name());
+    if(not sources.add(character, effect)) return 1;
     const givm::character_id target{ givm::player_id{ 0 }, 0 };
     auto library_result = compile(sources, basics,
+        std::tuple{ givm::select_active_character_both{} },
         std::tuple{
-            givm::select_active_character_both{},
-            givm::attach{ .definition = frozen }
-        },
-        std::tuple{
+            givm::start_battle{},
             givm::start_dice_roll_phase{ .count = 1 },
             givm::start_round{},
             givm::end_game{ .result = givm::game_result::both_loss }
@@ -89,7 +98,7 @@ int main()
     givm::table table{ { .max_rounds = 2, .self_player = givm::player_id{ 0 } } };
     const auto definition = ids.get_id<givm::character_view>("character");
     load_deck(table, library,
-        givm::linked_deck{ .characters = { definition } },
+        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>("freeze") }, .characters = { definition } },
         givm::linked_deck{ .characters = { definition } });
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};

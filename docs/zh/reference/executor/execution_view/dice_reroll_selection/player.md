@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::dice_reroll_selection>::player
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr player_id player() const noexcept(/* Release 为 true，Debug 为 false */);

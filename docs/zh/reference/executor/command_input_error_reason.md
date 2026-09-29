@@ -2,7 +2,7 @@
 
 # givm::command_input_error_reason
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 using command_input_error_reason = std::variant<invalid_entity_argument,

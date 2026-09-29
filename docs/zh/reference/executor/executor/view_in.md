@@ -2,7 +2,7 @@
 
 # givm::executor::view_in
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 template<execution_state State>

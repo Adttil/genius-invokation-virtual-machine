@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::card_selection>::selection_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr bool selection_validate(

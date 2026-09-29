@@ -29,7 +29,7 @@ struct basic_definition_sources
 
 四个成员均须指定，可使用随库提供的[基础定义源](../basic_definitions.md)，也可使用相应类别的自定义源。各成员通过 [`definition_source_view`](definition_source_view.md) 借用源对象，不复制或拥有源对象。
 
-[`compile`](../executor/compile.md) 和 [`make_issued_id_map`](definition_source_library/make_issued_id_map.md) 显式接收本配置。即使只选择部分普通定义，四个基础定义及其依赖也始终保留。基础源不必预先登记到源库，准备映射或编译也不会将它们写回源库。它们声明的其他依赖须由源库或本配置中的其他源满足。
+[`compile`](../executor/compile.md) 显式接收本配置。即使只选择部分普通定义，四个基础定义及其依赖也始终保留。基础源不必预先登记到源库，编译也不会将它们写回源库。它们声明的其他依赖须由源库或本配置中的其他源满足。
 
 定义源编译时可通过 [`definition_compile_context`](../executor/definition_compile_context.md) 的 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()` 取得本次配置对应的 ID，无须声明或查询具体版本名称。编译后的 [`definition_library`](../executor/definition_library.md) 提供同名查询。
 

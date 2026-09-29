@@ -2,7 +2,7 @@
 
 # givm::initial_active_character_selection_validation
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 enum class initial_active_character_selection_validation : std::uint8_t

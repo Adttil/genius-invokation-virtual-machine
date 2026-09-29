@@ -89,15 +89,28 @@ namespace
         definition_type compile(givm::definition_compile_context&) const { return {}; }
     };
 
+    template<class TProgram>
     struct observer_source
     {
         using definition_category = givm::skill_view;
-        struct definition_type { prepared_log* log; givm::program_entry pause; };
+        struct definition_type { prepared_log* log; givm::program_entry pause; givm::program_entry initialization; };
         prepared_log* log;
+        TProgram program;
         std::string_view name() const { return "PreparedObserver"; }
+        auto attachment_dependencies() const
+        {
+            return std::array<std::string_view, 6>{ "FastPreparation", "CombatPreparation", "LaterPreparation",
+                "Immunity", "PlainAttachment", "frozen-3.3.0-genshin_impact" };
+        }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::replace_cards{ owner } }) };
+            return { log, context.add_program(std::tuple{ givm::replace_cards{ owner } }),
+                context.add_program(program(context)) };
+        }
+        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
+            givm::battle_started&, givm::handle_context& context)
+        {
+            return context.invoke(data.initialization);
         }
         static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
             givm::before_action&, givm::handle_context& context)
@@ -110,13 +123,13 @@ namespace
         {
             const auto removed = context.table()[event.attachment];
             const auto definition = (*data.log->library)[removed.definition_id()];
-            if(not definition.can_handle<givm::prepared_skill_effect, givm::attachment_view>()) return {};
+            if(not definition.template can_handle<givm::prepared_skill_effect, givm::attachment_view>()) return {};
             CHECK_FALSE(removed.is_valid());
             data.log->events.push_back("removed:" + std::string{ definition.name() });
             data.log->removed.push_back(event.attachment);
             std::size_t remaining = 0;
             for(const auto attachment : removed.character().attachments())
-                if((*data.log->library)[attachment.definition_id()].can_handle<givm::prepared_skill_effect, givm::attachment_view>())
+                if((*data.log->library)[attachment.definition_id()].template can_handle<givm::prepared_skill_effect, givm::attachment_view>())
                     ++remaining;
             data.log->remaining_at_removal.push_back(remaining);
             if(data.log->pause_removal)
@@ -214,7 +227,7 @@ namespace
     auto compile_scenario(prepared_log& log, bool observed, TProgram program,
         std::span<const givm::any_command> round = {})
     {
-        const observer_source observer{ &log };
+        const observer_source observer{ &log, program };
         const observer_character character;
         const givm::test::initialized_character_source ordinary{ "PlainCharacter", { .max_health = 20, .health = 20 } };
         const preparation_source fast{ &log, "FastPreparation", givm::action_speed::fast };
@@ -226,9 +239,9 @@ namespace
             givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
             givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
         givm::definition_source_library sources;
-        REQUIRE(sources.add(observer, character, ordinary, fast, combat, later, immunity, plain));
-        const auto ids = givm_test::require_success(sources.make_issued_id_map(basics));
-        return givm_test::require_success(compile(sources, basics, program(ids), round,
+        REQUIRE(sources.add(observer, character, ordinary, fast, combat, later, immunity, plain,
+            givm::genshin_impact::frozen_3_3_0));
+        return givm_test::require_success(compile(sources, basics, std::tuple{ givm::start_battle{} }, round,
             observed ? givm::compile_mode::observed : givm::compile_mode::normal));
     }
 
@@ -237,7 +250,7 @@ namespace
         log.library = &library;
         givm::dice_counts dice;
         dice[givm::elemental_dice::omni] = 2;
-        givm::table table{ { .self_player = owner },
+        givm::table table{ { .round_number = 1, .self_player = owner },
             { .dice = dice, .active_character = actor, .can_plunge = true },
             { .active_character = target } };
         const auto ordinary = ids.get_id<givm::character_view>("PlainCharacter");
@@ -247,9 +260,9 @@ namespace
         return table;
     }
 
-    givm::add_attachment add(const givm::issued_id_map& ids, std::string_view name, std::uint32_t count = 1)
+    givm::add_attachment add(givm::definition_compile_context& context, std::string_view name, std::uint32_t count = 1)
     {
-        return { .definition = ids.get_id<givm::attachment_view>(name), .state = { count } };
+        return { .definition = context.resolve_id<givm::attachment_view>(name), .state = { count } };
     }
 
     struct zero_random { std::uint32_t operator()() const { return 0; } };
@@ -282,10 +295,10 @@ TEST_CASE("prepared attachments consume consecutive action opportunities in orde
 {
     const bool observed = GENERATE(false, true);
     prepared_log log;
-    const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
+    const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
-        return std::tuple{ add(ids, "FastPreparation", 1), add(ids, "CombatPreparation", 2),
-            add(ids, "LaterPreparation", 3), givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } };
+        return std::tuple{ add(context, "FastPreparation", 1), add(context, "CombatPreparation", 2),
+            add(context, "LaterPreparation", 3), givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
     givm_test::executor_driver executor;
@@ -315,9 +328,9 @@ TEST_CASE("control preserves a prepared attachment through declarations until th
     prepared_log log;
     const std::array<givm::any_command, 3> round{ givm::start_round{}, givm::begin_action{},
         givm::end_game{ givm::game_result::both_loss } };
-    const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
+    const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
-        return std::tuple{ add(ids, "CombatPreparation", 2), add(ids, "frozen-3.3.0-genshin_impact"),
+        return std::tuple{ add(context, "CombatPreparation", 2), add(context, "frozen-3.3.0-genshin_impact"),
             givm::begin_action{}, givm::end_round{} };
     }, round);
     auto table = make_table(log, library, ids);
@@ -333,7 +346,7 @@ TEST_CASE("control preserves a prepared attachment through declarations until th
     CHECK(std::ranges::distance(table[actor].attachments()) == 2);
     executor.submitted(executor.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, givm_test::zero_random));
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
-    CHECK(table.state().round_number == 1);
+    CHECK(table.state().round_number == 2);
     CHECK_FALSE(library.is_controlled(table[actor]));
     CHECK(table.state().active_player == opponent);
     CHECK(log.effects.size() == 1);
@@ -352,13 +365,13 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
     const std::array damage{ givm::fixed_damage{
         .source = { givm::relative_player::opponent, 0 }, .target = { givm::relative_player::self, 0 },
         .value = 1, .type = givm::damage_type::pyro } };
-    const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
+    const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
-        std::vector<givm::any_command> commands{ add(ids, "CombatPreparation"), add(ids, "LaterPreparation"),
-            add(ids, "PlainAttachment") };
+        std::vector<givm::any_command> commands{ add(context, "CombatPreparation"), add(context, "LaterPreparation"),
+            add(context, "PlainAttachment") };
         if(choice == scenario::voluntary)
         {
-            commands.emplace_back(add(ids, "frozen-3.3.0-genshin_impact"));
+            commands.emplace_back(add(context, "frozen-3.3.0-genshin_impact"));
             commands.emplace_back(givm::begin_action{});
         }
         else if(choice == scenario::overloaded)
@@ -369,7 +382,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
         }
         else
         {
-            if(choice == scenario::immune) commands.emplace_back(add(ids, "Immunity"));
+            if(choice == scenario::immune) commands.emplace_back(add(context, "Immunity"));
             commands.emplace_back(givm::set_active_character{
                 givm::relative_character_target{ givm::relative_player::self, choice == scenario::unchanged ? 0 : 1 } });
         }
@@ -405,9 +418,9 @@ TEST_CASE("prepared effects resume after a removal response and copying the susp
 {
     const bool observed = GENERATE(false, true);
     prepared_log log{ .pause_removal = true };
-    const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
+    const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
-        return std::tuple{ add(ids, "CombatPreparation", 2), givm::begin_action{},
+        return std::tuple{ add(context, "CombatPreparation", 2), givm::begin_action{},
             givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
@@ -439,10 +452,10 @@ TEST_CASE("switch cancellation resumes remaining removal notifications independe
 {
     const bool observed = GENERATE(false, true);
     prepared_log log{ .pause_removal = true };
-    const auto [library, ids] = compile_scenario(log, observed, [&](const givm::issued_id_map& ids)
+    const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
-        return std::tuple{ add(ids, "CombatPreparation"), add(ids, "LaterPreparation"),
-            add(ids, "PlainAttachment"),
+        return std::tuple{ add(context, "CombatPreparation"), add(context, "LaterPreparation"),
+            add(context, "PlainAttachment"),
             givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
             givm::end_game{ givm::game_result::both_loss } };
     });

@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::initial_active_character_selection>::selection_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr initial_active_character_selection_validation selection_validate(

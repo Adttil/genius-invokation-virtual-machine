@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::card_id
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr hand_card_id card_id(std::size_t card_index) const noexcept(/* Release 为 true，Debug 为 false */);

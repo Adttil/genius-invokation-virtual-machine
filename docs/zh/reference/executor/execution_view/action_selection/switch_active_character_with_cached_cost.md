@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::switch_active_character_with_cached_cost
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 template<class TRandom>

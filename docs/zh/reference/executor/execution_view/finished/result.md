@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::finished>::result
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr game_result result() const noexcept(/* Release 为 true，Debug 为 false */);

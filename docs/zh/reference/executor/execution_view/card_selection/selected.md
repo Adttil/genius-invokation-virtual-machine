@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::card_selection>::selected
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr std::bitset<selection_capacity> selected() const noexcept(/* Release 为 true，Debug 为 false */);

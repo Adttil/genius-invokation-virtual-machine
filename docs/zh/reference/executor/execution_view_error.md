@@ -2,7 +2,7 @@
 
 # givm::execution_view_error
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 class execution_view_error : public std::exception;

@@ -2,7 +2,7 @@
 
 # givm::definition_library::tag_count
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 std::size_t tag_count() const noexcept;

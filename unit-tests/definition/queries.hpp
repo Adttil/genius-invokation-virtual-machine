@@ -13,6 +13,7 @@
 #include <givm/executor.hpp>
 
 #include "../table/test_definition_library.hpp"
+#include "../executor/test_character_source.hpp"
 
 namespace givm_test::definition::queries
 {
@@ -345,18 +346,26 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
     const queried_card_source second{ "TunableCard", &counts, 3, 0 };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second));
-    const auto prepared_ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
-    const auto first_id = prepared_ids.get_id<givm::card_definition>(first.name());
-    const auto second_id = prepared_ids.get_id<givm::card_definition>(second.name());
+    const std::array card_names{ first.name(), second.name() };
+    const givm::test::initialization_skill_source initialization{
+        [](givm::definition_compile_context& context)
+        {
+            return std::tuple{
+                givm::insert_deck_card{ .player = givm::player_id{ 0 },
+                    .definition = context.resolve_id<givm::card_definition>("UntunableCard") },
+                givm::insert_deck_card{ .player = givm::player_id{ 1 },
+                    .definition = context.resolve_id<givm::card_definition>("TunableCard") } };
+        }, card_names };
+    const givm::test::initialization_character_source character;
+    REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
-        givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = first_id },
-        givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = second_id },
+        givm::start_battle{},
         givm::draw_cards{ .positions = draw_positions_1 },
         givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 },
         givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::normal));
-    REQUIRE(ids.get_id<givm::card_definition>(first.name()) == first_id);
-    REQUIRE(ids.get_id<givm::card_definition>(second.name()) == second_id);
+    const auto first_id = ids.get_id<givm::card_definition>(first.name());
+    const auto second_id = ids.get_id<givm::card_definition>(second.name());
     REQUIRE(counts.initial_cost == 2);
 
     const auto check_state = [&](const auto card)
@@ -366,8 +375,9 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
         CHECK(card.state().cost.speed == givm::action_speed::fast);
         CHECK(card.state().elemental_tuning_allowed == not is_first);
     };
-    givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    load_deck(table, library, { .cards = { first_id, second_id } }, { .cards = { second_id, first_id } });
+    givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } } };
+    load_deck(table, library, { .cards = { first_id, second_id },
+        .characters = { ids.get_id<givm::character_view>(character.name()) } }, { .cards = { second_id, first_id } });
     for(const auto player : table.players())
     {
         REQUIRE(player.deck_card_count() == 2);

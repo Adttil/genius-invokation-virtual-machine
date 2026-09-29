@@ -9,6 +9,7 @@
 #include <givm/executor.hpp>
 
 #include "../../test_source_library.hpp"
+#include "../test_character_source.hpp"
 
 namespace givm_test::executor_instructions::remove_dice
 {
@@ -146,13 +147,21 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
     const removed_dice_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared_ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+    const std::array support_names{ source.name() };
+    const givm::test::initialization_skill_source initialization{
+        [](givm::definition_compile_context& context)
+        {
+            return std::tuple{ givm::add_support{ .player = givm::relative_player::self,
+                .definition = context.resolve_id<givm::support_view>("RemovedDice") } };
+        }, {}, support_names };
+    const givm::test::initialization_character_source character;
+    REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::add_support{ .player = givm::relative_player::self,
-            .definition = prepared_ids.get_id<givm::support_view>("RemovedDice") },
-            givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, mode));
-    givm::table table{ { .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
+        std::tuple{ givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, mode));
+    givm::table table{ { .round_number = 1, .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = log.expected[0] }, { .dice = log.expected[1] } };
+    load_deck(table, library, {}, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
@@ -190,16 +199,25 @@ TEST_CASE("successive end-round collectors choose dice from the updated pool", "
     const collector_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared_ids = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
-    const givm::add_support add{ .player = givm::relative_player::self,
-        .definition = prepared_ids.get_id<givm::support_view>("DiceCollector"), .state = {} };
+    const std::array support_names{ source.name() };
+    const givm::test::initialization_skill_source initialization{
+        [](givm::definition_compile_context& context)
+        {
+            const givm::add_support add{ .player = givm::relative_player::self,
+                .definition = context.resolve_id<givm::support_view>("DiceCollector"), .state = {} };
+            return std::tuple{ add, add };
+        }, {}, support_names };
+    const givm::test::initialization_character_source character;
+    REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ add, add, givm::end_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, mode));
+        std::tuple{ givm::start_battle{}, givm::end_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, mode));
     givm::dice_counts initial;
     initial[givm::elemental_dice::hydro] = 1;
     initial[givm::elemental_dice::pyro] = 1;
     initial[givm::elemental_dice::geo] = 2;
-    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .dice = initial }, {} };
+    givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } }, { .dice = initial }, {} };
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };

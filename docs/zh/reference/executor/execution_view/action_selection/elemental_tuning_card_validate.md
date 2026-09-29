@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::elemental_tuning_card_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr bool elemental_tuning_card_validate(const table& card_table, std::size_t card_index) const noexcept(/* Release 为 true，Debug 为 false */);

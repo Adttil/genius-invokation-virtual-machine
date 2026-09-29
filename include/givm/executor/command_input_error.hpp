@@ -12,7 +12,7 @@
 #include <utility>
 #include <variant>
 
-#include "../definition.hpp"
+#include "../definition_common.hpp"
 #include "../table.hpp"
 #include "../enums/equipment_type.hpp"
 

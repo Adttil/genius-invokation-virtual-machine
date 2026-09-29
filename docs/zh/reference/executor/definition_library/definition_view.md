@@ -2,7 +2,7 @@
 
 # givm::definition_library::definition_view
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 template<class TDefinitionType>

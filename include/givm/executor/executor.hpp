@@ -10,7 +10,7 @@
 #include "random_fn.hpp"
 #include "execution_state.hpp"
 #include "execution_view_error.hpp"
-#include "../definition.hpp"
+#include "../definition_common.hpp"
 #include "library.hpp"
 #include "handle_context.hpp"
 #include "../table.hpp"

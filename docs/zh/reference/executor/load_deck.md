@@ -2,7 +2,7 @@
 
 # givm::load_deck
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 void load_deck(table& table, const definition_library& library, const linked_deck& deck1, const linked_deck& deck2);

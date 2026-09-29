@@ -2,7 +2,7 @@
 
 # givm::definition_library::dendro_core_id
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 definition_id<combat_status_view> dendro_core_id() const noexcept;

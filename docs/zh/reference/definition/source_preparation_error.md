@@ -23,5 +23,5 @@ using source_preparation_error = std::variant<
 
 | | |
 | --- | --- |
-| [`make_issued_id_map`](definition_source_library/make_issued_id_map.md) | 准备本次定义 ID |
+| [`compile`](../executor/compile.md) | 编译定义与对局流程并报告准备错误 |
 | [`error_string`](error_string.md) | 格式化源准备诊断 |

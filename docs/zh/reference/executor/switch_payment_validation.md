@@ -2,7 +2,7 @@
 
 # givm::switch_payment_validation
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 enum class switch_payment_validation : std::uint8_t

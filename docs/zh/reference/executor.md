@@ -4,6 +4,8 @@
 
 将定义源与游戏流程编译为对局规则，推进一场对局，并在需要输入、观察结果或结束对局时把控制权交回调用方。
 
+整库编译使用 `<givm/compile.hpp>`；编写定义源中的编译与响应函数使用 `<givm/source.hpp>`；使用已有定义库推进游戏则使用 `<givm/runtime.hpp>`。原有 `<givm/executor.hpp>` 继续提供完整执行模块接口。
+
 ## 类
 
 ### 编译与定义库
@@ -48,6 +50,7 @@
 | | |
 | --- | --- |
 | [`compile_error_reason`](executor/compile_error_reason.md) | 全部具体编译错误的 variant |
+| [`definition_selection`](executor/definition_selection.md) | 按类别指定的定义名称集合 |
 | [`program_input_error_reason`](executor/program_input_error_reason.md) | 程序提交协议错误的 variant |
 | [`command_input_error_reason`](executor/command_input_error_reason.md) | 命令执行前提错误的 variant |
 | [`command_entity_id`](executor/command_input_error_reason.md#command_entity_id) | 命令诊断中的实体 ID variant |

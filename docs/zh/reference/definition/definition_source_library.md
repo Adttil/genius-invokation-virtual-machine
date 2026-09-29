@@ -25,7 +25,6 @@ class definition_source_library;
 | [`has`](definition_source_library/has.md) | 检查定义源是否存在 |
 | [`get`](definition_source_library/get.md) | 按名称查看定义源 |
 | [`source_views`](definition_source_library/source_views.md) | 遍历指定类别的全部定义源 |
-| [`make_issued_id_map`](definition_source_library/make_issued_id_map.md) | 为选定定义建立 ID 映射 |
 
 ## 非成员函数
 
@@ -103,4 +102,4 @@ int main()
 |  |  |
 | --- | --- |
 | [定义源协议](source_protocol.md) | 卡牌与角色定义源的编写协议 |
-| [`definition_selection`](definition_selection.md) | 按类别指定的定义名称集合 |
+| [`definition_selection`](../executor/definition_selection.md) | 按类别指定的定义名称集合 |

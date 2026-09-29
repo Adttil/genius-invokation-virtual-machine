@@ -2,7 +2,7 @@
 
 # givm::definition_metadata_error
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 struct definition_metadata_error;

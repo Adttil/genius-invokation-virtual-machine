@@ -6,7 +6,8 @@
 #include <variant>
 #include <vector>
 
-#include "../definition.hpp"
+#include "../definition_common.hpp"
+#include "history_access_error.hpp"
 
 namespace givm
 {
@@ -27,13 +28,6 @@ namespace givm
         enum class reason { undeclared_dependency, not_found };
         definition_name definition;
         reason cause;
-    };
-
-    struct definition_metadata_error
-    {
-        std::size_t category_index;
-        std::size_t value;
-        std::size_t count;
     };
 
     struct history_field_empty_name { std::size_t field_index; };
@@ -65,14 +59,6 @@ namespace givm
         std::string field;
         reason cause;
     };
-    struct history_field_not_found { std::string summary; std::string field; };
-    struct history_field_type_mismatch
-    {
-        std::string summary;
-        std::string field;
-        std::string expected_type;
-        std::string actual_type;
-    };
 
     namespace detail
     {
@@ -83,16 +69,6 @@ namespace givm
             definition_resolution_error, definition_metadata_error, history_field_empty_name, history_field_duplicate_name,
             history_field_layout_overflow, history_storage_layout_overflow, history_field_access_error,
             history_field_not_found, history_field_type_mismatch>;
-
-        template<class T>
-        inline std::string history_type_name()
-        {
-            constexpr std::string_view names[]{ "bool", "int8_t", "uint8_t", "int16_t", "uint16_t",
-                "int32_t", "uint32_t", "int64_t", "uint64_t", "float", "double" };
-            auto result = std::string{ names[history_value_types::index_of<std::remove_extent_t<T>>()] };
-            if constexpr(std::is_unbounded_array_v<T>) result += "[]";
-            return result;
-        }
     }
 
     using compile_error_reason = type_list_cat<detail::common_compile_error_types, detail::command_error_types>::apply<std::variant>;
@@ -106,11 +82,6 @@ namespace givm
     {
         return std::string{ error.cause == definition_resolution_error::reason::undeclared_dependency
             ? "undeclared dependency: " : "definition not found: " } + detail::source_definition_name_text(error.definition);
-    }
-    inline std::string error_string(const definition_metadata_error& error)
-    {
-        return "definition metadata ID out of range: category[" + std::to_string(error.category_index)
-            + "], value=" + std::to_string(error.value) + ", definition_count=" + std::to_string(error.count);
     }
     inline std::string error_string(const history_field_empty_name& error)
     {
@@ -137,16 +108,6 @@ namespace givm
         return std::string{ error.cause == history_field_access_error::reason::layouts_unavailable
             ? "history layouts unavailable: " : "no current history summary: " } + error.summary + "." + error.field;
     }
-    inline std::string error_string(const history_field_not_found& error)
-    {
-        return "history field not found: " + error.summary + "." + error.field;
-    }
-    inline std::string error_string(const history_field_type_mismatch& error)
-    {
-        return "history field type mismatch: " + error.summary + "." + error.field
-            + ", expected " + error.expected_type + ", actual " + error.actual_type;
-    }
-
     inline std::string error_string(const compile_error& error)
     {
         constexpr std::string_view stages[]{ "source selection", "history layout", "definition compilation", "program compilation" };

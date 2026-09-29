@@ -2,7 +2,7 @@
 
 # givm::compile_location
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 struct compile_location;

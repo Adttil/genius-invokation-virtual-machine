@@ -2,7 +2,7 @@
 
 # givm::definition_library::tag_name
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 std::string_view tag_name(tag_id id) const;

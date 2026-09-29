@@ -126,12 +126,6 @@ namespace
                 return state;
         }
     }
-
-    auto round_program(givm::definition_id<givm::support_view> definition)
-    {
-        return std::tuple{ givm::add_support{ .player = givm::relative_player::self, .definition = definition },
-            givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
-    }
 }
 
 TEST_CASE("single-player rerolls preserve partial choices and prefetched randomness across copies", "[reroll_dice]")
@@ -142,11 +136,21 @@ TEST_CASE("single-player rerolls preserve partial choices and prefetched randomn
     const reroll_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+    const std::array support_names{ source.name() };
+    const givm::test::initialization_skill_source initialization{
+        [](givm::definition_compile_context& context)
+        {
+            return std::tuple{ givm::add_support{ .player = givm::relative_player::self,
+                .definition = context.resolve_id<givm::support_view>("RerollObserver") } };
+        }, {}, support_names };
+    const givm::test::initialization_character_source character;
+    REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode));
-    givm::table table{ { .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
+        std::tuple{ givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, mode));
+    givm::table table{ { .round_number = 1, .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = initial_dice() }, { .dice = initial_dice() } };
+    load_deck(table, library, {}, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     reroll_random random;
@@ -205,11 +209,21 @@ TEST_CASE("single-player rerolls skip empty pools and zero counts and can stop w
     const reroll_source source{ &log };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source));
-    const auto prepared = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
+    const std::array support_names{ source.name() };
+    const givm::test::initialization_skill_source initialization{
+        [](givm::definition_compile_context& context)
+        {
+            return std::tuple{ givm::add_support{ .player = givm::relative_player::self,
+                .definition = context.resolve_id<givm::support_view>("RerollObserver") } };
+        }, {}, support_names };
+    const givm::test::initialization_character_source character;
+    REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        round_program(prepared.get_id<givm::support_view>(source.name())), std::tuple{}, mode));
+        std::tuple{ givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, mode));
     const auto initial = scenario == 1 ? givm::dice_counts{} : initial_dice();
-    givm::table table{ { .self_player = givm::player_id{ 1 } }, { .dice = initial_dice() }, { .dice = initial } };
+    givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 1 } }, { .dice = initial_dice() }, { .dice = initial } };
+    load_deck(table, library, {}, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     reroll_random random;
@@ -237,17 +251,26 @@ TEST_CASE("a played card finishes both rerolls before the card-played notificati
     REQUIRE(sources.add(observer));
     REQUIRE(sources.add(card));
     REQUIRE(sources.add(character));
-    const auto prepared = givm_test::require_success(sources.make_issued_id_map(givm_test::basic_sources));
-    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
-        givm::add_support{ .player = givm::relative_player::self,
-            .definition = prepared.get_id<givm::support_view>(observer.name()) },
-        givm::create_hand_card{ .player = givm::relative_player::self,
-            .definition = prepared.get_id<givm::card_definition>(card.name()) }, givm::begin_action{} }, std::tuple{}, mode));
-    givm::table table{ { .self_player = givm::player_id{ 0 } },
+    const std::array card_names{ card.name() };
+    const std::array support_names{ observer.name() };
+    const givm::test::initialization_skill_source initialization{
+        [](givm::definition_compile_context& context)
+        {
+            return std::tuple{
+                givm::add_support{ .player = givm::relative_player::self,
+                    .definition = context.resolve_id<givm::support_view>("RerollObserver") },
+                givm::create_hand_card{ .player = givm::relative_player::self,
+                    .definition = context.resolve_id<givm::card_definition>("RerollCard") } };
+        }, card_names, support_names };
+    const givm::test::initialization_character_source driver;
+    REQUIRE(sources.add(initialization, driver));
+    const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
+        std::tuple{ givm::start_battle{}, givm::begin_action{} }, std::tuple{}, mode));
+    givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .dice = initial_dice(), .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .dice = initial_dice(), .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     const givm::linked_deck deck{ .characters = { ids.get_id<givm::character_view>(character.name()) } };
-    load_deck(table, library, deck, deck);
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(driver.name()) } }, deck);
     givm_test::executor_driver executor;
     executor.start(library, table);
     reroll_random random;

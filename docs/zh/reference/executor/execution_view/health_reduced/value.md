@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::health_reduced>::value
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 std::uint32_t value() const noexcept(/* Release 为 true，Debug 为 false */);

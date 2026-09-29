@@ -2,7 +2,7 @@
 
 # givm::definition_library::has_any_tag
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 template<class TDefinitionType>

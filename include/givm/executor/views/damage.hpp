@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "../executor.hpp"
-#include "../../definition.hpp"
+#include "../../definition_common.hpp"
 
 namespace givm
 {

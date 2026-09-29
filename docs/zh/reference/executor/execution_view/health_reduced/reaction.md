@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::health_reduced>::reaction
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 elemental_reaction reaction() const noexcept(/* Release 为 true，Debug 为 false */);

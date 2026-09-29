@@ -2,7 +2,7 @@
 
 # givm::definition_library::definition_view::has_tag
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 bool has_tag(tag_id tag) const;

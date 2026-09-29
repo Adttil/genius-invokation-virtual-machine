@@ -31,6 +31,7 @@ using definition_types = type_list<
 #include <array>
 #include <print>
 #include <string_view>
+#include <tuple>
 
 #include <givm/givm.hpp>
 
@@ -59,13 +60,15 @@ int main()
     const std::array<std::string_view, 1> names{ "恢复药剂" };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = names;
-    auto ids_result = sources.make_issued_id_map(basics, selection);
-    if(not ids_result)
+    auto library_result = compile(sources, basics, selection, std::tuple{},
+        std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } },
+        givm::compile_mode::normal);
+    if(not library_result)
     {
-        std::println("{}", error_string(ids_result.error()));
+        std::println("{}", error_string(library_result.error()));
         return 1;
     }
-    const auto ids = std::move(*ids_result);
+    const auto [library, ids] = std::move(*library_result);
     std::println("包含恢复药剂: {}", ids.has<givm::card_definition>("恢复药剂"));
     std::println("包含恢复料理: {}", ids.has<givm::card_definition>("恢复料理"));
 }

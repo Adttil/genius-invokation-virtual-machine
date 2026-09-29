@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::dice_reroll_selection>::selection_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr bool selection_validate(const table& card_table, const dice_counts& selected) const noexcept(/* Release 为 true，Debug 为 false */);

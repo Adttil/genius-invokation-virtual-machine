@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::skill_payment_validate
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr skill_payment_validation skill_payment_validate(

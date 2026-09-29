@@ -2,7 +2,7 @@
 
 # givm::definition_library::definition_view::handle
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 template<class TEvent, class TView>

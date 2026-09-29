@@ -2,7 +2,7 @@
 
 # givm::definition_library::is_control_immune
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 bool is_control_immune(character_view character) const noexcept;

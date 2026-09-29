@@ -2,7 +2,7 @@
 
 # 视图输入错误原因
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 [`view_input_error<Reason>`](view_input_error.md) 保留每种操作的具体错误类型；本页列出新增的结构化原因，不把它们合并为通用枚举或 variant。
 

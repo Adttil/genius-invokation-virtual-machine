@@ -2,7 +2,7 @@
 
 # givm::history_storage_layout_overflow
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 struct history_storage_layout_overflow;

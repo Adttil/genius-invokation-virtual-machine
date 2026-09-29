@@ -2,7 +2,7 @@
 
 # givm::definition_compile_context::definitions
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/source.hpp>`
 
 ```cpp
 template<class TCategory>

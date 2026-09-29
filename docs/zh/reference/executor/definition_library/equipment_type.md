@@ -2,7 +2,7 @@
 
 # givm::definition_library::equipment_type
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 givm::equipment_type equipment_type(definition_id<attachment_view> id) const noexcept;

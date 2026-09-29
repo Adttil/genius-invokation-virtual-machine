@@ -55,11 +55,12 @@ struct enter_character_error;
 ## 示例
 
 ```cpp
-#include <utility>
+#include <array>
 #include <cstdint>
 #include <print>
 #include <string_view>
 #include <tuple>
+#include <utility>
 
 #include <givm/givm.hpp>
 
@@ -76,9 +77,31 @@ struct character_source
     }
 };
 
+struct effect_source
+{
+    using definition_category = givm::card_definition;
+    std::string_view name() const { return "effect"; }
+    auto character_dependencies() const
+    { return std::array<std::string_view, 1>{ "character" }; }
+
+    givm::program_entry compile(givm::definition_compile_context& context) const
+    {
+        const auto definition = context.resolve_id<givm::character_view>("character");
+        return context.add_program(
+            givm::enter_character{ .player = givm::player_id{ 0 }, .definition = definition });
+    }
+
+    static givm::program_entry handle(const givm::program_entry& entry, const givm::deck_card_view&,
+        givm::round_started&, givm::handle_context& context)
+    {
+        return context.invoke(entry);
+    }
+};
+
 int main()
 {
-    character_source source{};
+    const character_source source{};
+    const effect_source effect{};
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
@@ -86,28 +109,24 @@ int main()
         givm::genshin_impact::frozen_3_3_0
     };
     givm::definition_source_library sources{};
-    if(not sources.add(source)) return 1;
-    auto issued_result = sources.make_issued_id_map(basics);
-    if(not issued_result)
-    {
-        std::println("{}", error_string(issued_result.error()));
-        return 1;
-    }
-    const auto issued = std::move(*issued_result);
-    const auto definition = issued.get_id<givm::character_view>("character");
-    auto library_result = compile(
-        sources, basics,
-        std::tuple{ givm::enter_character{ .player = givm::player_id{ 0 }, .definition = definition } },
-        std::tuple{}, givm::compile_mode::normal);
+    if(not sources.add(source, effect)) return 1;
+    auto library_result = compile(sources, basics, std::tuple{},
+        std::tuple{
+            givm::start_round{},
+            givm::end_game{ .result = givm::game_result::both_loss }
+        }, givm::compile_mode::normal);
     if(not library_result)
     {
         std::println("{}", error_string(library_result.error()));
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    givm::table table{ { .max_rounds = 0 } };
-    auto random = []() -> std::uint32_t { return 0; };
+    givm::table table{};
+    load_deck(table, library,
+        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>("effect") } },
+        givm::linked_deck{});
     givm::executor execution{};
+    auto random = []() -> std::uint32_t { return 0; };
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     const auto character = table[givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }];

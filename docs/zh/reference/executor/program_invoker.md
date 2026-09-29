@@ -2,7 +2,7 @@
 
 # givm::program_invoker
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/source.hpp>`
 
 ```cpp
 class program_invoker;

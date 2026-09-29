@@ -8,9 +8,9 @@
 
 可通过 [`make_definition_source_library`](make_definition_source_library.md) 创建库并一次登记多个源，也可向空库或已有库调用 [`add`](definition_source_library/add.md)。两者都通过 `expected` 返回登记结果；失败时可以读取结构化诊断，或使用 [`error_string`](error_string.md) 输出文本。
 
-源库的完整接口可通过 `<givm/source_library.hpp>` 引入。这个入口保留具体定义源的登记方式；源的编译函数若需要调用编译上下文成员，仍需相应的执行模块接口。
+源库的完整接口可通过 `<givm/source_library.hpp>` 引入。编写具体定义源时使用 `<givm/source.hpp>`，其中包含源库、命令、事件、查询以及完整的编译与响应上下文。
 
-最终编译由执行模块的 [`givm::compile`](../executor/compile.md) 完成。[`program_entry`](program_entry.md) 由定义模块提供，定义源协议使用的 [`definition_compile_context`](../executor/definition_compile_context.md) 在执行模块中完整定义；编写需要调用编译上下文的定义源时可包含 `<givm/givm.hpp>`，取得这些类型、公开命令和事件。
+最终编译由 `<givm/compile.hpp>` 提供的 [`givm::compile`](../executor/compile.md) 完成。[`program_entry`](program_entry.md) 表示效果入口，定义源通过 [`definition_compile_context`](../executor/definition_compile_context.md) 登记效果，通过 [`handle_context`](../executor/handle_context.md) 响应事件。需要同时编译和运行完整对局时，也可使用 `<givm/givm.hpp>`。
 
 ## 必需成员
 
@@ -51,7 +51,7 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 
 附属的 `control` 标签表示控制状态，例如冻结、石化、眩晕或水泡；`control_immunity` 表示阻止施加控制附属及效果引发的切人。控制查询检查当前仍在场的附属，移除其中一个不会解除其他实体提供的控制。免控不解除已经存在的控制，也不妨碍玩家在行动选择时主动切换。具体入口见 [`is_controlled`](../executor/definition_library/is_controlled.md)、[`is_control_immune`](../executor/definition_library/is_control_immune.md) 与 [`attach`](commands/attach.md)。标签只声明分类；到期移除等行为仍由定义响应实现。
 
-当调用方只选择部分定义时，[`definition_source_library::make_issued_id_map`](definition_source_library/make_issued_id_map.md) 和 [`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接按名称依赖的所有定义。例如卡牌声明生成的召唤物为名称依赖后，选择该卡牌即可带入相应召唤物；单纯按标签查询不会带入未选择的定义。
+当调用方只选择部分定义时，[`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接按名称依赖的所有定义。例如卡牌声明生成的召唤物为名称依赖后，选择该卡牌即可带入相应召唤物；单纯按标签查询不会带入未选择的定义。
 
 需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`，不需要声明具体版本的名称依赖。普通定义的硬依赖仍须声明名称；仅查找或筛选本次集合不需要声明。源库默认构造为空集合，普通 [`add`](definition_source_library/add.md) 验证名称冲突及普通名称依赖，并聚合返回结构化诊断；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
 
@@ -155,7 +155,9 @@ bool can_query() const;
 #include <string_view>
 #include <tuple>
 
-#include <givm/givm.hpp>
+#include <givm/basic_definitions.hpp>
+#include <givm/compile.hpp>
+#include <givm/source.hpp>
 
 struct passive_skill_source
 {

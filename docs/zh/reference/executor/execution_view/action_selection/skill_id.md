@@ -2,7 +2,7 @@
 
 # givm::execution_view<execution_state::action_selection>::skill_id
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 constexpr givm::skill_id skill_id(std::size_t skill_index) const noexcept(/* Release 为 true，Debug 为 false */);

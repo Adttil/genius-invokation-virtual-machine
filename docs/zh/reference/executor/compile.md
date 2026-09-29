@@ -2,7 +2,7 @@
 
 # givm::compile
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/compile.hpp>`
 
 ```cpp
 std::expected<definition_compile_result, std::vector<compile_error>> compile(
@@ -99,7 +99,7 @@ auto compile(
 
 ## 注意
 
-基础定义不必事先登记到 `sources`，它们及其依赖参与本次编译的选择与 ID 分配。需要在编译前取得 ID 时，调用 [`sources.make_issued_id_map(basics, ...)`](../definition/definition_source_library/make_issued_id_map.md)，并与本次编译使用相同的源库内容、基础定义配置及选择范围。
+基础定义不必事先登记到 `sources`，它们及其依赖参与本次编译的选择与 ID 分配。定义源在 `compile(context)` 中通过 [`resolve_id`](definition_compile_context/resolve_id.md) 解析依赖，构造引用其他定义的响应程序；编译成功后，上层使用结果中的 `id_map` 链接牌组等输入。
 
 两段流程只能使用[核心给定的命令](../definition/commands.md)，也可用 [`any_command`](../definition/any_command.md) 保存。两段流程中的命令均不得消费响应输入；支持两种方式的命令必须提供固定参数。此限制在所有构建模式下检查，错误通过返回值报告。空回合流程也会自动推进回合，直至超过牌桌配置的上限而结束。
 
@@ -157,5 +157,5 @@ int main()
 
 |  |  |
 | --- | --- |
-| [`definition_source_library::make_issued_id_map`](../definition/definition_source_library/make_issued_id_map.md) | 在编译前取得配套 ID |
+| [`definition_compile_result`](definition_compile_result.md) | 编译成功的定义库及配套 ID 映射 |
 | [`executor::start`](executor/start.md) | 开始执行一场游戏 |

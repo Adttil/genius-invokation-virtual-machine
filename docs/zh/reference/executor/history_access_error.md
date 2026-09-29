@@ -2,7 +2,7 @@
 
 # givm::history_access_error
 
-定义于头文件 `<givm/executor.hpp>`
+定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
 class history_access_error;
