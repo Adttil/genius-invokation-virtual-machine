@@ -21,6 +21,7 @@
 | [`card_initial_state`](queries/card_initial_state.md) | 卡牌初始费用、行动速度及是否允许元素调和 |
 | [`card_state_modification`](queries/card_state_modification.md) | 由卡牌附属状态修改卡牌自身属性 |
 | [`card_target_validation`](queries/card_target_validation.md) | 分步检查目标与用牌条件 |
+| [`card_equipment_target_validation`](queries/card_equipment_target_validation.md) | 卡牌对指定角色的装备适用性 |
 | [`technique_initial_cost`](queries/technique_initial_cost.md) | 特技自身的费用与行动速度 |
 | [`technique_target_validation`](queries/technique_target_validation.md) | 分步检查特技目标 |
 
@@ -32,3 +33,4 @@
 | [`supported_queries`](supported_queries.md) | 各定义类别支持的查询类型 |
 | [`query_default`](query_default.md) | 定义源未提供查询时的默认结果 |
 | [`definition_library::query`](../executor/definition_library/query.md) | 向定义库查询 |
+| [`handle_context::query`](../executor/handle_context/query.md) | 在事件响应中向指定定义查询 |

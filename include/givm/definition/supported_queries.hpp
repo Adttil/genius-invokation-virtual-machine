@@ -12,7 +12,8 @@ namespace givm
     template<>
     struct supported_queries<card_definition> : type_list<
         card_initial_state,
-        card_target_validation
+        card_target_validation,
+        card_equipment_target_validation
     >{};
 
     template<>

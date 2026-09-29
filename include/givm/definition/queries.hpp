@@ -86,6 +86,14 @@ namespace givm
         std::size_t target_count;
     };
 
+    struct card_equipment_target_validation
+    {
+        using result_t = bool;
+
+        hand_card_view card;
+        character_view character;
+    };
+
     struct skill_target_validation
     {
         using result_t = target_validation;
@@ -154,6 +162,11 @@ namespace givm
     constexpr target_validation query_default(const card_target_validation& query) noexcept
     {
         return query.target_count == 0 ? target_validation::valid_complete : target_validation::invalid;
+    }
+
+    constexpr bool query_default(const card_equipment_target_validation&) noexcept
+    {
+        return false;
     }
 
     constexpr target_validation query_default(const skill_target_validation& query) noexcept

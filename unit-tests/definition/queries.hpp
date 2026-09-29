@@ -95,6 +95,7 @@ namespace
 
         bool initial_state_enabled;
         bool target_validation_enabled;
+        bool equipment_target_validation_enabled = false;
 
         definition_type compile(givm::definition_compile_context& context) const
         {
@@ -103,6 +104,7 @@ namespace
             REQUIRE(self);
             CHECK(self->has_query<givm::card_initial_state>() == initial_state_enabled);
             CHECK(self->has_query<givm::card_target_validation>() == target_validation_enabled);
+            CHECK(self->has_query<givm::card_equipment_target_validation>() == equipment_target_validation_enabled);
             CHECK(counts->capability_checks == capability_checks);
             return { counts, static_cast<std::uint8_t>(base_cost + 1), minimum_remaining_cards,
                 elemental_tuning_allowed };
@@ -117,8 +119,18 @@ namespace
             ++counts->capability_checks;
             if constexpr(std::is_same_v<TQuery, givm::card_initial_state>)
                 return initial_state_enabled;
-            else
+            else if constexpr(std::is_same_v<TQuery, givm::card_target_validation>)
                 return target_validation_enabled;
+            else if constexpr(std::is_same_v<TQuery, givm::card_equipment_target_validation>)
+                return equipment_target_validation_enabled;
+            else
+                return false;
+        }
+
+        using queried_card_source::query;
+        static bool query(const definition_type&, const givm::card_equipment_target_validation& parameters)
+        {
+            return parameters.card.player().id() == parameters.character.player().id();
         }
 
         template<class TView, class TEvent>
@@ -240,11 +252,12 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
 {
     query_counts counts;
     const dynamic_card_source initial_source{ { "CustomInitialState", &counts, 3, 10 }, true, false };
-    const dynamic_card_source validation_source{ { "CustomValidation", &counts, 7, 10 }, false, true };
+    const dynamic_card_source validation_source{ { "CustomValidation", &counts, 7, 10 }, false, true, true };
+    const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{ givm::draw_cards{ .positions = draw_positions_2 }, givm::end_game{ givm::game_result::both_loss } },
-        std::tuple{}, initial_source, validation_source);
+        std::tuple{}, initial_source, validation_source, character);
     const auto initial_id = ids.get_id<givm::card_definition>(initial_source.name());
     const auto validation_id = ids.get_id<givm::card_definition>(validation_source.name());
     REQUIRE(counts.initial_cost == 1);
@@ -255,7 +268,8 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
     CHECK(library[initial_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 4);
     CHECK(library[validation_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    load_deck(table, library, { .cards = { initial_id, validation_id } }, {});
+    load_deck(table, library, { .cards = { initial_id, validation_id },
+        .characters = { ids.get_id<givm::character_view>(character.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = []() -> std::uint32_t { return 0; };
@@ -268,6 +282,8 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
             givm::card_target_validation{ card, table, copied, {}, 0 });
         CHECK(result == (card.definition_id() == initial_id
             ? givm::target_validation::valid_complete : givm::target_validation::invalid));
+        CHECK(copied.query(card.definition_id(), givm::card_equipment_target_validation{
+            card, *table[givm::player_id{ 0 }].characters().begin() }) == (card.definition_id() == validation_id));
     }
     CHECK(copied[initial_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 4);
     CHECK(copied[validation_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);

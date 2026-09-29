@@ -8,7 +8,7 @@
 class handle_context;
 ```
 
-一次事件响应使用的上下文。定义可以读取当前牌桌、取得随机值，并提交已经登记的后续效果及其全部输入。
+一次事件响应使用的上下文。定义可以读取当前牌桌、向指定定义查询规则信息、取得随机值，并提交已经登记的后续效果及其全部输入。
 
 由执行器传给定义源的 `handle`，仅在本次响应调用期间有效。定义源不自行构造，也不得在响应结束后保存或使用本对象。
 
@@ -17,6 +17,7 @@ class handle_context;
 | | |
 | --- | --- |
 | [`table`](handle_context/table.md) | 读取当前牌桌 |
+| [`query`](handle_context/query.md) | 向指定定义取得查询结果 |
 | [`random`](handle_context/random.md) | 取得下一个随机值 |
 | [`invoke`](handle_context/invoke.md) | 提交入口及其全部输入 |
 

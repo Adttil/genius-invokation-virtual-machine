@@ -13,6 +13,7 @@
 #include "../definition_common.hpp"
 #include "../utils/stack.hpp"
 #include "random_fn.hpp"
+#include "library.hpp"
 
 namespace givm::detail
 {
@@ -220,6 +221,13 @@ namespace givm
 
         std::uint32_t random() const { return random_(); }
 
+        template<class TCategory, class TQuery>
+            requires requires { supported_queries<TCategory>::template index_of<TQuery>(); }
+        TQuery::result_t query(definition_id<TCategory> id, const TQuery& parameters) const
+        {
+            return library_.query(id, parameters);
+        }
+
         program_entry invoke(program_entry entry, std::span<const any_command_input> inputs)
         {
             return invoker_(entry, inputs);
@@ -245,10 +253,11 @@ namespace givm
     private:
         friend class detail::execution_context;
 
-        handle_context(const givm::table& table, random_fn& random, program_invoker invoker) noexcept
-        : table_{ table }, random_{ random }, invoker_{ invoker }
+        handle_context(const definition_library& library, const givm::table& table, random_fn& random, program_invoker invoker) noexcept
+        : library_{ library }, table_{ table }, random_{ random }, invoker_{ invoker }
         {}
 
+        const definition_library& library_;
         const givm::table& table_;
         random_fn& random_;
         program_invoker invoker_;

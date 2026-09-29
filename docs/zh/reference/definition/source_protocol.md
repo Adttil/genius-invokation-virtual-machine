@@ -71,6 +71,8 @@ static givm::program_entry handle(
 
 响应返回的程序执行期间，牌桌的 [`self_player`](../table/table_state.md) 表示该响应实体所属玩家；固定效果命令中的 [`relative_player::self`](commands/relative_player.md) 与 `opponent` 据此确定双方。嵌套响应的程序结束后恢复外层本方，费用响应延迟执行时也使用原响应实体所属玩家。`handle` 调用本身不切换本方；读取自身所属玩家应使用实体参数的 `player().id()`，不能把 `context.table().state().self_player` 当作当前响应者的所属玩家。
 
+响应可通过 [`context.query(id, parameters)`](../executor/handle_context/query.md) 取得指定定义支持的查询结果。例如，减费圣遗物按需向正在报价的牌查询 [`card_equipment_target_validation`](queries/card_equipment_target_validation.md)，确认能否装备给所属角色；天赋牌用编译时解析的角色硬依赖 ID 判断适用对象。此查询不需要向响应开放整个定义库。
+
 [`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个动态命令对应一个由其 `input_type` 指定的 [`xxx_input`](command_inputs.md) 对象；使用固定参数的命令不占输入位置。输入类型可以是独立结构体，也可以是字段相符事件的显式别名；是否发送事件仍由命令决定。编译后输入对象的数量、类型和顺序固定，各对象中的数组长度可以在响应时决定。例如 `deal_damage_input` 用一个 `damages` span 表示本次伤害组，整组仍只占一个输入位置。响应通过 `context.invoke(entry, inputs...)` 提交全部输入；Lua 等动态定义源适配器也可提交 `std::span<const any_command_input>`，各元素保存对应的输入对象。
 
 一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算。命令输入中的数组内容在调用时复制，返回后不再借用原数组；原数组须在复制期间保持有效，不能因本次调用扩容而失效。定义源须保证输入数量、具体类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时，在写入前检查入口、提交方式、重复提交及输入数量、类型与顺序，失败时抛出 [`program_input_error`](../executor/program_input_error.md)；数组长度不参与类型匹配。命令的值与执行前提在实际执行时检查，错误以 [`command_input_error`](../executor/command_input_error.md) 报告。发布构建不保留这些检查或对应诊断元数据，违反约定属于未定义行为。脚本适配器可在两种构建模式下使用相同的输入对象接口，不需要脚本自行生成检查信息或处理字节布局。
@@ -102,6 +104,8 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 静态源缺少对应 `query`，或动态源的 `can_query<Q>()` 返回 `false` 时，使用通过参数相关查找（ADL）找到的 [`query_default(parameters)`](query_default.md)，返回类型同样必须是 `Q::result_t`。需要默认方法而没有匹配实现时，定义源不满足协议。当前[查询列表](queries.md)中的每种查询均有默认方法；其中卡牌、技能与特技的目标检查仅在目标数量为零时默认返回 `valid_complete`，非零数量返回 `invalid`。
 
 卡牌初始属性由 [`card_initial_state`](queries/card_initial_state.md) 给出，牌自身的费用与是否允许调和保存在 `card_state`。卡牌附属状态通过 [`card_state_modification`](queries/card_state_modification.md) 修改这些属性；此查询接收卡牌 state 的可变引用与该附属状态的只读 state，不读取牌外的动态状态。
+
+卡牌可通过 [`card_equipment_target_validation`](queries/card_equipment_target_validation.md) 回答能否装备给指定角色，缺省为 `false`。该查询与完整的用牌目标检查分开；用于减费时仍须保证整张牌的报价不依赖尚未确定的目标，包含支付时的消耗对象。允许重复角色并不放宽此前提，具体兼容边界见 [`cost_of_card`](events/cost_of_card.md)。
 
 支援、召唤物、出战状态和角色附属实体分别通过 [`support_state_limit`](queries/support_state_limit.md)、[`summon_state_limit`](queries/summon_state_limit.md)、[`combat_status_state_limit`](queries/combat_status_state_limit.md)、[`attachment_state_limit`](queries/attachment_state_limit.md) 提供各状态字段的上限，并在编译定义库时缓存。生成和直接添加命令的 `state` 成员默认将各字段设为 `UINT32_MAX`，执行时与显式输入一样按上限裁剪；显式的 `state{}` 仍将各字段初始化为零。召唤、生成和附属请求在实际执行时决定创建新实体，或通知首个已有同定义实体；支援则直接添加独立实体。重复请求仍使用普通 `handle` 接口。支援、出战状态与角色附属的状态修改会通知自身；召唤物不提供状态修改自身通知，`modify_summon_state` 通过 `remove_at_zero_usages` 标签处理耗尽离场，`set_summon_state` 仅写入状态。
 

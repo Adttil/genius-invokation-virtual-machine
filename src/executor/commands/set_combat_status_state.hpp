@@ -41,7 +41,7 @@ namespace givm::detail
         if(not definition.can_handle<combat_status_state_changed, combat_status_view>())
             return context.enter_next();
         context.stack().push(response_return{ table.state().self_player, context.position() });
-        auto response = context.make_handle_context(table, random);
+        auto response = context.make_handle_context(library, table, random);
         const auto entry = definition.handle<combat_status_state_changed>(status, event, response);
         if(entry)
         {

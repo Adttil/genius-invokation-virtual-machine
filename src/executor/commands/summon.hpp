@@ -35,7 +35,7 @@ namespace givm::detail
                 return {};
             resummoning event{ input.state };
             context.stack().push(response_return{ table.state().self_player, resume });
-            auto response = context.make_handle_context(table, random);
+            auto response = context.make_handle_context(library, table, random);
             const auto entry = definition.handle<resummoning>(existing, event, response);
             if(not entry) context.stack().pop<response_return>();
             else table.state().self_player = existing.player().id();

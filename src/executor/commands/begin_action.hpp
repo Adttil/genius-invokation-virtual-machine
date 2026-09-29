@@ -316,7 +316,7 @@ namespace givm::detail
         auto event = get<0>(frame);
         const auto speed_offset = reinterpret_cast<const unsigned char*>(&get<0>(frame).speed) - stack.data();
         const auto attachment = std::as_const(table)[event.attachment];
-        auto response = context.make_handle_context(table, random);
+        auto response = context.make_handle_context(library, table, random);
         // The consumed attachment retains its identity and state for its own effect.
         const auto entry = library[attachment.definition_id()].handle<prepared_skill_effect>(attachment, event, response);
         // invoke may grow the stack; the event passed to the handler is a local copy.
@@ -796,7 +796,7 @@ namespace givm::detail
             card_effect effect{ .card = event.card, .targets = event.targets };
             // The played card is already out of hand, but retains its definition and state.
             const auto card = std::as_const(table)[event.card];
-            auto response = context.make_handle_context(table, random);
+            auto response = context.make_handle_context(library, table, random);
             const auto entry = library[card.definition_id()].handle<card_effect>(card, effect, response);
             if(entry)
             {
@@ -1046,7 +1046,7 @@ namespace givm::detail
         {
             technique_effect effect{ .technique = event.technique, .targets = event.targets };
             const auto technique = std::as_const(table)[event.technique];
-            auto response = context.make_handle_context(table, random);
+            auto response = context.make_handle_context(library, table, random);
             const auto entry = library[technique.definition_id()].handle<technique_effect>(technique, effect, response);
             if(entry)
             {

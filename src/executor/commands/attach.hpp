@@ -34,7 +34,7 @@ namespace givm::detail
             if(not definition.can_handle<attachment_reapplication, attachment_view>()) return std::nullopt;
             context.stack().push(response_return{ table.state().self_player, reapplication_resume });
             attachment_reapplication event{ input.state };
-            auto response = context.make_handle_context(table, random);
+            auto response = context.make_handle_context(library, table, random);
             const auto entry = definition.handle<attachment_reapplication>(attachment, event, response);
             if(entry)
             {

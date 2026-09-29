@@ -37,7 +37,7 @@ const cost_of_card& calculate_card_cost(
 
 报价先复制该牌当前 [`card_state::cost`](../../../table/card_state.md) 作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。报价不会写回卡牌自身的费用；卡牌初始费用默认是零骰子、零充能的快速行动。
 
-报价无需先选择目标，目标及其他用牌条件通过 [`card_targets_validate`](card_targets_validate.md) 独立检查。可打出的牌提供原效果响应。
+报价无需先选择目标，定义组合须保证费用和支付时执行的效果均不依赖尚未确定的目标，具体兼容边界见 [`cost_of_card`](../../../definition/events/cost_of_card.md)。目标及其他用牌条件通过 [`card_targets_validate`](card_targets_validate.md) 独立检查。可打出的牌提供原效果响应。
 
 费用响应不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不选择出牌、不执行费用响应提交的后续效果，也不修改牌桌或推进执行器。
 

@@ -33,7 +33,7 @@ namespace givm::detail
         if(not definition.can_handle<support_state_changed, support_view>())
             return context.enter_next();
         context.stack().push(response_return{ table.state().self_player, context.position() });
-        auto response = context.make_handle_context(table, random);
+        auto response = context.make_handle_context(library, table, random);
         const auto entry = definition.handle<support_state_changed>(support, event, response);
         if(entry)
         {

@@ -22,7 +22,7 @@ struct supported_queries;
 | 定义类别 | 查询 |
 | --- | --- |
 | `character_view` | [`character_initial_state`](queries/character_initial_state.md)、[`character_initial_skill`](queries/character_initial_skill.md) |
-| `card_definition` | [`card_initial_state`](queries/card_initial_state.md)、[`card_target_validation`](queries/card_target_validation.md) |
+| `card_definition` | [`card_initial_state`](queries/card_initial_state.md)、[`card_target_validation`](queries/card_target_validation.md)、[`card_equipment_target_validation`](queries/card_equipment_target_validation.md) |
 | `skill_view` | [`skill_initial_cost`](queries/skill_initial_cost.md)、[`skill_target_validation`](queries/skill_target_validation.md) |
 | `status_definition` | [`card_state_modification`](queries/card_state_modification.md) |
 | `support_view` | [`support_state_limit`](queries/support_state_limit.md) |

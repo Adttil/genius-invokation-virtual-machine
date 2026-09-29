@@ -170,7 +170,7 @@ namespace givm::detail
         while(cursor < target_count)
         {
             const auto current_handler = targets[static_cast<size_t>(cursor++)];
-            auto response = context.make_handle_context(table, random);
+            auto response = context.make_handle_context(library, table, random);
             player_id player;
             const auto entry = std::visit([&](auto id)
             {

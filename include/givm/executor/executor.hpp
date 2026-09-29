@@ -125,16 +125,16 @@ namespace givm::detail
             };
         }
 
-        handle_context make_handle_context(const table& table, random_fn& random)
+        handle_context make_handle_context(const definition_library& library, const table& table, random_fn& random)
         {
-            return handle_context{ table, random, make_program_invoker() };
+            return handle_context{ library, table, random, make_program_invoker() };
         }
 
         template<bool Substack = false>
         static handle_context make_handle_context(
             frame_stack& stack, const definition_library& library, const table& table, random_fn& random)
         {
-            return handle_context{ table, random, program_invoker{ stack
+            return handle_context{ library, table, random, program_invoker{ stack
 #ifndef NDEBUG
                 , detail::program_debug_view{ library.debug_library_identity_, library.debug_programs_, library.input_markers_ }, Substack
 #endif

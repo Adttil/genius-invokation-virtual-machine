@@ -55,7 +55,7 @@ namespace givm::detail
         }
         context.stack().push(hand_card_discard_effect{ card }, response_return{ table.state().self_player, context.position() });
         auto& event = get<0>(context.stack().top<hand_card_discard_effect, response_return>());
-        auto response = context.make_handle_context(table, random);
+        auto response = context.make_handle_context(library, table, random);
         const auto entry = definition.handle<hand_card_discard_effect>(self, event, response);
         if(entry)
         {

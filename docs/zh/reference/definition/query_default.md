@@ -18,6 +18,7 @@ constexpr target_validation query_default(const technique_target_validation& que
 constexpr card_state query_default(const card_initial_state&) noexcept;
 constexpr void query_default(const card_state_modification&) noexcept;
 constexpr target_validation query_default(const card_target_validation& query) noexcept;
+constexpr bool query_default(const card_equipment_target_validation&) noexcept;
 ```
 
 静态定义源没有提供某项查询，或[动态定义源](source_protocol.md#动态定义源)的 `can_query<Q>()` 返回 `false` 时，给出该查询的默认结果。定义源协议通过未限定名称的 `query_default(parameters)` 调用，以参数相关查找（ADL）选择匹配方法。
@@ -39,6 +40,7 @@ constexpr target_validation query_default(const card_target_validation& query) n
 | [`card_initial_state`](queries/card_initial_state.md) | `card_state{}`：零骰子、零充能费用，行动速度为 `action_speed::fast`，允许元素调和。 |
 | [`card_state_modification`](queries/card_state_modification.md) | 不修改传入状态。 |
 | [`card_target_validation`](queries/card_target_validation.md) | `target_count == 0` 时为 `valid_complete`，否则为 `invalid`。 |
+| [`card_equipment_target_validation`](queries/card_equipment_target_validation.md) | `false`。 |
 
 ## 注意
 

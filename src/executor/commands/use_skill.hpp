@@ -54,7 +54,7 @@ namespace givm::detail
         {
             skill_effect effect{ .skill = event.skill, .flags = event.flags, .targets = event.targets };
             const auto skill = std::as_const(table)[event.skill];
-            auto response = context.make_handle_context(table, random);
+            auto response = context.make_handle_context(library, table, random);
             const auto entry = library[skill.definition_id()].handle<skill_effect>(skill, effect, response);
             if(entry)
             {

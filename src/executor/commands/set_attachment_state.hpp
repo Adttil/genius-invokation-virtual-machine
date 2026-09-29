@@ -43,7 +43,7 @@ namespace givm::detail
         if(not definition.can_handle<attachment_state_changed, attachment_view>())
             return context.enter_next();
         context.stack().push(response_return{ table.state().self_player, context.position() });
-        auto response = context.make_handle_context(table, random);
+        auto response = context.make_handle_context(library, table, random);
         const auto entry = definition.handle<attachment_state_changed>(std::as_const(table)[id], event, response);
         if(entry)
         {
