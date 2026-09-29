@@ -5,16 +5,35 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
+std::expected<definition_compile_result, std::vector<compile_error>> compile(
+    const definition_source_library& sources,
+    const basic_definition_sources& basics,
+    std::span<const any_command> initialization_program,
+    std::span<const any_command> round_program,
+    compile_mode mode
+); // (1)
+
+std::expected<definition_compile_result, std::vector<compile_error>> compile(
+    const definition_source_library& sources,
+    const basic_definition_sources& basics,
+    const definition_selection& selection,
+    std::span<const any_command> initialization_program,
+    std::span<const any_command> round_program,
+    compile_mode mode
+); // (2)
+
 template<class TInitializationSequence, class TRoundSequence>
+    requires /* 两者均为命令序列，且至少一个不能隐式转换为 span<const any_command> */
 auto compile(
     const definition_source_library& sources,
     const basic_definition_sources& basics,
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
     compile_mode mode
-); // (1)
+); // (3)
 
 template<class TInitializationSequence, class TRoundSequence>
+    requires /* 两者均为命令序列，且至少一个不能隐式转换为 span<const any_command> */
 auto compile(
     const definition_source_library& sources,
     const basic_definition_sources& basics,
@@ -22,12 +41,16 @@ auto compile(
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
     compile_mode mode
-); // (2)
+); // (4)
 ```
 
 准备一场对局要使用的实体定义和对局流程。初始化部分只进行一次，随后自动推进回合并反复执行回合部分，直到流程主动暂停或结束对局。
 
-(1) 使用全部已登记定义及 `basics` 中的四个默认反应定义。(2) 从指定定义和 `basics` 中的四个默认反应定义出发，自动包含直接和间接按名称依赖的定义。其余定义不会编译。两种重载均不修改源库，编译期间的元数据查找和标签筛选也不会扩充这个集合。
+(1)、(3) 使用全部已登记定义及 `basics` 中的四个默认反应定义。(2)、(4) 从指定定义和 `basics` 中的四个默认反应定义出发，自动包含直接和间接按名称依赖的定义。其余定义不会编译。所有重载均不修改源库，编译期间的元数据查找和标签筛选也不会扩充这个集合。
+
+(1)、(2) 接收 [`any_command`](../definition/any_command.md) 的连续序列。(3)、(4) 接收 tuple-like 对象或范围，并提供相同的编译行为。
+
+模板重载要求两段序列均为 tuple-like 对象或输入范围，且至少一段不能隐式转换为 `span<const any_command>`。均可转换时直接使用非模板重载。
 
 ## 模板参数
 
@@ -49,14 +72,7 @@ auto compile(
 
 ## 返回值
 
-返回 `std::expected<编译结果, std::vector<compile_error>>`。成功时的编译结果类型未指定，包含以下公开成员，按表中顺序支持结构化绑定：
-
-| 名称 | 类型 | 说明 |
-| --- | --- | --- |
-| `library` | [`definition_library`](definition_library.md) | 编译后的实体定义与对局流程 |
-| `id_map` | [`issued_id_map`](../definition/issued_id_map.md) | 同一次编译产生的定义及标签名称映射 |
-
-两者对应同一个定义集合和 ID 分配结果。先检查返回的 `expected`，成功后可通过 `result->library`、`result->id_map` 访问，或以 `auto [library, id_map] = std::move(*result);` 取得两者。
+返回 `std::expected<definition_compile_result, std::vector<compile_error>>`。成功值为 [`definition_compile_result`](definition_compile_result.md)，其 `library` 和 `id_map` 对应同一个定义集合和 ID 分配结果。先检查返回的 `expected`，成功后可通过 `result->library`、`result->id_map` 访问，或以 `auto [library, id_map] = std::move(*result);` 取得两者。
 
 失败时返回 [`compile_error`](compile_error.md) 列表，不发布部分编译的定义库。诊断包含发生阶段、定义源、程序与命令位置，以及具体错误类型；可交给 [`error_string`](error_string.md) 输出。能继续检查的错误会聚合，不通过验证异常中断。
 

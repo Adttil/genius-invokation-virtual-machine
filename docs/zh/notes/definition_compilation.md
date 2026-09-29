@@ -203,11 +203,18 @@ std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) c
 ### 加入响应程序
 
 ```cpp
+program_entry add_program(std::span<const any_command> commands);
+
 template<class TCommands>
+    requires /* 命令序列，且不能隐式转换为 span<const any_command> */
 program_entry add_program(TCommands&& commands);
+
+template<class... TCommands>
+    requires (std::constructible_from<any_command, TCommands> && ...)
+program_entry add_program(TCommands&&... commands);
 ```
 
-`commands` 可为异构 tuple-like、同构 input range，或者包含 `any_command` 的范围；编译时逐项消费，不保存调用方序列或元素引用。入口不绑定外层事件类型，所需输入由具体命令值按执行顺序确定；不消费响应输入的命令不占输入位置，编译后入口的输入数量、类型和顺序固定。
+`commands` 可为异构 tuple-like、同构 input range、包含 `any_command` 的范围，或直接提供零个及多个命令。头文件包装将命令统一为 `span<const any_command>`，非模板后端在 cpp 中逐项检查和编译，不保存调用方序列或元素引用。编译及编译前允许类型擦除与动态分派；游戏执行仍使用编译出的 opcode，不遍历命令 variant。入口不绑定外层事件类型，所需输入由具体命令值按执行顺序确定；不消费响应输入的命令不占输入位置，编译后入口的输入数量、类型和顺序固定。
 
 响应源通过 `context.invoke` 准备一次调用的完整输入。每条动态命令消费一个由 `input_type` 指定的输入帧，固定模式不占输入位置；程序末尾自动返回。Debug 编译记录输入类型标记、对应命令下标以及源和程序位置。调用写入前检查入口、提交方式、重复调用、数量、具体类型与顺序；数组长度不参与类型匹配。失败以 `program_input_error` 报告，Release 移除诊断元数据与检查。输入类型列表从命令的 `input_type` 自动生成，仅固定命令不参与；字段相符的事件可显式别名复用。动态适配器提交 `any_command_input` 序列，由 C++ 包装提供同样的检查，无需脚本自行处理元数据。
 
@@ -392,7 +399,7 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 需要只编译部分定义时，使用接受 `const definition_selection& selection` 的重载。`selection` 按 definition 类别保存名称序列；每个选中的 definition、四个默认反应定义及它们的传递依赖都会进入编译结果。
 
-[`compile` 的返回值](../reference/executor/compile.md#返回值)为 `expected`：成功值类型未指定，其中 `library` 是编译后的游戏规则，`id_map` 是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。检查成功后，成功值可以按该顺序结构化绑定；对局运行时只需要 `library`。失败值为 `vector<compile_error>`，每项包含发生位置和一层具体错误 variant。`make_issued_id_map` 同样返回 `expected`，失败时提供源准备错误，不返回部分 ID 映射。
+[`compile` 的返回值](../reference/executor/compile.md#返回值)为 `expected`：成功值为 `definition_compile_result`，其中 `library` 是编译后的游戏规则，`id_map` 是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。检查成功后，成功值可以按该顺序结构化绑定；对局运行时只需要 `library`。失败值为 `vector<compile_error>`，每项包含发生位置和一层具体错误 variant。`make_issued_id_map` 同样返回 `expected`，失败时提供源准备错误，不返回部分 ID 映射。
 
 命令的参数错误独立定义为 `givm::xxx_error`，命令内的 `error_type` 只保留别名。该错误及其文本格式化与公开命令一起位于 definition 的对应命令文件，不需要 executor；整库错误的原因 variant、位置类型与总格式化位于 `executor/compile_error.hpp`。两个 `commands.hpp` 都只负责聚合包含。命令和输入类型列表由 `definition/any_command.hpp` 集中保存，不让错误格式化反向依赖命令实现。
 

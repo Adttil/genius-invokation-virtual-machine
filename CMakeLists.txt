@@ -17,14 +17,20 @@ option(
     ${PROJECT_IS_TOP_LEVEL}
 )
 
-add_library(givm INTERFACE)
+add_library(givm STATIC src/executor/library.cpp)
 add_library(givm::givm ALIAS givm)
-target_compile_features(givm INTERFACE cxx_std_23)
+target_compile_features(givm PUBLIC cxx_std_23)
 target_include_directories(
     givm
-    INTERFACE
+    PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
+
+if(MSVC)
+    target_compile_options(givm PRIVATE /bigobj)
+endif()
 
 if(GIVM_BUILD_UNIT_TESTS OR GIVM_BUILD_EXAMPLES)
     enable_testing()

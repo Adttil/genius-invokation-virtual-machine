@@ -48,6 +48,7 @@
 | [`compile`](reference/executor/compile.md) | 编译定义源与对局流程 |
 | [`compile_mode`](reference/executor/compile_mode.md) | 选择普通或观察模式 |
 | [`definition_library`](reference/executor/definition_library.md) | 定义库 |
+| [`definition_compile_result`](reference/executor/definition_compile_result.md) | 编译成功的定义库与名称映射 |
 | [`executor`](reference/executor/executor.md) | 游戏对局的执行器 |
 | [`execution_state`](reference/executor/execution_state.md) | 对局执行现场的种类 |
 | [`execution_view`](reference/executor/execution_view.md) | 对局执行现场的视图 |

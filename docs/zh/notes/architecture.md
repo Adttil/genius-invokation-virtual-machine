@@ -75,7 +75,9 @@ definition 中的 source 适配只传递 `definition_compile_context&`，因此�
 
 源库提供登记、名称查找、按类别遍历 source view 和建立 ID 映射的能力，不提供成员编译函数。成员 `sources.make_issued_id_map(...)` 使用登记时保留的声明信息完成选择、依赖闭包和 ID 分配；executor 中的非成员 `compile(sources, ..., initialization_program, round_program, mode)` 调用这个成员取得映射，再通过 source view 构建完整定义库。`source.compile(context)` 仍是单项定义源协议，不与整库编译入口混淆。
 
-`definition_library`、整库 `compile` 及相关程序装配细节集中在 [`executor/library.hpp`](../../../include/givm/executor/library.hpp)。内部类型按功能放在所属模块的文件中，可继续使用 `givm::detail` 命名空间，不另建 `detail/` 目录；较大的内部实现块直接写成 `namespace givm::detail`，保持单层命名空间缩进。函数在定义处完整给出，不另写重复签名的声明。这也适用于 `friend` 函数：不能在类内只写友元函数声明，再到类外重复签名定义。这些约束要求从类型归属、前置声明和依赖方向解决包含问题，而不是用头文件拼接顺序掩盖循环。
+`definition_library` 与公开编译接口声明位于 [`executor/library.hpp`](../../../include/givm/executor/library.hpp)，非模板程序编译后端在 `src` 中实现。命令序列先统一为 `span<const any_command>`，因此定义源编译单元不必实例化命令编译循环。内部类型按功能放在所属模块的文件中，可继续使用 `givm::detail` 命名空间，不另建 `detail/` 目录；较大的内部实现块直接写成 `namespace givm::detail`，保持单层命名空间缩进。
+
+仍在头文件中实现的函数，在定义处完整给出，不另写重复签名的声明；自由函数须为 `inline` 或 `constexpr`。移入 cpp 的函数使用通常的头文件声明与 cpp 定义。仅实现需要共享的声明和内联工具放在 `src` 对应目录的私有头中，公开头不包含这些私有头。禁止通过重复友元函数声明或头文件拼接顺序掩盖循环依赖。完整迁移计划见[头文件分层与编译后端迁移](header_layers.md)。
 
 终局由 definition 中的 `end_game` command 表达并由 executor 执行，构建程序时不预装三条终局指令。公开命令是规则描述，最终编译产物的表示由 executor 决定，两者不必保持一一对应。程序的具体连接仍不构成公开接口，详见[固定程序记录](fixed_program.md#程序的内部连接)。
 

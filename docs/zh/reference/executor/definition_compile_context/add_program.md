@@ -5,17 +5,28 @@
 定义于头文件 `<givm/executor.hpp>`
 
 ```cpp
+program_entry add_program(std::span<const any_command> commands); // (1)
+
 template<class TCommands>
-program_entry add_program(TCommands&& commands);
+    requires /* 命令序列，且不能隐式转换为 span<const any_command> */
+program_entry add_program(TCommands&& commands); // (2)
+
+template<class... TCommands>
+    requires (std::constructible_from<any_command, TCommands> && ...)
+program_entry add_program(TCommands&&... commands); // (3)
 ```
 
 登记响应事件时需要依次执行的一段效果，并取得可在以后响应时提交的入口。
+
+(1) 接收 [`any_command`](../../definition/any_command.md) 的连续序列。(2) 接收 tuple-like 对象或范围。(3) 依次接收零个或多个命令。
+
+(2) 要求 `TCommands` 为 tuple-like 对象或输入范围，且不能隐式转换为 `span<const any_command>`；可转换的序列直接使用 (1)。
 
 ## 模板参数
 
 |  |  |
 | --- | --- |
-| `TCommands` | 命令序列，可为 tuple-like 对象或可遍历范围 |
+| `TCommands` | (2) 中为 tuple-like 对象或可遍历范围；(3) 中为各命令的类型，每项须能构造 `any_command` |
 
 ## 参数
 
@@ -30,6 +41,8 @@ program_entry add_program(TCommands&& commands);
 ## 注意
 
 返回入口只用于本次编译产生的定义库。效果正常完成后回到发起它的结算；若执行期间结束对局，则不再返回原结算。本函数只登记效果，不立即执行。每个动态命令需要一个专用的 [命令输入](../../definition/command_inputs.md) 对象，固定模式不占输入位置。编译后，该入口要求的输入对象数量、类型和顺序固定，对象中的数组长度可以在响应时决定；响应提交入口时须同时提供匹配输入。所登记效果沿用最终 `compile` 调用选择的编译模式。
+
+命令及其中借用的数据须在本次调用期间保持有效。返回前完成编译，不保留传入序列或命令对象；调用后可以销毁它们。
 
 ## 示例
 

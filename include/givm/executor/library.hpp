@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <expected>
 #include <limits>
@@ -130,14 +131,6 @@ namespace givm::detail
         execution_position position;
     };
 
-    template<class TExecutionContext>
-    inline execution_state execute_return(
-        const definition_library&, unrestricted_table& table, TExecutionContext& context, random_fn&)
-    {
-        const auto record = get<0>(context.stack().template top<response_return>());
-        table.state().self_player = record.previous_player;
-        return context.jump(record.position);
-    }
     // Internal compilation inputs; definition sources do not expose these commands.
     struct round_program_begin {};
 
@@ -147,68 +140,48 @@ namespace givm::detail
         execution_position round_entry;
     };
 
-    template<class TSequence, class TContext>
-    inline std::size_t append_commands(program_writer& writer, TSequence&& commands, compile_mode mode,
-        const TContext& context, program_kind kind, std::vector<compile_error>& errors, compile_location location
-#ifndef NDEBUG
-        , std::vector<debug_input_requirement>* input_markers = nullptr
-#endif
-    )
-    {
-        std::size_t inputs_count = 0;
-        std::size_t command_index = 0;
-        const auto append_command = [&](const auto& command)
-        {
-            location.command_index = command_index++;
-            if constexpr(requires { typename std::remove_cvref_t<decltype(command)>::error_type; })
-            {
-                auto command_errors = check(command, context, kind);
-                for(auto& error : command_errors) errors.push_back({ location, std::move(error) });
-                if(not command_errors.empty()) return;
-            }
-#ifndef NDEBUG
-            const auto marker = input_marker<command_input_types>(command);
-            if(marker != size_t(-1))
-            {
-                ++inputs_count;
-                if(input_markers) input_markers->push_back({ marker, *location.command_index, debug_command_name<std::remove_cvref_t<decltype(command)>> });
-            }
-#endif
-            compile(writer, command, mode);
-        };
-        const auto append = [&]<class TCommand>(TCommand&& command)
-        {
-            if constexpr(requires { std::variant_size<std::remove_cvref_t<TCommand>>::value; })
-            {
-                std::visit(append_command, command);
-            }
-            else
-            {
-                append_command(command);
-            }
-        };
+    template<class T>
+    concept command_sequence = std::ranges::input_range<T>
+        || requires { std::tuple_size<std::remove_cvref_t<T>>::value; };
 
-        if constexpr(std::ranges::range<TSequence>)
-        {
-            for(auto&& command : commands)
+    template<class TCommand>
+    inline any_command make_any_command(TCommand&& command)
+    {
+        if constexpr(std::constructible_from<any_command, TCommand>)
+            return any_command{ std::forward<TCommand>(command) };
+        else
+            return std::visit([](auto&& value) -> any_command
             {
-                append(std::forward<decltype(command)>(command));
-            }
+                return any_command{ std::forward<decltype(value)>(value) };
+            }, std::forward<TCommand>(command));
+    }
+
+    template<command_sequence TSequence>
+    inline auto make_command_sequence(TSequence&& commands)
+    {
+        if constexpr(std::convertible_to<TSequence, std::span<const any_command>>)
+            return std::span<const any_command>{ commands };
+        else if constexpr(std::ranges::input_range<TSequence>)
+        {
+            std::vector<any_command> result;
+            if constexpr(std::ranges::sized_range<TSequence>) result.reserve(std::ranges::size(commands));
+            for(auto&& command : commands)
+                result.push_back(make_any_command(std::forward<decltype(command)>(command)));
+            return result;
         }
         else
-        {
-            [&]<std::size_t... I>(std::index_sequence<I...>)
+            return [&]<std::size_t... I>(std::index_sequence<I...>)
             {
                 using std::get;
-                (append(get<I>(std::forward<TSequence>(commands))), ...);
+                return std::array<any_command, sizeof...(I)>{ make_any_command(get<I>(std::forward<TSequence>(commands)))... };
             }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<TSequence>>>{});
-        }
-        return inputs_count;
     }
 }
 
 namespace givm
 {
+    struct definition_compile_result;
+
     class definition_compile_context
     {
     public:
@@ -406,28 +379,22 @@ namespace givm
             return id_map_.query_by_tag<TCategory>(filter);
         }
 
-        template<class TCommands>
+        program_entry add_program(std::span<const any_command> commands);
+
+        template<detail::command_sequence TCommands>
+        requires (not std::convertible_to<TCommands, std::span<const any_command>>)
         program_entry add_program(TCommands&& commands)
         {
-            program_entry result{ program_.size() };
-            detail::program_writer writer{ program_ };
-#ifndef NDEBUG
-            result.library_identity_ = library_identity_;
-            result.debug_index_ = debug_programs_.size();
-            debug_programs_.push_back({ source_, program_count_, program_.size(), input_markers_.size(), 0 });
-#endif
-            [[maybe_unused]] const auto inputs_count =
-                detail::append_commands(writer, std::forward<TCommands>(commands), mode_, *this, program_kind::response, errors_,
-                    { compile_stage::program, source_, program_kind::response, program_count_++, {} }
-#ifndef NDEBUG
-                    , &input_markers_
-#endif
-                );
-#ifndef NDEBUG
-            debug_programs_[result.debug_index_].inputs_count = inputs_count;
-#endif
-            writer.write(detail::execute_fn{ detail::execute_return });
-            return result;
+            const auto sequence = detail::make_command_sequence(std::forward<TCommands>(commands));
+            return add_program(std::span<const any_command>{ sequence });
+        }
+
+        template<class... TCommands>
+        requires (std::constructible_from<any_command, TCommands> && ...)
+        program_entry add_program(TCommands&&... commands)
+        {
+            const std::array<any_command, sizeof...(TCommands)> sequence{ any_command{ std::forward<TCommands>(commands) }... };
+            return add_program(std::span<const any_command>{ sequence });
         }
 
     private:
@@ -1178,77 +1145,42 @@ namespace givm
         }
 
     public:
-        template<class TInitializationSequence, class TRoundSequence>
+        static std::expected<definition_compile_result, std::vector<compile_error>> compile(
+            const definition_source_library& sources, const basic_definition_sources& basics,
+            std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+
+        static std::expected<definition_compile_result, std::vector<compile_error>> compile(
+            const definition_source_library& sources, const basic_definition_sources& basics, const definition_selection& selection,
+            std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+
+        template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
+        requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
+            || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
         static auto compile(const definition_source_library& sources, const basic_definition_sources& basics,
             TInitializationSequence&& initialization_program, TRoundSequence&& round_program, compile_mode mode)
         {
-            std::vector<source_preparation_error> preparation_errors;
-            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics, preparation_errors);
-            return compile_prepared(selected_sources, basic_names,
-                selected_sources.make_issued_id_map(selected_sources.make_full_selection()),
-                std::forward<TInitializationSequence>(initialization_program),
-                std::forward<TRoundSequence>(round_program), mode, std::move(preparation_errors));
+            const auto initialization = detail::make_command_sequence(std::forward<TInitializationSequence>(initialization_program));
+            const auto round = detail::make_command_sequence(std::forward<TRoundSequence>(round_program));
+            return compile(sources, basics, std::span{ initialization }, std::span{ round }, mode);
         }
 
-        template<class TInitializationSequence, class TRoundSequence>
+        template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
+        requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
+            || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
         static auto compile(const definition_source_library& sources, const basic_definition_sources& basics,
             const definition_selection& selection, TInitializationSequence&& initialization_program,
             TRoundSequence&& round_program, compile_mode mode)
         {
-            std::vector<source_preparation_error> preparation_errors;
-            const auto [selected_sources, basic_names] = sources.with_basic_definitions(basics, preparation_errors);
-            auto ids = selected_sources.make_issued_id_map(selected_sources.resolve_selection(selection, basic_names, preparation_errors));
-            return compile_prepared(selected_sources, basic_names, std::move(ids),
-                std::forward<TInitializationSequence>(initialization_program),
-                std::forward<TRoundSequence>(round_program), mode, std::move(preparation_errors));
+            const auto initialization = detail::make_command_sequence(std::forward<TInitializationSequence>(initialization_program));
+            const auto round = detail::make_command_sequence(std::forward<TRoundSequence>(round_program));
+            return compile(sources, basics, selection, std::span{ initialization }, std::span{ round }, mode);
         }
 
     private:
-        template<class TInitializationSequence, class TRoundSequence>
-        static auto compile_prepared(const definition_source_library& sources, const detail::basic_definition_names& basics,
-            issued_id_map id_map, TInitializationSequence&& initialization_program, TRoundSequence&& round_program,
-            compile_mode mode, std::vector<source_preparation_error> preparation_errors)
-        {
-            struct compile_result
-            {
-                definition_library library;
-                issued_id_map id_map;
-            };
-            using result_type = std::expected<compile_result, std::vector<compile_error>>;
-            std::vector<compile_error> errors;
-            for(auto& error : preparation_errors)
-                std::visit([&](auto&& reason) { errors.push_back({ { compile_stage::source_selection, {}, {}, {}, {} }, std::move(reason) }); }, error);
-            definition_library library{ id_map, basics };
-            const auto definitions = library.prepare_definitions(sources, id_map);
-            library.prepare_history_layouts(definitions, id_map, mode, errors);
-            const detail::definition_source_declarations root_declarations{};
-            definition_compile_context context{ id_map, definitions, library.basic_ids_, library.program_, root_declarations,
-                mode, library.history_layouts_, {}, true, errors, compile_stage::program, std::nullopt
-#ifndef NDEBUG
-                , library.input_markers_, library.debug_programs_, library.debug_library_identity_
-#endif
-            };
-            detail::program_writer writer{ library.program_ };
-            detail::append_commands(writer, std::forward<TInitializationSequence>(initialization_program), mode,
-                context, program_kind::initialization, errors, { compile_stage::program, {}, program_kind::initialization, 0, {} });
-            const detail::execution_position round_start = writer.position();
-            detail::append_commands(writer, std::tuple{ detail::round_program_begin{} }, mode,
-                context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} });
-            const detail::execution_position round_entry = writer.position();
-            detail::append_commands(writer, std::forward<TRoundSequence>(round_program), mode,
-                context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} });
-            detail::append_commands(writer, std::tuple{ detail::round_program_repeat{ round_start, round_entry } }, mode,
-                context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} });
-            definition_types::each([&]<class TCategory>
-            {
-                for(const auto& definition : std::get<definition_types::index_of<TCategory>()>(definitions))
-                    library.compile_source(definition, id_map, definitions, mode, errors);
-            });
-            if(not errors.empty()) return result_type{ std::unexpected{ std::move(errors) } };
-            library.complete_dynamic_queries();
-            detail::finalize_program(library.program_);
-            return result_type{ compile_result{ .library = std::move(library), .id_map = std::move(id_map) } };
-        }
+        static std::expected<definition_compile_result, std::vector<compile_error>> compile_prepared(
+            const definition_source_library& sources, const detail::basic_definition_names& basics, issued_id_map id_map,
+            std::span<const any_command> initialization_program, std::span<const any_command> round_program,
+            compile_mode mode, std::vector<source_preparation_error> preparation_errors);
 
     private:
         detail::program_bytes program_;
@@ -1270,7 +1202,23 @@ namespace givm
         detail::definition_history_handlers history_handlers_;
     };
 
-    template<class TInitializationSequence, class TRoundSequence>
+    struct definition_compile_result
+    {
+        definition_library library;
+        issued_id_map id_map;
+    };
+
+    std::expected<definition_compile_result, std::vector<compile_error>> compile(
+        const definition_source_library& sources, const basic_definition_sources& basics,
+        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+
+    std::expected<definition_compile_result, std::vector<compile_error>> compile(
+        const definition_source_library& sources, const basic_definition_sources& basics, const definition_selection& selection,
+        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+
+    template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
+    requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
+        || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
     inline auto compile(
         const definition_source_library& sources,
         const basic_definition_sources& basics,
@@ -1286,7 +1234,9 @@ namespace givm
         );
     }
 
-    template<class TInitializationSequence, class TRoundSequence>
+    template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
+    requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
+        || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
     inline auto compile(
         const definition_source_library& sources,
         const basic_definition_sources& basics,

@@ -1,4 +1,5 @@
 #include "broadcast.hpp"
+#include "compile_boundary.hpp"
 #include "executor.hpp"
 #include "history_summaries.hpp"
 #include "library.hpp"

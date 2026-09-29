@@ -13,6 +13,7 @@
 | [`definition_compile_context`](executor/definition_compile_context.md) | 单项定义的编译上下文 |
 | [`definition_compile_context::definition_view`](executor/definition_compile_context/definition_view.md) | 编译集合中一项定义的元数据视图 |
 | [`definition_library`](executor/definition_library.md) | 对局使用的定义与流程 |
+| [`definition_compile_result`](executor/definition_compile_result.md) | 编译成功的定义库与名称映射 |
 | [`compile_error`](executor/compile_error.md) | 一项编译诊断 |
 | [`compile_location`](executor/compile_location.md) | 编译诊断的发生位置 |
 | [`definition_resolution_error`](executor/definition_resolution_error.md) | 定义硬依赖的解析诊断 |

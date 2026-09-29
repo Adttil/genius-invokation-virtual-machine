@@ -14,6 +14,8 @@ using any_command = std::variant</* 核心命令类型 */>;
 
 直接使用 `std::variant` 的构造、赋值、`std::get`、`std::get_if` 和 `std::visit` 接口，没有额外包装类。保存的是命令值，原对象在构造后可以销毁。可用命令及其参数要求见各[命令页面](commands.md)。
 
+命令中的 `span` 等借用成员仍引用原数据，不随 variant 复制其内容。相应数据须保持有效，直到接收该序列的 [`compile`](../executor/compile.md) 或 [`add_program`](../executor/definition_compile_context/add_program.md) 返回。
+
 ## 示例
 
 ```cpp
