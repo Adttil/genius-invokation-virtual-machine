@@ -42,7 +42,7 @@
 
 ### 第三步：完整而轻量的源库接口（已完成）
 
-- 新增 `givm/source_library.hpp` 作为源库的独立公开入口，提供完整的现有源库能力。保留登记具体 C++ 定义源的公开模板，不另设 `source_registration` 接口，也不拆分 table 模块。
+- 新增 `givm/definition_source_interface.hpp` 作为源库的独立公开入口，提供完整的现有源库能力。保留登记具体 C++ 定义源的公开模板，不另设 `source_registration` 接口，也不拆分 table 模块。
 - 合并冲突检查、依赖解析、定义选择、基础定义补入、ID 映射构建及源错误格式化移入 `src/definition/source_library.cpp`。面向调用方的模板保留；较重算法通过有限定义类别的显式实例化或非模板包装进入 cpp。
 - `issued_id_map` 的标签筛选算法移入 `src/definition/issued_id_map.cpp`，公开的类别模板与返回类型保持原有形式。
 - `source_view` 的源码模板与两指针身份表示保持原样，不改变运行期 ABI。源库仍传递包含 table 和事件等依赖，本步减少的是算法实现体，不承诺消除这些类型依赖。
@@ -52,12 +52,12 @@
 
 ### 第四步：公开聚合头（已完成）
 
-聚合头按能力集合划分，而非强制形成单一包含链。`source_library.hpp` 在第三步提供，本步补齐其余入口并保留原有模块聚合头：
+聚合头按能力集合划分，而非强制形成单一包含链。`definition_source_interface.hpp` 在第三步提供，本步补齐其余入口并保留原有模块聚合头：
 
 | 聚合头 | 用途 |
 | --- | --- |
-| `source_library.hpp` | 完整的源库登记、持有、组合和查询能力 |
-| `source.hpp` | 源库、命令、事件、只读定义库、完整编译上下文与响应上下文；不引入 executor 或输入/观察视图 |
+| `definition_source_interface.hpp` | 完整的源库登记、持有、组合和查询能力 |
+| `definition_source.hpp` | 源库、命令、事件、只读定义库、完整编译上下文与响应上下文；不引入 executor 或输入/观察视图 |
 | `compile.hpp` | 源库、命令、整库编译入口、结果、诊断及编译后的定义库；不引入 executor 或输入/观察视图 |
 | `runtime.hpp` | 编译后的定义库、牌桌、executor 与视图；不引入源库容器或完整编译上下文 |
 | `givm.hpp` | 全部公开能力及官方基础定义 |
@@ -66,7 +66,7 @@
 
 定义模块新增较窄的 `definition_common.hpp` 聚合头，供跨模块访问完整 source view、定义运行数据、事件、查询和相关类型；它不包含源库容器。source view 的模板及其原有两指针表示均保留，不拆分其函数指针类型。跨模块依赖使用指定的公开聚合头，保持 definition 到 table、executor 到 definition/table 的单向关系。`table.hpp` 的范围保持不变，原有 `definition.hpp` 与 `executor.hpp` 继续提供完整模块接口。
 
-`basic_definitions.hpp` 显式包含 `source.hpp`，基础定义按普通定义源编写，不再依靠全部聚合头提供编译与响应上下文。其他内容库可以在公共头使用 `source_library.hpp`，在实现定义源的 cpp 中使用 `source.hpp`。
+`basic_definitions.hpp` 显式包含 `definition_source.hpp`，基础定义按普通定义源编写，不再依靠全部聚合头提供编译与响应上下文。其他内容库可以在公共头使用 `definition_source_interface.hpp`，在实现定义源的 cpp 中使用 `definition_source.hpp`。
 
 `executor/library.hpp` 保留编译后的定义库、原有静态编译模板及命令序列包装工具；完整编译上下文位于 `executor/definition_compile_context.hpp`，整库编译入口、结果及 `definition_selection` 位于 `executor/compile.hpp`。定义库的私有构造、历史布局和静态查询初始化等实现位于 `src/executor/library.cpp`，运行期内联调用保持不变。
 
@@ -74,7 +74,7 @@
 
 不再公开单独的 ID 映射构建接口；整库编译的结果已提供配套 `id_map`，牌组加载使用该结果。需要将其他定义 ID 写入命令的定义源，在 `compile(context)` 中解析依赖。源库入口仅前置声明其私有准备算法涉及的 `issued_id_map`，不为它引入映射实现。
 
-验证记录：Clang Debug、两路并行构建通过；CTest 共 665 项测试全部通过，其中包含 318 项文档示例。独立编译单元分别通过源库、定义源、编译和运行入口验证工厂返回值、编译与链接、静态及动态查询，以及普通和观察模式的执行。另有 15 项独立语法检查通过，覆盖九个聚合入口及 source/compile/runtime 的六种包含顺序。未新增友元；source view 保持原有完整定义。删除独立建表入口后，测试与示例改用正式编译结果，响应程序中的定义 ID 则由编译上下文解析。
+验证记录：Clang Debug、两路并行构建通过；CTest 共 665 项测试全部通过，其中包含 318 项文档示例。独立编译单元分别通过源库、定义源、编译和运行入口验证工厂返回值、编译与链接、静态及动态查询，以及普通和观察模式的执行。另有 15 项独立语法检查通过，覆盖九个聚合入口及 definition_source/compile/runtime 的六种包含顺序。未新增友元；source view 保持原有完整定义。删除独立建表入口后，测试与示例改用正式编译结果，响应程序中的定义 ID 则由编译上下文解析。
 
 ## 验证与测量
 
@@ -112,7 +112,7 @@
 
 | 入口 | 项目头数量 | 原始行数合计 |
 | --- | ---: | ---: |
-| `source_library.hpp` | 59 | 7263 |
+| `definition_source_interface.hpp` | 59 | 7263 |
 | `definition/source_library.hpp` | 58 | 7257 |
 | `definition.hpp` | 112 | 10191 |
 | `executor.hpp` | 135 | 15914 |
@@ -126,13 +126,13 @@
 
 | 入口 | 项目头数量 | 原始行数合计 |
 | --- | ---: | ---: |
-| `source_library.hpp` | 59 | 7101 |
-| `source.hpp` | 125 | 12790 |
-| `compile.hpp` | 122 | 12188 |
+| `definition_source_interface.hpp` | 59 | 7109 |
+| `definition_source.hpp` | 125 | 12798 |
+| `compile.hpp` | 122 | 12196 |
 | `runtime.hpp` | 134 | 14906 |
 | `definition_common.hpp` | 112 | 9922 |
-| `definition.hpp` | 114 | 10211 |
-| `executor.hpp` | 143 | 15787 |
-| `givm.hpp` | 144 | 16155 |
+| `definition.hpp` | 114 | 10219 |
+| `executor.hpp` | 143 | 15795 |
+| `givm.hpp` | 144 | 16163 |
 
 这些数字表示文本包含规模，不代表同比例的编译耗时改善。运行入口不包含源库容器、完整编译上下文和编译错误集合；定义源与编译入口不包含执行器及输入、观察视图。完整 source view 仍可由这些入口传递包含，这是保留其完整定义的取舍。跨模块依赖均经过指定聚合头，没有新增对其他模块叶文件的直接包含。

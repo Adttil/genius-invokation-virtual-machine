@@ -9,7 +9,13 @@ namespace givm_test::definition::source_library_linkage
 {
 TEST_CASE("source library factories are usable through the source library interface alone", "[source_library][linkage]")
 {
+    givm::definition_source_library empty;
+    CHECK(empty.empty());
+    REQUIRE(empty.add());
+    CHECK(empty.empty());
+
     const auto original = make_source_closure();
+    CHECK_FALSE(original.empty());
     CHECK(original.source_views<givm::card_definition>().size() == 2);
     CHECK(original.has<givm::card_definition>("SharedCard"));
     CHECK(std::string{ original.get<givm::card_definition>("SharedCard").name() } == "SharedCard");
@@ -18,6 +24,7 @@ TEST_CASE("source library factories are usable through the source library interf
     CHECK(std::string{ tags.front() } == "linkage_fixture");
 
     auto copied = original;
+    CHECK_FALSE(copied.empty());
     REQUIRE(copied.add(make_overlapping_closure()));
     CHECK(copied.source_views<givm::card_definition>().size() == 3);
     CHECK(copied.has<givm::card_definition>("PeerCard"));
@@ -28,6 +35,7 @@ TEST_CASE("source library factories are usable through the source library interf
     assigned = moved;
     givm::definition_source_library transferred;
     transferred = std::move(assigned);
+    CHECK_FALSE(transferred.empty());
     REQUIRE(transferred.add(original));
     REQUIRE(transferred.add(transferred));
     CHECK(transferred.source_views<givm::card_definition>().size() == 3);

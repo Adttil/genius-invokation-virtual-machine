@@ -1,7 +1,7 @@
 #ifndef GIVM_UNIT_TESTS_DEFINITION_INTERFACE_LAYER_SOURCES_HPP
 #define GIVM_UNIT_TESTS_DEFINITION_INTERFACE_LAYER_SOURCES_HPP
 
-#include <givm/source_library.hpp>
+#include <givm/definition_source_interface.hpp>
 
 namespace givm_test::interface_layers
 {

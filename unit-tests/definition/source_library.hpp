@@ -233,15 +233,18 @@ TEST_CASE("definition_source_library adds a dependent batch atomically", "[sourc
 
     auto library = givm_test::make_source_library();
     CHECK_FALSE(library.add(card));
+    CHECK(library.empty());
     CHECK_FALSE(library.has<givm::card_definition>("Card"));
 
     REQUIRE(library.add(card, support));
+    CHECK_FALSE(library.empty());
     CHECK(library.has<givm::card_definition>("Card"));
     CHECK(library.has<givm::support_view>("Support"));
 
     auto duplicate_batch = givm_test::make_source_library();
     const plain_source<givm::card_definition> duplicate{ .source_name = "Card" };
     CHECK_FALSE(duplicate_batch.add(card, duplicate, support));
+    CHECK(duplicate_batch.empty());
     CHECK_FALSE(duplicate_batch.has<givm::card_definition>("Card"));
     CHECK_FALSE(duplicate_batch.has<givm::support_view>("Support"));
 }

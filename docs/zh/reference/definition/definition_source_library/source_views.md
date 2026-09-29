@@ -2,7 +2,7 @@
 
 # givm::definition_source_library::source_views
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
 template<class TDefinitionType>

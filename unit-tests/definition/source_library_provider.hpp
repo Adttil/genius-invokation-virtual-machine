@@ -1,7 +1,7 @@
 #ifndef GIVM_UNIT_TESTS_DEFINITION_SOURCE_LIBRARY_PROVIDER_HPP
 #define GIVM_UNIT_TESTS_DEFINITION_SOURCE_LIBRARY_PROVIDER_HPP
 
-#include <givm/source_library.hpp>
+#include <givm/definition_source_interface.hpp>
 
 namespace givm_test::definition::source_library_linkage
 {

@@ -4,7 +4,7 @@
 #include <array>
 #include <string_view>
 
-#include <givm/source_library.hpp>
+#include <givm/definition_source_interface.hpp>
 
 namespace givm_test::definition::source_library_linkage
 {

@@ -4,7 +4,7 @@
 
 将定义源与游戏流程编译为对局规则，推进一场对局，并在需要输入、观察结果或结束对局时把控制权交回调用方。
 
-整库编译使用 `<givm/compile.hpp>`；编写定义源中的编译与响应函数使用 `<givm/source.hpp>`；使用已有定义库推进游戏则使用 `<givm/runtime.hpp>`。原有 `<givm/executor.hpp>` 继续提供完整执行模块接口。
+整库编译使用 `<givm/compile.hpp>`；编写定义源中的编译与响应函数使用 `<givm/definition_source.hpp>`；使用已有定义库推进游戏则使用 `<givm/runtime.hpp>`。原有 `<givm/executor.hpp>` 继续提供完整执行模块接口。
 
 ## 类
 

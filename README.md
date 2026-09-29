@@ -18,13 +18,13 @@ target_link_libraries(your_target PRIVATE givm::givm)
 
 | 头文件 | 用途 |
 | --- | --- |
-| `<givm/source_library.hpp>` | 持有、登记、查询和合并定义源库，适合声明源库工厂的公共头 |
-| `<givm/source.hpp>` | 编写定义源，使用命令、事件、编译上下文及响应上下文 |
+| `<givm/definition_source_interface.hpp>` | 持有、登记、查询和合并定义源库，适合声明源库工厂的公共头 |
+| `<givm/definition_source.hpp>` | 编写定义源，使用命令、事件、编译上下文及响应上下文 |
 | `<givm/compile.hpp>` | 将源库和对局流程编译为定义库，处理编译结果与诊断 |
 | `<givm/runtime.hpp>` | 使用编译后的定义库、牌桌、执行器和视图推进游戏 |
 | `<givm/givm.hpp>` | 全部公开能力及官方基础定义 |
 
-`source_library.hpp` 提供完整的 `definition_source_library`。内容库的公共头包含它后，调用方链接相应库即可接收、复制、移动、合并和查询工厂返回的源库，无须额外包含定义源的实现。
+`definition_source_interface.hpp` 提供完整的 `definition_source_library`。内容库的公共头包含它后，调用方链接相应库即可接收、复制、移动、合并和查询工厂返回的源库，无须额外包含定义源的实现。
 
 只使用牌桌时仍可包含 `<givm/table.hpp>`。原有 `<givm/definition.hpp>`、`<givm/executor.hpp>` 保留完整模块接口。官方基础定义也可单独通过 `<givm/basic_definitions.hpp>` 引入。
 

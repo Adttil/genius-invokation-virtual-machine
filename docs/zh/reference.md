@@ -4,8 +4,8 @@
 
 | 头文件 | 用途 |
 | --- | --- |
-| `<givm/source_library.hpp>` | 使用完整的[定义源库](reference/definition/definition_source_library.md)及源准备诊断 |
-| `<givm/source.hpp>` | 编写[定义源](reference/definition/source_protocol.md)，登记效果程序并响应事件 |
+| `<givm/definition_source_interface.hpp>` | 使用完整的[定义源库](reference/definition/definition_source_library.md)及源准备诊断 |
+| `<givm/definition_source.hpp>` | 编写[定义源](reference/definition/source_protocol.md)，登记效果程序并响应事件 |
 | `<givm/compile.hpp>` | [编译](reference/executor/compile.md)源库与对局流程，处理编译结果和诊断 |
 | `<givm/runtime.hpp>` | 使用[定义库](reference/executor/definition_library.md)、牌桌、执行器与视图推进对局 |
 | `<givm/givm.hpp>` | 全部公开能力及官方基础定义 |

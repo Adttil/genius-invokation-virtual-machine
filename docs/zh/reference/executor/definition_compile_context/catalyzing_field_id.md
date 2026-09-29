@@ -2,7 +2,7 @@
 
 # givm::definition_compile_context::catalyzing_field_id
 
-定义于头文件 `<givm/source.hpp>`
+定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
 definition_id<combat_status_view> catalyzing_field_id() const noexcept;

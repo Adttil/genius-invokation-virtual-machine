@@ -51,6 +51,14 @@ namespace givm
 
         definition_source_library() = default;
 
+        bool empty() const noexcept
+        {
+            return std::apply([](const auto&... buckets)
+            {
+                return (buckets.entries.empty() && ...);
+            }, buckets_);
+        }
+
         std::expected<void, std::vector<source_add_error>> add()
         {
             return {};

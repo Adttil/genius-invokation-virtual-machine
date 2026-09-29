@@ -1,7 +1,7 @@
 #ifndef GIVM_EXECUTOR_COMPILE_HPP
 #define GIVM_EXECUTOR_COMPILE_HPP
 
-#include "../source_library.hpp"
+#include "../definition_source_interface.hpp"
 #include "library.hpp"
 #include "compile_error.hpp"
 

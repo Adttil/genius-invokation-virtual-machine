@@ -2,7 +2,7 @@
 
 # givm::definition_compile_context::frozen_id
 
-定义于头文件 `<givm/source.hpp>`
+定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
 definition_id<attachment_view> frozen_id() const noexcept;

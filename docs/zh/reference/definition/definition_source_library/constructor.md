@@ -2,7 +2,7 @@
 
 # givm::definition_source_library::definition_source_library
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
 definition_source_library();
@@ -25,7 +25,7 @@ definition_source_library();
 ```cpp
 #include <print>
 
-#include <givm/source_library.hpp>
+#include <givm/definition_source_interface.hpp>
 
 int main()
 {

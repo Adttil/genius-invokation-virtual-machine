@@ -2,7 +2,7 @@
 
 # givm::definition_compile_context
 
-定义于头文件 `<givm/source.hpp>`
+定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
 class definition_compile_context;

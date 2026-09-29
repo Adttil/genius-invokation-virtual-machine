@@ -2,7 +2,7 @@
 
 # givm::make_definition_source_library
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
 template<class... TSources>
@@ -42,7 +42,7 @@ make_definition_source_library(const TSources&... sources);
 #include <print>
 #include <string_view>
 
-#include <givm/source_library.hpp>
+#include <givm/definition_source_interface.hpp>
 
 struct card_source
 {

@@ -2,7 +2,7 @@
 
 # givm::source_add_error
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
 using source_add_error = std::variant<source_conflict, source_missing_dependency>;

@@ -2,7 +2,7 @@
 
 # givm::error_string
 
-源准备诊断的重载 (1)—(3) 定义于头文件 `<givm/source_library.hpp>`；全部重载也可通过 `<givm/definition.hpp>` 引入。
+源准备诊断的重载 (1)—(3) 定义于头文件 `<givm/definition_source_interface.hpp>`；全部重载也可通过 `<givm/definition.hpp>` 引入。
 
 ```cpp
 std::string error_string(const std::vector<source_add_error>& errors); // (1)

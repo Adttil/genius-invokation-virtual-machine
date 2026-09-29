@@ -2,7 +2,7 @@
 
 # givm::handle_context::random
 
-定义于头文件 `<givm/source.hpp>`
+定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
 std::uint32_t random() const;

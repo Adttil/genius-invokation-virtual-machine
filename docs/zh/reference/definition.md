@@ -6,7 +6,7 @@
 
 定义源适合按游戏内容逐项编写；源库负责汇集和访问所需定义。[执行模块的编译函数](executor/compile.md)选择定义、建立名称与 ID 的映射，并将定义源和对局流程编译为对局使用的定义库。初次编写卡牌或角色效果可以先阅读[定义源协议](definition/source_protocol.md)。
 
-`<givm/source_library.hpp>` 提供完整的源库接口，包括登记、合并、查询、基础定义配置和源准备诊断。提供源库工厂函数的内容库可以在其公共头中包含这个入口，使调用方直接使用返回的源库。编写定义源时使用 `<givm/source.hpp>`，获得命令、事件、编译上下文与响应上下文；整库编译使用 `<givm/compile.hpp>`。原有 `<givm/definition.hpp>` 继续提供完整定义模块接口。
+`<givm/definition_source_interface.hpp>` 提供完整的源库接口，包括登记、合并、查询、基础定义配置和源准备诊断。提供源库工厂函数的内容库可以在其公共头中包含这个入口，使调用方直接使用返回的源库。编写定义源时使用 `<givm/definition_source.hpp>`，获得命令、事件、编译上下文与响应上下文；整库编译使用 `<givm/compile.hpp>`。原有 `<givm/definition.hpp>` 继续提供完整定义模块接口。
 
 ## 类
 

@@ -8,7 +8,7 @@
 
 可通过 [`make_definition_source_library`](make_definition_source_library.md) 创建库并一次登记多个源，也可向空库或已有库调用 [`add`](definition_source_library/add.md)。两者都通过 `expected` 返回登记结果；失败时可以读取结构化诊断，或使用 [`error_string`](error_string.md) 输出文本。
 
-源库的完整接口可通过 `<givm/source_library.hpp>` 引入。编写具体定义源时使用 `<givm/source.hpp>`，其中包含源库、命令、事件、查询以及完整的编译与响应上下文。
+源库的完整接口可通过 `<givm/definition_source_interface.hpp>` 引入。编写具体定义源时使用 `<givm/definition_source.hpp>`，其中包含源库、命令、事件、查询以及完整的编译与响应上下文。
 
 最终编译由 `<givm/compile.hpp>` 提供的 [`givm::compile`](../executor/compile.md) 完成。[`program_entry`](program_entry.md) 表示效果入口，定义源通过 [`definition_compile_context`](../executor/definition_compile_context.md) 登记效果，通过 [`handle_context`](../executor/handle_context.md) 响应事件。需要同时编译和运行完整对局时，也可使用 `<givm/givm.hpp>`。
 
@@ -157,7 +157,7 @@ bool can_query() const;
 
 #include <givm/basic_definitions.hpp>
 #include <givm/compile.hpp>
-#include <givm/source.hpp>
+#include <givm/definition_source.hpp>
 
 struct passive_skill_source
 {

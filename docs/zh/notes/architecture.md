@@ -61,15 +61,15 @@ executor ----------------> table
 ```
 
 - `definition.hpp`：定义源协议、源库及其视图、ID 映射、公开 command 与命令 variant、事件、程序入口，以及牌组名称链接。
-- `source_library.hpp`：definition 模块的源库公开入口，提供完整的源库登记、持有、合并、查询、基础定义配置和源准备诊断能力；不包含命令集合或执行器。
+- `definition_source_interface.hpp`：definition 模块的源库公开入口，提供完整的源库登记、持有、合并、查询、基础定义配置和源准备诊断能力；不包含命令集合或执行器。
 - `definition_common.hpp`：definition 模块的较窄聚合头，保留完整 source view、定义运行数据、事件、查询和命令描述，不包含源库容器；供 executor 按模块边界使用。
 - `table.hpp`：牌桌状态、`issued_id` 及其 `definition_id`、`tag_id` 别名、定义类别、实体 ID、实体访问对象、`linked_deck` 和 `table`。
 - `executor.hpp`：最终编译、编译上下文、编译后的定义库、随机输入和 `executor`。
 - `utils/stack.hpp`：可独立使用的栈与 frame view 工具；其公开性不意味着 executor 提供原始栈访问。
 
-面向使用场景的聚合头还包括 `source.hpp`、`compile.hpp` 和 `runtime.hpp`：分别提供定义源编写、整库编译和对局运行能力，`givm.hpp` 汇总全部公开能力及官方基础定义。这些入口可以组合，不必形成线性包含层级；`definition.hpp`、`executor.hpp` 继续保留原有完整模块接口。`source.hpp` 与 `compile.hpp` 不包含 executor 或输入/观察视图；`runtime.hpp` 不包含源库容器和完整编译上下文，但保留完整 source view、公开模板及内联报价需要的命令类型和响应上下文。
+面向使用场景的聚合头还包括 `definition_source.hpp`、`compile.hpp` 和 `runtime.hpp`：分别提供定义源编写、整库编译和对局运行能力，`givm.hpp` 汇总全部公开能力及官方基础定义。这些入口可以组合，不必形成线性包含层级；`definition.hpp`、`executor.hpp` 继续保留原有完整模块接口。`definition_source.hpp` 与 `compile.hpp` 不包含 executor 或输入/观察视图；`runtime.hpp` 不包含源库容器和完整编译上下文，但保留完整 source view、公开模板及内联报价需要的命令类型和响应上下文。
 
-跨核心模块通过指定的公共聚合头，依赖方向保持一致。executor 的运行部分使用 `definition_common.hpp`，需要源库的编译部分使用 `source_library.hpp` 或完整 `definition.hpp`，不直接包含 definition 的叶文件。definition 使用 `table.hpp` 提供的游戏数据类型，不包含 executor 实现。table 的直接及传递包含均不进入 definition 或 executor；executor 通过 source view 完成最终编译。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
+跨核心模块通过指定的公共聚合头，依赖方向保持一致。executor 的运行部分使用 `definition_common.hpp`，需要源库的编译部分使用 `definition_source_interface.hpp` 或完整 `definition.hpp`，不直接包含 definition 的叶文件。definition 使用 `table.hpp` 提供的游戏数据类型，不包含 executor 实现。table 的直接及传递包含均不进入 definition 或 executor；executor 通过 source view 完成最终编译。需要提及上层类型时使用适当的前置声明；前置声明本身不把类型定义的归属搬到下层。
 
 命令拆分为文件后仍遵守这一边界：definition 的命令文件通过 `table.hpp` 使用牌桌类型，`src/executor/commands` 中的命令实现通过 definition 模块的聚合头使用公开命令和错误类型，不穿过模块聚合头直接包含另一模块的叶文件。移动到 `src` 不改变模块归属或依赖方向；同模块的私有头仍可以直接包含有实际复用关系的其他文件。[`definition/commands.hpp`](../../../include/givm/definition/commands.hpp) 与 [`src/executor/commands.hpp`](../../../src/executor/commands.hpp) 均只汇总包含；命令错误的类型和单项格式化留在 definition，编译总错误的位置和格式化留在 executor，不形成反向依赖。
 
@@ -77,7 +77,7 @@ executor ----------------> table
 
 table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 
-definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者通过 `source.hpp` 取得命令、事件、只读定义库和完整的编译、响应上下文，而无需引入 executor 和各个视图。source 适配仅传递 `handle_context&`，因此同样可以前置声明，保持单向依赖。
+definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者通过 `definition_source.hpp` 取得命令、事件、只读定义库和完整的编译、响应上下文，而无需引入 executor 和各个视图。source 适配仅传递 `handle_context&`，因此同样可以前置声明，保持单向依赖。
 
 源库公开登记、名称查找和按类别遍历 source view 的能力。选择、依赖闭包和 ID 分配仍由源库已有私有准备算法完成，`definition_library` 通过原有友元关系访问；不再公开独立的 ID 映射构建入口。executor 中的非成员 `compile(sources, ..., initialization_program, round_program, mode)` 返回完整定义库及同次编译的 `id_map`。`definition_selection` 放在 `executor/compile.hpp`，属于整库编译接口；`source.compile(context)` 仍是单项定义源协议。
 

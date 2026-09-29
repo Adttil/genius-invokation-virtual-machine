@@ -1,7 +1,7 @@
 #ifndef GIVM_BASIC_DEFINITIONS_HPP
 #define GIVM_BASIC_DEFINITIONS_HPP
 
-#include "source.hpp"
+#include "definition_source.hpp"
 
 #include <array>
 #include <limits>

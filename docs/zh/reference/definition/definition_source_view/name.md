@@ -2,7 +2,7 @@
 
 # givm::definition_source_view::name
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
 std::string_view name() const;

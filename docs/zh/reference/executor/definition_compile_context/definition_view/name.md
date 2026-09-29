@@ -2,7 +2,7 @@
 
 # givm::definition_compile_context::definition_view::name
 
-定义于头文件 `<givm/source.hpp>`
+定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
 std::string_view name() const noexcept;

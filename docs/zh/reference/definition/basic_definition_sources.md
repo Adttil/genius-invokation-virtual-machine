@@ -2,7 +2,7 @@
 
 # givm::basic_definition_sources
 
-定义于头文件 `<givm/source_library.hpp>`
+定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
 struct basic_definition_sources
