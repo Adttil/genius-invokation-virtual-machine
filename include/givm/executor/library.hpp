@@ -36,6 +36,7 @@ namespace givm::detail
         definition_id<combat_status_view> catalyzing_field;
         definition_id<summon_view> burning_flame;
         definition_id<attachment_view> frozen;
+        definition_id<combat_status_view> shield;
     };
 
     template<class TView>
@@ -224,6 +225,11 @@ namespace givm
         definition_id<attachment_view> frozen_id() const noexcept
         {
             return basic_ids_.frozen;
+        }
+
+        definition_id<combat_status_view> shield_id() const noexcept
+        {
+            return basic_ids_.shield;
         }
 
         template<class TDefinitionType>

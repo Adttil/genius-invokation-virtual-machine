@@ -157,6 +157,11 @@ namespace givm
             return basic_ids_.frozen;
         }
 
+        definition_id<combat_status_view> shield_id() const noexcept
+        {
+            return basic_ids_.shield;
+        }
+
         template<class TCategory>
         std::size_t definition_count() const noexcept
         {

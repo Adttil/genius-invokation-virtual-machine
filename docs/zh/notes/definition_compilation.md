@@ -373,13 +373,13 @@ std::expected<void, std::vector<source_add_error>> definition_source_library::ad
 
 批量诊断先按参数顺序记录冲突，再按输入顺序、每个源的类别与依赖声明顺序记录缺失依赖；同一源和重复依赖诊断去重，已有冲突的名称不再被当作缺失依赖。合并按类别和对方库的登记顺序记录冲突。所有输入索引从零开始；冲突第一位置为空表示接收库，第二位置为空表示被合并库。诊断保留分类、名称和位置等结构化数据；`error_string` 对两种错误列表提供文本输出，保持列表顺序，每条一行且末尾无换行。
 
-源库是普通定义源集合，默认构造后通过 `add` 登记 source，不再提供带源参数的构造。四个反应定义由独立的 `basic_definition_sources` 配置：草原核与激化领域使用 combat status source view，燃烧烈焰使用 summon source view，冻结使用 attachment source view。`compile` 显式接收此配置，临时并入四个基础源而不修改原源库；所需其他依赖须由源库或四个基础源满足。绑定来自调用方配置的源对象，不通过固定名称、标签或版本字符串识别。普通 source 的按名依赖仍在 `add` 时验证；基础源冲突、依赖缺失和选择错误通过编译结果的结构化诊断报告。
+源库是普通定义源集合，默认构造后通过 `add` 登记 source，不再提供带源参数的构造。五个反应定义由独立的 `basic_definition_sources` 配置：草原核、激化领域与护盾使用 combat status source view，燃烧烈焰使用 summon source view，冻结使用 attachment source view。`compile` 显式接收此配置，临时并入五个基础源而不修改原源库；所需其他依赖须由源库或五个基础源满足。绑定来自调用方配置的源对象，不通过固定名称、标签或版本字符串识别。普通 source 的按名依赖仍在 `add` 时验证；基础源冲突、依赖缺失和选择错误通过编译结果的结构化诊断报告。
 
 `make_definition_source_library(sources...)` 提供创建并登记的工厂：默认构造一个库，执行一次批量 `add`，然后返回 `expected<definition_source_library, vector<source_add_error>>`。不传源时返回空库，登记验证失败时返回全部诊断，不因此抛出异常；合并已有库仍使用 `add(library)`。
 
-单项定义编译通过 context 的 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()` 引用本次配置的基础定义，无须声明具体版本的名称依赖。context 与最终 definition library 使用同一组已解析 ID。
+单项定义编译通过 context 的 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`、`shield_id()` 引用本次配置的基础定义，无须声明具体版本的名称依赖。context 与最终 definition library 使用同一组已解析 ID。
 
-整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition。四个默认反应定义始终属于选择根，与显式选中的定义一起求依赖闭包。源库利用登记时保留的声明信息，在私有准备算法中完成选择、依赖闭包和 ID 分配；executor 中的整库编译通过已有的 `definition_library` 友元关系使用它，再通过 source view 完成最终编译。初始化程序、回合程序与 `compile_mode` 必须在同一次编译中提供；所有响应程序继承该编译模式。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
+整库编译可以使用源库中的全部定义，也可以通过 `definition_selection` 按类别指定需要的 definition。五个默认反应定义始终属于选择根，与显式选中的定义一起求依赖闭包。源库利用登记时保留的声明信息，在私有准备算法中完成选择、依赖闭包和 ID 分配；executor 中的整库编译通过已有的 `definition_library` 友元关系使用它，再通过 source view 完成最终编译。初始化程序、回合程序与 `compile_mode` 必须在同一次编译中提供；所有响应程序继承该编译模式。编译后的库不能通过合并增补定义；改变定义集合后需要重新编译。
 
 ```cpp
 auto result = compile(source_library, basics, initialization_program, round_program, givm::compile_mode::normal);
@@ -397,7 +397,7 @@ auto [library, id_map] = std::move(*result);
 using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
 ```
 
-需要只编译部分定义时，使用接受 `const definition_selection& selection` 的重载。`selection` 按 definition 类别保存名称序列；每个选中的 definition、四个默认反应定义及它们的传递依赖都会进入编译结果。
+需要只编译部分定义时，使用接受 `const definition_selection& selection` 的重载。`selection` 按 definition 类别保存名称序列；每个选中的 definition、五个默认反应定义及它们的传递依赖都会进入编译结果。
 
 [`compile` 的返回值](../reference/executor/compile.md#返回值)为 `expected`：成功值为 `definition_compile_result`，其中 `library` 是编译后的游戏规则，`id_map` 是同一次编译使用的名称映射，供上层在对局开始前把名称形式的牌组或其他输入链接为 issued ID。检查成功后，成功值可以按该顺序结构化绑定；对局运行时只需要 `library`。失败值为 `vector<compile_error>`，每项包含发生位置和一层具体错误 variant，不返回部分 ID 映射。
 
@@ -427,8 +427,8 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 
 一份规则库的构建包含以下工作：
 
-1. 临时并入四个基础定义源，复用登记缓存中的定义类别、名称、标签和依赖声明；新登记的基础源按同样方式取得声明。
-2. 从 `definition_selection` 指定的定义和四个默认反应定义求出依赖闭包，或选择全部定义，为选中的定义和标签建立 issued id 映射。
+1. 临时并入五个基础定义源，复用登记缓存中的定义类别、名称、标签和依赖声明；新登记的基础源按同样方式取得声明。
+2. 从 `definition_selection` 指定的定义和五个默认反应定义求出依赖闭包，或选择全部定义，为选中的定义和标签建立 issued id 映射。
 3. 建立局部 `definition_library`，按 ID 预填名称、标签位集、响应函数表、历史摘要响应列表和非空查询的自定义函数指针；缺少自定义查询时保留空指针。编译条目引用登记缓存和最终库，并暂存空查询的自定义函数指针。
 4. 为全部历史摘要调用 `layout(...)` 并确定字段布局。此时上下文已经可以查看全部选中定义的声明和自定义能力。
 5. 编译调用方提供的初始化程序和回合程序，补入回合推进及回跳连接。

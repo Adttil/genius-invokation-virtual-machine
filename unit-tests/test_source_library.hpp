@@ -47,8 +47,10 @@ namespace givm_test
 
     inline constexpr reaction_source<givm::attachment_view> frozen{ "TestFrozen" };
 
+    inline constexpr reaction_source<givm::combat_status_view> shield{ "TestShield" };
+
     inline constexpr givm::basic_definition_sources basic_sources{
-        dendro_core, catalyzing_field, burning_flame, frozen };
+        dendro_core, catalyzing_field, burning_flame, frozen, shield };
 
     inline givm::definition_source_library make_source_library()
     {

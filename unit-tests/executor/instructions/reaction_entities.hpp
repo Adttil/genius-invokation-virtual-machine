@@ -173,7 +173,7 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
         { .max_health = 30, .health = 30, .aura = givm::element_aura::electro } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
     givm::definition_source_library sources;
     REQUIRE(sources.add(source_definition, observer, victim));
     const givm::character_id source{ player, 0 };
@@ -252,7 +252,7 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
     const givm::test::initialized_character_source victim{ "ReactionTarget", { .max_health = 30, .health = 30 } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
     givm::definition_source_library sources;
     REQUIRE(sources.add(source_definition, observer, victim));
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
@@ -302,7 +302,7 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
 TEST_CASE("reaction replacement suppresses default numbers and entities while consuming aura", "[reaction-entities][takeover]")
 {
     const auto reaction = GENERATE(givm::elemental_reaction::quicken,
-        givm::elemental_reaction::bloom, givm::elemental_reaction::burning);
+        givm::elemental_reaction::bloom, givm::elemental_reaction::burning, givm::elemental_reaction::crystallize);
     const bool take_over_effects = GENERATE(false, true);
     reaction_log log{ .take_over_effects = take_over_effects };
     const source_character source_definition;
@@ -311,12 +311,12 @@ TEST_CASE("reaction replacement suppresses default numbers and entities while co
         { .max_health = 30, .health = 30, .aura = reaction_aura(reaction) } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
     givm::definition_source_library sources;
     REQUIRE(sources.add(source_definition, observer, victim));
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
     constexpr givm::character_id target{ givm::player_id{ 1 }, 0 };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::dendro } };
+    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = reaction == givm::elemental_reaction::crystallize ? givm::damage_type::geo : givm::damage_type::dendro } };
     const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{ givm::deal_damage{ .damages = damages },
         givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
@@ -337,16 +337,17 @@ TEST_CASE("reaction replacement suppresses default numbers and entities while co
 
 TEST_CASE("a self-applied reaction creates its entity for the affected player's opponent", "[reaction-entities][apply_element]")
 {
+    const auto reaction = GENERATE(givm::elemental_reaction::bloom, givm::elemental_reaction::crystallize);
     const givm::test::initialized_character_source target_definition{ "SelfApplicationTarget",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::hydro } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
     givm::definition_source_library sources;
     REQUIRE(sources.add(target_definition));
     constexpr givm::character_id self{ givm::player_id{ 0 }, 0 };
     const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{
-        givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::self, 0 }, .element = givm::element::dendro },
+        givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::self, 0 }, .element = reaction == givm::elemental_reaction::crystallize ? givm::element::geo : givm::element::dendro },
         givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::normal));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
@@ -362,7 +363,7 @@ TEST_CASE("a self-applied reaction creates its entity for the affected player's 
     CHECK(table[self].state().aura == givm::element_aura::none);
     CHECK(std::ranges::empty(table[givm::player_id{ 0 }].combat_statuses()));
     REQUIRE(std::ranges::distance(table[givm::player_id{ 1 }].combat_statuses()) == 1);
-    CHECK((*table[givm::player_id{ 1 }].combat_statuses().begin()).definition_id() == library.dendro_core_id());
+    CHECK((*table[givm::player_id{ 1 }].combat_statuses().begin()).definition_id() == (reaction == givm::elemental_reaction::crystallize ? library.shield_id() : library.dendro_core_id()));
 }
 
 TEST_CASE("the first damage completion can use a field produced by a later hit", "[reaction-entities][nested]")
@@ -374,7 +375,7 @@ TEST_CASE("the first damage completion can use a field produced by a later hit",
         { .max_health = 30, .health = 30, .aura = givm::element_aura::electro } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
     givm::definition_source_library sources;
     REQUIRE(sources.add(source_definition, observer, victim));
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
@@ -414,7 +415,7 @@ TEST_CASE("burning flame finishes its damage before exhausting and broadcasting 
         { .max_health = 30, .health = 30, .aura = givm::element_aura::pyro } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
     givm::definition_source_library sources;
     REQUIRE(sources.add(source_definition, observer, victim));
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
@@ -474,7 +475,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         { .max_health = 30, .health = 30, .aura = givm::element_aura::electro } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, field,
-        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0 };
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
     givm::definition_source_library sources;
     REQUIRE(sources.add(source_definition, observer, victim));
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
@@ -537,5 +538,124 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     CHECK(table.state().round_number == 0);
     CHECK(copied_table.state().round_number == 0);
     CHECK((*copied_table[givm::player_id{ 0 }].combat_statuses().begin()).state().count == 2);
+}
+
+TEST_CASE("crystallize adds damage and stacks a shield that protects only the active character", "[reaction-entities][crystallize]")
+{
+    const bool observed = GENERATE(false, true);
+    const bool application_only = GENERATE(false, true);
+    reaction_log log;
+    const reaction_observer observer{ &log };
+    const source_character source_definition;
+    const givm::test::initialized_character_source other{ "ShieldTarget", { .max_health = 30, .health = 30 } };
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(source_definition, observer, other));
+    const givm::relative_character_target self{ givm::relative_player::self, 0 };
+    const givm::relative_character_target opponent{ givm::relative_player::opponent, 0 };
+    const std::array crystallize{ givm::fixed_damage{ .source = self, .target = opponent,
+        .value = 1, .type = givm::damage_type::geo } };
+    const std::array incoming{
+        givm::fixed_damage{ .source = opponent, .target = self, .value = 2, .type = givm::damage_type::piercing },
+        givm::fixed_damage{ .source = opponent, .target = { givm::relative_player::self, 1 }, .value = 2, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = opponent, .target = self, .value = 0, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = opponent, .target = self, .value = 1, .type = givm::damage_type::physical },
+        givm::fixed_damage{ .source = opponent, .target = self, .value = 2, .type = givm::damage_type::physical }
+    };
+    std::vector<givm::any_command> commands;
+    for(int index = 0; index != 3; ++index)
+    {
+        commands.emplace_back(givm::apply_element{ .source = self, .target = opponent, .element = givm::element::hydro });
+        if(application_only)
+            commands.emplace_back(givm::apply_element{ .source = self, .target = opponent, .element = givm::element::geo });
+        else commands.emplace_back(givm::deal_damage{ .damages = crystallize });
+    }
+    commands.emplace_back(givm::deal_damage{ .damages = incoming });
+    commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics, commands, std::tuple{},
+        observed ? givm::compile_mode::observed : givm::compile_mode::normal));
+    const givm::player_id player{ 0 };
+    const givm::character_id front{ player, 0 };
+    const givm::character_id back{ player, 1 };
+    const givm::character_id target{ givm::player_id{ 1 }, 0 };
+    givm::table table{ { .self_player = player }, { .active_character = front }, { .active_character = target } };
+    const auto other_id = ids.get_id<givm::character_view>(other.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()), other_id } },
+        { .characters = { other_id } });
+    givm_test::executor_driver executor;
+    executor.start(library, table);
+    zero_random random;
+    std::vector<std::uint32_t> observations;
+    for(;;)
+    {
+        const auto state = executor.advance(library, table, random);
+        if(state == givm::execution_state::finished) break;
+        REQUIRE(observed);
+        REQUIRE(state == givm::execution_state::health_reduced);
+        const auto view = executor.view_in<givm::execution_state::health_reduced>();
+        observations.push_back(view.value());
+        if(observations.size() == (application_only ? 1 : 4))
+        {
+            REQUIRE(std::ranges::distance(table[player].combat_statuses()) == 1);
+            const auto shield = *table[player].combat_statuses().begin();
+            CHECK(shield.definition_id() == library.shield_id());
+            CHECK(shield.state().count == 2);
+            CHECK(shield.state().round_usages == 0);
+        }
+    }
+    std::vector<std::uint32_t> expected;
+    if(not application_only) expected = { 2, 2, 2 };
+    expected.insert(expected.end(), { 2, 2, 0, 0, 1 });
+    CHECK(log.values == expected);
+    auto expected_observations = observed ? expected : std::vector<std::uint32_t>{};
+    std::erase(expected_observations, 0);
+    CHECK(observations == expected_observations);
+    CHECK(table[front].state().health == 27);
+    CHECK(table[back].state().health == 28);
+    CHECK(table[target].state().health == (application_only ? 30 : 24));
+    CHECK(table[target].state().aura == givm::element_aura::none);
+    CHECK(std::ranges::empty(table[player].combat_statuses()));
+    CHECK(std::ranges::empty(table[givm::player_id{ 1 }].combat_statuses()));
+}
+
+TEST_CASE("crystallize preserves shield points above its accumulation limit", "[reaction-entities][crystallize][state-limit]")
+{
+    const givm::test::initialization_skill_source initialize{ [](givm::definition_compile_context& context)
+    {
+        return std::tuple{
+            givm::generate_combat_status{ .definition = context.shield_id(), .state = { 2, 0 } },
+            givm::modify_combat_status_state{ .definition = context.shield_id(), .count = 1, .ignore_limit = true },
+            givm::apply_element{ .source = { givm::relative_player::self, 0 },
+                .target = { givm::relative_player::opponent, 0 }, .element = givm::element::geo }
+        };
+    } };
+    const givm::test::initialization_character_source source;
+    const givm::test::initialized_character_source target{ "OverLimitShieldTarget",
+        { .max_health = 10, .health = 10, .aura = givm::element_aura::hydro } };
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(source, initialize, target));
+    const givm::basic_definition_sources basics{
+        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
+        givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
+    const auto [library, ids] = givm_test::require_success(compile(sources, basics,
+        std::tuple{ givm::start_battle{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{}, givm::compile_mode::normal));
+    const givm::player_id player{ 0 };
+    givm::table table{ { .round_number = 1 },
+        { .active_character = givm::character_id{ player, 0 } },
+        { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
+    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } },
+        { .characters = { ids.get_id<givm::character_view>(target.name()) } });
+    givm_test::executor_driver executor;
+    executor.start(library, table);
+    zero_random random;
+    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
+    REQUIRE(std::ranges::distance(table[player].combat_statuses()) == 1);
+    const auto shield = *table[player].combat_statuses().begin();
+    CHECK(shield.definition_id() == library.shield_id());
+    CHECK(shield.state().count == 3);
+    CHECK(shield.state().round_usages == 0);
 }
 }

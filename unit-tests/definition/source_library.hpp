@@ -142,6 +142,7 @@ namespace
         givm::definition_id<givm::combat_status_view> field;
         givm::definition_id<givm::summon_view> flame;
         givm::definition_id<givm::attachment_view> frozen;
+        givm::definition_id<givm::combat_status_view> shield;
     };
 
     struct card_with_reaction_bindings
@@ -155,7 +156,7 @@ namespace
         reaction_bindings compile(givm::definition_compile_context& context) const
         {
             *bindings = { context.dendro_core_id(), context.catalyzing_field_id(),
-                context.burning_flame_id(), context.frozen_id() };
+                context.burning_flame_id(), context.frozen_id(), context.shield_id() };
             return *bindings;
         }
     };
@@ -381,7 +382,8 @@ TEST_CASE("basic definitions are supplied at compile time and survive compiled l
     const plain_source<givm::combat_status_view> field{ .source_name = "A custom field" };
     const plain_source<givm::summon_view> flame{ .source_name = "Custom flame" };
     const plain_source<givm::attachment_view> frozen{ .source_name = "Custom frozen" };
-    const givm::basic_definition_sources basics{ core, field, flame, frozen };
+    const plain_source<givm::combat_status_view> shield{ .source_name = "Custom shield" };
+    const givm::basic_definition_sources basics{ core, field, flame, frozen, shield };
     const givm::definition_source_library sources;
     const auto [library, ids] = givm_test::require_success(compile(sources, basics, givm::definition_selection{},
         std::tuple{}, std::tuple{}, givm::compile_mode::normal));
@@ -391,10 +393,12 @@ TEST_CASE("basic definitions are supplied at compile time and survive compiled l
         CHECK(compiled.catalyzing_field_id() == ids.get_id<givm::combat_status_view>(field.name()));
         CHECK(compiled.burning_flame_id() == ids.get_id<givm::summon_view>(flame.name()));
         CHECK(compiled.frozen_id() == ids.get_id<givm::attachment_view>(frozen.name()));
+        CHECK(compiled.shield_id() == ids.get_id<givm::combat_status_view>(shield.name()));
         CHECK(bool(compiled.name(compiled.dendro_core_id()) == core.name()));
         CHECK(bool(compiled.name(compiled.catalyzing_field_id()) == field.name()));
         CHECK(bool(compiled.name(compiled.burning_flame_id()) == flame.name()));
         CHECK(bool(compiled.name(compiled.frozen_id()) == frozen.name()));
+        CHECK(bool(compiled.name(compiled.shield_id()) == shield.name()));
     };
     check(library);
     auto copied = library;
@@ -409,6 +413,7 @@ TEST_CASE("basic definitions are supplied at compile time and survive compiled l
     CHECK_FALSE(sources.has<givm::combat_status_view>(field.name()));
     CHECK_FALSE(sources.has<givm::summon_view>(flame.name()));
     CHECK_FALSE(sources.has<givm::attachment_view>(frozen.name()));
+    CHECK_FALSE(sources.has<givm::combat_status_view>(shield.name()));
 }
 
 TEST_CASE("partial compilation includes basic dependencies before issuing ids", "[source_library][reactions]")
@@ -418,7 +423,7 @@ TEST_CASE("partial compilation includes basic dependencies before issuing ids", 
     const plain_source<givm::summon_view> flame{ .source_name = "Flame" };
     const plain_source<givm::support_view> support{ .source_name = "Reaction support" };
     const plain_source<givm::card_definition> unused{ .source_name = "Unused card" };
-    const givm::basic_definition_sources basics{ core, field, flame, givm_test::frozen };
+    const givm::basic_definition_sources basics{ core, field, flame, givm_test::frozen, givm_test::shield };
     const givm::definition_source_library missing;
     const auto missing_library = compile(missing, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     REQUIRE_FALSE(missing_library);
@@ -453,12 +458,14 @@ TEST_CASE("basic definitions can depend on each other in the same compile config
 {
     const core_with_field_dependency core{ "Core", "Field" };
     const core_with_field_dependency field{ "Field", "Core" };
-    const givm::basic_definition_sources basics{ core, field, givm_test::burning_flame, givm_test::frozen };
+    const core_with_field_dependency shield{ "Shield", "Field" };
+    const givm::basic_definition_sources basics{ core, field, givm_test::burning_flame, givm_test::frozen, shield };
     const givm::definition_source_library sources;
     const auto [library, ids] = givm_test::require_success(compile(sources, basics, givm::definition_selection{},
         std::tuple{}, std::tuple{}, givm::compile_mode::normal));
     CHECK(library.dendro_core_id() == ids.get_id<givm::combat_status_view>(core.name()));
     CHECK(library.catalyzing_field_id() == ids.get_id<givm::combat_status_view>(field.name()));
+    CHECK(library.shield_id() == ids.get_id<givm::combat_status_view>(shield.name()));
 }
 
 TEST_CASE("one source library can compile different basic versions without retaining bindings", "[source_library][reactions]")
@@ -469,6 +476,8 @@ TEST_CASE("one source library can compile different basic versions without retai
     const plain_source<givm::summon_view> flame{ .source_name = "Flame" };
     const plain_source<givm::attachment_view> old_frozen{ .source_name = "Frozen-1" };
     const plain_source<givm::attachment_view> new_frozen{ .source_name = "Frozen-2" };
+    const plain_source<givm::combat_status_view> old_shield{ .source_name = "Shield-1" };
+    const plain_source<givm::combat_status_view> new_shield{ .source_name = "Shield-2" };
     reaction_bindings observed;
     const card_with_reaction_bindings card{ &observed };
     givm::definition_source_library original;
@@ -483,16 +492,19 @@ TEST_CASE("one source library can compile different basic versions without retai
     {
         CAPTURE(use_new);
         const givm::basic_definition_sources basics{
-            core, use_new ? new_field : old_field, flame, use_new ? new_frozen : old_frozen };
+            core, use_new ? new_field : old_field, flame, use_new ? new_frozen : old_frozen, use_new ? new_shield : old_shield };
         const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
         CHECK(observed.core == library.dendro_core_id());
         CHECK(observed.field == library.catalyzing_field_id());
         CHECK(observed.flame == library.burning_flame_id());
         CHECK(observed.frozen == library.frozen_id());
+        CHECK(observed.shield == library.shield_id());
         CHECK(observed.field == ids.get_id<givm::combat_status_view>(basics.catalyzing_field.name()));
         CHECK(observed.frozen == ids.get_id<givm::attachment_view>(basics.frozen.name()));
+        CHECK(observed.shield == ids.get_id<givm::combat_status_view>(basics.shield.name()));
         CHECK_FALSE(ids.has<givm::combat_status_view>((use_new ? old_field : new_field).name()));
         CHECK_FALSE(ids.has<givm::attachment_view>((use_new ? old_frozen : new_frozen).name()));
+        CHECK_FALSE(ids.has<givm::combat_status_view>((use_new ? old_shield : new_shield).name()));
         CHECK_FALSE(sources.has<givm::combat_status_view>(old_field.name()));
         CHECK_FALSE(sources.has<givm::combat_status_view>(new_field.name()));
         CHECK_FALSE(sources.has<givm::attachment_view>(old_frozen.name()));
@@ -526,10 +538,10 @@ TEST_CASE("basic injection reuses identical sources and rejects different source
     const plain_source<givm::combat_status_view> different_field{ .source_name = "Field" };
     givm::definition_source_library sources;
     REQUIRE(sources.add(field));
-    const givm::basic_definition_sources matching{ core, field, givm_test::burning_flame, givm_test::frozen };
-    const givm::basic_definition_sources conflicting{ core, different_field, givm_test::burning_flame, givm_test::frozen };
+    const givm::basic_definition_sources matching{ core, field, givm_test::burning_flame, givm_test::frozen, givm_test::shield };
+    const givm::basic_definition_sources conflicting{ core, different_field, givm_test::burning_flame, givm_test::frozen, givm_test::shield };
     const auto [library, ids] = givm_test::require_success(compile(sources, matching, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    CHECK(ids.definition_count<givm::combat_status_view>() == 2);
+    CHECK(ids.definition_count<givm::combat_status_view>() == 3);
     CHECK(library.catalyzing_field_id() == ids.get_id<givm::combat_status_view>(field.name()));
     const auto conflicting_library = compile(sources, conflicting, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     REQUIRE_FALSE(conflicting_library);

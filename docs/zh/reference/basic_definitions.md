@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/basic_definitions.hpp>`，也可通过 `<givm/givm.hpp>` 使用。
 
-`givm::genshin_impact` 提供原神各版本的草原核、激化领域、燃烧烈焰和冻结规则，供调用方选择元素反应所关联的实体。它们实现各自的增伤、消耗和离场效果，可以组成 [`basic_definition_sources`](definition/basic_definition_sources.md) 传给编译函数。
+`givm::genshin_impact` 提供原神各版本的草原核、激化领域、燃烧烈焰、冻结和护盾规则，供调用方选择元素反应所关联的实体。它们实现各自的增伤、抵消、消耗和离场效果，可以组成 [`basic_definition_sources`](definition/basic_definition_sources.md) 传给编译函数。
 
 ## 定义源对象
 
@@ -15,6 +15,7 @@
 | `catalyzing_field_3_4_0` | `catalyzing_field-3.4.0-genshin_impact` | `combat_status_view` |
 | `burning_flame_3_3_0` | `burning_flame-3.3.0-genshin_impact` | `summon_view` |
 | `frozen_3_3_0` | `frozen-3.3.0-genshin_impact` | `attachment_view` |
+| `shield_3_3_0` | `shield-3.3.0-genshin_impact` | `combat_status_view` |
 
 这些对象具有静态生命周期，可直接用于基础定义配置。调用方可以选择激化领域的不同版本，也可以用自己的定义源替代任何一项。配置的成员名称确定其用途，不从定义名称推断用途；不同对局可以让同一个源库配合不同配置编译。
 
@@ -29,14 +30,21 @@
 | 激化领域 3.4 | 增伤条件与 3.3 相同 | `count = 2`；重复生成按本次请求刷新状态 |
 | 燃烧烈焰 3.3 | 回合结束时，对对方出战角色造成 `value` 点火伤害，随后消耗一次可用次数 | `value = 1`、`usages = 2`；重复召唤累加本次请求的可用次数，最多两次 |
 | 冻结 3.3 | 角色受控；该角色受到物理或火伤害时加伤 2 并解除冻结；回合开始通知时解除 | `count = 1`、`round_usages = 0`；同定义重复施加保留已有实体 |
+| 护盾 3.3 | 抵消己方出战角色受到的非穿透伤害，按抵消量消耗层数 | `count = 2`、`round_usages = 0`；重复生成累加本次请求的层数，最多两层；已经超出上限的层数不会因此降低 |
 
 三类效果的伤害元素、增幅和使用次数见[游戏文本资料](https://gensh.honeyhunterworld.com/i_n333013/?lang=EN)。草原核和激化领域只增强对方出战角色受到的伤害，不增强对后台角色或己方角色的伤害；来源可以是己方角色、技能、召唤物等。
 
-出战状态通过 [combat_status_state_limit](definition/queries/combat_status_state_limit.md) 提供表中的层数上限，其 `round_usages` 上限为零。每次增伤后通过状态修改命令扣层，层数归零时响应自身的状态变化并移除。重复生成使用本次已经裁剪的状态，按完整状态覆盖，不累加层数。
+这些出战状态通过 [combat_status_state_limit](definition/queries/combat_status_state_limit.md) 提供表中的层数上限，其 `round_usages` 上限为零。草原核和激化领域每次增伤后通过状态修改命令扣层，层数归零时响应自身的状态变化并移除。它们重复生成时使用本次已经裁剪的状态，按完整状态覆盖，不累加层数。
 
 燃烧烈焰通过 [summon_state_limit](definition/queries/summon_state_limit.md) 限制效果量和次数。默认燃烧反应请求的状态是 `{ .value = 1, .usages = 1 }`，已有燃烧烈焰时累加一次。直接使用 [summon](definition/commands/summon.md) 或 [add_summon](definition/commands/add_summon.md) 且省略 `state`，仍遵守这些命令的规则，采用上限状态 `{ .value = 1, .usages = 2 }`。
 
 燃烧烈焰的回合结束伤害完整结算后才扣除次数；燃烧烈焰具有 `remove_at_zero_usages` 标签，扣次的 [modify_summon_state](definition/commands/modify_summon_state.md) 在次数耗尽后将其移除并发送 [summon_removed](definition/events/summon_removed.md)。草原核和激化领域的移除发送 [combat_status_removed](definition/events/combat_status_removed.md)。
+
+## 结晶与护盾
+
+`shield_3_3_0_source` 的静态对象为 `shield_3_3_0`。默认结晶反应使本段伤害增加 1，并在反应目标的对方生成一点护盾；已有同定义护盾时累加一点，通常最多两点。若其他效果已使层数超过两点，重复结晶不会降低已有层数。独立附着引发结晶时仍生成护盾，但不产生伤害或反应加伤。替代反应取消默认加伤和护盾生成。
+
+护盾响应 [`damage_effect`](definition/events/damage_effect.md)，在数值及倍率计算后抵消己方出战角色受到的非穿透伤害，每抵消一点消耗一层。它不抵消对后台角色的伤害或穿透伤害，层数为零时移除并发送 [`combat_status_removed`](definition/events/combat_status_removed.md)。生成时机遵循 [`deal_damage`](definition/commands/deal_damage.md) 的默认反应实体规则，不追溯影响引发它的伤害。
 
 ## 冻结与控制
 
@@ -64,7 +72,8 @@ int main()
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0
+        givm::genshin_impact::frozen_3_3_0,
+        givm::genshin_impact::shield_3_3_0
     };
     givm::definition_source_library sources{};
     auto library_result = compile(

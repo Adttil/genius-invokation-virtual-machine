@@ -43,6 +43,7 @@ class definition_library;
 | [`catalyzing_field_id`](definition_library/catalyzing_field_id.md) | 取得默认激化领域定义 ID |
 | [`burning_flame_id`](definition_library/burning_flame_id.md) | 取得默认燃烧烈焰定义 ID |
 | [`frozen_id`](definition_library/frozen_id.md) | 取得默认冻结定义 ID |
+| [`shield_id`](definition_library/shield_id.md) | 取得默认护盾定义 ID |
 
 ## 注意
 
@@ -77,7 +78,8 @@ int main()
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0
+        givm::genshin_impact::frozen_3_3_0,
+        givm::genshin_impact::shield_3_3_0
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;

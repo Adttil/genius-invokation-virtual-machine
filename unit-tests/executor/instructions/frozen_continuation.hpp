@@ -50,7 +50,7 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     const givm::test::initialized_character_source character{ "Character", { .max_health = 20, .health = 20 } };
     const givm::basic_definition_sources basics{
         givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, frozen };
+        givm::genshin_impact::burning_flame_3_3_0, frozen, givm_test::shield };
     givm::definition_source_library sources;
     REQUIRE(sources.add(character));
     const std::array damages{

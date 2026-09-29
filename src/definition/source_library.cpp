@@ -340,7 +340,8 @@ namespace givm
             .dendro_core = prepare(basics.dendro_core, 0),
             .catalyzing_field = prepare(basics.catalyzing_field, 1),
             .burning_flame = prepare(basics.burning_flame, 2),
-            .frozen = prepare(basics.frozen, 3)
+            .frozen = prepare(basics.frozen, 3),
+            .shield = prepare(basics.shield, 4)
         };
         definition_types::each([&]<class TCategory>
         {
@@ -383,6 +384,7 @@ namespace givm
         enqueue_name<index_of<combat_status_view>()>(basics.catalyzing_field, selected, queue, errors);
         enqueue_name<index_of<summon_view>()>(basics.burning_flame, selected, queue, errors);
         enqueue_name<index_of<attachment_view>()>(basics.frozen, selected, queue, errors);
+        enqueue_name<index_of<combat_status_view>()>(basics.shield, selected, queue, errors);
 
         [&]<size_t...I>(std::index_sequence<I...>)
         {

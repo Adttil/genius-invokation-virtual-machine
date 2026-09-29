@@ -116,7 +116,7 @@ TEST_CASE("reaction definitions can be selected without changing the source coll
     const named_source<givm::summon_view> flame{ "Custom flame" };
     const givm::basic_definition_sources basics{
         core, field,
-        flame, givm_test::frozen };
+        flame, givm_test::frozen, givm_test::shield };
     const givm::definition_source_library sources{};
 
     check_sources<givm::combat_status_view>(sources, {});

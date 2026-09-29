@@ -151,6 +151,7 @@ namespace givm::detail
         case elemental_reaction::burning:
         case elemental_reaction::bloom:
         case elemental_reaction::frozen:
+        case elemental_reaction::crystallize:
             add_reaction_damage_bonus(event, 1);
             break;
         default:

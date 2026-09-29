@@ -51,9 +51,9 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 
 附属的 `control` 标签表示控制状态，例如冻结、石化、眩晕或水泡；`control_immunity` 表示阻止施加控制附属及效果引发的切人。控制查询检查当前仍在场的附属，移除其中一个不会解除其他实体提供的控制。免控不解除已经存在的控制，也不妨碍玩家在行动选择时主动切换。具体入口见 [`is_controlled`](../executor/definition_library/is_controlled.md)、[`is_control_immune`](../executor/definition_library/is_control_immune.md) 与 [`attach`](commands/attach.md)。标签只声明分类；到期移除等行为仍由定义响应实现。
 
-当调用方只选择部分定义时，[`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的四个默认反应定义，并自动加入这些定义和所选定义直接或间接按名称依赖的所有定义。例如卡牌声明生成的召唤物为名称依赖后，选择该卡牌即可带入相应召唤物；单纯按标签查询不会带入未选择的定义。
+当调用方只选择部分定义时，[`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的五个默认反应定义，并自动加入这些定义和所选定义直接或间接按名称依赖的所有定义。例如卡牌声明生成的召唤物为名称依赖后，选择该卡牌即可带入相应召唤物；单纯按标签查询不会带入未选择的定义。
 
-需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`，不需要声明具体版本的名称依赖。普通定义的硬依赖仍须声明名称；仅查找或筛选本次集合不需要声明。源库默认构造为空集合，普通 [`add`](definition_source_library/add.md) 验证名称冲突及普通名称依赖，并聚合返回结构化诊断；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
+需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`、`shield_id()`，不需要声明具体版本的名称依赖。普通定义的硬依赖仍须声明名称；仅查找或筛选本次集合不需要声明。源库默认构造为空集合，普通 [`add`](definition_source_library/add.md) 验证名称冲突及普通名称依赖，并聚合返回结构化诊断；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
 
 ## 事件响应
 
@@ -184,7 +184,8 @@ int main()
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0
+        givm::genshin_impact::frozen_3_3_0,
+        givm::genshin_impact::shield_3_3_0
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;

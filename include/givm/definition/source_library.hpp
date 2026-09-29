@@ -33,6 +33,7 @@ namespace givm
             std::string_view catalyzing_field;
             std::string_view burning_flame;
             std::string_view frozen;
+            std::string_view shield;
         };
     }
 
@@ -42,6 +43,7 @@ namespace givm
         definition_source_view<combat_status_view> catalyzing_field;
         definition_source_view<summon_view> burning_flame;
         definition_source_view<attachment_view> frozen;
+        definition_source_view<combat_status_view> shield;
     };
 
     class definition_source_library

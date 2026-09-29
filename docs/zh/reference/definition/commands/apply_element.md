@@ -65,6 +65,8 @@ struct apply_element_error;
 
 独立附着不产生伤害类默认效果：不应用反应加伤，超导、感电不产生后台穿透伤害，扩散也不产生后台元素伤害。因此不会广播伤害属性、数值、抵消或伤害后事件，也不会产生 `health_reduced` 观察现场。元素消耗、默认实体生成、冻结、超载切人及反应前后通知仍然有效，与伤害引发的反应相同。
 
+默认结晶在反应目标的对方生成一点护盾，采用 [`definition_library::shield_id`](../../executor/definition_library/shield_id.md) 指定的出战状态定义；独立附着不产生结晶的 1 点反应加伤。随库提供的护盾重复生成时累加至两层，已有超出上限的层数不会因此降低。
+
 默认超载同样支持强制切换。反应判定及标签选择完成时，若目标是其所属玩家的出战角色，就登记该玩家；附着处理完成后，以该玩家当时的出战位置为起点，循环选择下一个存活角色，完成切换及其通知后再广播反应后通知。原目标后来死亡或中途换人不取消已登记的切换；若唯一存活角色已出战则不切换、不通知。观察模式也会报告实际切换产生的 `active_character_changed` 现场。
 
 执行超载时，若当时的出战角色具有 `control_immunity` 附属，则取消此次切换，不产生通知或切人观察现场。该保护不撤销已完成的附着处理。
@@ -104,7 +106,8 @@ int main()
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0
+        givm::genshin_impact::frozen_3_3_0,
+        givm::genshin_impact::shield_3_3_0
     };
     givm::definition_source_library sources{};
     if(not sources.add(source)) return 1;

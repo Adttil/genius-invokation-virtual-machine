@@ -32,13 +32,16 @@ namespace givm::detail
         execution_position entity_resume, execution_position attachment_resume)
     {
         if(reaction == elemental_reaction::quicken || reaction == elemental_reaction::burning
-            || reaction == elemental_reaction::bloom)
+            || reaction == elemental_reaction::bloom || reaction == elemental_reaction::crystallize)
         {
             const auto player = other_player(target.player_id);
             program_entry entry;
             if(reaction == elemental_reaction::burning)
                 entry = prepare_summoning(library, table, context, random,
                     { .player = player, .definition = library.burning_flame_id(), .state = { 1, 1 } }, entity_resume);
+            else if(reaction == elemental_reaction::crystallize)
+                entry = prepare_combat_status_generation(library, table, context, random,
+                    { .player = player, .definition = library.shield_id(), .state = { 1, 0 } }, entity_resume);
             else
             {
                 const auto definition = reaction == elemental_reaction::quicken

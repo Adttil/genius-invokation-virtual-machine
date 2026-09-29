@@ -9,7 +9,7 @@ using definition_selection =
     std::array<std::span<const std::string_view>, definition_types::size()>;
 ```
 
-一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。[编译定义库](compile.md)时，会自动补入同次调用的 [`basic_definition_sources`](../definition/basic_definition_sources.md) 指定的四个默认反应定义，以及这些定义和所选定义声明的依赖，无须调用方逐一列出。
+一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。[编译定义库](compile.md)时，会自动补入同次调用的 [`basic_definition_sources`](../definition/basic_definition_sources.md) 指定的五个默认反应定义，以及这些定义和所选定义声明的依赖，无须调用方逐一列出。
 
 ## 注意
 
@@ -44,7 +44,8 @@ int main()
         givm::genshin_impact::dendro_core_3_3_0,
         givm::genshin_impact::catalyzing_field_3_4_0,
         givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0
+        givm::genshin_impact::frozen_3_3_0,
+        givm::genshin_impact::shield_3_3_0
     };
     givm::definition_source_library sources{};
     if(not sources.add(potion, food)) return 1;

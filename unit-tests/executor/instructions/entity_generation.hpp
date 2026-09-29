@@ -832,7 +832,7 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
     REQUIRE(sources.add(driver, driver.passive));
     const givm::basic_definition_sources basics{
         givm_test::dendro_core, givm_test::catalyzing_field,
-        givm::genshin_impact::burning_flame_3_3_0, givm_test::frozen };
+        givm::genshin_impact::burning_flame_3_3_0, givm_test::frozen, givm_test::shield };
     const auto program = std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = givm_test::require_success(
         compile(sources, basics, program, std::tuple{}, givm::compile_mode::normal));

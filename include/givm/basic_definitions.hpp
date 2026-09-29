@@ -3,6 +3,7 @@
 
 #include "definition_source.hpp"
 
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <string_view>
@@ -11,6 +12,65 @@
 
 namespace givm::genshin_impact
 {
+    struct shield_3_3_0_source
+    {
+        using definition_category = combat_status_view;
+
+        struct definition_type
+        {
+            program_entry modify;
+            program_entry remove;
+        };
+
+        constexpr std::string_view name() const noexcept
+        {
+            return "shield-3.3.0-genshin_impact";
+        }
+
+        definition_type compile(definition_compile_context& context) const
+        {
+            return {
+                context.add_program(std::tuple{ modify_combat_status_state{} }),
+                context.add_program(std::tuple{ remove_combat_status{} })
+            };
+        }
+
+        static constexpr combat_status_state query(const definition_type&, const combat_status_state_limit&) noexcept
+        {
+            return { .count = 2, .round_usages = 0 };
+        }
+
+        static program_entry handle(
+            const definition_type& definition, const combat_status_view& status,
+            damage_effect& event, handle_context& context)
+        {
+            if(event.type == damage_type::piercing || event.value == 0 || status.state().count == 0
+                || status.player().state().active_character != event.target)
+                return {};
+            const auto absorbed = std::min(status.state().count, event.value);
+            event.value -= absorbed;
+            return context.invoke(definition.modify,
+                modify_combat_status_state_input{ .status = status.id(), .count = -static_cast<std::int64_t>(absorbed) });
+        }
+
+        static program_entry handle(
+            const definition_type& definition, const combat_status_view& status,
+            combat_status_regeneration& event, handle_context& context)
+        {
+            return context.invoke(definition.modify,
+                modify_combat_status_state_input{ .status = status.id(), .count = event.state.count });
+        }
+
+        static program_entry handle(
+            const definition_type& definition, const combat_status_view& status,
+            combat_status_state_changed& event, handle_context& context)
+        {
+            if(event.current.count != 0)
+                return {};
+            return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
+        }
+    };
+
     struct frozen_3_3_0_source
     {
         using definition_category = attachment_view;
@@ -357,6 +417,7 @@ namespace givm::genshin_impact
         }
     };
 
+    inline constexpr shield_3_3_0_source shield_3_3_0;
     inline constexpr frozen_3_3_0_source frozen_3_3_0;
     inline constexpr dendro_core_3_3_0_source dendro_core_3_3_0;
     inline constexpr catalyzing_field_3_3_0_source catalyzing_field_3_3_0;

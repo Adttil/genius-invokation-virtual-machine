@@ -128,7 +128,8 @@ namespace givm
           id_map.get_id<combat_status_view>(basics.dendro_core),
           id_map.get_id<combat_status_view>(basics.catalyzing_field),
           id_map.get_id<summon_view>(basics.burning_flame),
-          id_map.get_id<attachment_view>(basics.frozen) }
+          id_map.get_id<attachment_view>(basics.frozen),
+          id_map.get_id<combat_status_view>(basics.shield) }
     {
         constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
             "weapon", "artifact", "talent", "technique"
