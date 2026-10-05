@@ -420,10 +420,26 @@ TEST_CASE("blank frames initialize their trailing substacks", "[stack][substack]
     CHECK(child.empty());
 
     using child_initializer = decltype(givm::substack());
-    STATIC_REQUIRE_FALSE(accepts_stack_values<decltype(child), child_initializer>);
-    STATIC_REQUIRE_FALSE(accepts_stack_values<decltype(child), std::uint32_t, child_initializer>);
-    STATIC_REQUIRE_FALSE(accepts_blank_stack_frame<decltype(child), givm::substack_t>);
-    STATIC_REQUIRE_FALSE(accepts_blank_stack_frame<decltype(child), std::uint32_t, givm::substack_t>);
+    STATIC_REQUIRE(accepts_stack_values<decltype(child), child_initializer>);
+    STATIC_REQUIRE(accepts_stack_values<decltype(child), std::uint32_t, child_initializer>);
+    STATIC_REQUIRE(accepts_blank_stack_frame<decltype(child), givm::substack_t>);
+    STATIC_REQUIRE(accepts_blank_stack_frame<decltype(child), std::uint32_t, givm::substack_t>);
+    STATIC_REQUIRE_FALSE(accepts_stack_values<decltype(child), child_initializer, std::uint32_t>);
+    STATIC_REQUIRE_FALSE(accepts_blank_stack_frame<decltype(child), givm::substack_t, std::uint32_t>);
+
+    auto nested = child.push<std::uint32_t, givm::substack_t>();
+    get<0>(nested) = 17;
+    auto grandchild = get<1>(nested);
+    CHECK(grandchild.empty());
+    auto nested_blank = grandchild.push<givm::substack_t>();
+    CHECK(get<0>(nested_blank).empty());
+    get<0>(nested_blank).push(std::uint16_t{ 19 });
+    CHECK(get<0>(get<0>(nested_blank).top<std::uint16_t>()) == 19);
+    grandchild.pop(nested_blank);
+    CHECK(grandchild.empty());
+    CHECK(get<0>(nested) == 17);
+    child.pop<std::uint32_t, givm::substack_t>();
+    CHECK(child.empty());
     stack.pop(containing);
     CHECK(stack.empty());
 }
@@ -698,5 +714,190 @@ TEST_CASE("copied and moved substacks own independent contents", "[stack][substa
     CHECK(get<1>(move_assigned.top<std::uint32_t, givm::substack_t>()).empty());
     move_assigned.pop<std::uint32_t, givm::substack_t>();
     CHECK(move_assigned.empty());
+}
+
+TEST_CASE("nested substack growth and popping preserve every ancestor", "[stack][substack]")
+{
+    const std::array<std::uint16_t, 3> numbers{ 2, 3, 5 };
+    const std::array<aligned_record, 2> records{ aligned_record{ 7, 11 }, aligned_record{ 13, 17 } };
+    givm::frame_stack stack{ 1 };
+    auto outer = stack.push(givm::dynamic_array<std::uint16_t>(numbers), std::uint32_t{ 19 }, givm::substack());
+    auto child = get<2>(outer);
+    const auto outer_size = stack.size();
+    auto middle = child.push(givm::dynamic_array<aligned_record>(records), std::uint8_t{ 23 }, givm::substack());
+    auto grandchild = get<2>(middle);
+    const auto middle_size = stack.size();
+    auto inner = grandchild.push(std::uint16_t{ 29 }, givm::substack());
+    auto deepest = get<1>(inner);
+    const auto inner_size = stack.size();
+    const auto child_size = child.size();
+    const auto grandchild_size = grandchild.size();
+    STATIC_REQUIRE_FALSE(std::is_same_v<decltype(child), decltype(grandchild)>);
+
+    deepest.push(std::uint8_t{ 31 });
+    const auto small_frame_size = deepest.size();
+    CHECK(stack.size() == inner_size + small_frame_size);
+    CHECK(child.size() == child_size + small_frame_size);
+    CHECK(grandchild.size() == grandchild_size + small_frame_size);
+    const auto old_capacity = stack.capacity();
+    const std::array<std::uint64_t, 1024> large_values{};
+    deepest.push(givm::dynamic_array<std::uint64_t>(large_values), std::uint32_t{ 37 });
+    REQUIRE(stack.capacity() > old_capacity);
+    CHECK(std::ranges::equal(get<0>(outer), numbers));
+    CHECK(std::ranges::equal(get<0>(middle), records));
+    CHECK(get<1>(outer) == 19);
+    CHECK(get<1>(middle) == 23);
+    CHECK(get<0>(inner) == 29);
+    CHECK(child.size() == child_size + deepest.size());
+    CHECK(grandchild.size() == grandchild_size + deepest.size());
+    get<0>(deepest.top<std::uint64_t[], std::uint32_t>())[999] = 41;
+    CHECK(get<0>(get<1>(grandchild.top<std::uint16_t, givm::substack_t>()).top<std::uint64_t[], std::uint32_t>())[999] == 41);
+
+    deepest.pop<std::uint64_t[], std::uint32_t>();
+    CHECK(deepest.size() == small_frame_size);
+    CHECK(get<0>(deepest.top<std::uint8_t>()) == 31);
+    deepest.pop<std::uint8_t>();
+    CHECK(deepest.empty());
+    CHECK(stack.size() == inner_size);
+    CHECK(child.size() == child_size);
+    CHECK(grandchild.size() == grandchild_size);
+    deepest.push(std::uint64_t{ 43 });
+    grandchild.pop(inner);
+    CHECK(grandchild.empty());
+    CHECK(stack.size() == middle_size);
+    child.pop<aligned_record[], std::uint8_t, givm::substack_t>();
+    CHECK(child.empty());
+    CHECK(stack.size() == outer_size);
+    stack.pop(outer);
+    CHECK(stack.empty());
+}
+
+TEST_CASE("nested sibling views follow growth and permit only the top chain to resize", "[stack][substack]")
+{
+    givm::frame_stack stack{ 1 };
+    auto child = get<0>(stack.push(givm::substack()));
+    auto first_child = get<0>(child.push(givm::substack()));
+    get<0>(first_child.push(givm::substack())).push(std::uint32_t{ 7 });
+    child.push(std::uint16_t{ 11 }, givm::substack());
+    auto [first, last] = child.top<givm::frame<givm::substack_t>, givm::frame<std::uint16_t, givm::substack_t>>();
+    auto covered_child = get<0>(first);
+    auto covered_grandchild = get<0>(covered_child.top<givm::substack_t>());
+    auto last_child = get<1>(last);
+    STATIC_REQUIRE_FALSE(std::is_same_v<decltype(covered_child), decltype(covered_grandchild)>);
+    STATIC_REQUIRE_FALSE(can_push_stack_frame<decltype(covered_child)>);
+    STATIC_REQUIRE_FALSE(can_pop_stack_frame<decltype(covered_child)>);
+    STATIC_REQUIRE_FALSE(can_push_stack_frame<decltype(covered_grandchild)>);
+    STATIC_REQUIRE_FALSE(can_pop_stack_frame<decltype(covered_grandchild)>);
+    STATIC_REQUIRE(can_push_stack_frame<decltype(last_child)>);
+    STATIC_REQUIRE(can_pop_stack_frame<decltype(last_child)>);
+
+    const auto old_capacity = stack.capacity();
+    const std::array<std::uint64_t, 1024> values{};
+    get<0>(last_child.push(givm::substack())).push(givm::dynamic_array<std::uint64_t>(values));
+    REQUIRE(stack.capacity() > old_capacity);
+    CHECK(get<0>(covered_grandchild.top<std::uint32_t>()) == 7);
+    get<0>(covered_grandchild.top<std::uint32_t>()) = 13;
+    CHECK(get<0>(last) == 11);
+    last_child.pop<givm::substack_t>();
+    CHECK(last_child.empty());
+
+    child.pop(first, last);
+    CHECK(child.empty());
+    child.push(givm::substack());
+    child.push(std::uint8_t{ 17 });
+    child.pop<givm::frame<givm::substack_t>, givm::frame<std::uint8_t>>();
+    CHECK(child.empty());
+    stack.pop<givm::substack_t>();
+    CHECK(stack.empty());
+}
+
+TEST_CASE("covered and const ancestor chains retain nested substack constraints", "[stack][substack]")
+{
+    const std::array<std::uint16_t, 3> values{ 3, 5, 8 };
+    givm::frame_stack stack{ 1 };
+    auto child = get<0>(stack.push(givm::substack()));
+    auto grandchild = get<0>(child.push(givm::substack()));
+    grandchild.push(givm::dynamic_array<std::uint16_t>(values), std::uint32_t{ 13 });
+    stack.push(std::uint8_t{ 17 });
+    auto [covered, covering] = stack.top<givm::frame<givm::substack_t>, givm::frame<std::uint8_t>>();
+    auto covered_child = get<0>(covered);
+    auto [nested] = covered_child.top<givm::frame<givm::substack_t>>();
+    auto covered_grandchild = get<0>(nested);
+    STATIC_REQUIRE_FALSE(std::is_same_v<decltype(covered_child), decltype(covered_grandchild)>);
+    STATIC_REQUIRE_FALSE(can_push_stack_frame<decltype(covered_grandchild)>);
+    STATIC_REQUIRE_FALSE(can_pop_stack_frame<decltype(covered_grandchild)>);
+    const auto old_capacity = stack.capacity();
+    stack.reserve(old_capacity + 4096);
+    CHECK(std::ranges::equal(get<0>(covered_grandchild.top<std::uint16_t[], std::uint32_t>()), values));
+    CHECK(get<0>(covering) == 17);
+    get<1>(covered_grandchild.top<std::uint16_t[], std::uint32_t>()) = 19;
+
+    auto [const_covered, const_covering] = std::as_const(stack).top<givm::frame<givm::substack_t>, givm::frame<std::uint8_t>>();
+    auto const_child = get<0>(const_covered);
+    auto const_grandchild = get<0>(const_child.top<givm::substack_t>());
+    STATIC_REQUIRE_FALSE(std::is_same_v<decltype(const_child), decltype(const_grandchild)>);
+    STATIC_REQUIRE_FALSE(can_push_stack_frame<decltype(const_grandchild)>);
+    STATIC_REQUIRE_FALSE(can_pop_stack_frame<decltype(const_grandchild)>);
+    auto [stored_values, marker] = const_grandchild.top<std::uint16_t[], std::uint32_t>();
+    STATIC_REQUIRE(std::is_same_v<decltype(stored_values), std::span<const std::uint16_t>>);
+    STATIC_REQUIRE(std::is_same_v<decltype(marker), const std::uint32_t&>);
+    CHECK(std::ranges::equal(stored_values, values));
+    CHECK(marker == 19);
+    CHECK(get<0>(const_covering) == 17);
+
+    stack.pop<std::uint8_t>();
+    auto uncovered = get<0>(get<0>(stack.top<givm::substack_t>()).top<givm::substack_t>());
+    STATIC_REQUIRE(can_push_stack_frame<decltype(uncovered)>);
+    uncovered.push(std::uint8_t{ 23 });
+    CHECK(get<0>(uncovered.top<std::uint8_t>()) == 23);
+    stack.pop<givm::substack_t>();
+    CHECK(stack.empty());
+}
+
+TEST_CASE("copied and moved nested substacks preserve sibling contents independently", "[stack][substack]")
+{
+    const std::array<std::uint32_t, 3> values{ 2, 3, 5 };
+    givm::frame_stack cached;
+    auto cache = get<1>(cached.push(std::uint32_t{ 7 }, givm::substack()));
+    cache.push(std::uint8_t{ 11 });
+    auto deferred = cache.push(std::uint16_t{ 13 }, givm::substack());
+    auto parameters = get<1>(deferred);
+    parameters.push(givm::dynamic_array<std::uint32_t>(values), std::uint64_t{ 17 });
+    cache.push(std::uint32_t{ 19 });
+
+    givm::frame_stack copy = cached;
+    auto copy_cache = get<1>(copy.top<std::uint32_t, givm::substack_t>());
+    CHECK(get<0>(copy_cache.top<std::uint32_t>()) == 19);
+    copy_cache.pop<std::uint32_t>();
+    auto copied = copy_cache.top<std::uint16_t, givm::substack_t>();
+    auto copied_parameters = get<1>(copied);
+    CHECK(get<0>(copied) == 13);
+    CHECK(std::ranges::equal(get<0>(copied_parameters.top<std::uint32_t[], std::uint64_t>()), values));
+    CHECK(get<1>(copied_parameters.top<std::uint32_t[], std::uint64_t>()) == 17);
+    get<0>(copied_parameters.top<std::uint32_t[], std::uint64_t>())[0] = 23;
+    copied_parameters.push(std::uint8_t{ 29 });
+
+    givm::frame_stack moved = std::move(copy);
+    CHECK(get<0>(moved.top<std::uint32_t, givm::substack_t>()) == 7);
+    auto moved_cache = get<1>(moved.top<std::uint32_t, givm::substack_t>());
+    auto moved_parameters = get<1>(moved_cache.top<std::uint16_t, givm::substack_t>());
+    CHECK(get<0>(moved_parameters.top<std::uint8_t>()) == 29);
+    moved_parameters.pop<std::uint8_t>();
+    CHECK(get<0>(moved_parameters.top<std::uint32_t[], std::uint64_t>())[0] == 23);
+    moved_cache.pop<std::uint16_t, givm::substack_t>();
+    CHECK(get<0>(moved_cache.top<std::uint8_t>()) == 11);
+    moved_cache.pop<std::uint8_t>();
+    CHECK(moved_cache.empty());
+    moved.pop<std::uint32_t, givm::substack_t>();
+    CHECK(moved.empty());
+
+    CHECK(get<0>(cache.top<std::uint32_t>()) == 19);
+    cache.pop<std::uint32_t>();
+    auto unchanged = get<1>(cache.top<std::uint16_t, givm::substack_t>());
+    CHECK(std::ranges::equal(get<0>(unchanged.top<std::uint32_t[], std::uint64_t>()), values));
+    cache.pop<std::uint16_t, givm::substack_t>();
+    CHECK(get<0>(cache.top<std::uint8_t>()) == 11);
+    cached.pop<std::uint32_t, givm::substack_t>();
+    CHECK(cached.empty());
 }
 }

@@ -62,8 +62,8 @@ namespace
             return target && query(data, givm::card_equipment_target_validation{ parameters.card, parameters.table[*target] })
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view&,
-            givm::card_effect&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             ++data.log->card_effects;
             return {};
@@ -82,9 +82,10 @@ namespace
         {
             return { log, context.add_program(std::tuple{ givm::modify_attachment_state{} }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
-            givm::cost_of_card& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::cost_of_card& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(self.state().round_usages == 0 || event.requirement.dice_requirement.any == 0) return {};
             const auto card = context.table()[event.card];
             if(not context.query(card.definition_id(), givm::card_equipment_target_validation{ card, self.character() }))
@@ -94,9 +95,10 @@ namespace
             return context.invoke(givm::substack_t{}, data.payment,
                 givm::modify_attachment_state_input{ .attachment = self.id(), .round_usages = -1 });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
-            givm::card_drawn& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_drawn& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             const auto card = context.table()[event.card];
             ++data.log->ordinary_queries;
             (void)context.query(card.definition_id(), givm::card_equipment_target_validation{ card, self.character() });
@@ -123,9 +125,10 @@ namespace
             return { log, context.resolve_id<givm::attachment_view>("TalentDiscountArtifact"),
                 context.add_program(std::tuple{ givm::add_attachment{}, givm::add_attachment{} }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-            givm::battle_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::battle_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(self.player().id() != givm::player_id{ 0 } || data.log->initialized) return {};
             data.log->initialized = true;
             auto characters = self.player().characters();

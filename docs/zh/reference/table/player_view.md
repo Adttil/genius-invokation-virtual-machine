@@ -14,6 +14,7 @@ class player_view;
 
 |  |  |
 | --- | --- |
+| [`table`](player_view/table.md) | 取得所属牌桌 |
 | [`id`](player_view/id.md) | 取得实体 ID |
 | [`state`](player_view/state.md) | 访问实体状态 |
 | [`hand_cards`](player_view/hand_cards.md) | 遍历手牌 |

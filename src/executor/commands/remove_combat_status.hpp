@@ -73,7 +73,7 @@ namespace givm::detail
         if(not continue_broadcast<combat_status_removed>(library, table, context, random))
             return continue_execution;
         pop_broadcast<combat_status_removed>(context);
-        return context.enter_next();
+        return context.advance(response_extent<combat_status_removed>);
     }
 
     inline void compile(program_writer& writer, const givm::remove_combat_status& command, compile_mode)
@@ -85,7 +85,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ prepare_combat_status_removal<false> });
-        writer.write(execute_fn{ broadcast_combat_status_removal });
+        compile_broadcast<combat_status_removed>(writer, broadcast_combat_status_removal);
     }
 }
 

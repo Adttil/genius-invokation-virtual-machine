@@ -30,8 +30,8 @@ namespace
         {
             return { .count = 1 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&,
-            givm::attachment_reapplication&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::attachment_reapplication&, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             ++*data.applications;
             return context.invoke(data.pause);

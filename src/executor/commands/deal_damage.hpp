@@ -68,28 +68,32 @@ namespace givm::detail
     };
 
     inline constexpr std::size_t damage_preparation_offset = 0;
-    inline constexpr std::size_t damage_reaction_offset = 1;
-    inline constexpr std::size_t damage_calculation_offset = 2;
-    inline constexpr std::size_t damage_effect_offset = 3;
-    inline constexpr std::size_t damage_dying_offset = 4;
-    inline constexpr std::size_t damage_defeated_offset = 5;
-    inline constexpr std::size_t damage_health_resume_offset = 6;
+    inline constexpr std::size_t damage_reaction_offset = damage_preparation_offset + response_instruction_count<damage_preparation>;
+    inline constexpr std::size_t damage_calculation_offset = damage_reaction_offset + response_instruction_count<elemental_reaction_will_occur>;
+    inline constexpr std::size_t damage_effect_offset = damage_calculation_offset + response_instruction_count<damage_calculation>;
+    inline constexpr std::size_t damage_dying_offset = damage_effect_offset + response_instruction_count<damage_effect>;
+    inline constexpr std::size_t damage_defeated_offset = damage_dying_offset + response_instruction_count<character_will_be_defeated>;
+    inline constexpr std::size_t damage_health_resume_offset = damage_defeated_offset + response_instruction_count<character_defeated>;
     template<bool Observed>
-    inline constexpr std::size_t damage_entity_resume_offset = 6 + Observed;
+    inline constexpr std::size_t damage_summon_resume_offset = damage_health_resume_offset + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_attachment_resume_offset = 7 + Observed;
+    inline constexpr std::size_t damage_combat_status_resume_offset = damage_summon_resume_offset<Observed> + response_instruction_count<resummoning>;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_removal_offset = 8 + Observed;
+    inline constexpr std::size_t damage_reapplication_resume_offset = damage_combat_status_resume_offset<Observed> + response_instruction_count<combat_status_regeneration>;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_observation_offset = 9 + Observed;
+    inline constexpr std::size_t damage_attachment_resume_offset = damage_reapplication_resume_offset<Observed> + response_instruction_count<attachment_reapplication>;
     template<bool Observed>
-    inline constexpr std::size_t damage_overloaded_broadcast_offset = 9 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_removal_offset = damage_attachment_resume_offset<Observed> + response_instruction_count<attachment_removed>;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_reaction_offset = 10 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_observation_offset = damage_overloaded_removal_offset<Observed> + response_instruction_count<attachment_removed>;
     template<bool Observed>
-    inline constexpr std::size_t damage_after_damage_offset = 11 + 2 * Observed;
+    inline constexpr std::size_t damage_overloaded_broadcast_offset = damage_overloaded_observation_offset<Observed> + Observed;
     template<bool Observed>
-    inline constexpr std::size_t damage_end_offset = 12 + 2 * Observed;
+    inline constexpr std::size_t damage_after_reaction_offset = damage_overloaded_broadcast_offset<Observed> + response_instruction_count<active_character_changed>;
+    template<bool Observed>
+    inline constexpr std::size_t damage_after_damage_offset = damage_after_reaction_offset<Observed> + response_instruction_count<after_elemental_reaction>;
+    template<bool Observed>
+    inline constexpr std::size_t damage_end_offset = damage_after_damage_offset<Observed> + response_instruction_count<after_damage>;
 
     inline damage_record& damage_record_at(damage_group& group, std::size_t index) noexcept
     {
@@ -200,7 +204,9 @@ namespace givm::detail
         const auto event = damage_record_at(group, group.cursor++).event;
         if(not event.replacement_reaction)
             return prepare_default_reaction_entities(library, table, context, random, event.reaction, event.target,
-                group.instructions + damage_entity_resume_offset<Observed> * sizeof(execute_fn),
+                group.instructions + damage_summon_resume_offset<Observed> * sizeof(execute_fn),
+                group.instructions + damage_combat_status_resume_offset<Observed> * sizeof(execute_fn),
+                group.instructions + damage_reapplication_resume_offset<Observed> * sizeof(execute_fn),
                 group.instructions + damage_attachment_resume_offset<Observed> * sizeof(execute_fn));
         return std::nullopt;
     }
@@ -664,11 +670,12 @@ namespace givm::detail
         return continue_damage_group<Inputs, true>(library, table, context, random);
     }
 
-    template<bool Inputs, bool Observed>
+    template<bool Inputs, bool Observed, class TEvent, class TId>
     inline execution_state resume_damage_entity_generation(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        context.stack().pop<response_return>();
+        if(not continue_single_response<TEvent, TId>(library, table, context, random)) return continue_execution;
+        pop_single_response<TEvent, TId>(context);
         return continue_damage_group<Inputs, Observed>(library, table, context, random);
     }
 
@@ -711,20 +718,22 @@ namespace givm::detail
     template<bool Inputs, bool Observed>
     inline void compile_damage_resolution(program_writer& writer)
     {
-        writer.write(execute_fn{ resume_damage_group_preparation<Inputs, Observed, continue_damage_preparation> });
-        writer.write(execute_fn{ resume_damage_group_preparation<Inputs, Observed, continue_damage_reaction> });
-        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_calculation<Observed>> });
-        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_effect<Observed>> });
-        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_dying<Observed>> });
-        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_damage_defeated<Observed>> });
+        compile_broadcast<damage_preparation>(writer, resume_damage_group_preparation<Inputs, Observed, continue_damage_preparation>);
+        compile_broadcast<elemental_reaction_will_occur>(writer, resume_damage_group_preparation<Inputs, Observed, continue_damage_reaction>);
+        compile_broadcast<damage_calculation>(writer, resume_damage_group<Inputs, Observed, continue_damage_calculation<Observed>>);
+        compile_broadcast<damage_effect>(writer, resume_damage_group<Inputs, Observed, continue_damage_effect<Observed>>);
+        compile_broadcast<character_will_be_defeated>(writer, resume_damage_group<Inputs, Observed, continue_damage_dying<Observed>>);
+        compile_broadcast<character_defeated>(writer, resume_damage_group<Inputs, Observed, continue_damage_defeated<Observed>>);
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_health_observation<Inputs> });
-        writer.write(execute_fn{ resume_damage_entity_generation<Inputs, Observed> });
-        writer.write(execute_fn{ resume_damage_group<Inputs, Observed, continue_attachment_replacement> });
-        writer.write(execute_fn{ resume_damage_overloaded_removal<Inputs, Observed> });
+        compile_single_response<resummoning, summon_id>(writer, resume_damage_entity_generation<Inputs, Observed, resummoning, summon_id>);
+        compile_single_response<combat_status_regeneration, combat_status_id>(writer, resume_damage_entity_generation<Inputs, Observed, combat_status_regeneration, combat_status_id>);
+        compile_single_response<attachment_reapplication, attachment_id>(writer, resume_damage_entity_generation<Inputs, Observed, attachment_reapplication, attachment_id>);
+        compile_broadcast<attachment_removed>(writer, resume_damage_group<Inputs, Observed, continue_attachment_replacement>);
+        compile_broadcast<attachment_removed>(writer, resume_damage_overloaded_removal<Inputs, Observed>);
         if constexpr(Observed) writer.write(execute_fn{ resume_damage_overloaded_observation<Inputs> });
-        writer.write(execute_fn{ continue_damage_overloaded_switch<Inputs, Observed> });
-        writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_reaction<Observed>> });
-        writer.write(execute_fn{ resume_damage_completion<Inputs, Observed, continue_damage_after_damage> });
+        compile_broadcast<active_character_changed>(writer, continue_damage_overloaded_switch<Inputs, Observed>);
+        compile_broadcast<after_elemental_reaction>(writer, resume_damage_completion<Inputs, Observed, continue_damage_after_reaction<Observed>>);
+        compile_broadcast<after_damage>(writer, resume_damage_completion<Inputs, Observed, continue_damage_after_damage>);
     }
 
     template<bool Inputs, bool Observed>

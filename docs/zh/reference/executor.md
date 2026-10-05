@@ -20,6 +20,7 @@
 | [`compile_location`](executor/compile_location.md) | 编译诊断的发生位置 |
 | [`definition_resolution_error`](executor/definition_resolution_error.md) | 定义硬依赖的解析诊断 |
 | [`definition_metadata_error`](executor/definition_metadata_error.md) | 定义元数据查询的 ID 诊断 |
+| [`fixed_program_input_error`](executor/fixed_program_input_error.md) | 固定延迟程序的入口与参数诊断 |
 
 历史字段相关诊断类型见 [`compile_error_reason`](executor/compile_error_reason.md)。
 

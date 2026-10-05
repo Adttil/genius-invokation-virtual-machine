@@ -26,10 +26,11 @@ namespace givm::detail
     };
 
     inline execution_state finish_attachment_state_change(
-        const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        context.stack().pop<response_return>();
-        return context.enter_next();
+        if(not continue_single_response<attachment_state_changed, attachment_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<attachment_state_changed, attachment_id>(context);
+        return context.advance(response_extent<attachment_state_changed>);
     }
 
     inline execution_state change_attachment_state(
@@ -41,15 +42,8 @@ namespace givm::detail
         attachment.state() = state;
         const auto definition = library[attachment.definition_id()];
         if(not definition.can_handle<attachment_state_changed, attachment_view>())
-            return context.enter_next();
-        context.stack().push(response_return{ table.state().self_player, context.position() });
-        auto response = context.make_handle_context(library, table, random);
-        const auto entry = definition.handle<attachment_state_changed>(std::as_const(table)[id], event, response);
-        if(entry)
-        {
-            table.state().self_player = attachment.player().id();
-            return context.enter(entry);
-        }
+            return context.advance(response_extent<attachment_state_changed>);
+        prepare_single_response(event, id, table, context, context.position());
         return finish_attachment_state_change(library, table, context, random);
     }
 
@@ -120,7 +114,7 @@ namespace givm::detail
             writer.write(attachment_state_change_data<selector_type>{
                 { command.target.character, selector }, command.state });
         }, command.target.selector);
-        writer.write(execute_fn{ finish_attachment_state_change });
+        compile_single_response<attachment_state_changed, attachment_id>(writer, finish_attachment_state_change);
     }
 }
 

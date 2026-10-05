@@ -22,6 +22,11 @@ namespace givm::detail
         friend class ::givm::hand_card_view;
 
     public:
+        constexpr const givm::table& table() const noexcept
+        {
+            return *storage_.table;
+        }
+
         static constexpr bool is_mutable = not std::is_const_v<TStorage>;
 
         using table_type = TStorage;
@@ -112,20 +117,21 @@ namespace givm::detail
         ) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
-            const size_t index = detail::add_status(*storage_.table, *storage_.data, definition_id, state);
+            const size_t index = detail::add_status(
+                table_accessor::storage_of(*storage_.table), *storage_.data, definition_id, state);
             auto result = detail::table_accessor::make_uninitialized<hand_card_status_handle<TStorage>>();
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
                 .owner = id(),
                 .slot = index,
-                .data = &storage_.table->status_slots[index]
+                .data = &table_accessor::storage_of(*storage_.table).status_slots[index]
             };
             return result;
         }
 
         constexpr void erase() const requires is_mutable
         {
-            detail::erase_statuses(*storage_.table, *storage_.data);
+            detail::erase_statuses(table_accessor::storage_of(*storage_.table), *storage_.data);
             storage_.data->definition_and_flags |= erased_mask;
         }
 
@@ -141,13 +147,14 @@ namespace givm::detail
 
 namespace givm
 {
-    class hand_card_view : private detail::basic_hand_card_handle<const detail::table_storage>
+    class hand_card_view : private detail::basic_hand_card_handle<const detail::unrestricted_table>
     {
         friend detail::table_accessor;
 
-        using base_type = detail::basic_hand_card_handle<const detail::table_storage>;
+        using base_type = detail::basic_hand_card_handle<const detail::unrestricted_table>;
 
     public:
+        using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;
         using base_type::size;

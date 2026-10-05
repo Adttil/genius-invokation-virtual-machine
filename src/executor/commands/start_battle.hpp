@@ -21,7 +21,7 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<battle_started>(context);
-        return context.enter_next();
+        return context.advance(response_extent<battle_started>);
     }
 
     inline execution_state prepare_battle_start(
@@ -31,7 +31,7 @@ namespace givm::detail
     {
         if(table.state().round_number != 1)
         {
-            return context.advance(2 * sizeof(execute_fn));
+            return context.advance(sizeof(execute_fn) + response_extent<battle_started>);
         }
         prepare_broadcast(library, battle_started{}, table, context.stack(), context.position() + sizeof(execute_fn));
         context.enter_next();
@@ -41,7 +41,7 @@ namespace givm::detail
     inline void compile(program_writer& writer, const start_battle&, compile_mode)
     {
         writer.write<execute_fn>(&prepare_battle_start);
-        writer.write<execute_fn>(&broadcast_battle_start);
+        compile_broadcast<battle_started>(writer, broadcast_battle_start);
     }
 }
 

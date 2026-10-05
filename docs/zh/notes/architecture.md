@@ -23,7 +23,7 @@
 
 牌组等每局输入不编入游戏规则程序。上层在对局开始前用 `issued_id_map` 链接名称，再由 `load_deck` 把 `linked_deck` 装入 table 并完成角色状态与技能初始化；随机洗牌、抽牌和出战角色选择等规则步骤由游戏流程命令执行。具体接口见 [牌组链接与装载](deck_initialization.md)。
 
-临时事件、输入槽和尚未完成的结算保存在 executor stack 中。随机源由每次执行时传入的随机函数提供，核心不持有生成器；已经取得的预发随机值可以保存在 stack 中，随 executor 一起复制。
+临时输入与调用现场保存在主执行栈中，待处理记录分别保存在伤害、入手和混合记录栈中。独立结算域的头部与其混合记录放在同一帧，根流程使用同样的布局；通用执行上下文不另存根范围或当前域定位。具体归属见[响应返回、分段与延迟程序](settlement_protocol.md)。随机源由每次执行时传入的随机函数提供，核心不持有生成器；已经取得的预发随机值可以保存在栈中，随 executor 一起复制。
 
 ## 游戏规则程序
 
@@ -39,7 +39,7 @@
 
 ## 命令与事件
 
-命令是定义源和游戏流程使用的规则描述，保存预先确定的操作参数；执行期间产生的事件、输入和游标进入 executor stack，恢复点由执行位置表示，对牌桌的持久修改进入 table。完整内部指令执行与公开观察边界分别组织，原因见[执行观察与输入](execution_observation.md)。
+命令是定义源和游戏流程使用的规则描述，保存预先确定的操作参数；执行期间使用的输入、事件现场和游标进入主执行栈，待处理通知进入所属域的记录栈。恢复点由执行位置表示，对牌桌的持久修改进入 table。完整内部指令执行与公开观察边界分别组织，原因见[执行观察与输入](execution_observation.md)。
 
 event 描述一次正在结算、允许响应者修改的规则事件。handler 可以读取自身定义、实体、只读 table 和随机输入，并修改 event；需要产生后续效果时，handler 从已经编译的响应程序中选择入口。发起事件的指令负责完成广播、应用最终事件结果和清理本次临时状态。
 
@@ -77,7 +77,7 @@ executor ----------------> table
 
 table 中的 `issued_id` 通过 `friend class issued_id_map;` 直接授予 definition 中的 ID 映射类友元权限，由后者发行有效 ID。友元声明不要求另行前置声明该类或包含上层模块头文件，不改变包含依赖方向。
 
-definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者通过 `definition_source.hpp` 取得命令、事件、只读定义库和完整的编译、响应上下文，而无需引入 executor 和各个视图。source 适配仅传递 `handle_context&`，因此同样可以前置声明，保持单向依赖。
+definition 中的 source 适配只传递 `definition_compile_context&`，因此可以使用前置声明。`program_entry` 的完整类型归 definition，保存程序入口，不绑定外层事件或响应者；索引的生成与解释、完整编译上下文及编译执行实现仍归 executor。公开 command、`any_command` variant 与事件同样归 definition。定义拓展者通过 `definition_source.hpp` 取得命令、事件、只读定义库和完整的编译、响应上下文，而无需引入 executor 和各个视图。source 适配仅传递 `handle_context<TEntity>&`，因此可以前置声明这个类模板，保持单向依赖。
 
 源库公开登记、名称查找和按类别遍历 source view 的能力。选择、依赖闭包和 ID 分配仍由源库已有私有准备算法完成，`definition_library` 通过原有友元关系访问；不再公开独立的 ID 映射构建入口。executor 中的非成员 `compile(sources, ..., initialization_program, round_program, mode)` 返回完整定义库及同次编译的 `id_map`。`definition_selection` 放在 `executor/compile.hpp`，属于整库编译接口；`source.compile(context)` 仍是单项定义源协议。
 

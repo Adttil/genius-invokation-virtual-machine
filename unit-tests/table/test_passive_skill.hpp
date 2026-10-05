@@ -11,9 +11,9 @@
 
 namespace givm::test
 {
-    // Existing scenario observers keep their character-oriented assertions while
-    // their global responses are supplied by a real passive skill prepended to
-    // the initial skill list. Original skill queries still receive indices 0..N.
+    // Scenario observers respond through a real passive skill and may inspect
+    // its character through context.entity().character(). The passive skill is
+    // prepended to the initial list; original skill queries retain indices 0..N.
     template<class TSource>
     struct passive_skill_source : TSource
     {
@@ -21,16 +21,6 @@ namespace givm::test
         using definition_type = decltype(std::declval<const TSource&>().compile(std::declval<definition_compile_context&>()));
 
         explicit passive_skill_source(const TSource& source) : TSource{ source } {}
-
-        template<class TEvent>
-            requires requires(const definition_type& data, const character_view& character, TEvent& event, handle_context& context)
-            {
-                TSource::handle(data, character, event, context);
-            }
-        static program_entry handle(const definition_type& data, const skill_view& self, TEvent& event, handle_context& context)
-        {
-            return TSource::handle(data, self.character(), event, context);
-        }
     };
 
     template<class TSource>

@@ -10,6 +10,7 @@ namespace givm
     namespace detail
     {
         class execution_context;
+        class program_input_validator;
 
         inline constexpr std::size_t null_program_position = 0;
     }
@@ -49,7 +50,7 @@ namespace givm
 
         friend class definition_compile_context;
         friend class detail::execution_context;
-        friend class program_invoker;
+        friend class detail::program_input_validator;
     };
 }
 

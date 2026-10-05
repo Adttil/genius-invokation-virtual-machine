@@ -113,9 +113,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& definition,
-            const givm::hand_card_view&,
             givm::round_started&,
-            givm::handle_context&)
+            givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             definition.observation->handled = true;
             definition.observation->alpha_support = definition.alpha_support;
@@ -270,15 +269,14 @@ namespace
 
         static givm::program_entry handle(
             const definition_type&,
-            const givm::support_view&,
             givm::round_started&,
-            givm::handle_context&)
+            givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             return {};
         }
 
         template<class TView, class TEvent>
-        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&, TEvent&, givm::handle_context<TView>&, std::uint32_t = 0)
         {
             FAIL("A disabled dynamic handler was invoked");
             std::unreachable();
@@ -312,8 +310,8 @@ namespace
             return false;
         }
 
-        static givm::program_entry handle(const definition_type&, const givm::support_view&,
-            givm::round_started&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            givm::round_started&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             return {};
         }
@@ -414,8 +412,8 @@ namespace
             observation->inspect(context);
             return {};
         }
-        static givm::program_entry handle(const definition_type&, const givm::support_view&,
-            givm::round_started&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            givm::round_started&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             return {};
         }
@@ -472,7 +470,7 @@ namespace
 
         using metadata_support_source::handle;
         template<class TView, class TEvent>
-        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&, TEvent&, givm::handle_context<TView>&, std::uint32_t = 0)
         {
             FAIL("A disabled dynamic handler was invoked");
             std::unreachable();

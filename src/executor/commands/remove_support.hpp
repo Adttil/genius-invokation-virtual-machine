@@ -24,7 +24,7 @@ namespace givm::detail
         if(not continue_broadcast<support_removed>(library, table, context, random))
             return continue_execution;
         pop_broadcast<support_removed>(context);
-        return context.enter_next();
+        return context.advance(response_extent<support_removed>);
     }
 
     inline support_id require_support(
@@ -82,7 +82,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ prepare_support_removal<false> });
-        writer.write(execute_fn{ broadcast_support_removal });
+        compile_broadcast<support_removed>(writer, broadcast_support_removal);
     }
 }
 

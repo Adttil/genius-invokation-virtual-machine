@@ -61,8 +61,8 @@ struct effect_source
         return context.add_program(givm::attach{ .definition = context.frozen_id() });
     }
 
-    static givm::program_entry handle(const givm::program_entry& entry, const givm::deck_card_view&,
-        givm::battle_started&, givm::handle_context& context)
+    static givm::program_entry handle(const givm::program_entry& entry,
+        givm::battle_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
     {
         return context.invoke(entry);
     }

@@ -82,9 +82,11 @@ namespace givm
         dice_counts available;
     };
 
+    struct settlement_in_inline_response {};
+
     using command_input_error_reason = std::variant<invalid_entity_argument, invalid_definition_argument,
         invalid_enum_argument, duplicate_entity_argument, missing_entity_argument, invalid_numeric_argument,
-        invalid_entity_relation, insufficient_dice_argument>;
+        invalid_entity_relation, insufficient_dice_argument, settlement_in_inline_response>;
 }
 
 namespace givm::detail
@@ -160,6 +162,8 @@ namespace givm
                 }
                 return reason.field;
             }
+            else if constexpr(std::is_same_v<reason_type, settlement_in_inline_response>)
+                return "an inline response cannot end a segment or settle its enclosing domain";
             else
             {
                 std::string message = "player[" + std::to_string(reason.player.index) + "]: insufficient dice; requested/available {";

@@ -5,17 +5,25 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
+template<class TEntity>
 class handle_context;
 ```
 
-一次事件响应使用的上下文。定义可以读取当前牌桌、向指定定义查询规则信息、取得随机值，并提交已经登记的后续效果及其全部输入。
+一次事件响应使用的上下文，持有本次响应实体的只读视图。定义可以读取该实体及其所属牌桌、向指定定义查询规则信息、取得随机值，并提交已经登记的后续效果及其全部输入。
 
 由执行器传给定义源的 `handle`，仅在本次响应调用期间有效。定义源不自行构造，也不得在响应结束后保存或使用本对象。
+
+## 模板参数
+
+| | |
+| --- | --- |
+| `TEntity` | 本次响应实体的只读 view 类型 |
 
 ## 成员函数
 
 | | |
 | --- | --- |
+| [`entity`](handle_context/entity.md) | 取得当前响应实体 |
 | [`table`](handle_context/table.md) | 读取当前牌桌 |
 | [`query`](handle_context/query.md) | 向指定定义取得查询结果 |
 | [`random`](handle_context/random.md) | 取得下一个随机值 |

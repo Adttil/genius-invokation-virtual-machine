@@ -12,13 +12,13 @@ constexpr auto substack() noexcept;
 
 ## 返回值
 
-供 [`frame_stack::push`](frame_stack/push.md) 使用的初始化参数。对应帧元素通过 [`substack_t`](substack_t.md) 描述。
+供 [`frame_stack::push`](frame_stack/push.md) 或[子栈的 `push`](substack_view/push.md) 使用的初始化参数。对应帧元素通过 [`substack_t`](substack_t.md) 描述。
 
 ## 注意
 
 初始化参数必须是 `push` 的最后一个实参，每帧最多提供一次。创建空子栈不要求同时提供数组或固定元素。
 
-子栈内部只能压入普通帧，不能向子栈的 `push` 传入此初始化参数。
+子栈中的帧也可以使用此初始化参数创建下一层子栈，各层均遵守上述顺序和数量限制。
 
 ## 示例
 

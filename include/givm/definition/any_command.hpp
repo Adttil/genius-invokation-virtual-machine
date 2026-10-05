@@ -57,7 +57,11 @@ namespace givm::detail
         deal_damage,
         apply_element,
         heal,
-        increase_max_health>;
+        increase_max_health,
+        return_response,
+        defer_program,
+        end_segment,
+        settle>;
 
     using command_input_types = decltype([]<class... T>(type_list<T...>)
     {
@@ -74,7 +78,6 @@ namespace givm::detail
 namespace givm
 {
     using any_command = detail::command_types::apply<std::variant>;
-    using any_command_input = detail::command_input_types::apply<std::variant>;
 }
 
 #endif

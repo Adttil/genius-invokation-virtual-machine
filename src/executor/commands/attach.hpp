@@ -32,16 +32,10 @@ namespace givm::detail
         {
             if(attachment.definition_id() != input.definition) continue;
             if(not definition.can_handle<attachment_reapplication, attachment_view>()) return std::nullopt;
-            context.stack().push(response_return{ table.state().self_player, reapplication_resume });
             attachment_reapplication event{ input.state };
-            auto response = context.make_handle_context(library, table, random);
-            const auto entry = definition.handle<attachment_reapplication>(attachment, event, response);
-            if(entry)
-            {
-                table.state().self_player = attachment.player().id();
-                return context.enter(entry);
-            }
-            context.stack().pop<response_return>();
+            prepare_single_response(event, attachment.id(), table, context, reapplication_resume);
+            if(not continue_single_response<attachment_reapplication, attachment_id>(library, table, context, random)) return continue_execution;
+            pop_single_response<attachment_reapplication, attachment_id>(context);
             return std::nullopt;
         }
         return prepare_attachment_addition(library, table, context, random,
@@ -49,10 +43,11 @@ namespace givm::detail
     }
 
     inline execution_state finish_attachment_reapplication(
-        const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        context.stack().pop<response_return>();
-        return context.advance(2 * sizeof(execute_fn));
+        if(not continue_single_response<attachment_reapplication, attachment_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<attachment_reapplication, attachment_id>(context);
+        return context.advance(response_extent<attachment_reapplication> + response_extent<attachment_removed>);
     }
 
     template<bool Fixed>
@@ -79,8 +74,8 @@ namespace givm::detail
             context.enter_next();
         }
         if(const auto state = prepare_attachment_application(library, table, context, random, input,
-            context.position(), context.position() + sizeof(execute_fn))) return *state;
-        return context.advance(2 * sizeof(execute_fn));
+            context.position(), context.position() + response_extent<attachment_reapplication>)) return *state;
+        return context.advance(response_extent<attachment_reapplication> + response_extent<attachment_removed>);
     }
 
     inline void compile(program_writer& writer, const givm::attach& command, compile_mode)
@@ -92,8 +87,8 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_attachment_application<false> });
-        writer.write(execute_fn{ finish_attachment_reapplication });
-        writer.write(execute_fn{ finish_replaced_attachment_removal });
+        compile_single_response<attachment_reapplication, attachment_id>(writer, finish_attachment_reapplication);
+        compile_broadcast<attachment_removed>(writer, finish_replaced_attachment_removal);
     }
 }
 

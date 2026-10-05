@@ -91,8 +91,8 @@ struct effect_source
             givm::enter_character{ .player = givm::player_id{ 0 }, .definition = definition });
     }
 
-    static givm::program_entry handle(const givm::program_entry& entry, const givm::deck_card_view&,
-        givm::round_started&, givm::handle_context& context)
+    static givm::program_entry handle(const givm::program_entry& entry,
+        givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
     {
         return context.invoke(entry);
     }

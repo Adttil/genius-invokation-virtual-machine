@@ -70,7 +70,7 @@ namespace givm::detail
     {
         if(not continue_broadcast<healed>(library, table, context, random)) return continue_execution;
         pop_broadcast<healed>(context);
-        return context.enter_next();
+        return context.advance(response_extent<healed>);
     }
 
     inline execution_state apply_healing(
@@ -89,7 +89,7 @@ namespace givm::detail
         [[assume(state.health <= state.max_health)]];
         const auto value = std::min(event.value, state.max_health - state.health);
         state.health += value;
-        context.enter_next();
+        context.advance(response_extent<healing>);
         prepare_broadcast(library, healed{ event.source, event.target, value }, table, context.stack(), context.position());
         return broadcast_healing_completed(library, table, context, random);
     }
@@ -108,7 +108,8 @@ namespace givm::detail
             if(++group.result_cursor == group.result_count)
             {
                 context.stack().pop<healing[], healing_group>();
-                return context.advance((Dynamic ? 3 : 1) * sizeof(execute_fn));
+                return context.advance(response_extent<healed>
+                    + (Dynamic ? response_extent<healing> + response_extent<healed> : 0));
             }
             const auto current = get<0>(frame)[group.result_cursor];
             prepare_broadcast(library, healed{ current.source, current.target, current.value },
@@ -149,7 +150,7 @@ namespace givm::detail
             else
             {
                 const auto first = get<0>(frame)[0];
-                context.enter_next();
+                context.advance(response_extent<healing>);
                 prepare_broadcast(library, healed{ first.source, first.target, first.value },
                     table, context.stack(), context.position());
                 return broadcast_healing_group<Dynamic>(library, table, context, random);
@@ -171,7 +172,7 @@ namespace givm::detail
             context.advance(instruction_extent<1, heal>);
             const auto source = resolve_character_target<false>(table, command.source);
             anchor = resolve_character_target<true>(table, command.target);
-            if(not source || not anchor) return context.advance(2 * sizeof(execute_fn));
+            if(not source || not anchor) return context.advance(response_extent<healing> + response_extent<healed>);
             input = { .source = *source, .target = command.target, .value = command.value };
             selection = command.target.selection;
         }
@@ -200,11 +201,11 @@ namespace givm::detail
                     ? resolve_character_target<false>(table, relative)
                     : resolve_character_target<true>(table, relative);
             }
-            if(not anchor) return context.advance(4 * sizeof(execute_fn));
+            if(not anchor) return context.advance(2 * (response_extent<healing> + response_extent<healed>));
             if(selection == character_selection::character)
             {
                 // The dynamic command stores group continuations before the single-target pair.
-                context.advance(2 * sizeof(execute_fn));
+                context.advance(response_extent<healing> + response_extent<healed>);
                 prepare_broadcast(library, healing{ input.source, *anchor, input.value },
                     table, context.stack(), context.position());
                 return apply_healing(library, table, context, random);
@@ -214,7 +215,7 @@ namespace givm::detail
         const auto capacity = table[anchor->player_id].template characters<false>().size();
         auto targets = healing_targets(table, *anchor, selection);
         const auto first = next_healing_target(table, targets);
-        if(not first) return context.advance((Fixed ? 2 : 4) * sizeof(execute_fn));
+        if(not first) return context.advance((Fixed ? 1 : 2) * (response_extent<healing> + response_extent<healed>));
         context.stack().push(dynamic_array<healing>(capacity), healing_group{
             .source = input.source,
             .value = input.value,
@@ -232,7 +233,7 @@ namespace givm::detail
         context.advance(instruction_extent<1, heal>);
         const auto source = resolve_character_target<false>(table, command.source);
         const auto target = resolve_character_target<false>(table, command.target);
-        if(not source || not target) return context.advance(2 * sizeof(execute_fn));
+        if(not source || not target) return context.advance(response_extent<healing> + response_extent<healed>);
         prepare_broadcast(library, healing{ *source, *target, command.value },
             table, context.stack(), context.position());
         return apply_healing(library, table, context, random);
@@ -243,18 +244,18 @@ namespace givm::detail
         if(command.target.offset == std::numeric_limits<std::int32_t>::max())
         {
             writer.write(execute_fn{ prepare_healing_group<false> });
-            writer.write(execute_fn{ apply_healing_group_target<true> });
-            writer.write(execute_fn{ broadcast_healing_group<true> });
-            writer.write(execute_fn{ apply_healing });
-            writer.write(execute_fn{ broadcast_healing_completed });
+            compile_broadcast<healing>(writer, apply_healing_group_target<true>);
+            compile_broadcast<healed>(writer, broadcast_healing_group<true>);
+            compile_broadcast<healing>(writer, apply_healing);
+            compile_broadcast<healed>(writer, broadcast_healing_completed);
             return;
         }
         else if(command.target.selection != character_selection::character)
         {
             writer.write(execute_fn{ prepare_healing_group<true> });
             writer.write(command);
-            writer.write(execute_fn{ apply_healing_group_target<false> });
-            writer.write(execute_fn{ broadcast_healing_group<false> });
+            compile_broadcast<healing>(writer, apply_healing_group_target<false>);
+            compile_broadcast<healed>(writer, broadcast_healing_group<false>);
             return;
         }
         else
@@ -262,8 +263,8 @@ namespace givm::detail
             writer.write(execute_fn{ prepare_healing });
             writer.write(command);
         }
-        writer.write(execute_fn{ apply_healing });
-        writer.write(execute_fn{ broadcast_healing_completed });
+        compile_broadcast<healing>(writer, apply_healing);
+        compile_broadcast<healed>(writer, broadcast_healing_completed);
     }
 }
 

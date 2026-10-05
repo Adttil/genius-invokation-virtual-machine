@@ -62,8 +62,8 @@ namespace
         {
             return { .max_health = 10, .health = data.log->initial_health };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
             {
@@ -75,8 +75,8 @@ namespace
             }
             return context.invoke(data.heal);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::healing& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::healing& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(std::get<givm::character_id>(event.source) == patient);
             data.log->requested.push_back(event.value);
@@ -84,8 +84,8 @@ namespace
             event.value += data.log->bonus;
             return data.pause ? context.invoke(data.pause) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::healed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::healed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(std::get<givm::character_id>(event.source) == patient);
             data.log->actual.push_back(event.value);

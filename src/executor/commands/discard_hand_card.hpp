@@ -28,7 +28,7 @@ namespace givm::detail
         const definition_library& library, const unrestricted_table& table,
         execution_context& context, hand_card_id card)
     {
-        context.enter_next();
+        context.advance(response_extent<hand_card_discard_effect>);
         prepare_broadcast(library, hand_card_discarded{ card }, table, context.stack(), context.position());
     }
 
@@ -36,7 +36,7 @@ namespace givm::detail
         const definition_library& library, const unrestricted_table& table, execution_context& context)
     {
         const auto card = get<0>(context.stack().top<hand_card_discard_effect, response_return>()).card;
-        context.stack().pop<hand_card_discard_effect, response_return>();
+        pop_single_response<hand_card_discard_effect, hand_card_id>(context);
         prepare_hand_card_discard_notification(library, table, context, card);
     }
 
@@ -53,16 +53,8 @@ namespace givm::detail
             prepare_hand_card_discard_notification(library, table, context, card);
             return false;
         }
-        context.stack().push(hand_card_discard_effect{ card }, response_return{ table.state().self_player, context.position() });
-        auto& event = get<0>(context.stack().top<hand_card_discard_effect, response_return>());
-        auto response = context.make_handle_context(library, table, random);
-        const auto entry = definition.handle<hand_card_discard_effect>(self, event, response);
-        if(entry)
-        {
-            table.state().self_player = card.player_id;
-            context.enter(entry);
-            return true;
-        }
+        prepare_single_response(hand_card_discard_effect{ card }, card, table, context, context.position(), true);
+        if(not continue_single_response<hand_card_discard_effect, hand_card_id>(library, table, context, random)) return true;
         finish_hand_card_discard_effect_frame(library, table, context);
         return false;
     }
@@ -81,9 +73,9 @@ namespace givm::detail
             {
                 context.stack().pop<hand_card_discard_progress>();
                 context.stack().pop<hand_card_id[]>();
-                return context.enter_next();
+                return context.advance(response_extent<hand_card_discarded>);
             }
-            context.jump(context.position() - sizeof(execute_fn));
+            context.jump(context.position() - response_extent<hand_card_discard_effect>);
             if(enter_hand_card_discard_effect(library, table, context, random))
                 return continue_execution;
         }
@@ -93,6 +85,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
+        if(not continue_single_response<hand_card_discard_effect, hand_card_id>(library, table, context, random)) return continue_execution;
         finish_hand_card_discard_effect_frame(library, table, context);
         return broadcast_hand_card_discard(library, table, context, random);
     }
@@ -138,7 +131,7 @@ namespace givm::detail
         if(count == 0)
         {
             context.stack().pop<hand_card_id[]>();
-            return context.advance(2 * sizeof(execute_fn));
+            return context.advance(response_extent<hand_card_discard_effect> + response_extent<hand_card_discarded>);
         }
         const auto cards = get<0>(context.stack().top<hand_card_id[]>());
         for(const auto card : cards.first(count))
@@ -161,8 +154,8 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ prepare_hand_card_discard<false> });
-        writer.write(execute_fn{ finish_hand_card_discard_effect });
-        writer.write(execute_fn{ broadcast_hand_card_discard });
+        compile_single_response<hand_card_discard_effect, hand_card_id>(writer, finish_hand_card_discard_effect);
+        compile_broadcast<hand_card_discarded>(writer, broadcast_hand_card_discard);
     }
 }
 

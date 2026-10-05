@@ -17,6 +17,7 @@ constexpr program_entry() noexcept = default;
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <utility>
 #include <print>
 #include <string_view>
@@ -40,8 +41,8 @@ struct result_source
         return effect;
     }
     static givm::program_entry handle(
-        const entry_type& entry, const givm::support_view&, givm::round_ended&,
-        givm::handle_context& context)
+        const entry_type& entry, givm::round_ended&,
+        givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
     {
         return context.invoke(entry);
     }

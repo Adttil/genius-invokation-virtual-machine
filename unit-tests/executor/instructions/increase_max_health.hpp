@@ -49,22 +49,22 @@ namespace
         {
             return data.log->initial;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
                 return context.invoke(data.increase, givm::increase_max_health_input{ target, target, data.log->value });
             return context.invoke(data.increase);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::healing& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::healing& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->calculation_count;
             event.value = 0;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::healed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::healed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.target == target);
             CHECK(std::get<givm::character_id>(event.source) == target);

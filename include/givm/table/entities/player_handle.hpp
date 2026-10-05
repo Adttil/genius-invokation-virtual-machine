@@ -32,6 +32,11 @@ namespace givm::detail
         friend class ::givm::player_view;
 
     public:
+        constexpr const givm::table& table() const noexcept
+        {
+            return *storage_.table;
+        }
+
         static constexpr bool is_mutable = not std::is_const_v<TStorage>;
         using table_type = TStorage;
         using data_type = maybe_mutable<is_mutable, player_data>;
@@ -49,7 +54,8 @@ namespace givm::detail
 
         constexpr player_id id() const
         {
-            return { static_cast<size_t>(storage_.data - storage_.table->player_datas) };
+            const auto& storage = table_accessor::storage_of(*storage_.table);
+            return { static_cast<size_t>(storage_.data - storage.player_datas) };
         }
 
         constexpr auto& state() const
@@ -305,7 +311,7 @@ namespace givm::detail
             GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
             auto& source = storage_.data->deck_card_datas[card_id.index];
             GIVM_ASSERT((source.definition_and_flags & deck_card_erased_mask) == 0);
-            detail::erase_statuses(*storage_.table, source);
+            detail::erase_statuses(table_accessor::storage_of(*storage_.table), source);
             source.definition_and_flags |= deck_card_erased_mask;
         }
 
@@ -379,7 +385,7 @@ namespace givm::detail
             const size_t slot = storage_.data->deck_card_order.back();
             storage_.data->deck_card_order.pop_back();
             auto& source = storage_.data->deck_card_datas[slot];
-            detail::erase_statuses(*storage_.table, source);
+            detail::erase_statuses(table_accessor::storage_of(*storage_.table), source);
             source.definition_and_flags |= deck_card_erased_mask;
         }
 
@@ -490,7 +496,7 @@ namespace givm::detail
             GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
             auto& source = storage_.data->deck_card_datas[card_id.index];
             GIVM_ASSERT((source.definition_and_flags & deck_card_erased_mask) == 0);
-            detail::erase_statuses(*storage_.table, source);
+            detail::erase_statuses(table_accessor::storage_of(*storage_.table), source);
             source.definition_and_flags |= deck_card_erased_mask;
             const auto order = std::ranges::find(storage_.data->deck_card_order, card_id.index);
             GIVM_ASSERT(order != storage_.data->deck_card_order.end());
@@ -501,13 +507,14 @@ namespace givm::detail
 
 namespace givm
 {
-    class player_view : private detail::basic_player_handle<const detail::table_storage>
+    class player_view : private detail::basic_player_handle<const detail::unrestricted_table>
     {
         friend detail::table_accessor;
 
-        using base_type = detail::basic_player_handle<const detail::table_storage>;
+        using base_type = detail::basic_player_handle<const detail::unrestricted_table>;
 
     public:
+        using base_type::table;
         using base_type::id;
         using base_type::state;
         using base_type::hand_cards;

@@ -76,7 +76,7 @@ namespace
         }
 
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::round_started&, givm::handle_context& context)
+            const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.entry) return context.invoke(data.entry);
             return {};
@@ -108,7 +108,7 @@ namespace
         }
 
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::round_started&, givm::handle_context& context)
+            const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK_FALSE(data.entry.is_null());
             ++*data.calls;
@@ -144,8 +144,8 @@ namespace
         }
 
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::card_drawn& event,
-            givm::handle_context& context)
+            const definition_type& data, givm::card_drawn& event,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->drawn.push_back(event.card);
             const auto player = context.table()[event.card.player_id];
@@ -155,8 +155,8 @@ namespace
         }
 
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            givm::handle_context& context)
+            const definition_type& data, givm::active_character_changed& event,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
@@ -195,8 +195,8 @@ namespace
         }
 
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            givm::handle_context& context)
+            const definition_type& data, givm::active_character_changed& event,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
@@ -227,8 +227,8 @@ namespace
             }) };
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            givm::handle_context& context)
+            const definition_type& data, givm::active_character_changed& event,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);

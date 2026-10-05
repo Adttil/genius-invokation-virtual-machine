@@ -139,7 +139,7 @@ namespace givm::detail
         context.stack().pop<player_id, std::bitset<selection_capacity>>();
         if(selected.none())
         {
-            return context.advance(2 * sizeof(execute_fn));
+            return context.advance(sizeof(execute_fn) + response_extent<card_drawn>);
         }
 
         auto next_random = [&random]{ return random(); };
@@ -161,7 +161,7 @@ namespace givm::detail
         writer.write(execute_fn{ &prepare_card_selection });
         writer.write(command);
         writer.write(execute_fn{ &apply_card_selection });
-        writer.write(execute_fn{ &broadcast_drawn_card<false> });
+        compile_broadcast<card_drawn>(writer, broadcast_drawn_card<false>);
     }
 }
 

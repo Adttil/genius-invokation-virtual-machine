@@ -14,6 +14,7 @@ class combat_status_view;
 
 |  |  |
 | --- | --- |
+| [`table`](combat_status_view/table.md) | 取得所属牌桌 |
 | [`is_valid`](combat_status_view/is_valid.md) | 判断实体是否尚未移除 |
 | [`operator bool`](combat_status_view/operator_bool.md) | 判断实体是否尚未移除 |
 | [`size`](combat_status_view/size.md) | 取得单实体范围的元素数 |

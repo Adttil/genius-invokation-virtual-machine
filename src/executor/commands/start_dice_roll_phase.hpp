@@ -104,7 +104,7 @@ namespace givm::detail
         pop_broadcast<dice_roll_preparation>(context);
         if(phase.first.remaining == 0 && phase.second.remaining == 0)
         {
-            return context.advance(2 * sizeof(execute_fn));
+            return context.advance(response_extent<dice_roll_preparation> + sizeof(execute_fn));
         }
 
         const auto first_pool_size = static_cast<size_t>(phase.first.remaining) * phase.dice_count;
@@ -124,7 +124,8 @@ namespace givm::detail
             value = random();
         }
 
-        return context.yield_next(execution_state::dice_selection);
+        context.advance(response_extent<dice_roll_preparation>);
+        return context.yield(execution_state::dice_selection);
     }
 
     inline execution_state apply_dice_reroll(
@@ -172,7 +173,7 @@ namespace givm::detail
     {
         writer.write(execute_fn{ &prepare_dice_roll });
         writer.write(command);
-        writer.write(execute_fn{ &apply_dice_roll_preparation });
+        compile_broadcast<dice_roll_preparation>(writer, apply_dice_roll_preparation);
         writer.write(execute_fn{ &apply_dice_reroll });
     }
 }

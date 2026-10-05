@@ -9,6 +9,7 @@
 | [模块边界与状态所有权](notes/architecture.md) | 规则、对局输入、持久状态、临时结算与外层任务的归属 |
 | [头文件分层与编译后端迁移](notes/header_layers.md) | 非模板编译入口、私有实现头与公开接口分层的分步计划 |
 | [固定程序、重入与表达能力](notes/fixed_program.md) | 固定入口、动态值的表达、干净指令、内部连接与擦除 |
+| [响应返回、分段与延迟程序](notes/settlement_protocol.md) | 统一调用协议、记录归属及领域迁移边界 |
 | [执行观察与输入](notes/execution_observation.md) | 领域现场、栈上观察数据、参数式输入与终局 |
 | [执行栈布局](notes/stack_layout.md) | 动态数组、固定后缀、帧边界、搬迁与复制 |
 | [随机预发、记录与回放](notes/random_replay.md) | 原始随机条带、提交次序、预发池与分支重放 |

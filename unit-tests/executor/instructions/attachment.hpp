@@ -50,18 +50,19 @@ namespace
         std::string_view name() const { return source_name; }
         const auto& tags() const { return source_tags; }
         definition_type compile(givm::definition_compile_context&) const { return { log, source_name }; }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&, givm::before_action&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data, givm::before_action&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             data.log->responders.emplace_back(data.name);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&, givm::cost_of_card&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data, givm::cost_of_card&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             data.log->cost_responders.emplace_back(data.name);
             return {};
         }
-        static givm::program_entry handle(const definition_type&, const givm::attachment_view& self, givm::attachment_removed& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&, givm::attachment_removed& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK(event.attachment != self.id());
             return {};
         }
@@ -111,11 +112,11 @@ namespace
             result.allowed_weapon_types.set(givm::weapon_type::sword);
             return result;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::action_phase_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::action_phase_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return data.prepare_equipment ? context.invoke(data.initial) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::attachment_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto id = event.attachment;
             const auto attachment = context.table()[id];
@@ -187,7 +188,7 @@ namespace
                         ? givm::target_validation::valid_complete : givm::target_validation::invalid;
             return givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view&, givm::card_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto target = std::get<givm::character_id>(event.targets[0]);
             if(data.remove) return context.invoke(data.effect, givm::remove_attachment_input{ context.table()[target].get(givm::equipment_type::weapon).id() });
@@ -301,7 +302,7 @@ namespace
             result.allowed_weapon_types.set(givm::weapon_type::sword);
             return result;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto& table = context.table();
             givm::character_id target{};
@@ -332,7 +333,7 @@ namespace
             FAIL("first dynamic attachment is missing");
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::attachment_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK_FALSE(context.table()[event.attachment].is_valid());
             data.log->left.push_back(event.attachment);

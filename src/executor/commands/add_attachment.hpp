@@ -70,7 +70,7 @@ namespace givm::detail
         execution_context& context, random_fn& random)
     {
         if(const auto state = continue_attachment_replacement(library, table, context, random)) return *state;
-        return context.enter_next();
+        return context.advance(response_extent<attachment_removed>);
     }
 
     template<bool Fixed>
@@ -104,11 +104,11 @@ namespace givm::detail
         debug_validate_definition(library, input.definition, "add_attachment", "definition");
 #endif
         if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))
-            return context.enter_next();
+            return context.advance(response_extent<attachment_removed>);
         input.state = clamp_attachment_state(input.state, library[input.definition].query(attachment_state_limit{}));
         if(const auto state = prepare_attachment_addition(library, table, context, random, input, context.position()))
             return *state;
-        return context.enter_next();
+        return context.advance(response_extent<attachment_removed>);
     }
 
     inline void compile(program_writer& writer, const givm::add_attachment& command, compile_mode)
@@ -120,7 +120,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_attachment_addition<false> });
-        writer.write(execute_fn{ finish_replaced_attachment_removal });
+        compile_broadcast<attachment_removed>(writer, finish_replaced_attachment_removal);
     }
 }
 

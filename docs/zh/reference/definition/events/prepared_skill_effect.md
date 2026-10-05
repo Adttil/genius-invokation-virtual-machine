@@ -25,7 +25,7 @@ struct prepared_skill_effect
 
 [`begin_action`](../commands/begin_action.md) 每次即将提供行动选择时，先完成 [`before_action`](before_action.md) 及其响应程序，再检查当前出战角色。若角色未受控制，按其附属实体的遍历顺序选中第一个能响应本事件的有效 attachment。本次不返回 `action_selection`，也不等待玩家选择。
 
-选中后先将该 attachment 标记为离场，再完成 [`attachment_removed`](attachment_removed.md) 的全场通知及其响应程序，最后仅向选中的 attachment 发送本事件。尽管它已经离场，此专属响应仍会调用，响应仍能通过实体参数和 `attachment` 读取其定义、状态及归属信息。响应使用 `invoke` 提交准备技能的效果程序。
+选中后先将该 attachment 标记为离场，再完成 [`attachment_removed`](attachment_removed.md) 的全场通知及其响应程序，最后仅向选中的 attachment 发送本事件。尽管它已经离场，此专属响应仍会调用，响应仍能通过 `context.entity()` 和 `attachment` 读取其定义、状态及归属信息。响应使用 `invoke` 提交准备技能的效果程序。
 
 选中即确定本次行动。离场响应随后改变出战角色或控制状态，不撤销已确定的准备技能。整个行动无需费用计算或支付，也不发出普通技能或特技的使用前后通知。
 

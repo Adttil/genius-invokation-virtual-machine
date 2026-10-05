@@ -20,12 +20,14 @@ namespace givm::detail
 {
     inline execution_state finish_skill_effect(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&)
+        execution_context& context, random_fn& random)
     {
-        const auto event = get<0>(context.stack().top<skill_used, response_return>());
-        context.stack().pop<skill_used, response_return>();
-        prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
+        if(not continue_single_response<skill_effect, skill_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<skill_effect, skill_id>(context);
+        const auto event = get<0>(context.stack().top<skill_used>());
+        context.stack().pop<skill_used>();
+        prepare_broadcast(library, event, table, context.stack(), context.position() + response_extent<skill_effect>);
+        return context.advance(response_extent<skill_effect>);
     }
 
     template<bool ActionSelection>
@@ -45,23 +47,13 @@ namespace givm::detail
         {
             if(event.speed == action_speed::combat) table[event.skill.character_id.player_id].state().can_plunge = false;
         }
-        context.enter_next();
+        context.advance(response_extent<skill_will_be_used>);
         context.stack().push(skill_used{
             .skill = event.skill, .flags = event.flags, .targets = event.targets, .speed = event.speed,
             .effect_cancelled = event.effect_cancelled
-        }, response_return{ table.state().self_player, context.position() });
-        if(not event.effect_cancelled)
-        {
-            skill_effect effect{ .skill = event.skill, .flags = event.flags, .targets = event.targets };
-            const auto skill = std::as_const(table)[event.skill];
-            auto response = context.make_handle_context(library, table, random);
-            const auto entry = library[skill.definition_id()].handle<skill_effect>(skill, effect, response);
-            if(entry)
-            {
-                table.state().self_player = skill.player().id();
-                return context.enter(entry);
-            }
-        }
+        });
+        prepare_single_response(skill_effect{ .skill = event.skill, .flags = event.flags, .targets = event.targets },
+            event.skill, table, context, context.position(), false, not event.effect_cancelled);
         return finish_skill_effect(library, table, context, random);
     }
 
@@ -72,7 +64,7 @@ namespace givm::detail
         if(not continue_broadcast<skill_used>(library, table, context, random))
             return continue_execution;
         pop_broadcast<skill_used>(context);
-        return context.enter_next();
+        return context.advance(response_extent<skill_used>);
     }
 
     template<bool Fixed>
@@ -90,14 +82,16 @@ namespace givm::detail
                 ? table.state().self_player : other_player(table.state().self_player);
             context.advance(instruction_extent<1, use_skill>);
             const auto character = table[player].state().active_character;
-            if(not character) return context.advance(3 * sizeof(execute_fn));
+            if(not character) return context.advance(response_extent<skill_will_be_used>
+                + response_extent<skill_effect> + response_extent<skill_used>);
 #ifndef NDEBUG
             debug_validate_entity(table, *character, "use_skill", "active_character");
 #endif
             auto skills = table[*character].skills();
             const auto found = std::ranges::find_if(skills,
                 [&](const auto skill) { return skill.definition_id() == command.definition; });
-            if(found == skills.end()) return context.advance(3 * sizeof(execute_fn));
+            if(found == skills.end()) return context.advance(response_extent<skill_will_be_used>
+                + response_extent<skill_effect> + response_extent<skill_used>);
             prepare_broadcast(library, skill_will_be_used{
                 .skill = (*found).id(), .flags = library.skill_flags(command.definition),
                 .targets = {}, .speed = action_speed::fast
@@ -130,9 +124,9 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ prepare_skill_command<false> });
-        writer.write(execute_fn{ broadcast_skill_will_be_used<false> });
-        writer.write(execute_fn{ finish_skill_effect });
-        writer.write(execute_fn{ finish_skill_use });
+        compile_broadcast<skill_will_be_used>(writer, broadcast_skill_will_be_used<false>);
+        compile_single_response<skill_effect, skill_id>(writer, finish_skill_effect);
+        compile_broadcast<skill_used>(writer, finish_skill_use);
     }
 }
 

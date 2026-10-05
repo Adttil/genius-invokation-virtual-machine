@@ -58,9 +58,10 @@ namespace
             return { .max_health = 10, .health = 10 };
         }
 
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             data.log->order.push_back(1);
             if(not data.dynamic) return context.invoke(data.application);
             const auto target = (*context.table()[givm::player_id{ 1 }].characters().begin()).id();
@@ -70,9 +71,10 @@ namespace
                 givm::apply_element_input{ .source = self.id(), .target = target, .element = givm::element::cryo });
         }
 
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::elemental_reaction_will_occur& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             data.log->order.push_back(2);
             CHECK(event.reaction == givm::elemental_reaction::vaporize);
             CHECK(event.reacted_aura == givm::element_aura::hydro);
@@ -82,9 +84,10 @@ namespace
                 givm::apply_element_input{ .source = self.id(), .target = event.target, .element = givm::element::dendro });
         }
 
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::after_elemental_reaction& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             data.log->order.push_back(3);
             CHECK(event.reaction == givm::elemental_reaction::vaporize);
             CHECK(event.reacted_aura == givm::element_aura::hydro);

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <limits>
 #include <string_view>
 #include <tuple>
@@ -41,9 +42,10 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            damage_effect& event, handle_context& context)
+            const definition_type& definition,
+            damage_effect& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(event.type == damage_type::piercing || event.value == 0 || status.state().count == 0
                 || status.player().state().active_character != event.target)
                 return {};
@@ -54,17 +56,19 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_regeneration& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             return context.invoke(definition.modify,
                 modify_combat_status_state_input{ .status = status.id(), .count = event.state.count });
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_state_changed& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(event.current.count != 0)
                 return {};
             return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
@@ -101,9 +105,10 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const attachment_view& attachment,
-            damage_calculation& event, handle_context& context)
+            const definition_type& definition,
+            damage_calculation& event, handle_context<attachment_view>& context, std::uint32_t = 0)
         {
+            const auto attachment = context.entity();
             if(event.target != attachment.character().id()
                 || (event.type != damage_type::physical && event.type != damage_type::pyro))
                 return {};
@@ -113,9 +118,10 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const attachment_view& attachment,
-            round_started&, handle_context& context)
+            const definition_type& definition,
+            round_started&, handle_context<attachment_view>& context, std::uint32_t = 0)
         {
+            const auto attachment = context.entity();
             return context.invoke(definition.remove, remove_attachment_input{ attachment.id() });
         }
     };
@@ -152,9 +158,10 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            damage_calculation& event, handle_context& context)
+            const definition_type& definition,
+            damage_calculation& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(status.state().count == 0
                 || (event.type != damage_type::pyro && event.type != damage_type::electro))
                 return {};
@@ -182,17 +189,19 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_regeneration& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             return context.invoke(definition.refresh,
                 set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_state_changed& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(event.current.count != 0)
                 return {};
             return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
@@ -231,9 +240,10 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            damage_calculation& event, handle_context& context)
+            const definition_type& definition,
+            damage_calculation& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(status.state().count == 0
                 || (event.type != damage_type::electro && event.type != damage_type::dendro))
                 return {};
@@ -261,17 +271,19 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_regeneration& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             return context.invoke(definition.refresh,
                 set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_state_changed& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(event.current.count != 0)
                 return {};
             return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
@@ -310,9 +322,10 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            damage_calculation& event, handle_context& context)
+            const definition_type& definition,
+            damage_calculation& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(status.state().count == 0
                 || (event.type != damage_type::electro && event.type != damage_type::dendro))
                 return {};
@@ -340,17 +353,19 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_regeneration& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             return context.invoke(definition.refresh,
                 set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
         static program_entry handle(
-            const definition_type& definition, const combat_status_view& status,
-            combat_status_state_changed& event, handle_context& context)
+            const definition_type& definition,
+            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto status = context.entity();
             if(event.current.count != 0)
                 return {};
             return context.invoke(definition.remove, remove_combat_status_input{ status.id() });
@@ -392,17 +407,19 @@ namespace givm::genshin_impact
         }
 
         static program_entry handle(
-            const definition_type& definition, const summon_view& summon,
-            resummoning& event, handle_context& context)
+            const definition_type& definition,
+            resummoning& event, handle_context<summon_view>& context, std::uint32_t = 0)
         {
+            const auto summon = context.entity();
             return context.invoke(definition.accumulate,
                 modify_summon_state_input{ .summons = std::array{ summon.id() }, .usages = event.state.usages });
         }
 
         static program_entry handle(
-            const definition_type& definition, const summon_view& summon,
-            round_ended&, handle_context& context)
+            const definition_type& definition,
+            round_ended&, handle_context<summon_view>& context, std::uint32_t = 0)
         {
+            const auto summon = context.entity();
             if(summon.state().usages == 0)
                 return {};
             return context.invoke(definition.end_phase,

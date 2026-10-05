@@ -4,6 +4,7 @@
 #include "../program_writer.hpp"
 
 #include <vector>
+#include <optional>
 
 #ifndef NDEBUG
 #include "../debug_validation.hpp"
@@ -14,7 +15,7 @@
 
 namespace givm::detail
 {
-    inline program_entry prepare_summoning(
+    inline std::optional<execution_state> prepare_summoning(
         const definition_library& library, unrestricted_table& table, execution_context& context,
         random_fn& random, summon_input input, execution_position resume)
     {
@@ -34,12 +35,10 @@ namespace givm::detail
             if(not definition.can_handle<resummoning, summon_view>())
                 return {};
             resummoning event{ input.state };
-            context.stack().push(response_return{ table.state().self_player, resume });
-            auto response = context.make_handle_context(library, table, random);
-            const auto entry = definition.handle<resummoning>(existing, event, response);
-            if(not entry) context.stack().pop<response_return>();
-            else table.state().self_player = existing.player().id();
-            return entry;
+            prepare_single_response(event, existing.id(), table, context, resume);
+            if(not continue_single_response<resummoning, summon_id>(library, table, context, random)) return continue_execution;
+            pop_single_response<resummoning, summon_id>(context);
+            return std::nullopt;
         }
 
         if(summon_count >= player.state().summon_limit)
@@ -49,10 +48,11 @@ namespace givm::detail
     }
 
     inline execution_state finish_resummoning(
-        const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        context.stack().pop<response_return>();
-        return context.enter_next();
+        if(not continue_single_response<resummoning, summon_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<resummoning, summon_id>(context);
+        return context.advance(response_extent<resummoning>);
     }
 
     template<bool Fixed>
@@ -78,9 +78,9 @@ namespace givm::detail
             context.enter_next();
         }
 
-        if(const auto entry = prepare_summoning(library, table, context, random, input, context.position()))
-            return context.enter(entry);
-        return context.enter_next();
+        if(const auto state = prepare_summoning(library, table, context, random, input, context.position()))
+            return *state;
+        return context.advance(response_extent<resummoning>);
     }
 
     inline void compile(program_writer& writer, const givm::summon& command, compile_mode)
@@ -92,7 +92,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_summon<false> });
-        writer.write(execute_fn{ finish_resummoning });
+        compile_single_response<resummoning, summon_id>(writer, finish_resummoning);
     }
 }
 

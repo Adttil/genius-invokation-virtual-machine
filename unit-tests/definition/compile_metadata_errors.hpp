@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <array>
 #include <cstddef>
 #include <string_view>
@@ -42,8 +43,8 @@ namespace
             return { query_calls };
         }
 
-        static givm::program_entry handle(const definition_type&, const givm::support_view&,
-            givm::round_started&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            givm::round_started&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             return {};
         }

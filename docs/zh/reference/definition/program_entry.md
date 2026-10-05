@@ -32,6 +32,7 @@ class program_entry;
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <utility>
 #include <print>
 #include <string_view>
@@ -56,9 +57,8 @@ struct support_source
 
     static givm::program_entry handle(
         const givm::program_entry& entry,
-        const givm::support_view&,
         givm::round_ended&,
-        givm::handle_context& context)
+        givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
     {
         return context.invoke(entry);
     }

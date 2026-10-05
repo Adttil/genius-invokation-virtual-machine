@@ -23,6 +23,7 @@
 | [`deck_link_error`](definition/deck_link_error.md) | 牌组名称无法链接的诊断 |
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
 | [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
+| [`program_inputs`](definition/program_inputs.md) | 已准备并拥有的程序输入 |
 | [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |
 | [`history_scalar_field<T>`](definition/history_summary.md#类) | 历史摘要的标量字段描述 |
 | [`history_array_field<T>`](definition/history_summary.md#类) | 历史摘要的数组字段描述 |
@@ -50,7 +51,6 @@
 | [`source_preparation_error`](definition/source_preparation_error.md) | 定义选择及 ID 准备诊断的 variant |
 | [`history_field_descriptor`](definition/history_summary.md#类型别名) | 历史摘要字段描述的 variant |
 | [`any_command`](definition/any_command.md) | 核心命令 variant |
-| [`any_command_input`](definition/any_command_input.md) | 核心命令输入 variant |
 | [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
 | [`handle_fn_t`](definition/handle_fn_t.md) | 统一的事件响应函数指针类型 |
@@ -63,6 +63,9 @@
 | [`error_string`](definition/error_string.md) | 将源准备、牌组链接或单命令诊断转换为文本 |
 | [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
 | [`query_default`](definition/query_default.md) | 定义源未提供查询时的默认结果 |
+| [`defer_invoke`](definition/defer_invoke.md) | 准备延迟程序的入口及参数 |
+| [`pack_inputs`](definition/pack_inputs.md) | 将专用输入对象打包为拥有型输入 |
+| [`concat_inputs`](definition/concat_inputs.md) | 按顺序合并已准备的输入片段 |
 
 ## [命令](definition/commands.md)
 

@@ -104,7 +104,7 @@ namespace givm::detail
             writer.write(attachment_state_modification_data<selector_type>{
                 { command.target.character, selector }, command.count, command.round_usages });
         }, command.target.selector);
-        writer.write(execute_fn{ finish_attachment_state_change });
+        compile_single_response<attachment_state_changed, attachment_id>(writer, finish_attachment_state_change);
     }
 }
 

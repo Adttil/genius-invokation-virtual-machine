@@ -87,8 +87,8 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->phase++ == 0) return context.invoke(data.setup);
             std::vector<givm::set_summon_state_input::change> changes;
@@ -109,8 +109,8 @@ namespace
             }
             return context.invoke(data.action, givm::modify_summon_state_input{ targets, 0, -1 });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::summon_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::summon_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK_FALSE(context.table()[event.summon].is_valid());
             data.log->removed.push_back(event.summon);

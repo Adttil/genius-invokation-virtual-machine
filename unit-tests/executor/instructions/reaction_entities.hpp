@@ -43,21 +43,21 @@ namespace
         {
             return { log, context.add_program(std::tuple{ givm::deal_damage{} }), *context.find_tag("EntityReactionReplacement") };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::damage_calculation& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->statuses_at_calculation.push_back(std::ranges::distance(
                 context.table()[data.log->source_player].combat_statuses()));
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::elemental_reaction_will_occur& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(data.log->take_over_effects) event.replacement_reaction = data.replacement;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::after_damage& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->statuses_at_completion.push_back(std::ranges::distance(
                 context.table()[data.log->source_player].combat_statuses()));
@@ -78,8 +78,8 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::summon_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::summon_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->removed_summons.push_back(event.summon);
             CHECK_FALSE(context.table()[event.summon].is_valid());
@@ -125,9 +125,10 @@ namespace
         {
             return { .count = 2 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::combat_status_view& self,
-            givm::combat_status_regeneration& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::combat_status_regeneration& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             ++data.log->repeated;
             return context.invoke(data.repeat, givm::set_combat_status_state_input{ .status = self.id(), .state = event.state });
         }

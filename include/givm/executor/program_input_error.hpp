@@ -28,8 +28,9 @@ namespace givm
     enum class invalid_program_entry { null_entry, different_library, unknown_entry };
     struct program_invocation_mode_mismatch { bool expected_substack; bool actual_substack; };
     struct repeated_program_invocation {};
+    struct invalid_response_index { std::uint32_t index; };
     using program_input_error_reason = std::variant<program_input_count_mismatch, program_input_type_mismatch,
-        invalid_program_entry, program_invocation_mode_mismatch, repeated_program_invocation>;
+        invalid_program_entry, program_invocation_mode_mismatch, repeated_program_invocation, invalid_response_index>;
 
     inline std::string error_string(const program_input_count_mismatch& error)
     {
@@ -58,6 +59,10 @@ namespace givm
     inline std::string error_string(repeated_program_invocation)
     {
         return "a response may invoke a program only once";
+    }
+    inline std::string error_string(const invalid_response_index& error)
+    {
+        return "return_response input cannot contain the dynamic marker: " + std::to_string(error.index);
     }
 
     class program_input_error : public std::exception
@@ -113,6 +118,72 @@ namespace givm::detail
         std::span<const debug_program_info> programs;
         std::span<const debug_input_requirement> inputs;
     };
+    class program_input_validator
+    {
+    public:
+        explicit program_input_validator(program_debug_view debug) noexcept : debug_{ debug } {}
+
+        template<class TMarker>
+        const debug_program_info& validate_parameters(program_entry entry, std::size_t count, TMarker marker) const
+        {
+            if(not entry) throw program_input_error{ invalid_program_entry::null_entry };
+            if(entry.library_identity_ != debug_.library_identity)
+                throw program_input_error{ invalid_program_entry::different_library };
+            if(entry.debug_index_ >= debug_.programs.size())
+                throw program_input_error{ invalid_program_entry::unknown_entry };
+            const auto& program = debug_.programs[entry.debug_index_];
+            if(program.position != entry.position_ || program.inputs_begin > debug_.inputs.size()
+                || program.inputs_count > debug_.inputs.size() - program.inputs_begin)
+                throw program_input_error{ invalid_program_entry::unknown_entry };
+            const auto fail = [&](program_input_error_reason reason)
+            {
+                throw program_input_error{ std::move(reason), program.source, program.program_index };
+            };
+            if(program.inputs_count != count)
+                fail(program_input_count_mismatch{ program.inputs_count, count });
+            for(std::size_t index = 0; index != count; ++index)
+            {
+                const auto& expected = debug_.inputs[program.inputs_begin + index];
+                const auto actual = marker(index);
+                if(expected.marker != actual)
+                    fail(program_input_type_mismatch{ index, expected.command_index, std::string{ expected.command },
+                        std::string{ expected.command } + "_input", actual < debug_input_command_names.size()
+                            ? std::string{ debug_input_command_names[actual] } + "_input" : "unknown input" });
+            }
+            return program;
+        }
+
+        const debug_program_info& validate(program_entry entry, std::span<const program_input_description> inputs) const
+        {
+            const auto& program = validate_parameters(entry, inputs.size(), [&](std::size_t index) { return inputs[index].marker; });
+            for(const auto& input : inputs)
+            {
+                if(input.marker == command_input_types::index_of<return_response_input>())
+                    validate_value(return_response_input{ input.response_index });
+                else if(input.marker == command_input_types::index_of<defer_program_input>())
+                    validate(input.entry, input.children);
+            }
+            return program;
+        }
+
+        template<class T>
+        void validate_value(const T&) const noexcept {}
+
+        void validate_value(const return_response_input& input) const
+        {
+            if(input.index == return_response::dynamic)
+                throw program_input_error{ invalid_response_index{ input.index } };
+        }
+
+        void validate_value(const defer_program_input& input) const
+        {
+            validate(input.entry, input.inputs.descriptions());
+        }
+
+    private:
+        program_debug_view debug_;
+    };
+
     inline std::atomic_size_t next_program_library_identity{ 1 };
 }
 #endif

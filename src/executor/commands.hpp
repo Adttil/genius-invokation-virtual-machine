@@ -50,5 +50,9 @@
 #include "commands/deal_damage.hpp"
 #include "commands/heal.hpp"
 #include "commands/increase_max_health.hpp"
+#include "commands/return_response.hpp"
+#include "commands/defer_program.hpp"
+#include "commands/end_segment.hpp"
+#include "commands/settle.hpp"
 
 #endif

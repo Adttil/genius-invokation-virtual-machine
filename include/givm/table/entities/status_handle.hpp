@@ -63,21 +63,23 @@ namespace givm::detail
         public:
             constexpr TStatusHandle operator*() const
             {
-                GIVM_ASSERT(index_ < table_->status_slots.size());
+                auto& storage = table_accessor::storage_of(*table_);
+                GIVM_ASSERT(index_ < storage.status_slots.size());
                 auto result = detail::table_accessor::make_uninitialized<TStatusHandle>();
                 detail::table_accessor::storage_of(result) = {
                     .table = table_,
                     .owner = owner_,
                     .slot = index_,
-                    .data = &table_->status_slots[index_]
+                    .data = &storage.status_slots[index_]
                 };
                 return result;
             }
 
             constexpr iterator& operator++()
             {
-                GIVM_ASSERT(index_ < table_->status_slots.size());
-                index_ = table_->status_slots[index_].next;
+                const auto& storage = table_accessor::storage_of(*table_);
+                GIVM_ASSERT(index_ < storage.status_slots.size());
+                index_ = storage.status_slots[index_].next;
                 skip_erased();
                 return *this;
             }
@@ -96,10 +98,11 @@ namespace givm::detail
             constexpr void skip_erased() noexcept
             {
                 constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+                const auto& storage = table_accessor::storage_of(*table_);
                 while(index_ != invalid_status_index
-                    && (table_->status_slots[index_].data.definition_and_flags & erased_mask) != 0)
+                    && (storage.status_slots[index_].data.definition_and_flags & erased_mask) != 0)
                 {
-                    index_ = table_->status_slots[index_].next;
+                    index_ = storage.status_slots[index_].next;
                 }
             }
 
@@ -140,6 +143,11 @@ namespace givm::detail
         friend class ::givm::hand_card_status_view;
 
     public:
+        constexpr const givm::table& table() const noexcept
+        {
+            return *storage_.table;
+        }
+
         static constexpr bool is_mutable = not std::is_const_v<TStorage>;
         using data_type = maybe_mutable<is_mutable, status_data>;
         using slot_type = maybe_mutable<is_mutable, status_slot>;
@@ -186,7 +194,7 @@ namespace givm::detail
         constexpr auto card() const
         {
             auto result = detail::table_accessor::make_uninitialized<hand_card_handle<TStorage>>();
-            auto& player = storage_.table->player_datas[storage_.owner.player_id.index];
+            auto& player = table_accessor::storage_of(*storage_.table).player_datas[storage_.owner.player_id.index];
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
                 .player = &player,
@@ -240,6 +248,11 @@ namespace givm::detail
         friend class ::givm::deck_card_status_view;
 
     public:
+        constexpr const givm::table& table() const noexcept
+        {
+            return *storage_.table;
+        }
+
         static constexpr bool is_mutable = not std::is_const_v<TStorage>;
         using data_type = maybe_mutable<is_mutable, status_data>;
         using slot_type = maybe_mutable<is_mutable, status_slot>;
@@ -286,7 +299,7 @@ namespace givm::detail
         constexpr auto card() const
         {
             auto result = detail::table_accessor::make_uninitialized<deck_card_handle<TStorage>>();
-            auto& player = storage_.table->player_datas[storage_.owner.player_id.index];
+            auto& player = table_accessor::storage_of(*storage_.table).player_datas[storage_.owner.player_id.index];
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
                 .player = &player,
@@ -337,13 +350,14 @@ namespace givm::detail
 
 namespace givm
 {
-    class hand_card_status_view : private detail::basic_hand_card_status_handle<const detail::table_storage>
+    class hand_card_status_view : private detail::basic_hand_card_status_handle<const detail::unrestricted_table>
     {
         friend detail::table_accessor;
 
-        using base_type = detail::basic_hand_card_status_handle<const detail::table_storage>;
+        using base_type = detail::basic_hand_card_status_handle<const detail::unrestricted_table>;
 
     public:
+        using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;
         using base_type::size;
@@ -359,13 +373,14 @@ namespace givm
         constexpr hand_card_status_view(detail::uninitialized_entity_t tag) noexcept : base_type{ tag } {}
     };
 
-    class deck_card_status_view : private detail::basic_deck_card_status_handle<const detail::table_storage>
+    class deck_card_status_view : private detail::basic_deck_card_status_handle<const detail::unrestricted_table>
     {
         friend detail::table_accessor;
 
-        using base_type = detail::basic_deck_card_status_handle<const detail::table_storage>;
+        using base_type = detail::basic_deck_card_status_handle<const detail::unrestricted_table>;
 
     public:
+        using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;
         using base_type::size;

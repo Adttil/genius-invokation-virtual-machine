@@ -68,8 +68,8 @@ namespace
                     givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 }, create }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
                 return context.invoke(data.create,
@@ -79,8 +79,8 @@ namespace
         }
         template<class TEvent>
             requires(std::same_as<TEvent, givm::card_drawn> || std::same_as<TEvent, givm::hand_card_added>)
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            TEvent& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto card = context.table()[event.card];
             CHECK(card.is_valid());
@@ -101,8 +101,8 @@ namespace
         }
         template<class TEvent>
             requires(std::same_as<TEvent, givm::hand_card_discarded> || std::same_as<TEvent, givm::deck_card_discarded>)
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent&, givm::handle_context<givm::deck_card_view>&, std::uint32_t = 0)
         {
             ++data.log->discards;
             return {};
@@ -127,8 +127,8 @@ namespace
         template<class TEvent>
             requires(std::same_as<TEvent, givm::card_drawn>
                 || (AnyEntry && std::same_as<TEvent, givm::hand_card_added>))
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&,
-            TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             data.log->responses.push_back(AnyEntry ? 'A' : 'D');
             return {};
@@ -158,8 +158,8 @@ namespace
                 givm::create_hand_card{ .player = givm::relative_player::opponent,
                     .definition = context.resolve_id<givm::card_definition>("CreatedCard") } }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.effect);
         }

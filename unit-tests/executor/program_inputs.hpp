@@ -67,21 +67,21 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::round_started&,
-                           givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::round_started&,
+                           givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const givm::set_active_character_input first{ .current = { givm::player_id{ 0 }, 1 } };
             const givm::set_active_character_input second{ .current = { givm::player_id{ 0 }, 2 } };
             const givm::set_active_character_input third{ .current = { givm::player_id{ 0 }, 0 } };
             if(data.runtime_inputs)
             {
-                const std::array<givm::any_command_input, 3> inputs{ first, second, third };
-                return context.invoke(data.main, std::span<const givm::any_command_input>{ inputs });
+                const auto inputs = givm::pack_inputs(first, second, third);
+                return context.invoke(data.main, inputs);
             }
             return context.invoke(data.main, first, second, third);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-                           givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::active_character_changed& event,
+                           givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->active.push_back(event.current);
@@ -114,9 +114,10 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self, givm::cost_of_switch& event,
-                           givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data, givm::cost_of_switch& event,
+                           givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             const auto previous = *context.table()[self.player().id()].state().active_character;
             data.log->quote_active.push_back(previous);
             event.requirement.dice_requirement.any = 0;
@@ -124,9 +125,10 @@ namespace
             const givm::set_active_character_input second{ .current = previous };
             return context.invoke(givm::substack_t{}, data.payment, first, second);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self, givm::active_character_changed& event,
-                           givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data, givm::active_character_changed& event,
+                           givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if(self.id().index == 0) data.log->active.push_back(event.current);
             return {};
         }
@@ -272,9 +274,10 @@ namespace
         }
         template<class Event>
         requires (std::same_as<Event, givm::round_started> or std::same_as<Event, givm::cost_of_switch>)
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            Event& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            Event& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if constexpr(std::same_as<Event, givm::cost_of_switch>)
                 event.requirement.dice_requirement.any = 0;
             const givm::character_id target{ givm::player_id{ 1 }, 0 };
@@ -295,9 +298,9 @@ namespace
             };
             if(data.runtime_inputs)
             {
-                const std::array<givm::any_command_input, 4> inputs{
-                    begin, givm::deal_damage_input{ first }, givm::deal_damage_input{ second }, end };
-                return invoke(std::span<const givm::any_command_input>{ inputs });
+                const auto inputs = givm::pack_inputs(
+                    begin, givm::deal_damage_input{ first }, givm::deal_damage_input{ second }, end);
+                return invoke(inputs);
             }
             return invoke(begin, givm::deal_damage_input{ first }, givm::deal_damage_input{ second }, end);
         }
@@ -426,9 +429,10 @@ namespace
         }
         template<class TEvent>
         requires (std::same_as<TEvent, givm::round_started> or std::same_as<TEvent, givm::cost_of_switch>)
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-                           TEvent&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+                           TEvent&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             const auto invoke = [&](auto... inputs)
             {
                 if constexpr(std::same_as<TEvent, givm::cost_of_switch>)
@@ -458,25 +462,23 @@ namespace
             case input_mismatch::typed_extra:
                 return invoke(active);
             case input_mismatch::runtime_missing:
-                return invoke(std::span<const givm::any_command_input>{});
+                return invoke(givm::pack_inputs());
             case input_mismatch::runtime_extra:
             {
-                const std::array<givm::any_command_input, 1> inputs{ active };
-                return invoke(std::span<const givm::any_command_input>{ inputs });
+                return invoke(givm::pack_inputs(active));
             }
             case input_mismatch::typed_wrong_type:
                 return invoke(support);
             case input_mismatch::runtime_wrong_type:
             {
-                const std::array<givm::any_command_input, 1> inputs{ support };
-                return invoke(std::span<const givm::any_command_input>{ inputs });
+                return invoke(givm::pack_inputs(support));
             }
             case input_mismatch::typed_wrong_order:
                 return invoke(summon, active);
             case input_mismatch::runtime_wrong_order:
             {
-                const std::array<givm::any_command_input, 2> inputs{ summon, active };
-                return invoke(std::span<const givm::any_command_input>{ inputs });
+                const std::array inputs{ givm::pack_inputs(summon), givm::pack_inputs(active) };
+                return invoke(givm::concat_inputs(inputs));
             }
             }
             return {};

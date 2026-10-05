@@ -41,7 +41,7 @@ namespace givm::detail
             {
                 context.stack().pop<hand_card_id[], stack_count_t>();
                 if constexpr(Inputs) context.stack().pop<deck_card_id[]>();
-                return context.enter_next();
+                return context.advance(response_extent<card_drawn>);
             }
             prepare_broadcast(library, card_drawn{ .card = cards[cursor++] }, table, context.stack(), context.position());
         }
@@ -78,7 +78,7 @@ namespace givm::detail
         context.advance(instruction_extent<1, fixed_draw_cards_parameters>);
         if(count == 0)
         {
-            return context.enter_next();
+            return context.advance(response_extent<card_drawn>);
         }
 
         const auto hand_count = player_entity.hand_card_count();
@@ -104,7 +104,7 @@ namespace givm::detail
 
         if(drawn_count == 0)
         {
-            return context.enter_next();
+            return context.advance(response_extent<card_drawn>);
         }
 
         prepare_drawn_cards(library, table, context, context.position());
@@ -129,7 +129,7 @@ namespace givm::detail
         const auto deck_count = player_entity.deck_card_count();
         const auto count = static_cast<std::size_t>(std::ranges::count_if(
             positions, [deck_count](std::size_t position) { return position < deck_count; }));
-        if(count == 0) return context.enter_next();
+        if(count == 0) return context.advance(response_extent<card_drawn>);
 
         const auto hand_count = player_entity.hand_card_count();
         const auto hand_limit = player_entity.state().hand_limit;
@@ -153,7 +153,7 @@ namespace givm::detail
                 player_entity.discard_deck_card(card);
         }
         player_entity.compact_deck_card_order();
-        if(drawn_count == 0) return context.enter_next();
+        if(drawn_count == 0) return context.advance(response_extent<card_drawn>);
         prepare_drawn_cards(library, table, context, context.position());
         return broadcast_drawn_card(library, table, context, random);
     }
@@ -171,7 +171,7 @@ namespace givm::detail
         if(cards.empty())
         {
             context.stack().pop<deck_card_id[]>();
-            return context.enter_next();
+            return context.advance(response_extent<card_drawn>);
         }
 
         std::array<std::size_t, 2> counts{};
@@ -219,7 +219,7 @@ namespace givm::detail
         if(drawn_count == 0)
         {
             context.stack().pop<deck_card_id[]>();
-            return context.enter_next();
+            return context.advance(response_extent<card_drawn>);
         }
         prepare_drawn_cards(library, table, context, context.position());
         return broadcast_drawn_card<true>(library, table, context, random);
@@ -230,7 +230,7 @@ namespace givm::detail
         if(command.positions.empty())
         {
             writer.write(execute_fn{ draw_selected_cards_execute });
-            writer.write(execute_fn{ broadcast_drawn_card<true> });
+            compile_broadcast<card_drawn>(writer, broadcast_drawn_card<true>);
             return;
         }
 
@@ -245,7 +245,7 @@ namespace givm::detail
         writer.write(fixed_draw_cards_parameters{ command.player, command.positions.size() });
         if(not from_top)
             for(const auto position : command.positions) writer.write(position);
-        writer.write(execute_fn{ broadcast_drawn_card<false> });
+        compile_broadcast<card_drawn>(writer, broadcast_drawn_card<false>);
     }
 }
 

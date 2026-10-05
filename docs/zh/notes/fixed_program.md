@@ -19,7 +19,7 @@
 
 输入标记的选取仅用于 debug 检查，不决定编译出的操作。命令的编译重载按具体命令值选择固定参数或消费输入的执行路径。每个动态命令只有一个标记，即使其输入含有多个数组和固定部分。
 
-实际字节长度仍用于运行时分配与费用缓存。公开动态适配器通过 `span<const any_command_input>` 提交输入对象序列，数组以对象中的 span 表达；适配器不暴露原始字节协议。类型标记由 C++ 包装实现提供，Lua 脚本在两种构建模式下可以保持相同写法。
+实际字节长度仍用于运行时分配与费用缓存。动态适配器在识别具体输入类型后通过 `pack_inputs` 准备拥有型 `program_inputs`，再以 `concat_inputs` 合并同构片段并提交；适配器不需要暴露原始字节协议。类型标记由 C++ 打包工具在独立 Debug 描述中保存，不混入执行参数字节，Lua 脚本在两种构建模式下可以保持相同写法。
 
 初始化和回合根流程没有响应提供输入，其中的命令值必须选择固定模式。所有构建模式均验证这一条件，不符时记录该命令的 `dynamic_input_in_root` 诊断，最终 `compile` 返回错误列表。响应程序正常完成后返回发起它的结算；期间终局则不再返回。无后续效果的响应返回空入口，不调用 `invoke`。
 
@@ -37,7 +37,7 @@ Debug 的 `command_input_error` 检查保留在各命令实际使用参数之前
 
 ## 费用预览
 
-费用响应仍接收同一种 `handle_context&`，但必须以 `context.invoke(substack_t{}, entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个候选在一个行动窗口内只允许报价一次，费用可反复读取；Release 不保存“已报价”标记；Debug 保存报价状态并检查重复报价及未完成报价的使用。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
+费用响应同样接收 `handle_context<TEntity>&`，但必须以 `context.invoke(substack_t{}, entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个候选在一个行动窗口内只允许报价一次，费用可反复读取；Release 不保存“已报价”标记；Debug 保存报价状态并检查重复报价及未完成报价的使用。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
 
 报价时所有响应读取不变的 table，前一响应只通过费用事件影响后一响应。支付效果不会反馈到本次报价。缓存及复制策略见[费用预览与提交](event_dispatch/payment_commit.md)。
 
@@ -103,7 +103,7 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 `input_marker` 同样在各私有命令头中按命令值决定调试输入要求，不再由公开命令头提供。角色目标解析工具位于 [`src/executor/character_target.hpp`](../../../src/executor/character_target.hpp)，后端调试校验位于 [`src/executor/debug_validation.hpp`](../../../src/executor/debug_validation.hpp)。
 
-[`definition/any_command.hpp`](../../../include/givm/definition/any_command.hpp) 集中保存命令及输入的内部类型列表，并从列表生成公开的 `any_command`、`any_command_input`。[`executor/compile_error.hpp`](../../../include/givm/executor/compile_error.hpp) 使用命令各自的错误别名生成整库错误 variant，同时实现带源和程序位置的 `compile_error` 格式化。单命令错误不依赖编译上下文或 executor，因此其文本转换属于 definition 模块。
+[`definition/any_command.hpp`](../../../include/givm/definition/any_command.hpp) 集中保存命令及输入的内部类型列表，并生成公开的 `any_command`。输入通过专用类型或拥有型 `program_inputs` 提交；`defer_invoke` 将目标入口和已打包参数组成延迟输入，不再需要输入 variant 或指向递归序列的指针。[`executor/compile_error.hpp`](../../../include/givm/executor/compile_error.hpp) 使用命令各自的错误别名生成整库错误 variant，同时实现带源和程序位置的 `compile_error` 格式化。单命令错误不依赖编译上下文或 executor，因此其文本转换属于 definition 模块。
 
 多个 command 使用的基础执行指令仍随其所属 command 放置：抽牌通知推进及相关辅助函数放在 [`draw_cards.hpp`](../../../src/executor/commands/draw_cards.hpp)，[`replace_cards.hpp`](../../../src/executor/commands/replace_cards.hpp) 直接包含并复用；元素反应推进及相关辅助函数放在 [`apply_element.hpp`](../../../src/executor/commands/apply_element.hpp)，[`deal_damage.hpp`](../../../src/executor/commands/deal_damage.hpp) 直接包含并复用。各 command 的其他专属执行函数保留在各自文件中，共用关系由这些直接依赖表达。
 

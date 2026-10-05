@@ -17,7 +17,7 @@
 
 namespace givm::detail
 {
-    template<std::size_t Next = 1>
+    template<std::size_t Next = response_instruction_count<dice_removed>>
     inline execution_state broadcast_removed_dice(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
@@ -64,7 +64,7 @@ namespace givm::detail
             context.stack().pop<remove_dice_input>();
             context.enter_next();
             if(dice.total() == 0)
-                return context.enter_next();
+                return context.advance(response_extent<dice_removed>);
         }
 
         GIVM_ASSERT(player.index < 2);
@@ -87,7 +87,7 @@ namespace givm::detail
             writer.write(execute_fn{ remove_dice_execute<true> });
             writer.write(command);
         }
-        writer.write(execute_fn{ broadcast_removed_dice<> });
+        compile_broadcast<dice_removed>(writer, broadcast_removed_dice<>);
     }
 }
 

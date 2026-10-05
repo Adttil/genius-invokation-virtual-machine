@@ -105,13 +105,13 @@ namespace givm::detail
         constexpr auto players(this Self& self)
         {
             auto& storage = detail::table_accessor::storage_of(self);
-            using storage_type = std::remove_reference_t<decltype(storage)>;
+            using table_type = std::remove_reference_t<decltype(self)>;
             return storage.player_datas
                 | std::views::transform([&](auto& data)
                 {
-                    auto result = detail::table_accessor::make_uninitialized<player_handle<storage_type>>();
+                    auto result = detail::table_accessor::make_uninitialized<player_handle<table_type>>();
                     detail::table_accessor::storage_of(result) = {
-                        .table = &storage,
+                        .table = &self,
                         .data = &data
                     };
                     return result;
@@ -144,10 +144,10 @@ namespace givm::detail
         constexpr auto operator[](this Self& self, player_id player_id)
         {
             auto& storage = detail::table_accessor::storage_of(self);
-            using storage_type = std::remove_reference_t<decltype(storage)>;
-            auto result = detail::table_accessor::make_uninitialized<player_handle<storage_type>>();
+            using table_type = std::remove_reference_t<decltype(self)>;
+            auto result = detail::table_accessor::make_uninitialized<player_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
-                .table = &storage,
+                .table = &self,
                 .data = &storage.player_datas[player_id.index]
             };
             return result;
@@ -185,11 +185,11 @@ namespace givm::detail
         constexpr auto operator[](this Self& self, deck_card_id deck_card_id)
         {
             auto& storage = detail::table_accessor::storage_of(self);
-            using storage_type = std::remove_reference_t<decltype(storage)>;
+            using table_type = std::remove_reference_t<decltype(self)>;
             auto& player = storage.player_datas[deck_card_id.player_id.index];
-            auto result = detail::table_accessor::make_uninitialized<deck_card_handle<storage_type>>();
+            auto result = detail::table_accessor::make_uninitialized<deck_card_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
-                .table = &storage,
+                .table = &self,
                 .player = &player,
                 .slot = deck_card_id.index,
                 .data = &player.deck_card_datas[deck_card_id.index]
@@ -201,10 +201,10 @@ namespace givm::detail
         constexpr auto operator[](this Self& self, hand_card_status_id status_id)
         {
             auto& storage = detail::table_accessor::storage_of(self);
-            using storage_type = std::remove_reference_t<decltype(storage)>;
-            auto result = detail::table_accessor::make_uninitialized<hand_card_status_handle<storage_type>>();
+            using table_type = std::remove_reference_t<decltype(self)>;
+            auto result = detail::table_accessor::make_uninitialized<hand_card_status_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
-                .table = &storage,
+                .table = &self,
                 .owner = status_id.card_id,
                 .slot = status_id.index,
                 .data = &storage.status_slots[status_id.index]
@@ -216,10 +216,10 @@ namespace givm::detail
         constexpr auto operator[](this Self& self, deck_card_status_id status_id)
         {
             auto& storage = detail::table_accessor::storage_of(self);
-            using storage_type = std::remove_reference_t<decltype(storage)>;
-            auto result = detail::table_accessor::make_uninitialized<deck_card_status_handle<storage_type>>();
+            using table_type = std::remove_reference_t<decltype(self)>;
+            auto result = detail::table_accessor::make_uninitialized<deck_card_status_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
-                .table = &storage,
+                .table = &self,
                 .owner = status_id.card_id,
                 .slot = status_id.index,
                 .data = &storage.status_slots[status_id.index]

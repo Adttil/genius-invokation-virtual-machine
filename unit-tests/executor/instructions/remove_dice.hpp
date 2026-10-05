@@ -52,8 +52,8 @@ namespace
                 context.add_program(std::tuple{ zero, first, zero, last, zero }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
                 return context.invoke(data.effect,
@@ -64,8 +64,8 @@ namespace
                     givm::remove_dice_input{ givm::player_id{ 1 }, {} });
             return context.invoke(data.effect);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view&,
-            givm::dice_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::dice_removed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             const auto index = data.log->players.size();
             REQUIRE(index < 3);
@@ -109,9 +109,10 @@ namespace
         {
             return { log, context.add_program(std::tuple{ givm::remove_dice{}, givm::set_support_state{} }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view& self,
-            givm::round_ended&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_ended&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             const auto player = self.player().id();
             const auto& available = context.table()[player].state().dice;
             for(std::uint8_t index = 0; index < 8; ++index)

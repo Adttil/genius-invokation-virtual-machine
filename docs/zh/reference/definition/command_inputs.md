@@ -6,6 +6,8 @@
 
 输入对象的数量、类型和顺序由已登记的程序决定；对象中的数组长度可以运行时确定。数组内容在 `invoke` 时复制，提交后不再借用原数组。未定义 `NDEBUG` 时，提交前检查入口与输入协议，错误以 [`program_input_error`](../executor/program_input_error.md) 报告。命令执行时根据当时的牌桌检查输入值与执行前提，错误以 [`command_input_error`](../executor/command_input_error.md) 报告；此前命令对资源或实体的修改会参与判断。发布构建不保留这些检查及诊断元数据，错误输入属于未定义行为。
 
+延迟参数通过 [`defer_invoke`](defer_invoke.md) 准备，它拥有参数和数组内容。需要事先保存或运行时组合输入时，可以使用 [`pack_inputs`](pack_inputs.md)、[`concat_inputs`](concat_inputs.md)；普通 C++ 响应仍按原方式逐项提交。
+
 调试异常用于定位定义错误，不保证命令或整次推进回滚。捕获从推进调用传播的异常后，不应在原执行现场继续推进；也不能把这些调试诊断作为上层行动输入的常规合法性检查。
 
 包含 `<givm/definition.hpp>` 可同时取得命令及其输入类型。字段已由某个 [事件](events.md) 完整表达时，`xxx_input` 可直接是该事件的别名；是否触发广播由命令决定。其他输入使用独立结构体。
@@ -14,6 +16,9 @@
 
 | | |
 | --- | --- |
+| [`return_response_input`](command_inputs/return_response_input.md) | [`return_response`](commands/return_response.md) 的动态响应编号 |
+| [`defer_program_input`](command_inputs/defer_program_input.md) | [`defer_program`](commands/defer_program.md) 的目标入口及参数 |
+| [`program_inputs`](program_inputs.md) | 已准备并拥有的程序输入 |
 | [`draw_cards_input`](command_inputs/draw_cards_input.md) | [`draw_cards`](commands/draw_cards.md) 的动态输入 |
 | [`reroll_dice_input`](command_inputs/reroll_dice_input.md) | [`reroll_dice`](commands/reroll_dice.md) 的动态输入 |
 | [`discard_hand_card_input`](command_inputs/discard_hand_card_input.md) | [`discard_hand_card`](commands/discard_hand_card.md) 的动态输入 |
@@ -56,12 +61,14 @@
 | [`increase_max_health_input`](command_inputs/increase_max_health_input.md) | [`increase_max_health`](commands/increase_max_health.md) 的动态输入 |
 | [`set_active_character_input`](command_inputs/set_active_character_input.md) | [`set_active_character`](commands/set_active_character.md) 的动态输入 |
 | [`use_skill_input`](command_inputs/use_skill_input.md) | [`use_skill`](commands/use_skill.md) 的动态输入 |
-| [`any_command_input`](any_command_input.md) | 核心命令输入 variant |
 | [`attachment_target`](commands/attachment_target.md) | 附属实体输入中的具体 ID 或装备定位 variant |
 
 ## 参阅
 
 | | |
 | --- | --- |
+| [`defer_invoke`](defer_invoke.md) | 准备延迟程序的入口及参数 |
+| [`pack_inputs`](pack_inputs.md) | 将专用输入对象打包为拥有型输入 |
+| [`concat_inputs`](concat_inputs.md) | 按顺序合并已准备的输入片段 |
 | [`equipment_target`](commands/attachment_target.md) | 按角色 ID 与装备类别定位的当前装备 |
 | [`relative_attachment_target`](commands/attachment_target.md) | 固定命令中的附属实体定位 |

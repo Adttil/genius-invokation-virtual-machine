@@ -14,6 +14,7 @@ class support_view;
 
 |  |  |
 | --- | --- |
+| [`table`](support_view/table.md) | 取得所属牌桌 |
 | [`is_valid`](support_view/is_valid.md) | 判断实体是否尚未移除 |
 | [`operator bool`](support_view/operator_bool.md) | 判断实体是否尚未移除 |
 | [`size`](support_view/size.md) | 取得单实体范围的元素数 |

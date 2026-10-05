@@ -8,17 +8,17 @@
 template<class... T> // 每个 T 均须为核心命令声明的 input_type
 program_entry invoke(program_entry entry, T&&... inputs);
 
-program_entry invoke(program_entry entry, std::span<const any_command_input> inputs);
+program_entry invoke(program_entry entry, const program_inputs& inputs);
 
 template<class... T> // 每个 T 均须为核心命令声明的 input_type
 program_entry invoke(substack_t, program_entry entry, T&&... inputs);
 
-program_entry invoke(substack_t, program_entry entry, std::span<const any_command_input> inputs);
+program_entry invoke(substack_t, program_entry entry, const program_inputs& inputs);
 ```
 
 提交要执行的效果，以及本次效果需要的全部 [命令输入](../../definition/command_inputs.md)。普通响应使用不带标记的重载；费用响应使用首参数为 `substack_t{}` 的重载，保留到确认行动后执行。
 
-不需要输入的程序不传输入参数；其余程序按执行顺序逐项传入 `xxx_input` 对象。Lua 等动态定义源适配器也可以提交 [`any_command_input`](../../definition/any_command_input.md) 的 span。
+不需要输入的程序不传输入参数；其余程序按执行顺序逐项传入 `xxx_input` 对象。延迟命令的输入直接使用 [`defer_invoke`](../../definition/defer_invoke.md) 的返回值。Lua 等动态定义源适配器可以通过 [`pack_inputs`](../../definition/pack_inputs.md) 和 [`concat_inputs`](../../definition/concat_inputs.md) 准备 [`program_inputs`](../../definition/program_inputs.md)，再一次提交。
 
 ## 模板参数
 
@@ -52,11 +52,15 @@ program_entry invoke(substack_t, program_entry entry, std::span<const any_comman
 
 程序要求的输入对象数量、类型和顺序由编译时的具体命令值决定。数组长度属于本次输入值，不参与类型匹配。例如 `deal_damage_input` 不论包含零条、一条还是多条伤害描述，都占一个输入位置。输入须与命令的 `input_type` 相同；字段相同本身不代表类型兼容，显式别名则是同一个类型。
 
+第一条 [`return_response`](../../definition/commands/return_response.md) 之后的命令不属于有效程序，因此也不要求输入。动态返回输入不得使用 `return_response::dynamic`。提交 [`defer_program_input`](../../definition/command_inputs/defer_program_input.md) 时，目标入口和嵌套参数也在 Debug 下按同一规则检查。
+
 入口必须非空并属于当前定义库，每次响应最多调用一次。定义库复制保留入口对应关系，原库的入口可用于其副本；独立重新编译的库不能混用入口。调试构建检查这些条件。
 
 必须使用尾调用形式，例如 `return context.invoke(entry, set_active_character_input{ target });`。调用前完成对当前事件与现场的全部读取，调用后立即返回。尾调用与引用生命周期约定不自动检查，违反时行为未定义。
 
-逐项输入对象在提交前按值取得；输入对象中作为命令数组的 span，其内容也在调用时复制，返回后不再借用原数组。源数组以及 variant span 本身须在复制期间保持有效，不能指向可能因本次调用而移动的执行现场。复制数组不会延长其元素中其他借用对象的生命周期。
+普通逐项输入对象在执行现场可能扩容前取得值快照；其中作为命令数组的 span，其内容也在调用时复制，返回后不再借用原数组。源数组须在复制期间保持有效，不能指向可能因本次调用而移动的执行现场。复制数组不会延长其元素中其他借用对象的生命周期。
+
+[`defer_invoke`](../../definition/defer_invoke.md) 和 [`pack_inputs`](../../definition/pack_inputs.md) 已拥有准备好的参数及数组内容；提交它们时复制的是这份快照。它们在提交返回后可以销毁，无须存活到目标程序实际执行。普通逐项调用不要求预先使用 `pack_inputs`。
 
 不需要后续效果时，响应返回空入口（`return {};`），不调用本函数。提交不保证效果立即执行：费用预览只保留效果，未被选择的候选效果不会执行。
 
@@ -87,9 +91,10 @@ struct passive_skill_source
     }
 
     static givm::program_entry handle(
-        const givm::program_entry& entry, const givm::skill_view& self,
-        givm::round_started&, givm::handle_context& context)
+        const givm::program_entry& entry,
+        givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {
+        const auto self = context.entity();
         const std::array damages{
             givm::damage{ .source = self.id(), .target = self.character().id(),
                 .value = 1, .type = givm::damage_type::physical },

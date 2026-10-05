@@ -21,6 +21,11 @@ namespace givm::detail
         friend class ::givm::support_view;
 
     public:
+        constexpr const givm::table& table() const noexcept
+        {
+            return *storage_.table;
+        }
+
         static constexpr bool is_mutable = not std::is_const_v<TStorage>;
 
         using table_type = TStorage;
@@ -113,13 +118,14 @@ namespace givm::detail
 
 namespace givm
 {
-    class support_view : private detail::basic_support_handle<const detail::table_storage>
+    class support_view : private detail::basic_support_handle<const detail::unrestricted_table>
     {
         friend detail::table_accessor;
 
-        using base_type = detail::basic_support_handle<const detail::table_storage>;
+        using base_type = detail::basic_support_handle<const detail::unrestricted_table>;
 
     public:
+        using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;
         using base_type::size;

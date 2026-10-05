@@ -42,7 +42,7 @@ namespace givm
         template<class Frame>
         class substack_view;
 
-        template<bool IsMutable, bool AtTop, class... T>
+        template<bool IsMutable, bool AtTop, size_t Depth, class... T>
         class stack_frame_view;
 
         constexpr size_t align(size_t base, size_t alignment) noexcept
@@ -202,7 +202,7 @@ namespace givm
         friend class frame_stack;
         template<class>
         friend class detail::substack_view;
-        template<bool, bool, class...>
+        template<bool, bool, size_t, class...>
         friend class detail::stack_frame_view;
 
         static constexpr bool is_mutable = IsMutable;
@@ -242,7 +242,7 @@ namespace givm
 
     namespace detail
     {
-        template<bool IsMutable, bool AtTop, class... T>
+        template<bool IsMutable, bool AtTop, size_t Depth, class... T>
         class stack_frame_view
         {
             static_assert(frame_elements<T...>, "a frame requires an array prefix and at most one final substack");
@@ -272,10 +272,17 @@ namespace givm
             static constexpr bool is_mutable = IsMutable;
             static constexpr bool stack_relative = true;
             static constexpr bool at_top = AtTop;
+            // Ancestor footers follow this frame without becoming part of its layout.
+            static constexpr size_t depth = Depth;
             using stack_type = maybe_mutable<IsMutable, frame_stack>;
 
             constexpr explicit stack_frame_view(stack_type* stack) noexcept requires AtTop : stack_{ stack } {}
             constexpr stack_frame_view(stack_type* stack, size_t offset) noexcept requires (not AtTop) : stack_{ stack, offset } {}
+            constexpr stack_type* owner() const noexcept
+            {
+                if constexpr (AtTop) return stack_;
+                else return stack_.first;
+            }
             constexpr byte_type* end() const noexcept;
             constexpr byte_type* aligned_begin() const noexcept { return frame_view<IsMutable, T...>{ end() }.aligned_begin(); }
 
@@ -449,14 +456,14 @@ namespace givm
         requires (detail::frame_elements<T...> && (not std::is_unbounded_array_v<T> && ...))
         constexpr auto push()
         {
-            return push_blank<false, T...>();
+            return push_blank<0, T...>();
         }
 
         template<class...T>
         requires detail::frame_elements<detail::stack_push_element_t<T>...>
         constexpr auto push(const T&... t)
         {
-            return push_values<false>(t...);
+            return push_values<0>(t...);
         }
 
         template<class...T, class Self>
@@ -464,7 +471,7 @@ namespace givm
         {
             if constexpr (detail::has_substack<T...>)
             {
-                return detail::stack_frame_view<not std::is_const_v<Self>, true, T...>{ &self };
+                return detail::stack_frame_view<not std::is_const_v<Self>, true, 0, T...>{ &self };
             }
             else return frame_view<not std::is_const_v<Self>, T...>{ self.top_ };
         }
@@ -472,7 +479,8 @@ namespace givm
         template<frame_t First, frame_t...Rest, class Self>
         constexpr auto top(this Self& self) noexcept
         {
-            return top_frames<First, Rest...>(self.top_, &self);
+            maybe_mutable<not std::is_const_v<Self>, unsigned char>* end = self.top_;
+            return top_frames<0, true, First, Rest...>(end, &self);
         }
 
         template<class... T>
@@ -498,33 +506,31 @@ namespace givm
         }
 
     private:
-        template<bool, bool, class...>
+        template<bool, bool, size_t, class...>
         friend class detail::stack_frame_view;
 
         template<class>
         friend class detail::substack_view;
 
-        template<frame_t... Frames, class Byte, class Owner>
+        template<size_t Depth, bool AtTop, frame_t... Frames, class Byte, class Owner>
         static constexpr auto top_frames(Byte* end, Owner owner) noexcept
         {
             using frames = type_list<decltype(Frames)...>;
             constexpr size_t count = sizeof...(Frames);
             constexpr bool is_mutable = not std::is_const_v<Byte>;
-            using last = typename frames::template type_at<count - 1>;
             constexpr bool relocatable = not std::same_as<Owner, std::nullptr_t>
-                && std::same_as<typename last::template type_at<last::size() - 1>, substack_t>;
+                && (std::same_as<typename decltype(Frames)::template type_at<decltype(Frames)::size() - 1>, substack_t> || ...);
             const auto make_view = [&]<size_t I>(Byte* frame_end)
             {
                 return [&]<class... T>(frame_t<T...>)
                 {
-                    static_assert(not std::same_as<Owner, std::nullptr_t> || not detail::has_substack<T...>);
-                    if constexpr (relocatable && I == count - 1)
+                    if constexpr (relocatable && AtTop && I == count - 1)
                     {
-                        return detail::stack_frame_view<is_mutable, true, T...>{ owner };
+                        return detail::stack_frame_view<is_mutable, true, Depth, T...>{ owner };
                     }
                     else if constexpr (relocatable)
                     {
-                        return detail::stack_frame_view<is_mutable, false, T...>{
+                        return detail::stack_frame_view<is_mutable, false, Depth, T...>{
                             owner, static_cast<size_t>(frame_end - owner->begin_)
                         };
                     }
@@ -567,22 +573,22 @@ namespace givm
             return end;
         }
 
-        template<bool InSubstack, class... T>
+        template<size_t Depth, class... T>
         constexpr auto push_blank()
         {
             constexpr size_t frame_size = detail::frame_size(std::array{ detail::layout_info_of<T>... });
             constexpr size_t prefix_size = detail::align(frame_size, max_alignment);
             constexpr size_t footer_size = detail::has_substack<T...> ? detail::substack_tail_size : 0;
-            increase<InSubstack>(prefix_size + footer_size);
+            increase<Depth>(prefix_size + footer_size);
             if constexpr (detail::has_substack<T...>)
             {
-                std::construct_at(reinterpret_cast<size_t*>(top_ - detail::substack_tail_size), size_t{});
-                return detail::stack_frame_view<true, true, T...>{ this };
+                std::construct_at(reinterpret_cast<size_t*>(top_ - (Depth + 1) * detail::substack_tail_size), size_t{});
+                return detail::stack_frame_view<true, true, Depth, T...>{ this };
             }
-            else return frame_view<true, T...>{ top_ - (InSubstack ? detail::substack_tail_size : 0) };
+            else return frame_view<true, T...>{ top_ - Depth * detail::substack_tail_size };
         }
 
-        template<bool InSubstack, class...T>
+        template<size_t Depth, class...T>
         constexpr auto push_values(const T&... t)
         {
             constexpr size_t dynamic_count = std::ranges::count(
@@ -612,17 +618,17 @@ namespace givm
 
             if constexpr(dynamic_count == 0)
             {
-                increase<InSubstack>(detail::align(fixed_part, max_alignment) + footer_size);
+                increase<Depth>(detail::align(fixed_part, max_alignment) + footer_size);
             }
             else
             {
-                increase<InSubstack>(spans[0].offset_to_frame_end + footer_size);
-                const auto prefix_end = top_ - (InSubstack ? detail::substack_tail_size : 0) - footer_size;
+                increase<Depth>(spans[0].offset_to_frame_end + footer_size);
+                const auto prefix_end = top_ - Depth * detail::substack_tail_size - footer_size;
                 std::memcpy(prefix_end - fixed_part, spans.data(), spans.size() * sizeof(detail::dynamic_array_span));
             }
             if constexpr (has_substack)
             {
-                std::construct_at(reinterpret_cast<size_t*>(top_ - detail::substack_tail_size), size_t{});
+                std::construct_at(reinterpret_cast<size_t*>(top_ - (Depth + 1) * detail::substack_tail_size), size_t{});
             }
 
             return [&]<size_t...I>(std::index_sequence<I...>)
@@ -631,9 +637,9 @@ namespace givm
                 {
                     if constexpr (has_substack)
                     {
-                        return detail::stack_frame_view<true, true, detail::stack_push_element_t<T>...>{ this };
+                        return detail::stack_frame_view<true, true, Depth, detail::stack_push_element_t<T>...>{ this };
                     }
-                    else return frame_view<true, detail::stack_push_element_t<T>...>{ top_ - (InSubstack ? detail::substack_tail_size : 0) };
+                    else return frame_view<true, detail::stack_push_element_t<T>...>{ top_ - Depth * detail::substack_tail_size };
                 }();
                 (..., init_from(get<I>(view), t));
                 return view;
@@ -647,7 +653,7 @@ namespace givm
             end_ = begin_ + capacity;
         }
 
-        template<bool InSubstack>
+        template<size_t Depth>
         constexpr void increase(size_t increase_size)
         {
             if(increase_size <= end_ - top_) [[likely]]
@@ -665,9 +671,10 @@ namespace givm
                 }
                 swap(*this, new_stack);
             }
-            if constexpr (InSubstack)
+            // Move outer footers first because a small insertion can overlap their old positions.
+            for(size_t i = 1; i <= Depth; ++i)
             {
-                const auto destination = top_ - detail::substack_tail_size;
+                const auto destination = top_ - i * detail::substack_tail_size;
                 const auto new_size = *reinterpret_cast<const size_t*>(destination - increase_size) + increase_size;
                 std::construct_at(reinterpret_cast<size_t*>(destination), new_size);
             }
@@ -709,11 +716,11 @@ namespace givm
 
     namespace detail
     {
-        template<bool IsMutable, bool AtTop, class... T>
-        constexpr stack_frame_view<IsMutable, AtTop, T...>::byte_type*
-        stack_frame_view<IsMutable, AtTop, T...>::end() const noexcept
+        template<bool IsMutable, bool AtTop, size_t Depth, class... T>
+        constexpr stack_frame_view<IsMutable, AtTop, Depth, T...>::byte_type*
+        stack_frame_view<IsMutable, AtTop, Depth, T...>::end() const noexcept
         {
-            if constexpr (AtTop) return stack_->top_;
+            if constexpr (AtTop) return stack_->top_ - Depth * substack_tail_size;
             else return stack_.first->begin_ + stack_.second;
         }
 
@@ -733,35 +740,47 @@ namespace givm
 
             template<class... T>
             requires (Frame::is_mutable && Frame::at_top && frame_elements<T...>
-                && not has_substack<T...> && (not std::is_unbounded_array_v<T> && ...))
+                && (not std::is_unbounded_array_v<T> && ...))
             constexpr auto push() const
             {
-                return frame_.stack_->template push_blank<true, T...>();
+                return frame_.owner()->template push_blank<Frame::depth + 1, T...>();
             }
 
             template<class... T>
-            requires (Frame::is_mutable && Frame::at_top && frame_elements<stack_push_element_t<T>...>
-                && not has_substack<stack_push_element_t<T>...>)
+            requires (Frame::is_mutable && Frame::at_top && frame_elements<stack_push_element_t<T>...>)
             constexpr auto push(const T&... values) const
             {
-                return frame_.stack_->template push_values<true>(values...);
+                return frame_.owner()->template push_values<Frame::depth + 1>(values...);
             }
 
             template<class... T>
-            requires (not has_substack<T...>)
             constexpr auto top() const noexcept
             {
-                return frame_view<Frame::is_mutable, T...>{ end() };
+                if constexpr (has_substack<T...> && Frame::stack_relative)
+                {
+                    if constexpr (Frame::at_top)
+                    {
+                        return stack_frame_view<Frame::is_mutable, true, Frame::depth + 1, T...>{ frame_.owner() };
+                    }
+                    else return stack_frame_view<Frame::is_mutable, false, Frame::depth + 1, T...>{
+                        frame_.owner(), static_cast<size_t>(end() - frame_.owner()->begin_)
+                    };
+                }
+                else return frame_view<Frame::is_mutable, T...>{ end() };
             }
 
             template<frame_t First, frame_t... Rest>
             constexpr auto top() const noexcept
             {
-                return frame_stack::top_frames<First, Rest...>(end(), nullptr);
+                if constexpr (Frame::stack_relative)
+                {
+                    return frame_stack::top_frames<Frame::depth + 1, Frame::at_top, First, Rest...>(end(), frame_.owner());
+                }
+                else return frame_stack::top_frames<0, false, First, Rest...>(end(), nullptr);
             }
 
             template<class... T>
-            requires (Frame::is_mutable && Frame::at_top && not has_substack<T...>)
+            requires (Frame::is_mutable && Frame::at_top)
             constexpr void pop() const noexcept
             {
                 pop_to(frame_view<true, T...>{ end() }.aligned_begin());
@@ -784,7 +803,7 @@ namespace givm
         private:
             template<bool, class...>
             friend class givm::frame_view;
-            template<bool, bool, class...>
+            template<bool, bool, size_t, class...>
             friend class stack_frame_view;
 
             constexpr explicit substack_view(Frame frame) noexcept : frame_{ frame } {}
@@ -801,8 +820,13 @@ namespace givm
                 const size_t decrease_size = previous_end - new_end;
                 const auto previous_size = *reinterpret_cast<const size_t*>(previous_end);
                 GIVM_ASSERT(decrease_size <= previous_size);
-                std::construct_at(reinterpret_cast<size_t*>(new_end), previous_size - decrease_size);
-                frame_.stack_->top_ = new_end + substack_tail_size;
+                // Removal moves the same footer chain in the opposite direction.
+                for(size_t i = 0; i <= Frame::depth; ++i)
+                {
+                    const auto size = *reinterpret_cast<const size_t*>(previous_end + i * substack_tail_size);
+                    std::construct_at(reinterpret_cast<size_t*>(new_end + i * substack_tail_size), size - decrease_size);
+                }
+                frame_.owner()->top_ -= decrease_size;
             }
 
             Frame frame_;
@@ -820,14 +844,14 @@ struct std::tuple_element<I, givm::frame_view<IsMutable, T...>>
     using type = decltype(std::declval<givm::frame_view<IsMutable, T...>>().template get<I>());
 };
 
-template<bool IsMutable, bool AtTop, class... T>
-struct std::tuple_size<givm::detail::stack_frame_view<IsMutable, AtTop, T...>>
+template<bool IsMutable, bool AtTop, size_t Depth, class... T>
+struct std::tuple_size<givm::detail::stack_frame_view<IsMutable, AtTop, Depth, T...>>
     : std::integral_constant<size_t, sizeof...(T)>{};
 
-template<size_t I, bool IsMutable, bool AtTop, class... T>
-struct std::tuple_element<I, givm::detail::stack_frame_view<IsMutable, AtTop, T...>>
+template<size_t I, bool IsMutable, bool AtTop, size_t Depth, class... T>
+struct std::tuple_element<I, givm::detail::stack_frame_view<IsMutable, AtTop, Depth, T...>>
 {
-    using type = decltype(std::declval<givm::detail::stack_frame_view<IsMutable, AtTop, T...>>().template get<I>());
+    using type = decltype(std::declval<givm::detail::stack_frame_view<IsMutable, AtTop, Depth, T...>>().template get<I>());
 };
 
 #include "../macro_undef.hpp"

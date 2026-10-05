@@ -79,22 +79,22 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.pair,
                 givm::deal_damage_input{ std::array{ givm::damage{ .source = attacker, .target = victim(0), .value = 2, .type = givm::damage_type::physical },
                 givm::damage{ .source = attacker, .target = victim(1), .value = 3, .type = givm::damage_type::physical } } });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::damage_preparation& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_preparation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(data.log->enchant && event.target == victim(0) && event.type == givm::damage_type::physical)
                 event.type = givm::damage_type::electro;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::damage_calculation& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::calculation, event.target.index);
             if(data.log->nested && !data.log->nested_invoked && event.target == victim(0))
@@ -105,8 +105,8 @@ namespace
             }
             return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::damage_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::effect, event.target.index);
             data.log->final_types.push_back(event.type);
@@ -114,8 +114,8 @@ namespace
                 return context.invoke(data.change_target_aura);
             return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::elemental_reaction_will_occur& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::reaction, event.target.index);
             data.log->reactions.push_back(event.reaction);
@@ -129,15 +129,15 @@ namespace
                 values.push_back(character.state().health);
             log.after_health.push_back(std::move(values));
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::after_elemental_reaction& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::after_reaction, event.target.index);
             record_health(*data.log, context.table());
             return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::after_damage& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::after_damage, event.target.index);
             record_health(*data.log, context.table());
@@ -170,8 +170,8 @@ namespace
         std::string_view name() const { return source_name; }
         const auto& tags() const { return source_tags; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&,
-            givm::after_damage&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             ++data.log->attachment_responses;
             return {};
@@ -212,16 +212,18 @@ namespace
         {
             return query.skill_index == 0 ? data.skill : givm::definition_id<givm::skill_view>{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             return context.invoke(data.setup,
                 givm::add_attachment_input{ .target = self.id(), .definition = data.ordinary },
                 givm::add_attachment_input{ .target = self.id(), .definition = data.artifact });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::after_damage& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             CHECK(self.is_valid());
             CHECK(self.state().health == 0);
             CHECK(self.state().energy == 0);

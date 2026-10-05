@@ -81,9 +81,10 @@ namespace givm_test::executor::runtime_argument_errors
         {
             return { .max_health = 10, .max_energy = 3, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             switch(data.selected)
             {
             case scenario::invalid_character:
@@ -125,8 +126,8 @@ namespace givm_test::executor::runtime_argument_errors
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::damage_calculation& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(data.selected == scenario::invalid_modified_damage)
             {

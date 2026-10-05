@@ -73,7 +73,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_support_state_modification<false> });
-        writer.write(execute_fn{ finish_support_state_change });
+        compile_single_response<support_state_changed, support_id>(writer, finish_support_state_change);
     }
 }
 

@@ -54,6 +54,10 @@ namespace givm::detail
     template<> inline constexpr std::string_view debug_command_name<apply_element> = "apply_element";
     template<> inline constexpr std::string_view debug_command_name<heal> = "heal";
     template<> inline constexpr std::string_view debug_command_name<increase_max_health> = "increase_max_health";
+    template<> inline constexpr std::string_view debug_command_name<return_response> = "return_response";
+    template<> inline constexpr std::string_view debug_command_name<defer_program> = "defer_program";
+    template<> inline constexpr std::string_view debug_command_name<end_segment> = "end_segment";
+    template<> inline constexpr std::string_view debug_command_name<settle> = "settle";
 
     constinit const std::array<std::string_view, command_input_types::size()> debug_input_command_names = []
     {
@@ -79,18 +83,11 @@ namespace givm::detail
 
 namespace givm::detail
 {
-    execution_state execute_return(
-        const definition_library&, unrestricted_table& table, execution_context& context, random_fn&)
-    {
-        const auto record = get<0>(context.stack().top<response_return>());
-        table.state().self_player = record.previous_player;
-        return context.jump(record.position);
-    }
-
     std::size_t append_commands(program_writer& writer, std::span<const any_command> commands, compile_mode mode,
         const definition_compile_context& context, program_kind kind, std::vector<compile_error>& errors, compile_location location
 #ifndef NDEBUG
-        , std::vector<debug_input_requirement>* input_markers = nullptr
+        , std::size_t library_identity, const std::vector<debug_program_info>& programs
+        , std::vector<debug_input_requirement>& input_markers
 #endif
     )
     {
@@ -106,16 +103,38 @@ namespace givm::detail
                 if(not command_errors.empty()) return;
             }
 #ifndef NDEBUG
+            if constexpr(std::same_as<std::remove_cvref_t<decltype(command)>, defer_program>)
+            {
+                if(command.input.entry)
+                {
+                    try
+                    {
+                        const program_input_validator validator{ { library_identity, programs, input_markers } };
+                        validator.validate_value(command.input);
+                    }
+                    catch(const program_input_error& error)
+                    {
+                        errors.push_back({ location, fixed_program_input_error{ error.reason } });
+                        return;
+                    }
+                }
+            }
             const auto marker = input_marker<command_input_types>(command);
             if(marker != size_t(-1))
             {
                 ++inputs_count;
-                if(input_markers) input_markers->push_back({ marker, *location.command_index, debug_command_name<std::remove_cvref_t<decltype(command)>> });
+                if(kind == program_kind::response)
+                    input_markers.push_back({ marker, *location.command_index,
+                        debug_command_name<std::remove_cvref_t<decltype(command)>> });
             }
 #endif
             compile(writer, command, mode);
         };
-        for(const auto& command : commands) std::visit(append_command, command);
+        for(const auto& command : commands)
+        {
+            std::visit(append_command, command);
+            if(std::holds_alternative<return_response>(command)) break;
+        }
         return inputs_count;
     }
 }
@@ -387,13 +406,15 @@ namespace givm
             detail::append_commands(writer, commands, mode_, *this, program_kind::response, errors_,
                 { compile_stage::program, source_, program_kind::response, program_count_++, {} }
 #ifndef NDEBUG
-                , &input_markers_
+                , library_identity_, debug_programs_, input_markers_
 #endif
             );
 #ifndef NDEBUG
         debug_programs_[result.debug_index_].inputs_count = inputs_count;
 #endif
-        writer.write(detail::execute_fn{ detail::execute_return });
+        if(std::ranges::none_of(commands, [](const auto& command)
+            { return std::holds_alternative<return_response>(command); }))
+            detail::compile(writer, return_response{ return_response::null }, mode_);
         return result;
     }
 
@@ -441,12 +462,20 @@ namespace givm
         };
         detail::program_writer writer{ library.program_ };
         detail::append_commands(writer, initialization_program, mode,
-            context, program_kind::initialization, errors, { compile_stage::program, {}, program_kind::initialization, 0, {} });
+            context, program_kind::initialization, errors, { compile_stage::program, {}, program_kind::initialization, 0, {} }
+#ifndef NDEBUG
+            , library.debug_library_identity_, library.debug_programs_, library.input_markers_
+#endif
+        );
         const detail::execution_position round_start = writer.position();
         detail::compile(writer, detail::round_program_begin{}, mode);
         const detail::execution_position round_entry = writer.position();
         detail::append_commands(writer, round_program, mode,
-            context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} });
+            context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} }
+#ifndef NDEBUG
+            , library.debug_library_identity_, library.debug_programs_, library.input_markers_
+#endif
+        );
         detail::compile(writer, detail::round_program_repeat{ round_start, round_entry }, mode);
         definition_types::each([&]<class TCategory>
         {

@@ -36,8 +36,8 @@ namespace
 
         std::string_view name() const { return source_name; }
         definition_type compile(givm::definition_compile_context&) const { return {}; }
-        static givm::program_entry handle(const definition_type&, const givm::hand_card_view&,
-            givm::card_effect&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             return {};
         }
@@ -196,8 +196,8 @@ namespace
             return { std::get<givm::history_value_key<std::uint32_t>>(context.resolve_history_field("DynamicEnabled", "hits")),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }), observed };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto hits = context.table()[data.hits];
             data.observed->push_back(hits);
@@ -299,8 +299,8 @@ namespace
             return query.table[data.counts][query.card.id().player_id.index] != 0
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type&, const givm::hand_card_view&,
-            givm::card_effect&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             return {};
         }
@@ -337,13 +337,13 @@ namespace
                     givm::create_hand_card{ .definition = second } }),
                 context.add_program(std::tuple{ givm::create_hand_card{ .definition = future } }), observed };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.generate);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::card_played& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_played& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             data.observed->push_back(context.table()[data.counts][event.card.player_id.index]);
             return event.definition_id == data.first ? context.invoke(data.future) : givm::program_entry{};
@@ -440,15 +440,16 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::character_will_be_defeated& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             CHECK(context.table()[data.counts][event.target.player_id.index] == 0);
             if(not data.should_revive) return {};
             return context.invoke(data.revive, givm::heal_input{ .source = self.id(), .target = event.target, .value = 2 });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::character_defeated& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::character_defeated& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.observed->push_back(context.table()[data.counts][event.target.player_id.index]);
             return {};

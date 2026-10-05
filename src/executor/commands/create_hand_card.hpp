@@ -21,7 +21,7 @@ namespace givm::detail
         if(not continue_broadcast<hand_card_added>(library, table, context, random))
             return continue_execution;
         pop_broadcast<hand_card_added>(context);
-        return context.enter_next();
+        return context.advance(response_extent<hand_card_added>);
     }
 
     template<bool Fixed>
@@ -56,7 +56,7 @@ namespace givm::detail
 
         const auto player = table[input.player];
         if(player.hand_card_count() >= player.state().hand_limit)
-            return context.enter_next();
+            return context.advance(response_extent<hand_card_added>);
 
         const auto state = library[input.definition].query(card_initial_state{});
         const auto card = player.add_hand_card(input.definition, state).id();
@@ -73,7 +73,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ create_hand_card_execute<false> });
-        writer.write(execute_fn{ broadcast_hand_card_added });
+        compile_broadcast<hand_card_added>(writer, broadcast_hand_card_added);
     }
 }
 

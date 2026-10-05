@@ -30,6 +30,7 @@ auto definitions() const noexcept;
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <utility>
 #include <array>
 #include <print>
@@ -45,8 +46,8 @@ struct food_source
     std::string_view name() const { return "示例料理"; }
     auto tags() const { return std::array<std::string_view, 1>{ "料理" }; }
     int compile(givm::definition_compile_context&) const { return 0; }
-    static givm::program_entry handle(const int&, const givm::hand_card_view&,
-        givm::card_effect&, givm::handle_context&)
+    static givm::program_entry handle(const int&,
+        givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
     { return {}; }
 };
 

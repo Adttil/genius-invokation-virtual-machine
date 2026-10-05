@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <span>
 #include <tuple>
 #include <type_traits>
@@ -17,54 +18,12 @@
 
 namespace givm::detail
 {
-    template<class T>
-    concept command_input = requires { command_input_types::index_of<std::remove_cvref_t<T>>(); };
-
     template<command_input T>
-    constexpr auto command_input_members(const T& input) noexcept
-    {
-        return std::tie(input);
-    }
+    auto snapshot_invocation_input(const T& input) { return input; }
 
-    inline auto command_input_members(const deal_damage_input& input) noexcept
+    inline auto snapshot_invocation_input(const defer_program_input& input) noexcept
     {
-        return std::tuple{ dynamic_array<damage>(input.damages) };
-    }
-
-    inline auto command_input_members(const discard_hand_card_input& input) noexcept
-    {
-        return std::tuple{ dynamic_array<hand_card_id>(input.cards) };
-    }
-
-    inline auto command_input_members(const draw_cards_input& input) noexcept
-    {
-        return std::tuple{ dynamic_array<deck_card_id>(input.cards) };
-    }
-
-    inline auto command_input_members(const set_summon_state_input& input) noexcept
-    {
-        return std::tuple{ dynamic_array<set_summon_state_input::change>(input.changes) };
-    }
-
-    inline auto command_input_members(const modify_summon_state_input& input) noexcept
-    {
-        return std::tuple{ dynamic_array<summon_id>(input.summons), input.value, input.usages };
-    }
-
-    inline auto command_input_members(const remove_summon_input& input) noexcept
-    {
-        return std::tuple{ dynamic_array<summon_id>(input.summons) };
-    }
-
-    inline auto command_input_members(const modify_energy_input& input) noexcept
-    {
-        return std::tuple{ dynamic_array<character_id>(input.targets), input.delta };
-    }
-
-    template<class TDestination, command_input T>
-    inline void push_command_input(TDestination& destination, const T& input)
-    {
-        std::apply([&](const auto&... members) { destination.push(members...); }, command_input_members(input));
+        return std::cref(input);
     }
 }
 
@@ -73,94 +32,62 @@ namespace givm
     class program_invoker
     {
     public:
-        program_entry operator()(program_entry entry, std::span<const any_command_input> inputs)
+        program_entry operator()(program_entry entry, const program_inputs& inputs)
         {
-            return invoke_sequence<false>(entry, inputs);
+            return invoke_packed<false>(entry, inputs);
         }
 
-        program_entry operator()(substack_t, program_entry entry, std::span<const any_command_input> inputs)
+        program_entry operator()(substack_t, program_entry entry, const program_inputs& inputs)
         {
-            return invoke_sequence<true>(entry, inputs);
-        }
-
-        template<detail::command_input... T>
-        program_entry operator()(program_entry entry, T... inputs)
-        {
-            return invoke_values<false>(entry, inputs...);
+            return invoke_packed<true>(entry, inputs);
         }
 
         template<detail::command_input... T>
-        program_entry operator()(substack_t, program_entry entry, T... inputs)
+        program_entry operator()(program_entry entry, T&&... inputs)
         {
-            return invoke_values<true>(entry, inputs...);
+            return invoke_values<false>(entry, std::forward<T>(inputs)...);
+        }
+
+        template<detail::command_input... T>
+        program_entry operator()(substack_t, program_entry entry, T&&... inputs)
+        {
+            return invoke_values<true>(entry, std::forward<T>(inputs)...);
         }
 
     private:
 #ifndef NDEBUG
-        template<bool InSubstack, class TMarker>
-        void validate_inputs(program_entry entry, std::size_t count, TMarker marker)
+        template<bool InSubstack>
+        void validate_invocation(const detail::debug_program_info& program) const
         {
-            if(not entry) throw program_input_error{ invalid_program_entry::null_entry };
-            if(entry.library_identity_ != debug_.library_identity)
-                throw program_input_error{ invalid_program_entry::different_library };
-            if(entry.debug_index_ >= debug_.programs.size())
-                throw program_input_error{ invalid_program_entry::unknown_entry };
-            const auto& program = debug_.programs[entry.debug_index_];
-            if(program.position != entry.position_ || program.inputs_begin > debug_.inputs.size()
-                || program.inputs_count > debug_.inputs.size() - program.inputs_begin)
-                throw program_input_error{ invalid_program_entry::unknown_entry };
-            const auto fail = [&](program_input_error_reason reason)
-            {
-                throw program_input_error{ std::move(reason), program.source, program.program_index };
-            };
-            if(invoked_) fail(repeated_program_invocation{});
-            if(InSubstack != substack_) fail(program_invocation_mode_mismatch{ substack_, InSubstack });
-            if(program.inputs_count != count)
-                fail(program_input_count_mismatch{ program.inputs_count, count });
-            for(std::size_t index = 0; index != count; ++index)
-            {
-                const auto& expected = debug_.inputs[program.inputs_begin + index];
-                const auto actual = marker(index);
-                if(expected.marker != actual)
-                    fail(program_input_type_mismatch{ index, expected.command_index, std::string{ expected.command },
-                        std::string{ expected.command } + "_input", actual < detail::debug_input_command_names.size()
-                            ? std::string{ detail::debug_input_command_names[actual] } + "_input" : "valueless input" });
-            }
-            invoked_ = true;
+            if(invoked_) throw program_input_error{ repeated_program_invocation{}, program.source, program.program_index };
+            if(InSubstack != substack_)
+                throw program_input_error{ program_invocation_mode_mismatch{ substack_, InSubstack },
+                    program.source, program.program_index };
         }
 #endif
 
-        // Payment caches contain complete frames already checked by the original invoke.
+        // Payment caches and delayed records contain complete, already checked frames.
         program_entry copy_inputs(program_entry entry, std::span<const unsigned char> inputs)
         {
-            const auto offset = stack_.size();
-            for(std::size_t bytes = 0; bytes < inputs.size(); bytes += max_alignment)
-                stack_.push<unsigned char[max_alignment]>();
-            if(not inputs.empty())
-                std::memcpy(stack_.data() + offset, inputs.data(), inputs.size());
+            detail::append_input_bytes(stack_, inputs);
             return entry;
         }
 
         template<bool InSubstack>
-        program_entry invoke_sequence(program_entry entry, std::span<const any_command_input> inputs)
+        program_entry invoke_packed(program_entry entry, const program_inputs& inputs)
         {
 #ifndef NDEBUG
-            validate_inputs<InSubstack>(entry, inputs.size(), [&](std::size_t index) { return inputs[index].index(); });
+            const auto descriptions = inputs.descriptions();
+            const auto& program = detail::program_input_validator{ debug_ }.validate(entry, descriptions);
+            validate_invocation<InSubstack>(program);
+            invoked_ = true;
 #endif
-            const auto push = [&](auto& destination)
-            {
-                for(auto iter = inputs.rbegin(); iter != inputs.rend(); ++iter)
-                    std::visit([&](const auto& input) { detail::push_command_input(destination, input); }, *iter);
-            };
             if constexpr(InSubstack)
             {
                 auto destination = get<0>(stack_.top<substack_t>());
-                push(destination);
+                detail::append_input_bytes(destination, inputs.bytes());
             }
-            else
-            {
-                push(stack_);
-            }
+            else detail::append_input_bytes(stack_, inputs.bytes());
             return entry;
         }
 
@@ -169,11 +96,15 @@ namespace givm
         {
 #ifndef NDEBUG
             constexpr std::array<std::size_t, sizeof...(T)> markers{ detail::command_input_types::index_of<T>()... };
-            validate_inputs<InSubstack>(entry, markers.size(), [&](std::size_t index) { return markers[index]; });
+            const detail::program_input_validator validator{ debug_ };
+            const auto& program = validator.validate_parameters(entry, markers.size(), [&](std::size_t index) { return markers[index]; });
+            validate_invocation<InSubstack>(program);
+            (validator.validate_value(inputs), ...);
+            invoked_ = true;
 #endif
-            // Scalar inputs are copied before a push can relocate the stack.
-            // Ranges borrowed by an input must remain valid until their contents have been copied.
-            const auto values = std::forward_as_tuple(inputs...);
+            // Snapshot scalar inputs before stack growth. Owned deferred inputs are
+            // borrowed for this call; their independent storage cannot move with stack_.
+            const auto values = std::make_tuple(detail::snapshot_invocation_input(inputs)...);
             const auto push = [&]<class TDestination>(TDestination& destination)
             {
                 [&]<std::size_t... I>(std::index_sequence<I...>)
@@ -186,10 +117,7 @@ namespace givm
                 auto destination = get<0>(stack_.top<substack_t>());
                 push(destination);
             }
-            else
-            {
-                push(stack_);
-            }
+            else push(stack_);
             return entry;
         }
 
@@ -214,10 +142,13 @@ namespace givm
 #endif
     };
 
+    template<class TEntity>
     class handle_context
     {
     public:
-        const givm::table& table() const noexcept { return table_; }
+        const TEntity& entity() const noexcept { return entity_; }
+
+        const givm::table& table() const noexcept { return entity_.table(); }
 
         std::uint32_t random() const { return random_(); }
 
@@ -228,12 +159,12 @@ namespace givm
             return library_.query(id, parameters);
         }
 
-        program_entry invoke(program_entry entry, std::span<const any_command_input> inputs)
+        program_entry invoke(program_entry entry, const program_inputs& inputs)
         {
             return invoker_(entry, inputs);
         }
 
-        program_entry invoke(substack_t tag, program_entry entry, std::span<const any_command_input> inputs)
+        program_entry invoke(substack_t tag, program_entry entry, const program_inputs& inputs)
         {
             return invoker_(tag, entry, inputs);
         }
@@ -253,12 +184,12 @@ namespace givm
     private:
         friend class detail::execution_context;
 
-        handle_context(const definition_library& library, const givm::table& table, random_fn& random, program_invoker invoker) noexcept
-        : library_{ library }, table_{ table }, random_{ random }, invoker_{ invoker }
+        handle_context(const definition_library& library, TEntity entity, random_fn& random, program_invoker invoker) noexcept
+        : library_{ library }, entity_{ entity }, random_{ random }, invoker_{ invoker }
         {}
 
         const definition_library& library_;
-        const givm::table& table_;
+        TEntity entity_;
         random_fn& random_;
         program_invoker invoker_;
     };

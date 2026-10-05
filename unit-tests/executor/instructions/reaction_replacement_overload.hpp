@@ -65,8 +65,8 @@ namespace
                 context.add_program(std::tuple{ givm::deal_damage{} }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::elemental_reaction_will_occur& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->recording = true;
             if(data.first)
@@ -81,8 +81,8 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::damage_calculation& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first) return {};
             data.log->calculated_tags.push_back(event.replacement_reaction);
@@ -99,20 +99,20 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::damage_effect& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(not data.first) data.log->effect_tags.push_back(event.replacement_reaction);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::after_elemental_reaction& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(not data.first) data.log->reaction_tags.push_back(event.replacement_reaction);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::after_damage& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first) return {};
             data.log->completion_tags.push_back(event.replacement_reaction);
@@ -120,8 +120,8 @@ namespace
             data.log->active_at_completion.push_back(context.table()[givm::player_id{ 1 }].state().active_character->index);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::active_character_changed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first || not data.log->recording) return {};
             data.log->switches.push_back(event.current.index);
@@ -171,9 +171,10 @@ namespace
         {
             return data.state;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::active_character_changed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if(data.log->recording)
             {
                 CHECK(context.table()[event.current.player_id].state().active_character == event.current);

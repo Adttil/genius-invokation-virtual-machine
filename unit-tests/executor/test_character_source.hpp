@@ -1,6 +1,7 @@
 #ifndef GIVM_TEST_CHARACTER_SOURCE_HPP
 #define GIVM_TEST_CHARACTER_SOURCE_HPP
 
+#include <cstdint>
 #include <string_view>
 #include <array>
 #include <span>
@@ -44,8 +45,8 @@ namespace givm::test
         {
             return { context.add_program(program(context)) };
         }
-        static program_entry handle(const definition_type& data, const skill_view&,
-            battle_started&, handle_context& context)
+        static program_entry handle(const definition_type& data,
+            battle_started&, handle_context<skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.entry);
         }

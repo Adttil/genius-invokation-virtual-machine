@@ -37,7 +37,7 @@ namespace
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::program_entry handle(
-            const definition_type&, const givm::hand_card_view&, givm::card_effect&, givm::handle_context&)
+            const definition_type&, givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             return {};
         }
@@ -62,7 +62,7 @@ namespace
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::program_entry handle(
-            const definition_type&, const givm::skill_view&, givm::skill_effect&, givm::handle_context&)
+            const definition_type&, givm::skill_effect&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             return {};
         }

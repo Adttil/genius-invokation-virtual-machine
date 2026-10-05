@@ -11,6 +11,7 @@
 #include "definition/source_view.hpp"
 #include "definition/commands.hpp"
 #include "definition/any_command.hpp"
+#include "definition/input_packing.hpp"
 #include "definition/source_error.hpp"
 #include "definition/issued_id_map.hpp"
 #include "definition/tag_mask.hpp"

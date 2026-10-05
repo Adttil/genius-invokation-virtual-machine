@@ -21,7 +21,7 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<round_ended>(context);
-        return context.enter_next();
+        return context.advance(response_extent<round_ended>);
     }
 
     inline execution_state prepare_round_end(
@@ -52,7 +52,7 @@ namespace givm::detail
             writer.write<execute_fn>(&observe_round_end);
         }
         writer.write<execute_fn>(&prepare_round_end);
-        writer.write<execute_fn>(&broadcast_round_end);
+        compile_broadcast<round_ended>(writer, broadcast_round_end);
     }
 }
 

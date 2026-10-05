@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstring>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -198,16 +199,17 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
                 const auto entity = card_table[handler];
                 if(entity)
                 {
-                    return library[entity.definition_id()].template handle<cost_of_switch>(
-                        entity, get<1>(frame)[cost_index], response
-                    );
+                    auto event = get<1>(frame)[cost_index];
+                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
+                    const auto entry = library[entity.definition_id()].template handle<cost_of_switch>(event, response, 0);
+                    std::memcpy(&get<1>(frame)[cost_index], &event, sizeof(event));
+                    return entry;
                 }
                 return {};
             }, handler_id);
@@ -250,16 +252,17 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
                 const auto entity = card_table[handler];
                 if(entity)
                 {
-                    return library[entity.definition_id()].template handle<cost_of_card>(
-                        entity, get<1>(frame)[cost_index], response
-                    );
+                    auto event = get<1>(frame)[cost_index];
+                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
+                    const auto entry = library[entity.definition_id()].template handle<cost_of_card>(event, response, 0);
+                    std::memcpy(&get<1>(frame)[cost_index], &event, sizeof(event));
+                    return entry;
                 }
                 return {};
             }, handler_id);
@@ -303,16 +306,17 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
                 const auto entity = card_table[handler];
                 if(entity)
                 {
-                    return library[entity.definition_id()].template handle<cost_of_skill>(
-                        entity, get<1>(frame)[cost_index], response
-                    );
+                    auto event = get<1>(frame)[cost_index];
+                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
+                    const auto entry = library[entity.definition_id()].template handle<cost_of_skill>(event, response, 0);
+                    std::memcpy(&get<1>(frame)[cost_index], &event, sizeof(event));
+                    return entry;
                 }
                 return {};
             }, handler_id);
@@ -355,16 +359,17 @@ namespace givm::detail
         for(stack_count_t column = 0; column < handler_count; ++column)
         {
             const auto initial_size = stack.size();
-            auto response = execution_context::make_handle_context<true>(stack, library, card_table, random);
             const auto handler_id = get<0>(frame)[column];
             const auto entry = std::visit([&](auto handler) -> program_entry
             {
                 const auto entity = card_table[handler];
                 if(entity)
                 {
-                    return library[entity.definition_id()].template handle<cost_of_technique>(
-                        entity, get<1>(frame)[0], response
-                    );
+                    auto event = get<1>(frame)[0];
+                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
+                    const auto entry = library[entity.definition_id()].template handle<cost_of_technique>(event, response, 0);
+                    std::memcpy(&get<1>(frame)[0], &event, sizeof(event));
+                    return entry;
                 }
                 return {};
             }, handler_id);

@@ -35,8 +35,8 @@ struct observer_source
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
 
     static givm::program_entry handle(
-        const definition_type& definition, const givm::skill_view&,
-        givm::action_phase_started&, givm::handle_context& context)
+        const definition_type& definition,
+        givm::action_phase_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {
         ++*definition.count;
         return {};

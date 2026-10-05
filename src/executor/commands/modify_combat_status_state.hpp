@@ -98,7 +98,7 @@ namespace givm::detail
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_combat_status_state_modification<false, true> }
                 : execute_fn{ execute_combat_status_state_modification<false, false> });
-        writer.write(execute_fn{ finish_combat_status_state_change });
+        compile_single_response<combat_status_state_changed, combat_status_id>(writer, finish_combat_status_state_change);
     }
 }
 

@@ -45,39 +45,44 @@ namespace
         {
             return { .dice_requirement = { .any = 3 } };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-                                         givm::cost_of_skill& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::cost_of_skill& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(self.id() != event.skill) return {};
             data.log->costs.push_back(event.flags);
             if(event.flags.contains(givm::skill_flag_bits::charged_attack)) --event.requirement.dice_requirement.any;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-                                         givm::skill_will_be_used& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::skill_will_be_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(self.id() == event.skill && data.log->fast_skill) event.speed = givm::action_speed::fast;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-                                         givm::skill_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::skill_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             data.log->effects.push_back(event.flags);
             return context.invoke(data.damage, givm::deal_damage_input{ std::array{ givm::damage{
                 .source = self.id(), .target = givm::relative_character_target{ givm::relative_player::opponent },
                 .value = 1, .type = givm::damage_type::physical, .flags = event.flags.to_damage_flags()
             } } });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-                                         givm::after_damage& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(const auto* id = std::get_if<givm::skill_id>(&event.source); id && *id == self.id())
                 data.log->damage.push_back(event.flags);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-                                         givm::skill_used& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::skill_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(self.id() == event.skill) data.log->used.push_back(event.flags);
             return {};
         }
@@ -119,8 +124,8 @@ namespace
                 }) : givm::program_entry{} };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&) { return data.state; }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view&,
-                                         givm::card_effect&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::card_effect&, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             return data.effect ? context.invoke(data.effect) : givm::program_entry{};
         }

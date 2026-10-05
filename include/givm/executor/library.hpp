@@ -118,6 +118,10 @@ namespace givm::detail
     {
         player_id previous_player;
         execution_position position;
+        std::uint32_t result = return_response::null;
+#ifndef NDEBUG
+        bool previous_inline = false;
+#endif
     };
 
     template<class T>
@@ -288,13 +292,13 @@ namespace givm
 
             template<class TEvent, class TView>
             program_entry handle(
-                const TView& entity,
                 TEvent& event,
-                handle_context& context
+                handle_context<TView>& context,
+                std::uint32_t response_index = 0
             ) const
             {
                 return library_->template handle<TEvent>(
-                    id_, entity, event, context
+                    id_, event, context, response_index
                 );
             }
 
@@ -496,15 +500,15 @@ namespace givm
         template<class TEvent, class TDefinitionType, class TView>
         program_entry handle(
             definition_id<TDefinitionType> id,
-            const TView& entity,
             TEvent& event,
-            handle_context& context
+            handle_context<TView>& context,
+            std::uint32_t response_index = 0
         ) const
         {
             const auto& bucket = bucket_for<TDefinitionType>();
             const size_t index = id.value();
             const auto handle_fn = get_handle_fn<TEvent, TView>(id);
-            return handle_fn(bucket.data[index], entity, event, context);
+            return handle_fn(bucket.data[index], event, context, response_index);
         }
 
     private:

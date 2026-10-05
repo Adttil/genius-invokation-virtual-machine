@@ -31,6 +31,8 @@ namespace
     constexpr bool table_exposes_read_only_view =
         std::same_as<decltype(std::declval<givm::table&>()[TId{}]), TView>
         && std::same_as<decltype(std::declval<const givm::table&>()[TId{}]), TView>
+        && std::same_as<decltype(std::declval<const TView&>().table()), const givm::table&>
+        && noexcept(std::declval<const TView&>().table())
         && std::is_const_v<std::remove_reference_t<decltype(std::declval<TView>().state())>>
         && not erases_entity<TView>;
 }
@@ -57,6 +59,38 @@ TEST_CASE("table constructs and copies without a definition library", "[table][d
     CHECK_FALSE(copied_player.state().active_character.has_value());
     CHECK(copied_player.deck_card_count() == 0);
     CHECK(copied_player.characters().empty());
+}
+
+TEST_CASE("player views identify their table after copying and moving", "[table][public-interface]")
+{
+    const auto check = [](const givm::table& table)
+    {
+        for(const auto player : table.players())
+        {
+            CHECK(&player.table() == &table);
+            CHECK(&table[player.id()].table() == &table);
+        }
+    };
+
+    givm::table original;
+    const auto player = original[givm::player_id{ 0 }];
+    auto copied = original;
+    check(original);
+    check(copied);
+    CHECK(&player.table() == &original);
+
+    auto moved = std::move(copied);
+    check(moved);
+
+    givm::table assigned;
+    assigned = original;
+    check(assigned);
+    assigned = std::move(moved);
+    check(assigned);
+
+    givm::table tables[2];
+    check(tables[0]);
+    check(tables[1]);
 }
 
 TEST_CASE("public table access remains read only through nested views", "[table][public-interface]")

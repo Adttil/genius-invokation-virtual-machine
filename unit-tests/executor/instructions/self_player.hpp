@@ -72,16 +72,18 @@ namespace
         {
             return { .max_health = 20, .health = data.health };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             CHECK(context.table().state().self_player == no_self);
             CHECK(context.table().state().active_player == first);
             return self.id().player_id == second ? context.invoke(data.outer) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::card_drawn& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_drawn& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if(self.id().player_id != first) return {};
             CHECK(event.card.player_id == second);
             data.log->draws.push_back(context.table().state().self_player);
@@ -96,9 +98,10 @@ namespace
                 givm::damage{ .source = first_character, .target = second_character,
                     .value = 1, .type = givm::damage_type::physical } } });
         }
-        static givm::program_entry handle(const definition_type&, const givm::character_view& self,
-            givm::damage_preparation& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type&,
+            givm::damage_preparation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if(self.id().player_id != first) return {};
             const auto owner = event.value == 4 ? second : first;
             CHECK(context.table().state().self_player == owner);
@@ -106,9 +109,10 @@ namespace
             if(event.value != 1) CHECK(event.target.player_id != owner);
             return {};
         }
-        static givm::program_entry handle(const definition_type&, const givm::character_view& self,
-            givm::healed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type&,
+            givm::healed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if(self.id().player_id != first) return {};
             CHECK(context.table().state().self_player == second);
             CHECK(std::get<givm::character_id>(event.source) == second_character);
@@ -163,9 +167,10 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::cost_of_switch& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::cost_of_switch& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             ++data.log->previews;
             CHECK(self.id().player_id == second);
             CHECK(context.table().state().active_player == first);
@@ -174,8 +179,8 @@ namespace
             event.requirement.speed = givm::action_speed::fast;
             return context.invoke(givm::substack_t{}, data.payment);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::card_drawn& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_drawn& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->draws;
             CHECK(context.table().state().active_player == first);

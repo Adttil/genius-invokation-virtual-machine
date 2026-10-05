@@ -17,6 +17,38 @@ constexpr std::array<std::size_t, 2> draw_positions_2{ 0, 1 };
 
 namespace
 {
+    void check_view_tables(const givm::table& table)
+    {
+        const auto check = [&](const auto entity)
+        {
+            CHECK(&entity.table() == &table);
+            CHECK(&table[entity.id()].table() == &table);
+        };
+        for(const auto player : table.players())
+        {
+            check(player);
+            for(const auto card : player.hand_cards())
+            {
+                check(card);
+                for(const auto status : card.statuses()) check(status);
+            }
+            for(const auto card : player.deck_cards())
+            {
+                check(card);
+                for(const auto status : card.statuses()) check(status);
+            }
+            for(const auto support : player.supports()) check(support);
+            for(const auto summon : player.summons()) check(summon);
+            for(const auto status : player.combat_statuses()) check(status);
+            for(const auto character : player.characters())
+            {
+                check(character);
+                for(const auto skill : character.skills()) check(skill);
+                for(const auto attachment : character.attachments()) check(attachment);
+            }
+        }
+    }
+
     std::vector<givm::definition_id<givm::card_definition>> hand_definitions(givm::player_view player)
     {
         std::vector<givm::definition_id<givm::card_definition>> result;
@@ -43,6 +75,8 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
     const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
     const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
+    const auto character = givm::test::with_passive_skill(
+        givm::test::named_definition_source<givm::character_view>{ "Character" });
     const auto [library, id_map] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
@@ -51,16 +85,21 @@ TEST_CASE("table views track execution changes while copies own their state", "[
             givm::start_round{}
         },
         std::tuple{ givm::end_game{ givm::game_result::both_loss } },
-        alpha, beta, gamma
+        alpha, beta, gamma, character
     );
     const auto alpha_id = id_map.get_id<givm::card_definition>(alpha.name());
     const auto beta_id = id_map.get_id<givm::card_definition>(beta.name());
     const auto gamma_id = id_map.get_id<givm::card_definition>(gamma.name());
+    const auto character_id = id_map.get_id<givm::character_view>(character.name());
     givm::table table{ { .max_rounds = 3, .self_player = givm::player_id{ 0 } }, { .hand_limit = 2 }, { .hand_limit = 1 } };
-    const givm::linked_deck deck{ .cards = { alpha_id, beta_id, gamma_id } };
+    const givm::linked_deck deck{
+        .cards = { alpha_id, beta_id, gamma_id }, .characters = { character_id }
+    };
     load_deck(table, library, deck, deck);
     const auto player = table[givm::player_id{ 0 }];
     auto copy = table;
+    check_view_tables(table);
+    check_view_tables(copy);
 
     auto random = []() -> std::uint32_t { return 0; };
     givm_test::executor_driver executor;
@@ -79,10 +118,14 @@ TEST_CASE("table views track execution changes while copies own their state", "[
     CHECK(table[givm::player_id{ 1 }].hand_card_count() == 1);
     CHECK(table[givm::player_id{ 1 }].deck_card_count() == 1);
     CHECK(table.state().max_rounds == 3);
+    check_view_tables(table);
+    check_view_tables(copy);
 
     table.clean_up();
     CHECK(hand_definitions(table[givm::player_id{ 0 }]) == std::vector{ gamma_id, beta_id });
     CHECK(deck_definitions(table[givm::player_id{ 0 }]) == std::vector{ alpha_id });
     CHECK(deck_definitions(copy[givm::player_id{ 0 }]) == std::vector{ alpha_id, beta_id, gamma_id });
+    check_view_tables(table);
+    check_view_tables(copy);
 }
 }

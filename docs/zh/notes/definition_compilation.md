@@ -216,7 +216,7 @@ program_entry add_program(TCommands&&... commands);
 
 `commands` 可为异构 tuple-like、同构 input range、包含 `any_command` 的范围，或直接提供零个及多个命令。头文件包装将命令统一为 `span<const any_command>`，非模板后端在 cpp 中逐项检查和编译，不保存调用方序列或元素引用。编译及编译前允许类型擦除与动态分派；游戏执行仍使用编译出的 opcode，不遍历命令 variant。入口不绑定外层事件类型，所需输入由具体命令值按执行顺序确定；不消费响应输入的命令不占输入位置，编译后入口的输入数量、类型和顺序固定。
 
-响应源通过 `context.invoke` 准备一次调用的完整输入。每条动态命令消费一个由 `input_type` 指定的输入帧，固定模式不占输入位置；程序末尾自动返回。Debug 编译记录输入类型标记、对应命令下标以及源和程序位置。调用写入前检查入口、提交方式、重复调用、数量、具体类型与顺序；数组长度不参与类型匹配。失败以 `program_input_error` 报告，Release 移除诊断元数据与检查。输入类型列表从命令的 `input_type` 自动生成，仅固定命令不参与；字段相符的事件可显式别名复用。动态适配器提交 `any_command_input` 序列，由 C++ 包装提供同样的检查，无需脚本自行处理元数据。
+响应源通过 `context.invoke` 准备一次调用的完整输入。每条动态命令消费一个由 `input_type` 指定的输入帧，固定模式不占输入位置；程序末尾自动返回。Debug 编译记录输入类型标记、对应命令下标以及源和程序位置。调用写入前检查入口、提交方式、重复调用、数量、具体类型与顺序；数组长度不参与类型匹配。失败以 `program_input_error` 报告，Release 移除诊断元数据与检查。输入类型列表从命令的 `input_type` 自动生成，仅固定命令不参与；字段相符的事件可显式别名复用。动态适配器通过 `pack_inputs`、`concat_inputs` 准备并提交拥有型 `program_inputs`，由 C++ 包装提供同样的检查，无需脚本自行处理元数据。
 
 编译上下文不公开程序容器、入口数值或内部连接指令。详见[固定程序模型](fixed_program.md)。
 
@@ -276,11 +276,11 @@ handler 的签名为：
 
 ```cpp
 static program_entry handle(
-    const TDefinition& definition, const TEntityView& self, TEvent& event,
-    handle_context& context);
+    const TDefinition& definition, TEvent& event,
+    handle_context<TEntityView>& context, std::uint32_t = 0);
 ```
 
-`TDefinition` 必须为本源 `compile` 的返回类型。`self` 是当前响应者，`event` 是本次事件，`context.table()` 只读，通过 `context.random()` 取得随机值，通过 `context.invoke(...)` 提交后续效果。返回类型必须为 `program_entry`；无后续效果时返回空入口，需要后续操作时一次性提交全部输入并立即返回 `invoke` 的结果。
+`TDefinition` 必须为本源 `compile` 的返回类型。`context.entity()` 是当前响应者，`event` 是本次事件，`context.table()` 只读，通过 `context.random()` 取得随机值，通过 `context.invoke(...)` 提交后续效果。末尾编号表示当前是该实体对本事件的哪次响应，首次为 0。返回类型必须为 `program_entry`；无后续效果时返回空入口，需要后续操作时一次性提交全部输入并立即返回 `invoke` 的结果。
 
 静态源没有匹配调用表示不支持这项响应；有调用而返回类型错误时不能静默退化为无响应。普通事件与费用事件使用相同签名。普通响应通过 `context.invoke(entry, ...)` 提交，费用响应通过 `context.invoke(substack_t{}, entry, ...)` 仅收集输入与入口。写入方式由重载在编译期选择；Debug 保存预期方式以诊断错误重载，Release 不保存模式字段，也不检查误用。
 
@@ -288,9 +288,10 @@ static program_entry handle(
 
 ```cpp
 static program_entry handle(
-    const definition_type& definition, const combat_status_view& self, damage_effect& event,
-    handle_context& context)
+    const definition_type& definition, damage_effect& event,
+    handle_context<combat_status_view>& context, std::uint32_t = 0)
 {
+    const auto self = context.entity();
     if(event.target.player_id != self.player().id()
         || event.flags.contains(damage_flag_bits::ignore_shield))
     {
@@ -352,7 +353,7 @@ bool can_handle() const;
 
 Lua 等动态来源通过声明 `is_dynamic = true` 的 C++ adapter 接入。adapter 为所属类别的全部事件和查询提供完整的 `handle`、`query`、`can_handle`、`can_query`，可以用泛型函数覆盖；名称、标签、依赖和编译接口仍与静态 source 一致。脚本侧可以只提供实际支持的回调集合，由能力判断选择，不必复制 C++ 模板协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
 
-adapter 把定义的固定命令序列交给 `add_program`。每个程序所需输入对象的数量、类型和顺序由命令序列确定；响应时计算输入值与各数组的内容。C++ 调用逐项提交专用输入对象，动态 adapter 使用 `span<const any_command_input>` 提交同样的对象序列。C++ 包装承担复制和 debug 匹配检查，脚本不需要理解字节布局。命令实现不因外层事件和实体类别组合而复制。
+adapter 把定义的固定命令序列交给 `add_program`。每个程序所需输入对象的数量、类型和顺序由命令序列确定；响应时计算输入值与各数组的内容。C++ 调用逐项提交专用输入对象，动态 adapter 为具体输入调用 `pack_inputs`，将得到的 `program_inputs` 片段按执行顺序保存，再通过 `concat_inputs` 合并提交。C++ 包装承担复制和 debug 匹配检查，脚本不需要理解字节布局。命令实现不因外层事件和实体类别组合而复制。
 
 ## 注册与生命周期
 

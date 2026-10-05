@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <span>
 #include <type_traits>
 
 #include <givm/executor/instruction.hpp>
@@ -31,6 +32,14 @@ namespace givm::detail
         }
 
         std::size_t position() const noexcept { return bytes_.size(); }
+
+        std::size_t write_bytes(std::span<const unsigned char> bytes)
+        {
+            const auto start = position();
+            bytes_.resize(start + align_program_size(bytes.size()));
+            if(not bytes.empty()) std::memcpy(bytes_.data() + start, bytes.data(), bytes.size());
+            return start;
+        }
 
         template<class T>
         std::size_t write(const T& value)

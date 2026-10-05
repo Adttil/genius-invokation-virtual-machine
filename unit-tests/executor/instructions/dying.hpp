@@ -43,9 +43,10 @@ namespace
                 : context.add_program(std::tuple{ givm::heal{} });
             return { log, entry };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
-            givm::character_will_be_defeated& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::character_will_be_defeated& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK(self.character().id() == event.target);
             CHECK(self.character().state().health == 0);
             CHECK(self.character().state().energy == 2);
@@ -54,15 +55,16 @@ namespace
             if(not data.log->revive) return {};
             return context.invoke(data.entry, givm::heal_input{ .source = self.id(), .target = event.target, .value = 2 });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
-            givm::after_damage&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage&, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             ++data.log->attachment_completions;
             CHECK(self.character().state().health == 2);
             return {};
         }
-        static givm::program_entry handle(const definition_type&, const givm::attachment_view&,
-            givm::character_defeated&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            givm::character_defeated&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             FAIL("The defeated character's removed attachments must not receive the defeat notification");
             return {};
@@ -93,14 +95,14 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.attach, givm::attach_input{
                 .target = victim, .definition = data.attachment, .state = { 1 } });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::character_will_be_defeated& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.target == victim);
             const auto target = context.table()[event.target];
@@ -110,8 +112,8 @@ namespace
             data.log->order.push_back(1);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::character_defeated& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::character_defeated& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.target == victim);
             const auto target = context.table()[event.target];
@@ -124,8 +126,8 @@ namespace
             if(data.log->pause_defeat) return context.invoke(data.defeat);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::after_damage& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->after_health.push_back(context.table()[event.target].state().health);
             return {};

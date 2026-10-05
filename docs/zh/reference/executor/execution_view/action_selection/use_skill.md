@@ -89,7 +89,7 @@ struct skill_source
     }
 
     static givm::program_entry handle(
-        const int&, const givm::skill_view&, givm::skill_effect&, givm::handle_context& context)
+        const int&, givm::skill_effect&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {
         return {};
     }

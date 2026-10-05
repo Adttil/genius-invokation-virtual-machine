@@ -61,19 +61,19 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 
 ```cpp
 static givm::program_entry handle(
-    const definition_type& definition, const TView& entity, TEvent& event,
-    givm::handle_context& context);
+    const definition_type& definition, TEvent& event,
+    givm::handle_context<TView>& context, std::uint32_t response_index = 0);
 ```
 
 `TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。普通静态源只按匹配的函数判断是否响应，没有匹配函数就不响应；已有函数的返回类型必须正确。
 
-响应函数可以读取实体，通过 `context.table()` 读取牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。返回类型须为 `program_entry`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，费用响应则以 `return context.invoke(givm::substack_t{}, entry, inputs...);` 提交延迟效果。
+响应函数通过 [`context.entity()`](../executor/handle_context/entity.md) 取得响应实体，通过 `context.table()` 读取其所属牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。`response_index` 是本次响应编号，首次为 0；不使用该编号的响应可省略形参名，保留 `std::uint32_t = 0`。返回类型须为 `program_entry`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，费用响应则以 `return context.invoke(givm::substack_t{}, entry, inputs...);` 提交延迟效果。
 
-响应返回的程序执行期间，牌桌的 [`self_player`](../table/table_state.md) 表示该响应实体所属玩家；固定效果命令中的 [`relative_player::self`](commands/relative_player.md) 与 `opponent` 据此确定双方。嵌套响应的程序结束后恢复外层本方，费用响应延迟执行时也使用原响应实体所属玩家。`handle` 调用本身不切换本方；读取自身所属玩家应使用实体参数的 `player().id()`，不能把 `context.table().state().self_player` 当作当前响应者的所属玩家。
+响应返回的程序执行期间，牌桌的 [`self_player`](../table/table_state.md) 表示该响应实体所属玩家；固定效果命令中的 [`relative_player::self`](commands/relative_player.md) 与 `opponent` 据此确定双方。嵌套响应的程序结束后恢复外层本方，费用响应延迟执行时也使用原响应实体所属玩家。`handle` 调用本身不切换本方；读取自身所属玩家应使用 `context.entity().player().id()`，不能把 `context.table().state().self_player` 当作当前响应者的所属玩家。
 
 响应可通过 [`context.query(id, parameters)`](../executor/handle_context/query.md) 取得指定定义支持的查询结果。例如，减费圣遗物按需向正在报价的牌查询 [`card_equipment_target_validation`](queries/card_equipment_target_validation.md)，确认能否装备给所属角色；天赋牌用编译时解析的角色硬依赖 ID 判断适用对象。此查询不需要向响应开放整个定义库。
 
-[`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个动态命令对应一个由其 `input_type` 指定的 [`xxx_input`](command_inputs.md) 对象；使用固定参数的命令不占输入位置。输入类型可以是独立结构体，也可以是字段相符事件的显式别名；是否发送事件仍由命令决定。编译后输入对象的数量、类型和顺序固定，各对象中的数组长度可以在响应时决定。例如 `deal_damage_input` 用一个 `damages` span 表示本次伤害组，整组仍只占一个输入位置。响应通过 `context.invoke(entry, inputs...)` 提交全部输入；Lua 等动态定义源适配器也可提交 `std::span<const any_command_input>`，各元素保存对应的输入对象。
+[`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个动态命令对应一个由其 `input_type` 指定的 [`xxx_input`](command_inputs.md) 对象；使用固定参数的命令不占输入位置。输入类型可以是独立结构体，也可以是字段相符事件的显式别名；是否发送事件仍由命令决定。编译后输入对象的数量、类型和顺序固定，各对象中的数组长度可以在响应时决定。例如 `deal_damage_input` 用一个 `damages` span 表示本次伤害组，整组仍只占一个输入位置。响应通过 `context.invoke(entry, inputs...)` 提交全部输入；延迟输入直接使用 [`defer_invoke`](defer_invoke.md) 的返回值。Lua 等动态定义源适配器也可使用 [`pack_inputs`](pack_inputs.md)、[`concat_inputs`](concat_inputs.md) 准备 [`program_inputs`](program_inputs.md)，再一次提交。
 
 一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算。命令输入中的数组内容在调用时复制，返回后不再借用原数组；原数组须在复制期间保持有效，不能因本次调用扩容而失效。定义源须保证输入数量、具体类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时，在写入前检查入口、提交方式、重复提交及输入数量、类型与顺序，失败时抛出 [`program_input_error`](../executor/program_input_error.md)；数组长度不参与类型匹配。命令的值与执行前提在实际执行时检查，错误以 [`command_input_error`](../executor/command_input_error.md) 报告。发布构建不保留这些检查或对应诊断元数据，违反约定属于未定义行为。脚本适配器可在两种构建模式下使用相同的输入对象接口，不需要脚本自行生成检查信息或处理字节布局。
 
@@ -172,9 +172,8 @@ struct passive_skill_source
 
     static givm::program_entry handle(
         const int& extra_rerolls,
-        const givm::skill_view&,
         givm::dice_roll_preparation& event,
-        givm::handle_context& context)
+        givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {
         event.reroll_count[0] += extra_rerolls;
         return {};

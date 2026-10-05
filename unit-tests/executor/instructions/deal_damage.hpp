@@ -66,9 +66,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& data,
-            const givm::character_view&,
             givm::damage_calculation& event,
-            givm::handle_context&)
+            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::calculation);
             event.value += data.log->calculation_bonus;
@@ -79,9 +78,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& data,
-            const givm::character_view&,
             givm::damage_effect& event,
-            givm::handle_context&)
+            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::effect);
             event.value = event.value < data.log->effect_reduction
@@ -92,9 +90,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& data,
-            const givm::character_view&,
             givm::elemental_reaction_will_occur& event,
-            givm::handle_context&)
+            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::reaction_will_occur);
             data.log->reaction = event.reaction;
@@ -104,9 +101,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& data,
-            const givm::character_view&,
             givm::after_elemental_reaction&,
-            givm::handle_context&)
+            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::after_reaction);
             return {};
@@ -114,9 +110,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& data,
-            const givm::character_view&,
             givm::after_damage& event,
-            givm::handle_context&)
+            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::after_damage);
             data.log->after_damage_value = event.value;

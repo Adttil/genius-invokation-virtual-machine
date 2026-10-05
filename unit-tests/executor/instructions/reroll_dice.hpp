@@ -41,9 +41,10 @@ namespace
                 : givm::reroll_dice{ .player = log->target, .reroll_count = log->count };
             return { log, context.add_program(std::tuple{ command, givm::set_support_state{} }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             const auto player = data.log->target == givm::relative_player::self
                 ? self.player().id() : givm::player_id{ 1 - self.player().id().index };
             const givm::set_support_state_input state{ self.id(), { .count = 7 } };
@@ -54,14 +55,14 @@ namespace
         template<class TEvent>
             requires(std::same_as<TEvent, givm::dice_added> || std::same_as<TEvent, givm::dice_removed>
                 || std::same_as<TEvent, givm::dice_converted> || std::same_as<TEvent, givm::dice_roll_preparation>)
-        static givm::program_entry handle(const definition_type& data, const givm::support_view&,
-            TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             ++data.log->dice_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view&,
-            givm::card_played&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_played&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(3);
             return {};
@@ -86,9 +87,10 @@ namespace
         {
             return { .cost = { .speed = givm::action_speed::fast } };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
-            givm::card_effect&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_effect&, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             data.log->order.push_back(0);
             return context.invoke(data.effect, givm::reroll_dice_input{ self.player().id(), 2 });
         }

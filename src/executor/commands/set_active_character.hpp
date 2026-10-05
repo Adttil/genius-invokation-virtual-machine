@@ -94,7 +94,7 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<active_character_changed>(context);
-        return context.enter_next();
+        return context.advance(response_extent<active_character_changed>);
     }
 
     inline execution_state resume_active_character_prepared_removal(
@@ -112,7 +112,7 @@ namespace givm::detail
         const auto position = get<1>(frame).position;
         context.stack().pop<active_character_changed, response_return>();
         if(const auto state = prepare_active_character_switch(library, table, context, random,
-            event, position - 2 * sizeof(execute_fn), position)) return *state;
+            event, position - response_extent<attachment_removed> - sizeof(execute_fn), position)) return *state;
         return broadcast_active_character_change(library, table, context, random);
     }
 
@@ -122,19 +122,19 @@ namespace givm::detail
     {
         const auto& command = context.instruction_data<1, givm::set_active_character>(library);
         const auto removal_resume = context.position() + instruction_extent<1, givm::set_active_character>;
-        const auto broadcast_resume = removal_resume + (Observed ? 2 : 1) * sizeof(execute_fn);
+        const auto broadcast_resume = removal_resume + response_extent<attachment_removed> + Observed * sizeof(execute_fn);
         const auto target = resolve_character_target<true>(table, command.target);
-        if(not target) return context.jump(broadcast_resume + sizeof(execute_fn));
+        if(not target) return context.jump(broadcast_resume + response_extent<active_character_changed>);
         const auto& state = table[target->player_id].state();
         if(state.active_character == *target)
-            return context.jump(broadcast_resume + sizeof(execute_fn));
+            return context.jump(broadcast_resume + response_extent<active_character_changed>);
         if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
-            return context.jump(broadcast_resume + sizeof(execute_fn));
+            return context.jump(broadcast_resume + response_extent<active_character_changed>);
         const active_character_changed event{ .current = *target };
         if constexpr(Observed)
         {
             context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
-            context.jump(removal_resume + sizeof(execute_fn));
+            context.jump(removal_resume + response_extent<attachment_removed>);
             return context.yield(execution_state::active_character_changed);
         }
         if(const auto result = prepare_active_character_switch(library, table, context, random,
@@ -156,16 +156,16 @@ namespace givm::detail
         const active_character_changed event{ input.current };
         GIVM_ASSERT(static_cast<bool>(table[event.current]));
         const auto removal_resume = context.position() + sizeof(execute_fn);
-        const auto broadcast_resume = removal_resume + (Observed ? 2 : 1) * sizeof(execute_fn);
+        const auto broadcast_resume = removal_resume + response_extent<attachment_removed> + Observed * sizeof(execute_fn);
         const auto& state = table[event.current.player_id].state();
         if(state.active_character == event.current)
-            return context.jump(broadcast_resume + sizeof(execute_fn));
+            return context.jump(broadcast_resume + response_extent<active_character_changed>);
         if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
-            return context.jump(broadcast_resume + sizeof(execute_fn));
+            return context.jump(broadcast_resume + response_extent<active_character_changed>);
         if constexpr(Observed)
         {
             context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
-            context.jump(removal_resume + sizeof(execute_fn));
+            context.jump(removal_resume + response_extent<attachment_removed>);
             return context.yield(execution_state::active_character_changed);
         }
         if(const auto result = prepare_active_character_switch(library, table, context, random,
@@ -188,12 +188,12 @@ namespace givm::detail
                 : execute_fn{ &prepare_active_character_change<false> });
             writer.write(command);
         }
-        writer.write(execute_fn{ &resume_active_character_prepared_removal });
+        compile_broadcast<attachment_removed>(writer, resume_active_character_prepared_removal);
         if(mode == compile_mode::observed)
         {
             writer.write(execute_fn{ &apply_active_character_change });
         }
-        writer.write(execute_fn{ &broadcast_active_character_change });
+        compile_broadcast<active_character_changed>(writer, broadcast_active_character_change);
     }
 }
 

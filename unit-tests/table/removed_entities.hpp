@@ -68,9 +68,10 @@ namespace
         }
 
         static givm::program_entry handle(
-            const definition_type& data, const givm::deck_card_view& self,
-            givm::round_started&, givm::handle_context& context)
+            const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             const bool first_response = data.log->handlers.empty();
             data.log->handlers.push_back(self.id());
             if(first_response and data.draw_entry)

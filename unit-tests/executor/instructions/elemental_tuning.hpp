@@ -58,9 +58,10 @@ namespace
             return { .cost = { .dice_requirement = { .any = 2 }, .speed = givm::action_speed::fast },
                 .elemental_tuning_allowed = data.allowed };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
-            givm::elemental_tuning_modification& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_tuning_modification& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(event.card == self.id())
             {
                 REQUIRE(self.is_valid());
@@ -69,9 +70,10 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
-            givm::elemental_tuning_completed& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_tuning_completed& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(event.card == self.id()) ++data.log->removed_card_responses;
             return {};
         }
@@ -101,8 +103,8 @@ namespace
         {
             return { .max_health = 10, .health = 10, .element = data.element };
         }
-        static givm::program_entry handle(const definition_type&, const givm::character_view&,
-            givm::dice_roll_preparation& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            givm::dice_roll_preparation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             for(auto& dice : event.fixed_dice)
             {
@@ -112,15 +114,15 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::cost_of_card& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::cost_of_card& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->quotes;
             --event.requirement.dice_requirement.any;
             return context.invoke(givm::substack_t{}, data.payment);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::elemental_tuning_modification& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_tuning_modification& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->modifications;
             CHECK(context.table()[event.card].is_valid());
@@ -128,8 +130,8 @@ namespace
             CHECK(context.table()[event.card.player_id].state().dice[givm::elemental_dice::cryo] == 1);
             return data.log->nested ? context.invoke(data.pause) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::elemental_tuning_completed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_tuning_completed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->completions;
             data.log->result = event.to;
@@ -144,8 +146,8 @@ namespace
                 || std::same_as<TEvent, givm::dice_converted> || std::same_as<TEvent, givm::card_played>
                 || std::same_as<TEvent, givm::hand_card_discarded>
                 || std::same_as<TEvent, givm::deck_card_discarded>)
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->resource_events;
             return {};

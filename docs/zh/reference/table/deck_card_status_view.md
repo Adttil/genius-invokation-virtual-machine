@@ -14,6 +14,7 @@ class deck_card_status_view;
 
 |  |  |
 | --- | --- |
+| [`table`](deck_card_status_view/table.md) | 取得所属牌桌 |
 | [`is_valid`](deck_card_status_view/is_valid.md) | 判断实体是否尚未移除 |
 | [`operator bool`](deck_card_status_view/operator_bool.md) | 判断实体是否尚未移除 |
 | [`size`](deck_card_status_view/size.md) | 取得单实体范围的元素数 |

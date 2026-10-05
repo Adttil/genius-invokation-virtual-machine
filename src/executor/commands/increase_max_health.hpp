@@ -43,7 +43,7 @@ namespace givm::detail
                 return event;
             }
         }();
-        if(not input) return context.enter_next();
+        if(not input) return context.advance(response_extent<healed>);
         const bool valid = static_cast<bool>(table[input->target]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
@@ -70,7 +70,7 @@ namespace givm::detail
             writer.write(execute_fn{ execute_max_health_increase<true> });
             writer.write(command);
         }
-        writer.write(execute_fn{ broadcast_healing_completed });
+        compile_broadcast<healed>(writer, broadcast_healing_completed);
     }
 }
 

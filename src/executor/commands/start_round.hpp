@@ -86,7 +86,7 @@ namespace givm::detail
         if(not continue_broadcast<round_started>(library, table, context, random))
             return continue_execution;
         pop_broadcast<round_started>(context);
-        return context.enter_next();
+        return context.advance(response_extent<round_started>);
     }
 
     inline execution_state prepare_round_start(
@@ -101,7 +101,7 @@ namespace givm::detail
     inline void compile(program_writer& writer, const start_round&, compile_mode)
     {
         writer.write(execute_fn{ prepare_round_start });
-        writer.write(execute_fn{ broadcast_round_start });
+        compile_broadcast<round_started>(writer, broadcast_round_start);
     }
 }
 

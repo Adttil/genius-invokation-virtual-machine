@@ -8,12 +8,20 @@
 using command_input_error_reason = std::variant<invalid_entity_argument,
     invalid_definition_argument, invalid_enum_argument, duplicate_entity_argument,
     missing_entity_argument, invalid_numeric_argument, invalid_entity_relation,
-    insufficient_dice_argument>;
+    insufficient_dice_argument, settlement_in_inline_response>;
 ```
 
 [`command_input_error`](command_input_error.md) 的具体原因。以下类型均位于 `givm` 命名空间。
 
 ## 类
+
+### `settlement_in_inline_response`
+
+```cpp
+struct settlement_in_inline_response;
+```
+
+即时响应执行了 [`end_segment`](../definition/commands/end_segment.md) 或 [`settle`](../definition/commands/settle.md)，试图结束或处理其共享的外层当前段。该类型没有成员。
 
 ### `invalid_entity_argument`
 

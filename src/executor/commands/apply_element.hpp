@@ -29,31 +29,32 @@ namespace givm::detail
     inline std::optional<execution_state> prepare_default_reaction_entities(
         const definition_library& library, unrestricted_table& table, execution_context& context,
         random_fn& random, elemental_reaction reaction, character_id target,
-        execution_position entity_resume, execution_position attachment_resume)
+        execution_position summon_resume, execution_position combat_status_resume,
+        execution_position reapplication_resume, execution_position attachment_resume)
     {
         if(reaction == elemental_reaction::quicken || reaction == elemental_reaction::burning
             || reaction == elemental_reaction::bloom || reaction == elemental_reaction::crystallize)
         {
             const auto player = other_player(target.player_id);
-            program_entry entry;
+            std::optional<execution_state> state;
             if(reaction == elemental_reaction::burning)
-                entry = prepare_summoning(library, table, context, random,
-                    { .player = player, .definition = library.burning_flame_id(), .state = { 1, 1 } }, entity_resume);
+                state = prepare_summoning(library, table, context, random,
+                    { .player = player, .definition = library.burning_flame_id(), .state = { 1, 1 } }, summon_resume);
             else if(reaction == elemental_reaction::crystallize)
-                entry = prepare_combat_status_generation(library, table, context, random,
-                    { .player = player, .definition = library.shield_id(), .state = { 1, 0 } }, entity_resume);
+                state = prepare_combat_status_generation(library, table, context, random,
+                    { .player = player, .definition = library.shield_id(), .state = { 1, 0 } }, combat_status_resume);
             else
             {
                 const auto definition = reaction == elemental_reaction::quicken
                     ? library.catalyzing_field_id() : library.dendro_core_id();
-                entry = prepare_combat_status_generation(library, table, context, random,
-                    { .player = player, .definition = definition }, entity_resume);
+                state = prepare_combat_status_generation(library, table, context, random,
+                    { .player = player, .definition = definition }, combat_status_resume);
             }
-            if(entry) return context.enter(entry);
+            if(state) return state;
         }
         else if(reaction == elemental_reaction::frozen && table[target].state().health != 0)
             return prepare_attachment_application(library, table, context, random,
-                { .target = target, .definition = library.frozen_id() }, entity_resume, attachment_resume);
+                { .target = target, .definition = library.frozen_id() }, reapplication_resume, attachment_resume);
         return std::nullopt;
     }
 
@@ -73,7 +74,7 @@ namespace givm::detail
         const auto position = get<1>(frame).position;
         context.stack().pop<active_character_changed, response_return>();
         if(const auto state = prepare_active_character_switch(library, table, context, random,
-            event, position - 2 * sizeof(execute_fn), position)) return *state;
+            event, position - response_extent<attachment_removed> - sizeof(execute_fn), position)) return *state;
         return continue_reaction_overloaded_switch(library, table, context, random);
     }
 
@@ -121,16 +122,18 @@ namespace givm::detail
     };
 
     inline constexpr std::size_t element_reaction_offset = 0;
-    inline constexpr std::size_t element_entity_resume_offset = 1;
-    inline constexpr std::size_t element_attachment_resume_offset = 2;
-    inline constexpr std::size_t element_overloaded_removal_offset = 3;
-    inline constexpr std::size_t element_overloaded_observation_offset = 4;
+    inline constexpr std::size_t element_summon_resume_offset = element_reaction_offset + response_instruction_count<elemental_reaction_will_occur>;
+    inline constexpr std::size_t element_combat_status_resume_offset = element_summon_resume_offset + response_instruction_count<resummoning>;
+    inline constexpr std::size_t element_reapplication_resume_offset = element_combat_status_resume_offset + response_instruction_count<combat_status_regeneration>;
+    inline constexpr std::size_t element_attachment_resume_offset = element_reapplication_resume_offset + response_instruction_count<attachment_reapplication>;
+    inline constexpr std::size_t element_overloaded_removal_offset = element_attachment_resume_offset + response_instruction_count<attachment_removed>;
+    inline constexpr std::size_t element_overloaded_observation_offset = element_overloaded_removal_offset + response_instruction_count<attachment_removed>;
     template<bool Observed>
-    inline constexpr std::size_t element_overloaded_broadcast_offset = 4 + Observed;
+    inline constexpr std::size_t element_overloaded_broadcast_offset = element_overloaded_observation_offset + Observed;
     template<bool Observed>
-    inline constexpr std::size_t element_after_reaction_offset = 5 + Observed;
+    inline constexpr std::size_t element_after_reaction_offset = element_overloaded_broadcast_offset<Observed> + response_instruction_count<active_character_changed>;
     template<bool Observed>
-    inline constexpr std::size_t element_end_offset = 6 + Observed;
+    inline constexpr std::size_t element_end_offset = element_after_reaction_offset<Observed> + response_instruction_count<after_elemental_reaction>;
 
     template<bool Observed>
     inline execution_state continue_element_application_completion(
@@ -153,11 +156,12 @@ namespace givm::detail
         return continue_element_application_completion<Observed>(library, table, context, random);
     }
 
-    template<bool Observed>
+    template<bool Observed, class TEvent, class TId>
     inline execution_state resume_element_entity_generation(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        context.stack().pop<response_return>();
+        if(not continue_single_response<TEvent, TId>(library, table, context, random)) return continue_execution;
+        pop_single_response<TEvent, TId>(context);
         return prepare_element_application_completion<Observed>(library, table, context, random);
     }
 
@@ -222,7 +226,9 @@ namespace givm::detail
                     frame.instructions + element_overloaded_broadcast_offset<Observed> * sizeof(execute_fn))) return *state;
             }
             else if(const auto state = prepare_default_reaction_entities(library, table, context, random,
-                event.reaction, event.target, frame.instructions + element_entity_resume_offset * sizeof(execute_fn),
+                event.reaction, event.target, frame.instructions + element_summon_resume_offset * sizeof(execute_fn),
+                frame.instructions + element_combat_status_resume_offset * sizeof(execute_fn),
+                frame.instructions + element_reapplication_resume_offset * sizeof(execute_fn),
                 frame.instructions + element_attachment_resume_offset * sizeof(execute_fn))) return *state;
         }
         return prepare_element_application_completion<Observed>(library, table, context, random);
@@ -283,13 +289,15 @@ namespace givm::detail
     {
         writer.write(execute_fn{ prepare_element_application<Fixed, Observed> });
         if constexpr(Fixed) writer.write(command);
-        writer.write(execute_fn{ continue_element_application_reaction<Observed> });
-        writer.write(execute_fn{ resume_element_entity_generation<Observed> });
-        writer.write(execute_fn{ resume_element_attachment_replacement<Observed> });
-        writer.write(execute_fn{ resume_element_overloaded_removal<Observed> });
+        compile_broadcast<elemental_reaction_will_occur>(writer, continue_element_application_reaction<Observed>);
+        compile_single_response<resummoning, summon_id>(writer, resume_element_entity_generation<Observed, resummoning, summon_id>);
+        compile_single_response<combat_status_regeneration, combat_status_id>(writer, resume_element_entity_generation<Observed, combat_status_regeneration, combat_status_id>);
+        compile_single_response<attachment_reapplication, attachment_id>(writer, resume_element_entity_generation<Observed, attachment_reapplication, attachment_id>);
+        compile_broadcast<attachment_removed>(writer, resume_element_attachment_replacement<Observed>);
+        compile_broadcast<attachment_removed>(writer, resume_element_overloaded_removal<Observed>);
         if constexpr(Observed) writer.write(execute_fn{ resume_element_overloaded_observation });
-        writer.write(execute_fn{ continue_element_overloaded_switch<Observed> });
-        writer.write(execute_fn{ continue_element_application_completion<Observed> });
+        compile_broadcast<active_character_changed>(writer, continue_element_overloaded_switch<Observed>);
+        compile_broadcast<after_elemental_reaction>(writer, continue_element_application_completion<Observed>);
     }
 
     inline void compile(program_writer& writer, const givm::apply_element& command, compile_mode mode)

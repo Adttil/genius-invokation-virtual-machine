@@ -26,8 +26,11 @@ using compile_error_reason = std::variant</* 下表中的全部错误类型 */>;
 | [`history_field_access_error`](history_field_access_error.md) | 当前阶段不能取得历史字段 |
 | [`history_field_not_found`](history_field_not_found.md) | 摘要中没有指定字段 |
 | [`history_field_type_mismatch`](history_field_type_mismatch.md) | 字段数值类型或数组形态不符 |
-| 每个[命令](../definition/commands.md)对应的 `givm::命令名_error` | 对应命令的参数错误，与该命令的 `error_type` 别名为同一类型 |
+| [`fixed_program_input_error`](fixed_program_input_error.md) | 固定延迟程序的入口或参数不符合目标程序要求 |
+| [命令](../definition/commands.md)提供的 `givm::命令名_error` | 对应命令的参数错误，与该命令的 `error_type` 别名为同一类型 |
 
 ## 注意
 
-命令错误的类型与命令一一对应。可以直接用 `std::get_if<givm::set_active_character_error>(&error.reason)` 检查切人命令的错误，也可沿用 `givm::set_active_character::error_type` 别名，不需要先取得一层通用命令错误。
+需要编译检查的命令各自提供错误类型；`end_segment`、`settle` 等无参数流程命令不增加错误候选。可以直接用 `std::get_if<givm::set_active_character_error>(&error.reason)` 检查切人命令的错误，也可沿用 `givm::set_active_character::error_type` 别名，不需要先取得一层通用命令错误。
+
+`fixed_program_input_error` 的 `reason` 使用 [`program_input_error_reason`](program_input_error_reason.md)，在未定义 `NDEBUG` 时检查固定延迟调用的入口、输入数量、类型和嵌套参数；发布构建不执行这项协议检查。

@@ -55,9 +55,10 @@ namespace
         {
             return { .dice_requirement = { .any = 8 }, .speed = givm::action_speed::combat, .energy = 3 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-            givm::skill_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::skill_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK(self.id() == data.log->skill);
             CHECK(event.skill == data.log->skill);
             CHECK(event.flags.value() == data.log->flags.value());
@@ -78,8 +79,8 @@ namespace
             return { log, context.add_program(std::tuple{ givm::replace_cards{ owner } }),
                 context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::replace_cards{ owner } }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::skill_will_be_used& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::skill_will_be_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.skill == data.log->skill);
             CHECK(event.flags.value() == data.log->flags.value());
@@ -91,8 +92,8 @@ namespace
             data.log->events.push_back("will");
             return context.invoke(data.before);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::skill_used& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::skill_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.skill == data.log->skill);
             CHECK(event.flags.value() == data.log->flags.value());
@@ -102,27 +103,27 @@ namespace
             data.log->events.push_back("used");
             return context.invoke(data.after);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::cost_of_skill&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::cost_of_skill&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->cost_broadcasts;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::dice_removed&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::dice_removed&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->payments;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::card_drawn& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_drawn& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(data.log->record)
                 data.log->events.push_back(event.card.player_id == owner ? "draw:owner" : "draw:opponent");
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::card_played& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_played& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             CHECK(event.speed == data.log->card_speed);
             data.log->events.push_back("played");
@@ -190,8 +191,8 @@ namespace
             return query.target_count == 2 ? givm::target_validation::valid_complete
                 : givm::target_validation::valid_incomplete;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view&,
-            givm::card_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             data.log->events.push_back("card-effect");
             if(data.dynamic)

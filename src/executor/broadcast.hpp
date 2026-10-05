@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <array>
 #include <algorithm>
+#include <span>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -12,9 +13,16 @@
 #include <givm/definition.hpp>
 #include <givm/executor/executor.hpp>
 #include <givm/executor/views/action_selection.hpp>
+#include "settlement.hpp"
 
 namespace givm::detail
 {
+    template<class TEvent>
+    inline constexpr std::size_t response_instruction_count = 2 + (inline_event<TEvent> ? 0 : settlement_instruction_count);
+
+    template<class TEvent>
+    inline constexpr std::size_t response_extent = response_instruction_count<TEvent> * sizeof(execute_fn);
+
     template<class TEvent, class TEntity>
     void append_broadcast_target(
         const definition_library& library, TEntity entity, std::vector<handler_id<TEvent>>& targets
@@ -119,93 +127,178 @@ namespace givm::detail
         return targets;
     }
 
+    struct broadcast_progress
+    {
+        stack_count_t cursor = 0;
+        std::uint32_t response_index = 0;
+    };
+
+    template<class TEvent>
+    void prepare_broadcast(
+        std::span<const handler_id<TEvent>> targets, const TEvent& event, const unrestricted_table& table,
+        frame_stack& stack, execution_position return_position
+    )
+    {
+        const auto saved_event = event;
+        stack.push(dynamic_array<handler_id<TEvent>>(targets), broadcast_progress{}, saved_event,
+            response_return{ table.state().self_player, return_position });
+    }
+
     template<class TEvent>
     void prepare_broadcast(
         const definition_library& library, const TEvent& event, const unrestricted_table& table,
         frame_stack& stack, execution_position return_position
     )
     {
-        auto targets = collect_all_broadcast_targets<TEvent>(library, table);
-        stack.push(
-            dynamic_array<handler_id<TEvent>>(targets),
-            stack_count_t{},
-            event,
-            response_return{ table.state().self_player, return_position }
-        );
-    }
-
-    template<class TEntityView, class TEvent>
-    program_entry try_handle(
-        const definition_library& library,
-        TEntityView entity,
-        TEvent& event,
-        handle_context& response
-    )
-    {
-        if(not entity)
-        {
-            return {};
-        }
-        return library[entity.definition_id()].template handle<TEvent>(
-            entity, event, response
-        );
+        const auto targets = collect_all_broadcast_targets<TEvent>(library, table);
+        prepare_broadcast<TEvent>(targets, event, table, stack, return_position);
     }
 
     template<class TEvent>
-    bool continue_broadcast(
-        const definition_library& library,
-        unrestricted_table& table,
-        execution_context& context,
-        random_fn& random
-    )
+    bool continue_broadcast(const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
     {
-        auto&& [targets, cursor, event, return_position] =
-            context.stack().top<
-                handler_id<TEvent>[],
-                stack_count_t,
-                TEvent,
-                response_return
-            >();
-        const auto target_count = static_cast<stack_count_t>(targets.size());
-        while(cursor < target_count)
+        auto frame = context.stack().top<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>();
+        while(get<1>(frame).cursor < get<0>(frame).size())
         {
-            const auto current_handler = targets[static_cast<size_t>(cursor++)];
-            auto response = context.make_handle_context(library, table, random);
-            player_id player;
-            const auto entry = std::visit([&](auto id)
+            const auto handler = get<0>(frame)[get<1>(frame).cursor];
+            const auto index = get<1>(frame).response_index;
+            const auto previous_player = get<3>(frame).previous_player;
+            const auto return_position = get<3>(frame).position + sizeof(execute_fn);
+            context.stack().push(response_return{ previous_player, return_position });
+            begin_response<not inline_event<TEvent>>(context);
+            const auto [caller, call] = context.stack().top<
+                givm::frame<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>, givm::frame<response_return>>();
+            auto& event = get<2>(caller);
+            player_id player{};
+            const auto entry = std::visit([&](auto id) -> program_entry
             {
                 const auto entity = std::as_const(table)[id];
+                if(not entity) return {};
                 player = entity.player().id();
-                return try_handle(
-                    library,
-                    entity,
-                    event,
-                    response
-                );
-            }, current_handler);
+                auto response = context.make_handle_context(library, entity, random);
+                return library[entity.definition_id()].template handle<TEvent>(event, response, index);
+            }, handler);
             if(entry)
             {
                 table.state().self_player = player;
                 context.enter(entry);
                 return false;
             }
+            end_response<not inline_event<TEvent>>(context);
+            context.stack().pop<response_return>();
+            frame = context.stack().top<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>();
+            ++get<1>(frame).cursor;
+            get<1>(frame).response_index = 0;
         }
         if constexpr(requires { subscribed_events<history_summary_definition>::template index_of<TEvent>(); })
-            library.record_history(event, table);
+            library.record_history(get<2>(frame), table);
         return true;
+    }
+
+    template<class TEvent>
+    execution_state complete_broadcast_response(const definition_library&, unrestricted_table&,
+        execution_context& context, random_fn&)
+    {
+        const auto result = get<0>(context.stack().top<response_return>()).result;
+        end_response<not inline_event<TEvent>>(context);
+        context.stack().pop<response_return>();
+        const auto frame = context.stack().top<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>();
+        auto& progress = get<1>(frame);
+        if(result == return_response::null) { ++progress.cursor; progress.response_index = 0; }
+        else progress.response_index = result;
+        return context.jump(get<3>(frame).position);
     }
 
     template<class TEvent>
     void pop_broadcast(execution_context& context)
     {
-        context.stack().pop<
-            handler_id<TEvent>[],
-            stack_count_t,
-            TEvent,
-            response_return
-        >();
+        context.stack().pop<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>();
     }
 
+    template<class TId>
+    struct single_response_progress
+    {
+        TId handler;
+        std::uint32_t response_index = 0;
+        bool allow_removed = false;
+        bool enabled = true;
+    };
+
+    template<class TEvent, class TId>
+    bool continue_single_response(const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
+    {
+        const auto frame = context.stack().top<single_response_progress<TId>, TEvent, response_return>();
+        const auto progress = get<0>(frame);
+        if(not progress.enabled || progress.response_index == return_response::null) return true;
+        const auto entity = std::as_const(table)[progress.handler];
+        if(not progress.allow_removed && not entity) return true;
+        const auto definition = library[entity.definition_id()];
+        if(not definition.template can_handle<TEvent, std::remove_cvref_t<decltype(entity)>>()) return true;
+        const auto player = entity.player().id();
+        const auto previous_player = get<2>(frame).previous_player;
+        const auto return_position = get<2>(frame).position + sizeof(execute_fn);
+        context.stack().push(response_return{ previous_player, return_position });
+        begin_response<not inline_event<TEvent>>(context);
+        const auto [caller, call] = context.stack().top<
+            givm::frame<single_response_progress<TId>, TEvent, response_return>, givm::frame<response_return>>();
+        auto& event = get<1>(caller);
+        auto response = context.make_handle_context(library, entity, random);
+        const auto entry = definition.template handle<TEvent>(event, response, progress.response_index);
+        if(not entry)
+        {
+            end_response<not inline_event<TEvent>>(context);
+            context.stack().pop<response_return>();
+            return true;
+        }
+        table.state().self_player = player;
+        context.enter(entry);
+        return false;
+    }
+
+    template<class TEvent, class TId>
+    execution_state complete_single_response(const definition_library&, unrestricted_table&,
+        execution_context& context, random_fn&)
+    {
+        const auto result = get<0>(context.stack().top<response_return>()).result;
+        end_response<not inline_event<TEvent>>(context);
+        context.stack().pop<response_return>();
+        const auto frame = context.stack().top<single_response_progress<TId>, TEvent, response_return>();
+        get<0>(frame).response_index = result;
+        return context.jump(get<2>(frame).position);
+    }
+
+    template<class TEvent, class TId>
+    void prepare_single_response(const TEvent& event, TId handler, const unrestricted_table& table,
+        execution_context& context, execution_position resume, bool allow_removed = false, bool enabled = true)
+    {
+        const auto saved_event = event;
+        context.stack().push(single_response_progress<TId>{ handler, 0, allow_removed, enabled }, saved_event,
+            response_return{ table.state().self_player, resume });
+    }
+
+    template<class TEvent, class TId>
+    void pop_single_response(execution_context& context)
+    {
+        context.stack().pop<single_response_progress<TId>, TEvent, response_return>();
+    }
+
+    template<class TEvent>
+    void compile_broadcast(program_writer& writer, execute_fn continuation)
+    {
+        writer.write(continuation);
+        if constexpr(not inline_event<TEvent>) compile_settlement(writer, begin_settlement);
+        writer.write(execute_fn{ complete_broadcast_response<TEvent> });
+    }
+
+    template<class TEvent, class TId>
+    void compile_single_response(program_writer& writer, execute_fn continuation)
+    {
+        writer.write(continuation);
+        if constexpr(not inline_event<TEvent>) compile_settlement(writer, begin_settlement);
+        writer.write(execute_fn{ complete_single_response<TEvent, TId> });
+    }
 }
 
 #endif

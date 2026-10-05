@@ -35,7 +35,8 @@
 | [命令](reference/definition/commands.md) | 游戏规则的操作描述 |
 | [`any_command`](reference/definition/any_command.md) | 核心命令 variant |
 | [命令输入](reference/definition/command_inputs.md) | 响应提交的动态命令参数 |
-| [`any_command_input`](reference/definition/any_command_input.md) | 核心命令输入 variant |
+| [`defer_invoke`](reference/definition/defer_invoke.md) | 准备延迟程序的入口及参数 |
+| [`program_inputs`](reference/definition/program_inputs.md) | 已准备并拥有的程序输入 |
 | [事件](reference/definition/events.md) | 可响应的游戏事件 |
 | [查询](reference/definition/queries.md) | 定义提供的规则信息与检查结果 |
 | [历史摘要](reference/definition/history_summary.md) | 按定义依赖选择、随通知更新的对局记录 |

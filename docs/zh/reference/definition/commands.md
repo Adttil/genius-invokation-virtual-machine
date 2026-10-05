@@ -6,11 +6,11 @@
 
 规则流程与事件效果只能组合核心给定集合中的命令；公开接口不支持自行定义新的命令类型。
 
-每个命令对应独立的 `givm::命令名_error` 类型，表示它在编译时可能产生的参数错误；命令的 `error_type` 是该类型的别名。例如 `draw_cards::error_type` 与 `draw_cards_error` 是同一类型。错误字段及原因见各命令页面；只包含 `<givm/definition.hpp>` 即可使用这些类型及其 [`error_string`](error_string.md) 格式化函数。
+需要编译参数检查的命令提供独立的 `givm::命令名_error` 类型，命令的 `error_type` 是该类型的别名。例如 `draw_cards::error_type` 与 `draw_cards_error` 是同一类型。错误字段及原因见各命令页面；只包含 `<givm/definition.hpp>` 即可使用这些类型及其 [`error_string`](error_string.md) 格式化函数。
 
 对局运行时的输入值与目标、资源等执行前提另由 [`command_input_error`](../executor/command_input_error.md) 提供调试诊断。该检查发生在实际执行时，仅在未定义 `NDEBUG` 时启用，不改变命令允许的饱和、跳过或空批次语义。
 
-[`compile`](../executor/compile.md) 根据本次定义集合与程序类别检查每条命令，将错误与程序、命令位置一起收集，失败时返回 [`compile_error`](../executor/compile_error.md) 列表。命令错误直接作为 `compile_error_reason` 的候选类型；没有编译参数错误的命令使用空的错误枚举。
+[`compile`](../executor/compile.md) 根据本次定义集合与程序类别检查有效序列中的每条命令，将错误与程序、命令位置一起收集，失败时返回 [`compile_error`](../executor/compile_error.md) 列表。命令错误直接作为 `compile_error_reason` 的候选类型；无需参数检查的流程命令可以不提供 `error_type`。
 
 这些检查使用编译期间已知的信息，不读取对局牌桌；能独立判断的多项错误会一并报告。动态模式只检查程序是否允许消费响应输入，不检查未使用的固定字段。初始化与回合程序不能消费响应输入，此限制在所有构建模式下检查。
 
@@ -90,10 +90,14 @@
 | [`modify_attachment_state`](commands/modify_attachment_state.md) | 按增量修改角色附属实体的状态 |
 | [`remove_attachment`](commands/remove_attachment.md) | 移除角色附属实体并通知离场 |
 
-## 调试
+## 响应与后续结算
 
 | | |
 | --- | --- |
+| [`return_response`](commands/return_response.md) | 返回下一响应编号或结束响应链 |
+| [`end_segment`](commands/end_segment.md) | 结束当前段而不立即执行后续工作 |
+| [`settle`](commands/settle.md) | 完成已登记的后续工作再继续程序 |
+| [`defer_program`](commands/defer_program.md) | 登记稍后执行的程序及其参数 |
 
 ## 参阅
 

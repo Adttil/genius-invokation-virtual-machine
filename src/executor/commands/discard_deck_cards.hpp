@@ -21,7 +21,7 @@ namespace givm::detail
         const definition_library& library, const unrestricted_table& table,
         execution_context& context, deck_card_id card)
     {
-        context.enter_next();
+        context.advance(response_extent<deck_card_discard_effect>);
         prepare_broadcast(library, deck_card_discarded{ card }, table, context.stack(), context.position());
     }
 
@@ -29,7 +29,7 @@ namespace givm::detail
         const definition_library& library, const unrestricted_table& table, execution_context& context)
     {
         const auto card = get<0>(context.stack().top<deck_card_discard_effect, response_return>()).card;
-        context.stack().pop<deck_card_discard_effect, response_return>();
+        pop_single_response<deck_card_discard_effect, deck_card_id>(context);
         prepare_deck_card_discard_notification(library, table, context, card);
     }
 
@@ -46,16 +46,8 @@ namespace givm::detail
             prepare_deck_card_discard_notification(library, table, context, card);
             return false;
         }
-        context.stack().push(deck_card_discard_effect{ card }, response_return{ table.state().self_player, context.position() });
-        auto& event = get<0>(context.stack().top<deck_card_discard_effect, response_return>());
-        auto response = context.make_handle_context(library, table, random);
-        const auto entry = definition.handle<deck_card_discard_effect>(self, event, response);
-        if(entry)
-        {
-            table.state().self_player = self.player().id();
-            context.enter(entry);
-            return true;
-        }
+        prepare_single_response(deck_card_discard_effect{ card }, card, table, context, context.position(), true);
+        if(not continue_single_response<deck_card_discard_effect, deck_card_id>(library, table, context, random)) return true;
         finish_deck_card_discard_effect_frame(library, table, context);
         return false;
     }
@@ -73,9 +65,9 @@ namespace givm::detail
             if(++cursor == cards.size())
             {
                 context.stack().pop<deck_card_id[], stack_count_t>();
-                return context.enter_next();
+                return context.advance(response_extent<deck_card_discarded>);
             }
-            context.jump(context.position() - sizeof(execute_fn));
+            context.jump(context.position() - response_extent<deck_card_discard_effect>);
             if(enter_deck_card_discard_effect(library, table, context, random))
                 return continue_execution;
         }
@@ -85,6 +77,7 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
+        if(not continue_single_response<deck_card_discard_effect, deck_card_id>(library, table, context, random)) return continue_execution;
         finish_deck_card_discard_effect_frame(library, table, context);
         return broadcast_deck_card_discards(library, table, context, random);
     }
@@ -131,7 +124,8 @@ namespace givm::detail
         auto player_entity = table[player];
         const auto count = std::min<size_t>(requested_count, player_entity.deck_card_count());
         if(count == 0)
-            return context.advance((Observed ? 3 : 2) * sizeof(execute_fn));
+            return context.advance(Observed * sizeof(execute_fn)
+                + response_extent<deck_card_discard_effect> + response_extent<deck_card_discarded>);
 
         auto cards = get<0>(context.stack().push(dynamic_array<deck_card_id>(count), stack_count_t{ 0 }));
         for(auto& card : cards)
@@ -160,8 +154,8 @@ namespace givm::detail
                 : execute_fn{ prepare_deck_card_discards<false, false> });
         if(observed)
             writer.write(execute_fn{ resume_observed_deck_card_discard });
-        writer.write(execute_fn{ finish_deck_card_discard_effect });
-        writer.write(execute_fn{ broadcast_deck_card_discards });
+        compile_single_response<deck_card_discard_effect, deck_card_id>(writer, finish_deck_card_discard_effect);
+        compile_broadcast<deck_card_discarded>(writer, broadcast_deck_card_discards);
     }
 }
 

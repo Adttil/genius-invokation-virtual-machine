@@ -132,7 +132,7 @@ namespace givm::detail
         if(not continue_broadcast<attachment_removed>(library, table, context, random))
             return continue_execution;
         pop_broadcast<attachment_removed>(context);
-        return context.enter_next();
+        return context.advance(response_extent<attachment_removed>);
     }
 
     template<class Selector = void>
@@ -185,7 +185,7 @@ namespace givm::detail
             writer.write(execute_fn{ execute_attachment_removal<selector_type> });
             writer.write(fixed_attachment_target<selector_type>{ command.target.character, selector });
         }, command.target.selector);
-        writer.write(execute_fn{ broadcast_attachment_removal });
+        compile_broadcast<attachment_removed>(writer, broadcast_attachment_removal);
     }
 }
 

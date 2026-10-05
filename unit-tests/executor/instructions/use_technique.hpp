@@ -51,24 +51,26 @@ namespace
             return target && target->player_id != query.technique.player().id()
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
-                                         givm::cost_of_technique& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::cost_of_technique& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             --event.requirement.dice_requirement.any;
             data.log->events.push_back("quote");
             return context.invoke(givm::substack_t{}, data.payment,
                 givm::modify_attachment_state_input{ .attachment = self.id(), .count = -1 });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&,
-                                         givm::technique_will_be_used& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::technique_will_be_used& event, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             data.log->events.push_back("before");
             event.effect_cancelled = data.log->cancelled;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
-                                         givm::technique_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::technique_effect& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK(event.technique == self.id());
             CHECK(std::get<givm::character_id>(event.targets[0]).player_id == givm::player_id{ 1 });
             CHECK(self.state().count == 1);
@@ -76,8 +78,8 @@ namespace
             data.log->events.push_back("effect");
             return context.invoke(data.pause);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&,
-                                         givm::technique_used& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::technique_used& event, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             CHECK(event.effect_cancelled == data.log->cancelled);
             data.log->events.push_back("after");
@@ -101,8 +103,8 @@ namespace
         {
             return { .max_health = 10, .max_energy = 3, .health = 10, .energy = 3 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-                                         givm::action_phase_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+                                         givm::action_phase_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.equip);
         }

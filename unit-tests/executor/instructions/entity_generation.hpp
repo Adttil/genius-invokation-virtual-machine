@@ -209,9 +209,10 @@ namespace
             ++data.log->limit_queries;
             return { data.log->limit[0], data.log->limit[1] };
         }
-        static givm::program_entry handle(const definition_type& data, const typename T::view& self,
-            typename T::regeneration& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            typename T::regeneration& event, givm::handle_context<typename T::view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             data.log->regenerated.push_back(self.id());
             data.log->regenerated_states.push_back(T::values(event.state));
             if(data.log->behavior == regeneration_behavior::ignore) return {};
@@ -235,9 +236,10 @@ namespace
         }
         template<class TEvent>
         requires std::is_same_v<TEvent, typename T::changed>
-        static givm::program_entry handle(const definition_type& data, const typename T::view& self,
-            TEvent& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent& event, givm::handle_context<typename T::view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             data.log->changed.push_back(self.id());
             data.log->previous_states.push_back(T::values(event.previous));
             data.log->current_states.push_back(T::values(event.current));
@@ -251,8 +253,8 @@ namespace
         template<class TEvent>
         requires (not std::is_same_v<TEvent, typename T::regeneration>
             && not std::is_same_v<TEvent, typename T::changed>)
-        static givm::program_entry handle(const definition_type&, const typename T::view&,
-            TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&,
+            TEvent&, givm::handle_context<typename T::view>&, std::uint32_t = 0)
         {
             FAIL("A disabled lifecycle handler was invoked");
             std::unreachable();
@@ -357,8 +359,8 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             observe_created(*data.log, context.table());
             const auto index = data.log->next_action++;
@@ -407,8 +409,8 @@ namespace
                     typename T::modification{ target, action.delta[0], action.delta[1] });
             }
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            typename T::removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            typename T::removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto id = T::removed_id(event);
             const auto departed = context.table()[id];
@@ -821,8 +823,8 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const givm::program_entry& entry, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const givm::program_entry& entry,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(entry);
         }

@@ -4,6 +4,7 @@
 #include "../program_writer.hpp"
 
 #include <vector>
+#include <optional>
 
 #ifndef NDEBUG
 #include "../debug_validation.hpp"
@@ -13,7 +14,7 @@
 
 namespace givm::detail
 {
-    inline program_entry prepare_combat_status_generation(
+    inline std::optional<execution_state> prepare_combat_status_generation(
         const definition_library& library, unrestricted_table& table, execution_context& context,
         random_fn& random, generate_combat_status_input input, execution_position resume)
     {
@@ -30,12 +31,10 @@ namespace givm::detail
             if(not definition.can_handle<combat_status_regeneration, combat_status_view>())
                 return {};
             combat_status_regeneration event{ input.state };
-            context.stack().push(response_return{ table.state().self_player, resume });
-            auto response = context.make_handle_context(library, table, random);
-            const auto entry = definition.handle<combat_status_regeneration>(existing, event, response);
-            if(not entry) context.stack().pop<response_return>();
-            else table.state().self_player = existing.player().id();
-            return entry;
+            prepare_single_response(event, existing.id(), table, context, resume);
+            if(not continue_single_response<combat_status_regeneration, combat_status_id>(library, table, context, random)) return continue_execution;
+            pop_single_response<combat_status_regeneration, combat_status_id>(context);
+            return std::nullopt;
         }
 
         table[input.player].add(input.definition, input.state);
@@ -43,10 +42,11 @@ namespace givm::detail
     }
 
     inline execution_state finish_combat_status_regeneration(
-        const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        context.stack().pop<response_return>();
-        return context.enter_next();
+        if(not continue_single_response<combat_status_regeneration, combat_status_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<combat_status_regeneration, combat_status_id>(context);
+        return context.advance(response_extent<combat_status_regeneration>);
     }
 
     template<bool Fixed>
@@ -72,9 +72,9 @@ namespace givm::detail
             context.enter_next();
         }
 
-        if(const auto entry = prepare_combat_status_generation(library, table, context, random, input, context.position()))
-            return context.enter(entry);
-        return context.enter_next();
+        if(const auto state = prepare_combat_status_generation(library, table, context, random, input, context.position()))
+            return *state;
+        return context.advance(response_extent<combat_status_regeneration>);
     }
 
     inline void compile(program_writer& writer, const givm::generate_combat_status& command, compile_mode)
@@ -86,7 +86,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_combat_status_generation<false> });
-        writer.write(execute_fn{ finish_combat_status_regeneration });
+        compile_single_response<combat_status_regeneration, combat_status_id>(writer, finish_combat_status_regeneration);
     }
 }
 

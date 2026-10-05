@@ -8,6 +8,7 @@
 
 #include "../definition_common.hpp"
 #include "history_access_error.hpp"
+#include "program_input_error.hpp"
 
 namespace givm
 {
@@ -60,15 +61,32 @@ namespace givm
         reason cause;
     };
 
+    struct fixed_program_input_error
+    {
+        program_input_error_reason reason;
+    };
+
+    inline std::string error_string(const fixed_program_input_error& error)
+    {
+        return "fixed program input: " + std::visit([](const auto& reason) { return error_string(reason); }, error.reason);
+    }
+
     namespace detail
     {
-        template<class... T>
-        using command_error_types_for = type_list<typename T::error_type...>;
-        using command_error_types = command_types::apply<command_error_types_for>;
+        using command_error_types = decltype([]<class... T>(type_list<T...>)
+        {
+            return type_list_cat<decltype([]
+            {
+                if constexpr(requires { typename T::error_type; })
+                    return type_list<typename T::error_type>{};
+                else
+                    return type_list<>{};
+            }())...>{};
+        }(command_types{}));
         using common_compile_error_types = type_list<source_conflict, source_missing_dependency, source_selection_error,
             definition_resolution_error, definition_metadata_error, history_field_empty_name, history_field_duplicate_name,
             history_field_layout_overflow, history_storage_layout_overflow, history_field_access_error,
-            history_field_not_found, history_field_type_mismatch>;
+            history_field_not_found, history_field_type_mismatch, fixed_program_input_error>;
     }
 
     using compile_error_reason = type_list_cat<detail::common_compile_error_types, detail::command_error_types>::apply<std::variant>;

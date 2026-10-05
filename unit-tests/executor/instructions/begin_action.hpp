@@ -68,15 +68,15 @@ namespace
             return { .max_health = 10, .health = 10 };
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::before_action&,
-            givm::handle_context& context)
+            const definition_type& data, givm::before_action&,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->opportunities.push_back(context.table().state().active_player);
             return {};
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::cost_of_switch& event,
-            givm::handle_context& context)
+            const definition_type& data, givm::cost_of_switch& event,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->previews;
             event.requirement.speed = data.speed;
@@ -85,23 +85,23 @@ namespace
             return {};
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::active_character_changed& event,
-            givm::handle_context& context)
+            const definition_type& data, givm::active_character_changed& event,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->switches.push_back(event.current);
             return {};
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::round_end_declared&,
-            givm::handle_context& context)
+            const definition_type& data, givm::round_end_declared&,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->declarations.push_back(context.table().state().active_player);
             return {};
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::round_ended&,
-            givm::handle_context& context)
+            const definition_type& data, givm::round_ended&,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->endings.push_back(context.table().state().active_player);
             return {};
@@ -151,8 +151,8 @@ namespace
             return { .max_health = 10, .health = 10 };
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::dice_roll_preparation& event,
-            givm::handle_context&)
+            const definition_type& data, givm::dice_roll_preparation& event,
+            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(data.initial_dice.total() != 0)
             {
@@ -161,8 +161,8 @@ namespace
             return {};
         }
         static givm::program_entry handle(
-            const definition_type& data, const givm::character_view&, givm::cost_of_switch& event,
-            givm::handle_context& context)
+            const definition_type& data, givm::cost_of_switch& event,
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             auto& control = *data.control;
             control.quoted.push_back(event.target);
@@ -178,7 +178,7 @@ namespace
             {
                 return {};
             }
-            return context.invoke(givm::substack_t{}, event.target.index == 1 ? data.first_payment : data.second_payment, std::span<const givm::any_command_input>{});
+            return context.invoke(givm::substack_t{}, event.target.index == 1 ? data.first_payment : data.second_payment);
         }
     };
 

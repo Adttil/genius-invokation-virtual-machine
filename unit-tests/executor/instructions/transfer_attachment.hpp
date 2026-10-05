@@ -59,15 +59,16 @@ namespace
         {
             return { 20, 6 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view&,
-            givm::attachment_reapplication&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::attachment_reapplication&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             ++data.log->reapplications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::attachment_view& self,
-            givm::attachment_state_changed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::attachment_state_changed& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             ++data.log->state_changes;
             if(not data.log->followup) CHECK(self.id() == data.log->transferred);
             data.log->changed.push_back(self.id());
@@ -136,9 +137,10 @@ namespace
                 context.add_program(std::tuple{ givm::remove_attachment{} }),
                 context.add_program(std::tuple{ givm::add_attachment{} }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(data.log->rounds++ == 0)
             {
                 const givm::add_attachment_input first{ source_character, data.moving, { 3, 1 } };
@@ -172,8 +174,8 @@ namespace
                     data.log->source, target_character, data.log->reset }, after);
             return context.invoke(data.transfer, before, after);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view&,
-            givm::attachment_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::attachment_removed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             data.log->removed.push_back(event.attachment);
             CHECK_FALSE(context.table()[event.attachment].is_valid());
@@ -271,15 +273,16 @@ namespace
                 givm::modify_attachment_state{ target, -1, -1 }, givm::remove_attachment{ target }
             }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             return context.invoke(data.entry,
                 givm::add_attachment_input{ { self.player().id(), 0 }, data.attachment, { 3, 1 } },
                 givm::add_attachment_input{ { self.player().id(), 1 }, data.attachment, { 5, 4 } });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view&,
-            givm::attachment_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::attachment_removed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             data.removed->push_back(event.attachment);
             const auto attachment = context.table()[event.attachment];

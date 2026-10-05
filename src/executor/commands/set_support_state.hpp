@@ -16,10 +16,11 @@
 namespace givm::detail
 {
     inline execution_state finish_support_state_change(
-        const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        context.stack().pop<response_return>();
-        return context.enter_next();
+        if(not continue_single_response<support_state_changed, support_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<support_state_changed, support_id>(context);
+        return context.advance(response_extent<support_state_changed>);
     }
 
     inline execution_state change_support_state(
@@ -31,15 +32,8 @@ namespace givm::detail
         const auto support = std::as_const(table)[input.support];
         const auto definition = library[support.definition_id()];
         if(not definition.can_handle<support_state_changed, support_view>())
-            return context.enter_next();
-        context.stack().push(response_return{ table.state().self_player, context.position() });
-        auto response = context.make_handle_context(library, table, random);
-        const auto entry = definition.handle<support_state_changed>(support, event, response);
-        if(entry)
-        {
-            table.state().self_player = support.player().id();
-            return context.enter(entry);
-        }
+            return context.advance(response_extent<support_state_changed>);
+        prepare_single_response(event, input.support, table, context, context.position());
         return finish_support_state_change(library, table, context, random);
     }
 
@@ -86,7 +80,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_support_state_change<false> });
-        writer.write(execute_fn{ finish_support_state_change });
+        compile_single_response<support_state_changed, support_id>(writer, finish_support_state_change);
     }
 }
 

@@ -36,6 +36,7 @@ bool can_handle(definition_id<TDefinitionType> id) const noexcept;
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <utility>
 #include <print>
 #include <string_view>
@@ -52,9 +53,8 @@ struct support_source
 
     static givm::program_entry handle(
         const int& extra_rerolls,
-        const givm::support_view&,
         givm::dice_roll_preparation& event,
-        givm::handle_context& context)
+        givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
     {
         event.reroll_count[0] += extra_rerolls;
         return {};

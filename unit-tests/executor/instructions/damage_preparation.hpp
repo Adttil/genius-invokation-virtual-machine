@@ -48,8 +48,8 @@ namespace
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro }
             }), *context.find_tag("PreparedReactionReplacement") };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
-            givm::damage_calculation& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
         {
             data.log->calculated.push_back(event.reaction);
             data.log->reacted_auras.push_back(event.reacted_aura);
@@ -72,22 +72,22 @@ namespace
                 return context.invoke(data.change_aura);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
-            givm::damage_effect& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::combat_status_view>&, std::uint32_t = 0)
         {
             data.log->applied.push_back(event.reaction);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
-            givm::elemental_reaction_will_occur& event, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::combat_status_view>&, std::uint32_t = 0)
         {
             data.log->side_effects.push_back(event.reaction);
             CHECK_FALSE(event.replacement_reaction.is_valid());
             if(data.log->replace_reaction_bonus) event.replacement_reaction = data.replacement;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
-            givm::after_damage& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
         {
             data.log->completed.push_back(event.reaction);
             data.log->health_at_completion.push_back({ context.table()[front].state().health,
@@ -107,8 +107,8 @@ namespace
         {
             return { context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }), type, classify };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::combat_status_view&,
-            givm::damage_preparation& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::damage_preparation& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
         {
             if(event.type != givm::damage_type::physical) return {};
             event.type = data.type;
@@ -139,8 +139,8 @@ namespace
                 givm::deal_damage{ .damages = damages }
             }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.entry);
         }

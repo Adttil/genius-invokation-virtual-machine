@@ -14,6 +14,7 @@ class character_view;
 
 |  |  |
 | --- | --- |
+| [`table`](character_view/table.md) | 取得所属牌桌 |
 | [`is_valid`](character_view/is_valid.md) | 判断实体是否尚未移除 |
 | [`operator bool`](character_view/operator_bool.md) | 判断实体是否尚未移除 |
 | [`size`](character_view/size.md) | 取得单实体范围的元素数 |

@@ -59,9 +59,10 @@ namespace
             return { log, context.add_program(std::tuple{
                 givm::modify_energy{ .target = { givm::relative_player::self, 0 }, .delta = 1 } }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view& self,
-            givm::skill_effect&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::skill_effect&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             data.log->energy_during_effect.push_back(self.character().state().energy);
             return data.log->explicit_energy ? context.invoke(data.effect) : givm::program_entry{};
         }
@@ -121,8 +122,8 @@ namespace
             }
             return { log, skill, effect };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto& log = *data.log;
             if(not log.dynamic) return context.invoke(data.effect);
@@ -157,29 +158,29 @@ namespace
                     givm::modify_energy_input{ log.second_targets, 2 } };
                 if(log.runtime_inputs)
                 {
-                    const std::array<givm::any_command_input, 5> sequence{
-                        inputs[0], inputs[1], inputs[2], inputs[3], inputs[4] };
-                    return context.invoke(data.effect, std::span<const givm::any_command_input>{ sequence });
+                    std::vector<givm::program_inputs> sequence;
+                    for(const auto& input : inputs) sequence.push_back(givm::pack_inputs(input));
+                    return context.invoke(data.effect, givm::concat_inputs(sequence));
                 }
                 return context.invoke(data.effect, inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]);
             }
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::changing_energy&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::changing_energy&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->energy_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::energy_changed&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            givm::energy_changed&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->energy_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::skill_view&,
-            givm::skill_used& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::skill_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->energy_after_skill.push_back(context.table()[event.skill.character_id].state().energy);
             return {};

@@ -145,18 +145,20 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if(self.id().index != 0) return {};
             if(data.dynamic)
                 return context.invoke(data.entry, givm::set_active_character_input{ { player, 0 } },
                     givm::set_active_character_input{ { player, 1 } }, givm::set_active_character_input{ { player, 1 } });
             return context.invoke(data.entry);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::active_character_changed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             CHECK(event.current.index == 1);
             CHECK(context.table()[player].state().active_character == event.current);
             data.responses->push_back(self.id());

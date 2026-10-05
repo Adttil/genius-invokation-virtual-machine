@@ -134,7 +134,7 @@ namespace
         }
 
         template<class TView, class TEvent>
-        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&, TEvent&, givm::handle_context<TView>&, std::uint32_t = 0)
         {
             FAIL("A disabled dynamic handler was invoked");
             std::unreachable();
@@ -204,7 +204,7 @@ namespace
         }
 
         template<class TView, class TEvent>
-        static givm::program_entry handle(const definition_type&, const TView&, TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type&, TEvent&, givm::handle_context<TView>&, std::uint32_t = 0)
         {
             FAIL("A disabled dynamic handler was invoked");
             std::unreachable();

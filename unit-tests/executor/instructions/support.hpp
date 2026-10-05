@@ -66,9 +66,10 @@ namespace
             ++data.log->limit_queries;
             return { 0xff, 3 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::support_view& self,
-            givm::support_state_changed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::support_state_changed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             data.log->changed.push_back(self.id());
             data.log->previous.push_back({ event.previous.count, event.previous.round_usages });
             data.log->current.push_back({ event.current.count, event.current.round_usages });
@@ -130,9 +131,10 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             if(self.player().id() != givm::player_id{ 0 }) return {};
             const auto index = data.log->next_action++;
             REQUIRE(index < data.log->actions.size());
@@ -149,9 +151,10 @@ namespace
                 return context.invoke(data.actions[index], givm::modify_support_state_input{ target, action.count, action.round_usages });
             return context.invoke(data.actions[index], givm::remove_support_input{ target });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::support_removed& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::support_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             const auto removed = context.table()[event.support];
             CHECK_FALSE(removed.is_valid());
             CHECK(removed.definition_id() == data.support);
@@ -189,9 +192,10 @@ namespace
             return full && query.target_count == 1 && support && support->player_id == player && query.table[*support].is_valid()
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
-            givm::card_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             const auto player = self.player().id();
             if(std::ranges::distance(context.table()[player].supports()) >= context.table()[player].state().support_limit)
                 return context.invoke(data.replace, givm::remove_support_input{ std::get<givm::support_id>(event.targets[0]) });

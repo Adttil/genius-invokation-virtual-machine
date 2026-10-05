@@ -63,9 +63,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& data,
-            const givm::character_view&,
             givm::elemental_reaction_will_occur& event,
-            givm::handle_context& context)
+            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.push_back(1);
             data.log->incoming = event.incoming_element;
@@ -82,9 +81,8 @@ namespace
 
         static givm::program_entry handle(
             const definition_type& data,
-            const givm::character_view&,
             givm::after_elemental_reaction&,
-            givm::handle_context&)
+            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(2);
             return {};

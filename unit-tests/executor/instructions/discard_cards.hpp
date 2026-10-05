@@ -62,9 +62,10 @@ namespace
         {
             return { .cost = { .energy = 3 } };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view& self,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             if(self.player().id() != givm::player_id{ 1 }) return {};
             if(not data.log->dynamic) return context.invoke(data.discard);
             const auto hand_card = context.table()[givm::player_id{ 0 }].hand_cards().front().id();
@@ -72,18 +73,20 @@ namespace
                 givm::discard_hand_card_input{ std::array{ hand_card } },
                 givm::discard_deck_cards_input{ .player = givm::player_id{ 0 }, .count = 2 });
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
-            givm::hand_card_discard_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::hand_card_discard_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK(self.id() == event.card);
             CHECK_FALSE(self.is_valid());
             CHECK(self.state().cost.energy == 3);
             data.log->order.push_back('h');
             return data.log->self_effects ? context.invoke(data.effect) : givm::program_entry{};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view& self,
-            givm::deck_card_discard_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::deck_card_discard_effect& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK(self.id() == event.card);
             CHECK_FALSE(self.is_valid());
             CHECK(self.state().cost.energy == 3);
@@ -96,9 +99,10 @@ namespace
         template<class TView, class TEvent>
             requires((std::same_as<TView, givm::hand_card_view> || std::same_as<TView, givm::deck_card_view>)
                 && (std::same_as<TEvent, givm::hand_card_discarded> || std::same_as<TEvent, givm::deck_card_discarded>))
-        static givm::program_entry handle(const definition_type& data, const TView& self,
-            TEvent& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent& event, givm::handle_context<TView>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             const auto discarded = context.table()[event.card];
             CHECK_FALSE(discarded.is_valid());
             CHECK(discarded.state().cost.energy == 3);
@@ -137,9 +141,10 @@ namespace
         {
             return { log, context.add_program(std::tuple{ givm::apply_element{}, givm::deal_damage{} }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view& self,
-            givm::deck_card_discard_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::deck_card_discard_effect& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK_FALSE(self.is_valid());
             CHECK(self.id() == event.card);
             data.log->card = self.id();
@@ -162,9 +167,10 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::after_damage& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             REQUIRE(std::holds_alternative<givm::deck_card_id>(event.source));
             const auto card = std::get<givm::deck_card_id>(event.source);
             CHECK(card == data.log->card);
@@ -177,9 +183,10 @@ namespace
             data.log->order.push_back('A');
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view& self,
-            givm::deck_card_discarded& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::deck_card_discarded& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity().character();
             CHECK(event.card == data.log->card);
             CHECK(context.table()[event.card].definition_id() == data.log->definition);
             CHECK(self.state().health == 8);
@@ -377,9 +384,10 @@ namespace
                 givm::replace_cards{ givm::player_id{ 0 } }
             }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::hand_card_view& self,
-            givm::hand_card_discard_effect& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::hand_card_discard_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
+            const auto self = context.entity();
             CHECK(self.id() == event.card);
             for(const auto id : data.log->selected) CHECK_FALSE(context.table()[id].is_valid());
             data.log->effects.push_back(event.card);
@@ -414,8 +422,8 @@ namespace
             return { log, definition, discard,
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             auto& log = *data.log;
             for(const auto card : context.table()[givm::player_id{ 0 }].hand_cards())
@@ -438,16 +446,16 @@ namespace
             }
             return context.invoke(data.discard);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::hand_card_added& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::hand_card_added& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             CHECK(std::ranges::find_if(data.log->original,
                 [&](givm::hand_card_id id) { return id == event.card; }) == data.log->original.end());
             data.log->order.push_back('A');
             return context.invoke(data.pause);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::deck_card_view&,
-            givm::hand_card_discarded& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::hand_card_discarded& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             for(const auto id : data.log->selected) CHECK_FALSE(context.table()[id].is_valid());
             CHECK(data.log->effects.back() == event.card);

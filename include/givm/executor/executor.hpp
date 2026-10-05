@@ -67,6 +67,16 @@ namespace givm
 
 namespace givm::detail
 {
+    inline constexpr std::size_t no_boundary = std::size_t(-1);
+
+    struct event_domain
+    {
+        std::size_t last_boundary = no_boundary;
+#ifndef NDEBUG
+        bool inline_response = false;
+#endif
+    };
+
     class execution_context
     {
     public:
@@ -77,6 +87,20 @@ namespace givm::detail
         constexpr ~execution_context() = default;
 
         constexpr auto& stack(this auto& self) noexcept { return self.stack_; }
+
+        constexpr auto& damage_events(this auto& self) noexcept { return self.damage_events_; }
+        constexpr auto& hand_entry_events(this auto& self) noexcept { return self.hand_entry_events_; }
+        constexpr auto& mixed_events(this auto& self) noexcept { return self.mixed_events_; }
+
+        void reset_event_queues()
+        {
+            damage_events_.clear();
+            hand_entry_events_.clear();
+            mixed_events_.clear();
+            damage_events_.push(substack());
+            hand_entry_events_.push(substack());
+            mixed_events_.push(event_domain{}, substack());
+        }
 
         constexpr execution_position position() const noexcept { return position_; }
 
@@ -96,6 +120,14 @@ namespace givm::detail
         {
             position_ = position;
             return continue_execution;
+        }
+
+        std::span<const unsigned char> instruction_bytes(
+            const definition_library& library, std::size_t offset, std::size_t count) const noexcept
+        {
+            const auto begin = position_ + offset;
+            GIVM_ASSERT(begin <= library.program_.size() && count <= library.program_.size() - begin);
+            return { library.program_.data() + begin, count };
         }
 
         constexpr execution_state advance(std::size_t bytes) noexcept
@@ -125,16 +157,17 @@ namespace givm::detail
             };
         }
 
-        handle_context make_handle_context(const definition_library& library, const table& table, random_fn& random)
+        template<class TEntity>
+        handle_context<TEntity> make_handle_context(const definition_library& library, TEntity entity, random_fn& random)
         {
-            return handle_context{ library, table, random, make_program_invoker() };
+            return handle_context<TEntity>{ library, entity, random, make_program_invoker() };
         }
 
-        template<bool Substack = false>
-        static handle_context make_handle_context(
-            frame_stack& stack, const definition_library& library, const table& table, random_fn& random)
+        template<bool Substack = false, class TEntity>
+        static handle_context<TEntity> make_handle_context(
+            frame_stack& stack, const definition_library& library, TEntity entity, random_fn& random)
         {
-            return handle_context{ library, table, random, program_invoker{ stack
+            return handle_context<TEntity>{ library, entity, random, program_invoker{ stack
 #ifndef NDEBUG
                 , detail::program_debug_view{ library.debug_library_identity_, library.debug_programs_, library.input_markers_ }, Substack
 #endif
@@ -165,6 +198,9 @@ namespace givm::detail
 
         execution_position position_ = null_program_position;
         frame_stack stack_;
+        frame_stack damage_events_;
+        frame_stack hand_entry_events_;
+        frame_stack mixed_events_;
 #ifndef NDEBUG
         program_debug_view debug_;
 #endif
@@ -226,6 +262,7 @@ namespace givm
             invalidate_views();
 #endif
             context_.stack_.clear();
+            context_.reset_event_queues();
             context_.position_ = library.entry();
             library.initialize_history(card_table);
 #ifndef NDEBUG

@@ -7,8 +7,8 @@
 ```cpp
 template<class TEvent, class TDefinitionType, class TView>
 program_entry handle(
-    definition_id<TDefinitionType> id, const TView& entity, TEvent& event,
-    handle_context& context) const;
+    definition_id<TDefinitionType> id, TEvent& event,
+    handle_context<TView>& context, std::uint32_t response_index = 0) const;
 ```
 
 请求一个实体的定义响应当前事件。响应可以直接调整事件允许修改的内容，并通过提供的调用对象提交后续效果。
@@ -26,9 +26,9 @@ program_entry handle(
 | | |
 | --- | --- |
 | `id` | 本定义库中的有效定义 ID |
-| `entity` | 响应事件的实体，只读 view 须属于该定义类别 |
 | `event` | 要响应的事件，可修改的成员用于反馈本次事件的调整 |
-| `context` | 执行器提供的 [`handle_context`](../handle_context.md)，用于读取配套牌桌、取得随机值及提交后续效果 |
+| `context` | 执行器提供的 [`handle_context<TView>`](../handle_context.md)，持有该定义类别对应的响应实体 |
+| `response_index` | 本次响应的编号，首轮为 0 |
 
 ## 返回值
 

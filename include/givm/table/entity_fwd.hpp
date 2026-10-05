@@ -5,6 +5,7 @@
 
 namespace givm
 {
+    class table;
     class player_view;
     class hand_card_view;
     class deck_card_view;

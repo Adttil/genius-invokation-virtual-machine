@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <givm/definition_source.hpp>
 
 #include "interface_layer_sources.hpp"
@@ -36,9 +37,10 @@ namespace givm_test::interface_layers
                     ? givm::target_validation::valid_complete : givm::target_validation::invalid;
             }
 
-            static givm::program_entry handle(const definition_type& definition, const givm::skill_view& self,
-                givm::round_started&, givm::handle_context& context)
+            static givm::program_entry handle(const definition_type& definition,
+                givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
             {
+                const auto self = context.entity();
                 const auto energy = context.table()[self.character().id()].state().health / 5;
                 givm::dice_counts dice;
                 dice[givm::elemental_dice::cryo] = 2;

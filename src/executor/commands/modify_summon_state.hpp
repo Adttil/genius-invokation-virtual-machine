@@ -76,7 +76,7 @@ namespace givm::detail
             context.advance(instruction_extent<1, summon_state_modification_data>);
             if(changed.state().usages == 0 && library.remove_at_zero_usages(command.definition))
                 return remove_summon_and_broadcast(library, table, context, random, summon);
-            return context.enter_next();
+            return context.advance(response_extent<summon_removed>);
         }
         else
         {
@@ -98,7 +98,7 @@ namespace givm::detail
             if(first == summons.size())
             {
                 context.stack().pop<summon_id[], std::int64_t, std::int64_t>();
-                return context.enter_next();
+                return context.advance(response_extent<summon_removed>);
             }
             const auto summon = summons[first];
             context.stack().push(stack_count_t{ first + 1 });
@@ -116,14 +116,14 @@ namespace givm::detail
                 ? execute_fn{ execute_summon_state_modification<true, true> }
                 : execute_fn{ execute_summon_state_modification<true, false> });
             writer.write(summon_state_modification_data{ command.player, command.definition, command.value, command.usages });
-            writer.write(execute_fn{ broadcast_summon_removal });
+            compile_broadcast<summon_removed>(writer, broadcast_summon_removal);
         }
         else
         {
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_summon_state_modification<false, true> }
                 : execute_fn{ execute_summon_state_modification<false, false> });
-            writer.write(execute_fn{ broadcast_summon_removals<true> });
+            compile_broadcast<summon_removed>(writer, broadcast_summon_removals<true>);
         }
     }
 }

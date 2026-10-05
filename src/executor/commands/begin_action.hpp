@@ -32,81 +32,96 @@ namespace givm::detail
     // become runtime state or require a second dispatch after fetching the instruction.
     inline constexpr std::size_t prepare_action_phase_offset = 0;
     inline constexpr std::size_t action_phase_broadcast_offset = 1;
-    inline constexpr std::size_t before_action_offset = 2;
-    inline constexpr std::size_t before_action_with_switch_offset = 3;
-    inline constexpr std::size_t before_action_broadcast_offset = 4;
-    inline constexpr std::size_t execute_action_selection_offset = 5;
-    inline constexpr std::size_t switch_onpay_offset = 6;
-    inline constexpr std::size_t switch_dice_payment_offset = 7;
-    inline constexpr std::size_t switch_dice_energy_payment_offset = 8;
-    inline constexpr std::size_t switch_energy_payment_offset = 9;
-    inline constexpr std::size_t switch_action_offset = 10;
-    inline constexpr std::size_t switch_action_apply_offset = 11;
+    inline constexpr std::size_t onpay_instruction_count = 2 + settlement_instruction_count;
+    inline constexpr std::size_t before_action_offset = 1 + response_instruction_count<action_phase_started>;
+    inline constexpr std::size_t before_action_with_switch_offset = before_action_offset + 1;
+    inline constexpr std::size_t before_action_broadcast_offset = before_action_with_switch_offset + 1;
+    inline constexpr std::size_t execute_action_selection_offset = before_action_broadcast_offset + response_instruction_count<before_action>;
+    inline constexpr std::size_t switch_onpay_offset = execute_action_selection_offset + 1;
+    inline constexpr std::size_t switch_dice_payment_offset = switch_onpay_offset + onpay_instruction_count;
+    inline constexpr std::size_t switch_dice_energy_payment_offset = switch_dice_payment_offset + response_instruction_count<dice_removed>;
+    inline constexpr std::size_t switch_energy_payment_offset = switch_dice_energy_payment_offset + response_instruction_count<dice_removed>;
+    inline constexpr std::size_t switch_action_offset = switch_energy_payment_offset + response_instruction_count<energy_changed>;
+    inline constexpr std::size_t switch_action_apply_offset = switch_action_offset + 1;
+    template<bool Observed>
+    inline constexpr std::size_t switch_action_broadcast_offset = switch_action_apply_offset + Observed;
+    template<bool Observed>
+    inline constexpr std::size_t card_onpay_offset = switch_action_broadcast_offset<Observed> + response_instruction_count<active_character_changed>;
+    template<bool Observed>
+    inline constexpr std::size_t card_dice_payment_offset = card_onpay_offset<Observed> + onpay_instruction_count;
+    template<bool Observed>
+    inline constexpr std::size_t card_dice_energy_payment_offset = card_dice_payment_offset<Observed> + response_instruction_count<dice_removed>;
+    template<bool Observed>
+    inline constexpr std::size_t card_energy_payment_offset = card_dice_energy_payment_offset<Observed> + response_instruction_count<dice_removed>;
+    template<bool Observed>
+    inline constexpr std::size_t prepare_card_play_offset = card_energy_payment_offset<Observed> + response_instruction_count<energy_changed>;
+    template<bool Observed>
+    inline constexpr std::size_t card_will_be_played_broadcast_offset = prepare_card_play_offset<Observed> + 1;
+    template<bool Observed>
+    inline constexpr std::size_t after_card_effect_offset = card_will_be_played_broadcast_offset<Observed> + response_instruction_count<card_will_be_played>;
+    template<bool Observed>
+    inline constexpr std::size_t card_played_broadcast_offset = after_card_effect_offset<Observed> + response_instruction_count<card_effect>;
+    template<bool Observed>
+    inline constexpr std::size_t skill_onpay_offset = card_played_broadcast_offset<Observed> + response_instruction_count<card_played>;
+    template<bool Observed>
+    inline constexpr std::size_t skill_dice_payment_offset = skill_onpay_offset<Observed> + onpay_instruction_count;
+    template<bool Observed>
+    inline constexpr std::size_t skill_dice_energy_payment_offset = skill_dice_payment_offset<Observed> + response_instruction_count<dice_removed>;
+    template<bool Observed>
+    inline constexpr std::size_t skill_energy_payment_offset = skill_dice_energy_payment_offset<Observed> + response_instruction_count<dice_removed>;
+    template<bool Observed>
+    inline constexpr std::size_t prepare_skill_use_offset = skill_energy_payment_offset<Observed> + response_instruction_count<energy_changed>;
+    template<bool Observed>
+    inline constexpr std::size_t skill_will_be_used_broadcast_offset = prepare_skill_use_offset<Observed> + 1;
+    template<bool Observed>
+    inline constexpr std::size_t after_skill_effect_offset = skill_will_be_used_broadcast_offset<Observed> + response_instruction_count<skill_will_be_used>;
+    template<bool Observed>
+    inline constexpr std::size_t skill_used_broadcast_offset = after_skill_effect_offset<Observed> + response_instruction_count<skill_effect>;
+    template<bool Observed>
+    inline constexpr std::size_t technique_onpay_offset = skill_used_broadcast_offset<Observed> + response_instruction_count<skill_used>;
+    template<bool Observed>
+    inline constexpr std::size_t technique_dice_payment_offset = technique_onpay_offset<Observed> + onpay_instruction_count;
+    template<bool Observed>
+    inline constexpr std::size_t technique_dice_energy_payment_offset = technique_dice_payment_offset<Observed> + response_instruction_count<dice_removed>;
+    template<bool Observed>
+    inline constexpr std::size_t technique_energy_payment_offset = technique_dice_energy_payment_offset<Observed> + response_instruction_count<dice_removed>;
+    template<bool Observed>
+    inline constexpr std::size_t prepare_technique_use_offset = technique_energy_payment_offset<Observed> + response_instruction_count<energy_changed>;
+    template<bool Observed>
+    inline constexpr std::size_t technique_will_be_used_broadcast_offset = prepare_technique_use_offset<Observed> + 1;
+    template<bool Observed>
+    inline constexpr std::size_t after_technique_effect_offset = technique_will_be_used_broadcast_offset<Observed> + response_instruction_count<technique_will_be_used>;
+    template<bool Observed>
+    inline constexpr std::size_t technique_used_broadcast_offset = after_technique_effect_offset<Observed> + response_instruction_count<technique_effect>;
+    template<bool Observed>
+    inline constexpr std::size_t elemental_tuning_modification_broadcast_offset = technique_used_broadcast_offset<Observed> + response_instruction_count<technique_used>;
+    template<bool Observed>
+    inline constexpr std::size_t elemental_tuning_completed_broadcast_offset = elemental_tuning_modification_broadcast_offset<Observed> + response_instruction_count<elemental_tuning_modification>;
+    template<bool Observed>
+    inline constexpr std::size_t first_round_end_broadcast_offset = elemental_tuning_completed_broadcast_offset<Observed> + response_instruction_count<elemental_tuning_completed>;
+    template<bool Observed>
+    inline constexpr std::size_t prepared_skill_removal_offset = first_round_end_broadcast_offset<Observed> + response_instruction_count<round_end_declared>;
+    template<bool Observed>
+    inline constexpr std::size_t prepared_skill_finish_offset = prepared_skill_removal_offset<Observed> + response_instruction_count<attachment_removed>;
+    template<bool Observed>
+    inline constexpr std::size_t switch_preparation_removal_offset = prepared_skill_finish_offset<Observed> + response_instruction_count<prepared_skill_effect>;
+    template<bool Observed>
+    inline constexpr std::size_t second_round_end_broadcast_offset = switch_preparation_removal_offset<Observed> + response_instruction_count<attachment_removed>;
 
-    template<bool Observed>
-    inline constexpr std::size_t switch_action_broadcast_offset = 11 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t card_onpay_offset = 12 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t card_dice_payment_offset = 13 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t card_dice_energy_payment_offset = 14 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t card_energy_payment_offset = 15 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t prepare_card_play_offset = 16 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t card_will_be_played_broadcast_offset = 17 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t after_card_effect_offset = 18 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t card_played_broadcast_offset = 19 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t skill_onpay_offset = 20 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t skill_dice_payment_offset = 21 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t skill_dice_energy_payment_offset = 22 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t skill_energy_payment_offset = 23 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t prepare_skill_use_offset = 24 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t skill_will_be_used_broadcast_offset = 25 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t after_skill_effect_offset = 26 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t skill_used_broadcast_offset = 27 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t technique_onpay_offset = 28 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t technique_dice_payment_offset = 29 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t technique_dice_energy_payment_offset = 30 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t technique_energy_payment_offset = 31 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t prepare_technique_use_offset = 32 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t technique_will_be_used_broadcast_offset = 33 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t after_technique_effect_offset = 34 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t technique_used_broadcast_offset = 35 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t elemental_tuning_modification_broadcast_offset = 36 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t elemental_tuning_completed_broadcast_offset = 37 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t first_round_end_broadcast_offset = 38 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t prepared_skill_removal_offset = 39 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t prepared_skill_finish_offset = 40 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t switch_preparation_removal_offset = 41 + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t second_round_end_broadcast_offset = 42 + Observed;
+    inline execution_state complete_onpay_response(const definition_library&, unrestricted_table&,
+        execution_context& context, random_fn&)
+    {
+        end_response<true>(context);
+        context.stack().pop<response_return>();
+        return context.jump(get<0>(context.stack().top<response_return>()).position);
+    }
+
+    inline void compile_onpay_response(program_writer& writer, execute_fn continuation)
+    {
+        writer.write(continuation);
+        compile_settlement(writer, begin_settlement);
+        writer.write(execute_fn{ complete_onpay_response });
+    }
 
     template<std::size_t From, std::size_t To>
     inline execution_state jump_to_action_instruction(execution_context& context) noexcept
@@ -134,7 +149,7 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<action_phase_started>(context);
-        context.enter_next();
+        context.advance(response_extent<action_phase_started>);
         if constexpr(Observed)
         {
             return context.yield(execution_state::action_started);
@@ -293,11 +308,13 @@ namespace givm::detail
 
     template<bool Observed>
     inline execution_state finish_prepared_skill_action(
-        const definition_library&, unrestricted_table&, execution_context& context, random_fn&)
+        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        const auto speed = get<0>(context.stack().top<prepared_skill_effect, response_return>()).speed;
-        context.stack().pop<prepared_skill_effect, response_return>();
-        if(speed == action_speed::combat)
+        if(not continue_single_response<prepared_skill_effect, attachment_id>(library, table, context, random))
+            return continue_execution;
+        const auto event = get<0>(context.stack().top<prepared_skill_effect, response_return>());
+        pop_single_response<prepared_skill_effect, attachment_id>(context);
+        if(event.speed == action_speed::combat)
             return jump_to_action_instruction<prepared_skill_finish_offset<Observed>, before_action_with_switch_offset>(context);
         return jump_to_action_instruction<prepared_skill_finish_offset<Observed>, before_action_offset>(context);
     }
@@ -310,25 +327,30 @@ namespace givm::detail
         if(not continue_broadcast<attachment_removed>(library, table, context, random))
             return continue_execution;
         pop_broadcast<attachment_removed>(context);
-        context.enter_next();
+        context.advance(response_extent<attachment_removed>);
+        const auto event = get<0>(context.stack().top<prepared_skill_effect>());
+        context.stack().pop<prepared_skill_effect>();
+        // The consumed attachment retains its identity and state for its own effect.
+        prepare_single_response(event, event.attachment, table, context, context.position(), true);
         auto& stack = context.stack();
         const auto frame = stack.top<prepared_skill_effect, response_return>();
-        auto event = get<0>(frame);
+        auto effect = get<0>(frame);
         const auto speed_offset = reinterpret_cast<const unsigned char*>(&get<0>(frame).speed) - stack.data();
-        const auto attachment = std::as_const(table)[event.attachment];
-        auto response = context.make_handle_context(library, table, random);
-        // The consumed attachment retains its identity and state for its own effect.
-        const auto entry = library[attachment.definition_id()].handle<prepared_skill_effect>(attachment, event, response);
-        // invoke may grow the stack; the event passed to the handler is a local copy.
-        *reinterpret_cast<action_speed*>(stack.data() + speed_offset) = event.speed;
-        if(event.speed == action_speed::combat)
-            table[event.attachment.character_id.player_id].state().can_plunge = false;
+        const auto attachment = std::as_const(table)[effect.attachment];
+        auto response = context.make_handle_context(library, attachment, random);
+        stack.push(response_return{ table.state().self_player, get<1>(frame).position + sizeof(execute_fn) });
+        begin_response<true>(context);
+        const auto entry = library[attachment.definition_id()].handle<prepared_skill_effect>(effect, response, 0);
+        // Keep the action's speed across input packing before entering its effect.
+        *reinterpret_cast<action_speed*>(stack.data() + speed_offset) = effect.speed;
+        if(effect.speed == action_speed::combat)
+            table[effect.attachment.character_id.player_id].state().can_plunge = false;
         if(entry)
         {
-            table.state().self_player = event.attachment.character_id.player_id;
+            table.state().self_player = effect.attachment.character_id.player_id;
             return context.enter(entry);
         }
-        return finish_prepared_skill_action<Observed>(library, table, context, random);
+        return complete_single_response<prepared_skill_effect, attachment_id>(library, table, context, random);
     }
 
     template<bool Observed>
@@ -349,7 +371,7 @@ namespace givm::detail
             const auto definition = attachment.definition_id();
             if(library.is_control(definition))
             {
-                context.enter_next();
+                context.advance(response_extent<before_action>);
                 return prepare_action_selection(library, table, context);
             }
             if(not prepared && library[definition].can_handle<prepared_skill_effect, attachment_view>())
@@ -358,13 +380,12 @@ namespace givm::detail
         if(prepared)
         {
             jump_to_action_instruction<before_action_broadcast_offset, prepared_skill_removal_offset<Observed>>(context);
-            context.stack().push(prepared_skill_effect{ .attachment = *prepared },
-                response_return{ table.state().self_player, context.position() + sizeof(execute_fn) });
+            context.stack().push(prepared_skill_effect{ .attachment = *prepared });
             table[*prepared].erase();
             prepare_broadcast(library, attachment_removed{ *prepared }, table, context.stack(), context.position());
             return continue_prepared_skill_removal<Observed>(library, table, context, random);
         }
-        context.enter_next();
+        context.advance(response_extent<before_action>);
         return prepare_action_selection(library, table, context);
     }
 
@@ -498,11 +519,11 @@ namespace givm::detail
             if(has_dice_payment)
             {
                 context.stack().push(event);
-                jump_to_action_instruction<From, Payment + 1>(context);
+                jump_to_action_instruction<From, Payment + response_instruction_count<dice_removed>>(context);
                 prepare_broadcast(library, dice_removed{ .player = player, .dice = paid_dice }, table, context.stack(), context.position());
                 return continue_execution;
             }
-            jump_to_action_instruction<From, Payment + 2>(context);
+            jump_to_action_instruction<From, Payment + 2 * response_instruction_count<dice_removed>>(context);
             prepare_broadcast(library, event, table, context.stack(), context.position());
             return continue_execution;
         }
@@ -517,7 +538,7 @@ namespace givm::detail
 
     inline execution_state continue_switch_onpay(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
+        execution_context& context, random_fn& random
     )
     {
         auto [action_frame, return_frame] = context.stack().top<frame<
@@ -545,8 +566,10 @@ namespace givm::detail
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
+                stack.push(response_return{ table.state().self_player, get<0>(return_frame).position + sizeof(execute_fn) });
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
+                begin_response<true>(context);
                 const auto prepared = context.copy_program_inputs(
                     entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
@@ -574,8 +597,8 @@ namespace givm::detail
         pop_broadcast<dice_removed>(context);
         const auto event = get<0>(context.stack().top<energy_changed>());
         context.stack().pop<energy_changed>();
-        prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
+        prepare_broadcast(library, event, table, context.stack(), context.position() + response_extent<dice_removed>);
+        return context.advance(response_extent<dice_removed>);
     }
 
     inline execution_state broadcast_action_energy_payment(
@@ -588,7 +611,7 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<energy_changed>(context);
-        return context.enter_next();
+        return context.advance(response_extent<energy_changed>);
     }
 
     template<bool Observed>
@@ -690,7 +713,7 @@ namespace givm::detail
     template<bool Observed>
     inline execution_state continue_card_onpay(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
+        execution_context& context, random_fn& random
     )
     {
         auto [action_frame, return_frame] = context.stack().top<frame<
@@ -716,8 +739,10 @@ namespace givm::detail
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
+                stack.push(response_return{ table.state().self_player, get<0>(return_frame).position + sizeof(execute_fn) });
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
+                begin_response<true>(context);
                 const auto prepared = context.copy_program_inputs(
                     entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
@@ -756,10 +781,11 @@ namespace givm::detail
 
     inline execution_state finish_card_effect(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
+        execution_context& context, random_fn& random
     )
     {
-        context.stack().pop<response_return>();
+        if(not continue_single_response<card_effect, hand_card_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<card_effect, hand_card_id>(context);
         auto&& [costs, onpay_entries, onpay_offsets, onpay_sizes, switch_handlers, switch_costs,
                 switch_onpay_entries, switch_onpay_offsets, switch_onpay_sizes, onpay_cursor, selection, cached_inputs] = context.stack().top<
             cost_of_card[], program_entry[], std::size_t[], std::size_t[],
@@ -772,8 +798,8 @@ namespace givm::detail
         prepare_broadcast(library, card_played{
             .card = cost.card, .definition_id = table[cost.card].definition_id(),
             .targets = selected->targets, .speed = cost.requirement.speed
-        }, table, context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
+        }, table, context.stack(), context.position() + response_extent<card_effect>);
+        return context.advance(response_extent<card_effect>);
     }
 
     inline execution_state broadcast_card_will_be_played(
@@ -789,21 +815,10 @@ namespace givm::detail
             card_will_be_played, response_return>());
         pop_broadcast<card_will_be_played>(context);
         if(event.speed == action_speed::combat) table[event.card.player_id].state().can_plunge = false;
-        context.enter_next();
-        context.stack().push(response_return{ table.state().self_player, context.position() });
-        if(not event.effect_cancelled)
-        {
-            card_effect effect{ .card = event.card, .targets = event.targets };
-            // The played card is already out of hand, but retains its definition and state.
-            const auto card = std::as_const(table)[event.card];
-            auto response = context.make_handle_context(library, table, random);
-            const auto entry = library[card.definition_id()].handle<card_effect>(card, effect, response);
-            if(entry)
-            {
-                table.state().self_player = card.player().id();
-                return context.enter(entry);
-            }
-        }
+        context.advance(response_extent<card_will_be_played>);
+        // The played card is already out of hand, but retains its definition and state.
+        prepare_single_response(card_effect{ .card = event.card, .targets = event.targets },
+            event.card, table, context, context.position(), true, not event.effect_cancelled);
         return finish_card_effect(library, table, context, random);
     }
 
@@ -839,7 +854,7 @@ namespace givm::detail
     template<bool Observed>
     inline execution_state continue_skill_onpay(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
+        execution_context& context, random_fn& random
     )
     {
         auto [action_frame, return_frame] = context.stack().top<frame<
@@ -867,8 +882,10 @@ namespace givm::detail
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
+                stack.push(response_return{ table.state().self_player, get<0>(return_frame).position + sizeof(execute_fn) });
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
+                begin_response<true>(context);
                 const auto prepared = context.copy_program_inputs(
                     entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
@@ -936,7 +953,7 @@ namespace givm::detail
     template<bool Observed>
     inline execution_state continue_technique_onpay(
         const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn&
+        execution_context& context, random_fn& random
     )
     {
         auto [action_frame, return_frame] = context.stack().top<frame<
@@ -965,8 +982,10 @@ namespace givm::detail
                 const auto offset = onpay_offsets[index];
                 const auto size = onpay_sizes[index];
                 auto& stack = context.stack();
+                stack.push(response_return{ table.state().self_player, get<0>(return_frame).position + sizeof(execute_fn) });
                 const auto capacity = stack.size() + size;
                 if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
+                begin_response<true>(context);
                 const auto prepared = context.copy_program_inputs(
                     entry, std::span<const unsigned char>{ stack.data() + offset, size });
                 table.state().self_player = player;
@@ -1017,10 +1036,12 @@ namespace givm::detail
         execution_context& context, random_fn& random
     )
     {
-        const auto event = get<0>(context.stack().top<technique_used, response_return>());
-        context.stack().pop<technique_used, response_return>();
-        prepare_broadcast(library, event, table, context.stack(), context.position() + sizeof(execute_fn));
-        context.enter_next();
+        if(not continue_single_response<technique_effect, attachment_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<technique_effect, attachment_id>(context);
+        const auto event = get<0>(context.stack().top<technique_used>());
+        context.stack().pop<technique_used>();
+        prepare_broadcast(library, event, table, context.stack(), context.position() + response_extent<technique_effect>);
+        context.advance(response_extent<technique_effect>);
         return broadcast_technique_used<Observed>(library, table, context, random);
     }
 
@@ -1037,23 +1058,13 @@ namespace givm::detail
         const auto event = get<0>(context.stack().top<technique_will_be_used, response_return>());
         pop_broadcast<technique_will_be_used>(context);
         if(event.speed == action_speed::combat) table[event.technique.character_id.player_id].state().can_plunge = false;
-        context.enter_next();
+        context.advance(response_extent<technique_will_be_used>);
         context.stack().push(technique_used{
             .technique = event.technique, .targets = event.targets, .speed = event.speed,
             .effect_cancelled = event.effect_cancelled
-        }, response_return{ table.state().self_player, context.position() });
-        if(not event.effect_cancelled)
-        {
-            technique_effect effect{ .technique = event.technique, .targets = event.targets };
-            const auto technique = std::as_const(table)[event.technique];
-            auto response = context.make_handle_context(library, table, random);
-            const auto entry = library[technique.definition_id()].handle<technique_effect>(technique, effect, response);
-            if(entry)
-            {
-                table.state().self_player = technique.player().id();
-                return context.enter(entry);
-            }
-        }
+        });
+        prepare_single_response(technique_effect{ .technique = event.technique, .targets = event.targets },
+            event.technique, table, context, context.position(), false, not event.effect_cancelled);
         return finish_technique_effect<Observed>(library, table, context, random);
     }
 
@@ -1097,8 +1108,8 @@ namespace givm::detail
         ++dice[event.to];
         prepare_broadcast(library, elemental_tuning_completed{
             .card = event.card, .from = event.from, .to = event.to
-        }, table, context.stack(), context.position() + sizeof(execute_fn));
-        return context.enter_next();
+        }, table, context.stack(), context.position() + response_extent<elemental_tuning_modification>);
+        return context.advance(response_extent<elemental_tuning_modification>);
     }
 
     template<bool Observed>
@@ -1155,59 +1166,59 @@ namespace givm::detail
             return continue_execution;
         }
         pop_broadcast<round_end_declared>(context);
-        return context.enter_next();
+        return context.advance(response_extent<round_end_declared>);
     }
 
     template<bool Observed>
     inline void compile_begin_action(program_writer& writer)
     {
         writer.write<execute_fn>(&prepare_action_phase);
-        writer.write<execute_fn>(&broadcast_action_phase<Observed>);
+        compile_broadcast<action_phase_started>(writer, broadcast_action_phase<Observed>);
         writer.write<execute_fn>(&prepare_before_action<false, Observed>);
         writer.write<execute_fn>(&prepare_before_action<true, Observed>);
-        writer.write<execute_fn>(&broadcast_before_action<Observed>);
+        compile_broadcast<before_action>(writer, broadcast_before_action<Observed>);
         writer.write<execute_fn>(&execute_action_selection<Observed>);
-        writer.write<execute_fn>(&continue_switch_onpay);
-        writer.write<execute_fn>(&broadcast_removed_dice<switch_action_offset - switch_dice_payment_offset>);
-        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
-        writer.write<execute_fn>(&broadcast_action_energy_payment);
+        compile_onpay_response(writer, continue_switch_onpay);
+        compile_broadcast<dice_removed>(writer, broadcast_removed_dice<switch_action_offset - switch_dice_payment_offset>);
+        compile_broadcast<dice_removed>(writer, broadcast_action_dice_energy_payment);
+        compile_broadcast<energy_changed>(writer, broadcast_action_energy_payment);
         writer.write<execute_fn>(&execute_switch_action<Observed>);
         if constexpr(Observed)
         {
             writer.write<execute_fn>(&apply_switch_action);
         }
-        writer.write<execute_fn>(&broadcast_switch_action<Observed>);
-        writer.write<execute_fn>(&continue_card_onpay<Observed>);
-        writer.write<execute_fn>(&broadcast_removed_dice<prepare_card_play_offset<Observed> - card_dice_payment_offset<Observed>>);
-        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
-        writer.write<execute_fn>(&broadcast_action_energy_payment);
+        compile_broadcast<active_character_changed>(writer, broadcast_switch_action<Observed>);
+        compile_onpay_response(writer, continue_card_onpay<Observed>);
+        compile_broadcast<dice_removed>(writer, broadcast_removed_dice<prepare_card_play_offset<Observed> - card_dice_payment_offset<Observed>>);
+        compile_broadcast<dice_removed>(writer, broadcast_action_dice_energy_payment);
+        compile_broadcast<energy_changed>(writer, broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_card_play);
-        writer.write<execute_fn>(&broadcast_card_will_be_played);
-        writer.write<execute_fn>(&finish_card_effect);
-        writer.write<execute_fn>(&broadcast_card_played<Observed>);
-        writer.write<execute_fn>(&continue_skill_onpay<Observed>);
-        writer.write<execute_fn>(&broadcast_removed_dice<prepare_skill_use_offset<Observed> - skill_dice_payment_offset<Observed>>);
-        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
-        writer.write<execute_fn>(&broadcast_action_energy_payment);
+        compile_broadcast<card_will_be_played>(writer, broadcast_card_will_be_played);
+        compile_single_response<card_effect, hand_card_id>(writer, finish_card_effect);
+        compile_broadcast<card_played>(writer, broadcast_card_played<Observed>);
+        compile_onpay_response(writer, continue_skill_onpay<Observed>);
+        compile_broadcast<dice_removed>(writer, broadcast_removed_dice<prepare_skill_use_offset<Observed> - skill_dice_payment_offset<Observed>>);
+        compile_broadcast<dice_removed>(writer, broadcast_action_dice_energy_payment);
+        compile_broadcast<energy_changed>(writer, broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_skill_use);
-        writer.write<execute_fn>(&broadcast_skill_will_be_used<true>);
-        writer.write<execute_fn>(&finish_skill_effect);
-        writer.write<execute_fn>(&broadcast_skill_used<Observed>);
-        writer.write<execute_fn>(&continue_technique_onpay<Observed>);
-        writer.write<execute_fn>(&broadcast_removed_dice<prepare_technique_use_offset<Observed> - technique_dice_payment_offset<Observed>>);
-        writer.write<execute_fn>(&broadcast_action_dice_energy_payment);
-        writer.write<execute_fn>(&broadcast_action_energy_payment);
+        compile_broadcast<skill_will_be_used>(writer, broadcast_skill_will_be_used<true>);
+        compile_single_response<skill_effect, skill_id>(writer, finish_skill_effect);
+        compile_broadcast<skill_used>(writer, broadcast_skill_used<Observed>);
+        compile_onpay_response(writer, continue_technique_onpay<Observed>);
+        compile_broadcast<dice_removed>(writer, broadcast_removed_dice<prepare_technique_use_offset<Observed> - technique_dice_payment_offset<Observed>>);
+        compile_broadcast<dice_removed>(writer, broadcast_action_dice_energy_payment);
+        compile_broadcast<energy_changed>(writer, broadcast_action_energy_payment);
         writer.write<execute_fn>(&prepare_technique_use<Observed>);
-        writer.write<execute_fn>(&broadcast_technique_will_be_used<Observed>);
-        writer.write<execute_fn>(&finish_technique_effect<Observed>);
-        writer.write<execute_fn>(&broadcast_technique_used<Observed>);
-        writer.write<execute_fn>(&broadcast_elemental_tuning_modification);
-        writer.write<execute_fn>(&broadcast_elemental_tuning_completed<Observed>);
-        writer.write<execute_fn>(&broadcast_first_round_end<Observed>);
-        writer.write<execute_fn>(&continue_prepared_skill_removal<Observed>);
-        writer.write<execute_fn>(&finish_prepared_skill_action<Observed>);
-        writer.write<execute_fn>(&continue_switch_action_prepared_removal<Observed>);
-        writer.write<execute_fn>(&broadcast_second_round_end);
+        compile_broadcast<technique_will_be_used>(writer, broadcast_technique_will_be_used<Observed>);
+        compile_single_response<technique_effect, attachment_id>(writer, finish_technique_effect<Observed>);
+        compile_broadcast<technique_used>(writer, broadcast_technique_used<Observed>);
+        compile_broadcast<elemental_tuning_modification>(writer, broadcast_elemental_tuning_modification);
+        compile_broadcast<elemental_tuning_completed>(writer, broadcast_elemental_tuning_completed<Observed>);
+        compile_broadcast<round_end_declared>(writer, broadcast_first_round_end<Observed>);
+        compile_broadcast<attachment_removed>(writer, continue_prepared_skill_removal<Observed>);
+        compile_single_response<prepared_skill_effect, attachment_id>(writer, finish_prepared_skill_action<Observed>);
+        compile_broadcast<attachment_removed>(writer, continue_switch_action_prepared_removal<Observed>);
+        compile_broadcast<round_end_declared>(writer, broadcast_second_round_end);
     }
 
     inline void compile(program_writer& writer, const begin_action&, compile_mode mode)

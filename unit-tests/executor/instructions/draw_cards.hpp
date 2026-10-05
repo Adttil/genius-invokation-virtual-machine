@@ -74,15 +74,15 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
                 return context.invoke(data.draw, givm::draw_cards_input{ data.log->input }, givm::draw_cards_input{});
             return context.invoke(data.draw);
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::card_drawn& event, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_drawn& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto card = context.table()[event.card];
             CHECK(card.is_valid());
@@ -100,8 +100,8 @@ namespace
         template<class TEvent>
             requires(std::same_as<TEvent, givm::hand_card_added> || std::same_as<TEvent, givm::hand_card_discarded>
                 || std::same_as<TEvent, givm::deck_card_discarded>)
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            TEvent&, givm::handle_context&)
+        static givm::program_entry handle(const definition_type& data,
+            TEvent&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->unexpected_notifications;
             return {};

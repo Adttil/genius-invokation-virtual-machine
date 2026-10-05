@@ -38,7 +38,7 @@ namespace givm::detail
         if(not continue_broadcast<summon_removed>(library, table, context, random))
             return continue_execution;
         pop_broadcast<summon_removed>(context);
-        return context.enter_next();
+        return context.advance(response_extent<summon_removed>);
     }
 
     inline execution_state remove_summon_and_broadcast(
@@ -96,7 +96,7 @@ namespace givm::detail
             if(not prepare_next_summon_removal<Modified>(library, table, context))
             {
                 context.stack().pop<summon_removal_input_frame<Modified>{}, frame_t<stack_count_t>{}>();
-                return context.enter_next();
+                return context.advance(response_extent<summon_removed>);
             }
         }
     }
@@ -132,7 +132,7 @@ namespace givm::detail
             if(summons.empty())
             {
                 context.stack().pop<summon_id[]>();
-                return context.enter_next();
+                return context.advance(response_extent<summon_removed>);
             }
             const auto first = summons.front();
             context.stack().push(stack_count_t{ 1 });
@@ -148,12 +148,12 @@ namespace givm::detail
         {
             writer.write(execute_fn{ prepare_summon_removal<true> });
             writer.write(command);
-            writer.write(execute_fn{ broadcast_summon_removal });
+            compile_broadcast<summon_removed>(writer, broadcast_summon_removal);
         }
         else
         {
             writer.write(execute_fn{ prepare_summon_removal<false> });
-            writer.write(execute_fn{ broadcast_summon_removals<false> });
+            compile_broadcast<summon_removed>(writer, broadcast_summon_removals<false>);
         }
     }
 }

@@ -41,7 +41,7 @@ class frame_view;
 
 ## 注意
 
-view 由 [`frame_stack`](frame_stack.md) 提供，不拥有数据。普通 `frame_view` 在栈重新分配空间或相应数据被弹出、清空后不可继续使用。含栈顶子栈的访问形态另有重新定位保证，见 [`top`](frame_stack/top.md)。view 对象本身是否为 `const` 不决定元素能否修改，权限由所属栈的 const 属性决定。
+view 由 [`frame_stack`](frame_stack.md) 提供，不拥有数据。普通 `frame_view` 在栈重新分配空间或相应数据被弹出、清空后不可继续使用。含子栈的访问形态另有重新定位保证，见 [`top`](frame_stack/top.md)。view 对象本身是否为 `const` 不决定元素能否修改，权限由所属栈的 const 属性决定。
 
 支持 `std::tuple_size`、`std::tuple_element` 和结构化绑定。动态数组元素作为 `std::span` 访问，子栈元素作为[子栈视图](substack_view.md)访问。支持重新定位的帧 view，也不保证之前从中取得的引用或 span 能重新定位。
 

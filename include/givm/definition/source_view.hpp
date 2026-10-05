@@ -5,6 +5,7 @@
 #include <array>
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -21,6 +22,7 @@ namespace givm
 {
     class definition_compile_context;
     class definition_library;
+    template<class TEntity>
     class handle_context;
 
     using definition_data = std::any;
@@ -28,9 +30,9 @@ namespace givm
     template<class TEntity, class TEvent>
     using handle_fn_t = program_entry (*)(
         const definition_data&,
-        const TEntity&,
         TEvent&,
-        handle_context&
+        handle_context<TEntity>&,
+        std::uint32_t
     );
 }
 
@@ -514,41 +516,41 @@ namespace givm
             using definition_type = detail::definition_for_source_t<TSource>;
             if constexpr(requires(
                 const definition_type& definition,
-                const TView& entity,
                 TEvent& event,
-                handle_context& context
+                handle_context<TView>& context,
+                std::uint32_t response_index
             )
             {
-                TSource::handle(definition, entity, event, context);
+                TSource::handle(definition, event, context, response_index);
             })
             {
                 using result_type = decltype(TSource::handle(
                     std::declval<const definition_type&>(),
-                    std::declval<const TView&>(),
                     std::declval<TEvent&>(),
-                    std::declval<handle_context&>()
+                    std::declval<handle_context<TView>&>(),
+                    std::declval<std::uint32_t>()
                 ));
                 static_assert(std::same_as<result_type, program_entry>, "source handle must return program_entry");
 
                 return +[](
                     const definition_data& data,
-                    const TView& entity,
                     TEvent& event,
-                    handle_context& context
+                    handle_context<TView>& context,
+                    std::uint32_t response_index
                 )
                 {
                     return TSource::handle(
                         std::any_cast<const definition_type&>(data),
-                        entity,
                         event,
-                        context
+                        context,
+                        response_index
                     );
                 };
             }
             else
             {
                 static_assert(not detail::is_dynamic_source<TSource>,
-                    "dynamic source must provide handle(definition, entity, event, context) for every subscribed view/event pair, even when can_handle returns false");
+                    "dynamic source must provide handle(definition, event, context, response_index) for every subscribed view/event pair, even when can_handle returns false");
                 return nullptr;
             }
         }

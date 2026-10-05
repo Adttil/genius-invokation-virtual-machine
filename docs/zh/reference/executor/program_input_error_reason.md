@@ -7,7 +7,7 @@
 ```cpp
 using program_input_error_reason = std::variant<program_input_count_mismatch,
     program_input_type_mismatch, invalid_program_entry,
-    program_invocation_mode_mismatch, repeated_program_invocation>;
+    program_invocation_mode_mismatch, repeated_program_invocation, invalid_response_index>;
 ```
 
 [`program_input_error`](program_input_error.md) 的具体原因。以下结构体、枚举均位于 `givm` 命名空间。
@@ -63,6 +63,18 @@ struct repeated_program_invocation;
 ```
 
 同一次响应已经成功提交过程序，却再次调用 `invoke` 的错误。该类型没有成员。
+
+### `invalid_response_index`
+
+```cpp
+struct invalid_response_index;
+```
+
+动态返回输入错误地使用了 `return_response::dynamic`。它是命令的取值方式标记，不能作为运行时返回编号。
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `index` | `std::uint32_t` | 本次提供的错误返回值 |
 
 ## 枚举
 

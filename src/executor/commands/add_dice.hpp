@@ -22,7 +22,7 @@ namespace givm::detail
         if(not continue_broadcast<dice_added>(library, table, context, random))
             return continue_execution;
         pop_broadcast<dice_added>(context);
-        return context.enter_next();
+        return context.advance(response_extent<dice_added>);
     }
 
     template<bool Fixed>
@@ -71,7 +71,7 @@ namespace givm::detail
             context.stack().pop<add_dice_input>();
             context.enter_next();
             if(dice.total() == 0)
-                return context.enter_next();
+                return context.advance(response_extent<dice_added>);
         }
 
         table[player].state().dice += dice;
@@ -91,7 +91,7 @@ namespace givm::detail
             writer.write(execute_fn{ add_dice_execute<true> });
             writer.write(command);
         }
-        writer.write(execute_fn{ broadcast_added_dice });
+        compile_broadcast<dice_added>(writer, broadcast_added_dice);
     }
 }
 

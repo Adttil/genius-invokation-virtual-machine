@@ -33,16 +33,16 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::dice_roll_preparation&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::dice_roll_preparation&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->preparations.push_back(context.table().state().round_number);
             data.log->dice_before_roll.push_back({ context.table()[givm::player_id{ 0 }].state().dice.total(),
                 context.table()[givm::player_id{ 1 }].state().dice.total() });
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, const givm::character_view&,
-            givm::round_started&, givm::handle_context& context)
+        static givm::program_entry handle(const definition_type& data,
+            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->notifications.push_back(context.table().state().round_number);
             data.log->dice_at_notification.push_back({ context.table()[givm::player_id{ 0 }].state().dice.total(),

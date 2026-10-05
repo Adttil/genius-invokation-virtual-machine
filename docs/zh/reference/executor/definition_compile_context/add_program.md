@@ -42,11 +42,16 @@ program_entry add_program(TCommands&&... commands); // (3)
 
 返回入口只用于本次编译产生的定义库。效果正常完成后回到发起它的结算；若执行期间结束对局，则不再返回原结算。本函数只登记效果，不立即执行。每个动态命令需要一个专用的 [命令输入](../../definition/command_inputs.md) 对象，固定模式不占输入位置。编译后，该入口要求的输入对象数量、类型和顺序固定，对象中的数组长度可以在响应时决定；响应提交入口时须同时提供匹配输入。所登记效果沿用最终 `compile` 调用选择的编译模式。
 
+命令序列在第一条 [`return_response`](../../definition/commands/return_response.md) 处结束；之后的命令不再检查、编译或计入输入要求。没有显式返回时补固定返回 `return_response::null`，结束该实体的响应链。
+
+本函数不自动插入 [`end_segment`](../../definition/commands/end_segment.md) 或 [`settle`](../../definition/commands/settle.md)。普通响应和延迟程序的调用者负责末段收尾及后续结算；同一个入口既能普通执行，也能交给 [`defer_program`](../../definition/commands/defer_program.md) 延迟执行，后者忽略返回编号。
+
 命令及其中借用的数据须在本次调用期间保持有效。返回前完成编译，不保留传入序列或命令对象；调用后可以销毁它们。
 
 ## 示例
 
 ```cpp
+#include <cstdint>
 #include <utility>
 #include <print>
 #include <string_view>
@@ -73,9 +78,8 @@ struct support_source
 
     static givm::program_entry handle(
         const givm::program_entry& entry,
-        const givm::support_view&,
         givm::round_ended&,
-        givm::handle_context& context)
+        givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
     {
         return context.invoke(entry);
     }

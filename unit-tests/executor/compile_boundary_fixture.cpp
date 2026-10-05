@@ -1,3 +1,4 @@
+#include <cstdint>
 #include "compile_boundary_fixture.hpp"
 #include "../test_source_library.hpp"
 
@@ -55,9 +56,10 @@ namespace givm_test::executor::compile_boundary
                 throw std::logic_error{ "invalid test command sequence form" };
             }
 
-            static givm::program_entry handle(const definition_type& definition, const givm::skill_view& self,
-                givm::round_started&, givm::handle_context& context)
+            static givm::program_entry handle(const definition_type& definition,
+                givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
             {
+                const auto self = context.entity();
                 givm::dice_counts dice;
                 dice[givm::elemental_dice::pyro] = 3;
                 return context.invoke(definition.entry,
