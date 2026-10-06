@@ -2,7 +2,6 @@
 
 #include "program_writer.hpp"
 #include "commands.hpp"
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class T> inline constexpr std::string_view debug_command_name;
@@ -70,25 +69,19 @@ namespace givm::detail
         return result;
     }();
 }
-#endif
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes, class T>
     requires (not requires { typename T::input_type; })
     constexpr std::size_t input_marker(const T&) noexcept { return std::size_t(-1); }
 }
-#endif
 
 namespace givm::detail
 {
     std::size_t append_commands(program_writer& writer, std::span<const any_command> commands, compile_mode mode,
-        const definition_compile_context& context, program_kind kind, std::vector<compile_error>& errors, compile_location location
-#ifndef NDEBUG
-        , std::size_t library_identity, const std::vector<debug_program_info>& programs
-        , std::vector<debug_input_requirement>& input_markers
-#endif
+        const definition_compile_context& context, program_kind kind, std::vector<compile_error>& errors, compile_location location,
+        program_input_records& input_records
     )
     {
         std::size_t inputs_count = 0;
@@ -102,19 +95,14 @@ namespace givm::detail
                 for(auto& error : command_errors) errors.push_back({ location, std::move(error) });
                 if(not command_errors.empty()) return;
             }
-#ifndef NDEBUG
             if constexpr(std::same_as<std::remove_cvref_t<decltype(command)>, defer_program>)
             {
-                if(command.input.entry)
+                if(command.input.entry())
                 {
-                    try
+                    const program_input_validator validator{ input_records.view() };
+                    if(auto error = validator.check_value(command.input))
                     {
-                        const program_input_validator validator{ { library_identity, programs, input_markers } };
-                        validator.validate_value(command.input);
-                    }
-                    catch(const program_input_error& error)
-                    {
-                        errors.push_back({ location, fixed_program_input_error{ error.reason } });
+                        errors.push_back({ location, fixed_program_input_error{ std::move(error->reason) } });
                         return;
                     }
                 }
@@ -124,10 +112,9 @@ namespace givm::detail
             {
                 ++inputs_count;
                 if(kind == program_kind::response)
-                    input_markers.push_back({ marker, *location.command_index,
+                    input_records.inputs.push_back({ marker, *location.command_index,
                         debug_command_name<std::remove_cvref_t<decltype(command)>> });
             }
-#endif
             compile(writer, command, mode);
         };
         for(const auto& command : commands)
@@ -172,7 +159,8 @@ namespace givm
         const issued_id_map& id_map,
         const detail::compile_definitions& definitions,
         compile_mode mode,
-        std::vector<compile_error>& errors
+        std::vector<compile_error>& errors,
+        detail::program_input_records& input_records
     )
     {
         auto& bucket = bucket_for<TDefinitionType>();
@@ -181,10 +169,8 @@ namespace givm
             own_history = definition.id;
         definition_compile_context context{ id_map, definitions, default_reactions_, program_, *definition.declarations,
             mode, history_layouts_, own_history, true, errors,
-            compile_stage::definition, definition_name{ definition_types::index_of<TDefinitionType>(), std::string{ bucket.names[definition.id.value()] } }
-#ifndef NDEBUG
-            , input_markers_, debug_programs_, debug_library_identity_
-#endif
+            compile_stage::definition, definition_name{ definition_types::index_of<TDefinitionType>(), std::string{ bucket.names[definition.id.value()] } },
+            input_records
         };
         auto& data = bucket.data[definition.id.value()];
         const auto errors_before = errors.size();
@@ -206,7 +192,7 @@ namespace givm
     }
 
     void definition_library::prepare_history_layouts(const detail::compile_definitions& definitions, const issued_id_map& ids, compile_mode mode,
-        std::vector<compile_error>& errors)
+        std::vector<compile_error>& errors, detail::program_input_records& input_records)
     {
         history_layouts_.resize(ids.definition_count<history_summary_definition>());
         const auto& summaries = std::get<definition_types::index_of<history_summary_definition>()>(definitions);
@@ -216,10 +202,7 @@ namespace givm
             const auto id = definition.id;
             definition_compile_context context{ ids, definitions, default_reactions_, program_, *definition.declarations, mode, history_layouts_, id, false,
                 errors, compile_stage::history_layout, definition_name{ definition_types::index_of<history_summary_definition>(),
-                    std::string{ definition.bucket->names[id.value()] } }
-#ifndef NDEBUG
-                , input_markers_, debug_programs_, debug_library_identity_
-#endif
+                    std::string{ definition.bucket->names[id.value()] } }, input_records
             };
             auto& layout = history_layouts_[id.value()];
             std::vector<std::size_t> field_indices;
@@ -394,21 +377,17 @@ namespace givm
     {
         program_entry result{ program_.size() };
         detail::program_writer writer{ program_ };
+        const auto index = input_records_.programs.size();
 #ifndef NDEBUG
-        result.library_identity_ = library_identity_;
-        result.debug_index_ = debug_programs_.size();
-        debug_programs_.push_back({ source_, program_count_, program_.size(), input_markers_.size(), 0 });
+        result.library_identity_ = input_records_.library_identity;
+        result.debug_index_ = index;
 #endif
-        [[maybe_unused]] const auto inputs_count =
+        input_records_.programs.push_back({ source_, program_count_, program_.size(), input_records_.inputs.size(), 0 });
+        const auto inputs_count =
             detail::append_commands(writer, commands, mode_, *this, program_kind::response, errors_,
-                { compile_stage::program, source_, program_kind::response, program_count_++, {} }
-#ifndef NDEBUG
-                , library_identity_, debug_programs_, input_markers_
-#endif
+                { compile_stage::program, source_, program_kind::response, program_count_++, {} }, input_records_
             );
-#ifndef NDEBUG
-        debug_programs_[result.debug_index_].inputs_count = inputs_count;
-#endif
+        input_records_.programs[index].inputs_count = inputs_count;
         if(std::ranges::none_of(commands, [](const auto& command)
             { return std::holds_alternative<return_response>(command); }))
             detail::compile(writer, return_response{ return_response::null }, mode_);
@@ -448,54 +427,40 @@ namespace givm
             std::visit([&](auto&& reason) { errors.push_back({ { compile_stage::source_selection, {}, {}, {}, {} }, std::move(reason) }); }, error);
         if(not errors.empty()) return result_type{ std::unexpected{ std::move(errors) } };
         definition_library library{ id_map, basics };
+        detail::program_input_records input_records;
+#ifndef NDEBUG
+        input_records.library_identity = library.debug_library_identity_;
+#endif
         const auto definitions = library.prepare_definitions(sources, id_map);
-        library.prepare_history_layouts(definitions, id_map, mode, errors);
+        library.prepare_history_layouts(definitions, id_map, mode, errors, input_records);
         const detail::definition_source_declarations root_declarations{};
         definition_compile_context context{ id_map, definitions, library.default_reactions_, library.program_, root_declarations,
-            mode, library.history_layouts_, {}, true, errors, compile_stage::program, std::nullopt
-#ifndef NDEBUG
-            , library.input_markers_, library.debug_programs_, library.debug_library_identity_
-#endif
+            mode, library.history_layouts_, {}, true, errors, compile_stage::program, std::nullopt, input_records
         };
         detail::program_writer writer{ library.program_ };
         detail::append_commands(writer, initialization_program, mode,
-            context, program_kind::initialization, errors, { compile_stage::program, {}, program_kind::initialization, 0, {} }
-#ifndef NDEBUG
-            , library.debug_library_identity_, library.debug_programs_, library.input_markers_
-#endif
+            context, program_kind::initialization, errors, { compile_stage::program, {}, program_kind::initialization, 0, {} }, input_records
         );
         const detail::execution_position round_start = writer.position();
         detail::compile(writer, detail::round_program_begin{}, mode);
         const detail::execution_position round_entry = writer.position();
         detail::append_commands(writer, round_program, mode,
-            context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} }
-#ifndef NDEBUG
-            , library.debug_library_identity_, library.debug_programs_, library.input_markers_
-#endif
+            context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} }, input_records
         );
         detail::compile(writer, detail::round_program_repeat{ round_start, round_entry }, mode);
         definition_types::each([&]<class TCategory>
         {
             for(const auto& definition : std::get<definition_types::index_of<TCategory>()>(definitions))
-                library.compile_source(definition, id_map, definitions, mode, errors);
+                library.compile_source(definition, id_map, definitions, mode, errors, input_records);
         });
         if(not errors.empty()) return result_type{ std::unexpected{ std::move(errors) } };
+#ifndef NDEBUG
+        library.input_markers_ = std::move(input_records.inputs);
+        library.debug_programs_ = std::move(input_records.programs);
+#endif
         library.complete_dynamic_queries();
         detail::finalize_program(library.program_);
         return result_type{ definition_compile_result{ .library = std::move(library), .id_map = std::move(id_map) } };
     }
 
-    std::expected<definition_compile_result, std::vector<compile_error>> compile(
-        const definition_source_library& sources, const reaction_definition_names& basics,
-        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode)
-    {
-        return definition_library::compile(sources, basics, initialization_program, round_program, mode);
-    }
-
-    std::expected<definition_compile_result, std::vector<compile_error>> compile(
-        const definition_source_library& sources, const reaction_definition_names& basics, const definition_selection& selection,
-        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode)
-    {
-        return definition_library::compile(sources, basics, selection, initialization_program, round_program, mode);
-    }
 }

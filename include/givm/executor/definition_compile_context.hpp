@@ -297,16 +297,12 @@ namespace givm
             bool history_layouts_ready,
             std::vector<compile_error>& errors,
             compile_stage stage,
-            std::optional<definition_name> source
-#ifndef NDEBUG
-            , std::vector<detail::debug_input_requirement>& input_markers, std::vector<detail::debug_program_info>& debug_programs, std::size_t library_identity
-#endif
+            std::optional<definition_name> source,
+            detail::program_input_records& input_records
         )
         : id_map_{ id_map }, definitions_{ definitions }, default_reactions_{ default_reactions }, program_{ program }, declarations_{ declarations }, mode_{ mode },
-          history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }, errors_{ errors }, stage_{ stage }, source_{ std::move(source) }
-#ifndef NDEBUG
-        , input_markers_{ input_markers }, debug_programs_{ debug_programs }, library_identity_{ library_identity }
-#endif
+          history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }, errors_{ errors }, stage_{ stage }, source_{ std::move(source) },
+          input_records_{ input_records }
         {}
 
         static bool contains(const std::vector<std::string_view>& values, std::string_view value)
@@ -328,11 +324,7 @@ namespace givm
         compile_stage stage_;
         std::optional<definition_name> source_;
         std::size_t program_count_ = 0;
-#ifndef NDEBUG
-        std::vector<detail::debug_input_requirement>& input_markers_;
-        std::vector<detail::debug_program_info>& debug_programs_;
-        std::size_t library_identity_;
-#endif
+        detail::program_input_records& input_records_;
 
         friend class definition_library;
     };

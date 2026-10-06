@@ -104,7 +104,6 @@ namespace givm::detail
 
 #include <givm/macro_undef.hpp>
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes>
@@ -113,6 +112,5 @@ namespace givm::detail
         return command.player == static_cast<relative_player>(-1) ? TInputTypes::template index_of<add_dice::input_type>() : std::size_t(-1);
     }
 }
-#endif
 
 #endif

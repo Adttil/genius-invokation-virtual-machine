@@ -4,9 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#ifndef NDEBUG
 #include <vector>
-#endif
 
 #include "program_entry.hpp"
 #include "../utils/stack.hpp"
@@ -15,7 +13,6 @@ namespace givm::detail
 {
     struct program_inputs_builder;
 
-#ifndef NDEBUG
     struct program_input_description
     {
         std::size_t marker;
@@ -23,7 +20,6 @@ namespace givm::detail
         program_entry entry;
         std::vector<program_input_description> children;
     };
-#endif
 
     struct deferred_program_input
     {

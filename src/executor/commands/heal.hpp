@@ -233,7 +233,6 @@ namespace givm::detail
 
 #include <givm/macro_undef.hpp>
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes>
@@ -242,6 +241,5 @@ namespace givm::detail
         return command.target.offset == std::numeric_limits<std::int32_t>::max() ? TInputTypes::template index_of<heal::input_type>() : std::size_t(-1);
     }
 }
-#endif
 
 #endif

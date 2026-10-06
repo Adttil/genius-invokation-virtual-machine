@@ -15,13 +15,19 @@ namespace givm
         issued_id_map id_map;
     };
 
-    std::expected<definition_compile_result, std::vector<compile_error>> compile(
+    inline std::expected<definition_compile_result, std::vector<compile_error>> compile(
         const definition_source_library& sources, const reaction_definition_names& basics,
-        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode)
+    {
+        return definition_library::compile(sources, basics, initialization_program, round_program, mode);
+    }
 
-    std::expected<definition_compile_result, std::vector<compile_error>> compile(
+    inline std::expected<definition_compile_result, std::vector<compile_error>> compile(
         const definition_source_library& sources, const reaction_definition_names& basics, const definition_selection& selection,
-        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode)
+    {
+        return definition_library::compile(sources, basics, selection, initialization_program, round_program, mode);
+    }
 
     template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
     requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>

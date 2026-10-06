@@ -36,11 +36,11 @@ namespace givm::detail
 
     inline void compile(program_writer& writer, const givm::defer_program& command, compile_mode)
     {
-        if(command.input.entry)
+        if(command.input.entry())
         {
             writer.write(execute_fn{ execute_defer_program<true> });
-            const auto bytes = command.input.inputs.bytes();
-            writer.write(deferred_program_input{ command.input.entry, bytes.size() });
+            const auto bytes = command.input.bytes();
+            writer.write(deferred_program_input{ command.input.entry(), bytes.size() });
             writer.write_bytes(bytes);
         }
         else writer.write(execute_fn{ execute_defer_program<false> });
@@ -49,19 +49,17 @@ namespace givm::detail
     inline std::vector<defer_program::error_type> check(
         const defer_program& command, const definition_compile_context&, program_kind kind)
     {
-        if(kind != program_kind::response && not command.input.entry)
+        if(kind != program_kind::response && not command.input.entry())
             return { { defer_program_error::reason::dynamic_input_in_root } };
         return {};
     }
 
-#ifndef NDEBUG
     template<class TInputTypes>
     constexpr std::size_t input_marker(const defer_program& command) noexcept
     {
-        return not command.input.entry
+        return not command.input.entry()
             ? TInputTypes::template index_of<defer_program_input>() : std::size_t(-1);
     }
-#endif
 }
 
 #endif

@@ -108,7 +108,6 @@ namespace givm::detail
 }
 
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes>
@@ -117,6 +116,5 @@ namespace givm::detail
         return command.count == std::numeric_limits<std::uint32_t>::max() ? TInputTypes::template index_of<discard_deck_cards::input_type>() : std::size_t(-1);
     }
 }
-#endif
 
 #endif

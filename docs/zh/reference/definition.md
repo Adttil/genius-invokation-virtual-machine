@@ -24,6 +24,7 @@
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
 | [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
 | [`program_inputs`](definition/program_inputs.md) | 已准备并拥有的程序输入 |
+| [`fixed_defer_program_input`](definition/fixed_defer_program_input.md) | 固定延迟命令的编译用参数 |
 | [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |
 | [`history_scalar_field<T>`](definition/history_summary.md#类) | 历史摘要的标量字段描述 |
 | [`history_array_field<T>`](definition/history_summary.md#类) | 历史摘要的数组字段描述 |
@@ -64,6 +65,7 @@
 | [`link_deck`](definition/link_deck.md) | 按名称准备牌组 |
 | [`query_default`](definition/query_default.md) | 定义源未提供查询时的默认结果 |
 | [`defer_invoke`](definition/defer_invoke.md) | 准备延迟程序的入口及参数 |
+| [`fixed_defer_invoke`](definition/fixed_defer_invoke.md) | 准备固定延迟命令的入口及编译校验信息 |
 | [`pack_inputs`](definition/pack_inputs.md) | 将专用输入对象打包为拥有型输入 |
 | [`concat_inputs`](definition/concat_inputs.md) | 按顺序合并已准备的输入片段 |
 

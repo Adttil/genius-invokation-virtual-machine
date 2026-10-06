@@ -44,14 +44,12 @@ namespace givm::detail
         return {};
     }
 
-#ifndef NDEBUG
     template<class TInputTypes>
     constexpr std::size_t input_marker(const return_response& command) noexcept
     {
         return command.index == return_response::dynamic
             ? TInputTypes::template index_of<return_response_input>() : std::size_t(-1);
     }
-#endif
 }
 
 #endif

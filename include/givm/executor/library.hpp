@@ -560,11 +560,12 @@ namespace givm
             const issued_id_map& id_map,
             const detail::compile_definitions& definitions,
             compile_mode mode,
-            std::vector<compile_error>& errors
+            std::vector<compile_error>& errors,
+            detail::program_input_records& input_records
         );
 
         void prepare_history_layouts(const detail::compile_definitions& definitions, const issued_id_map& ids, compile_mode mode,
-            std::vector<compile_error>& errors);
+            std::vector<compile_error>& errors, detail::program_input_records& input_records);
 
         static tag_mask make_tag_mask(
             const std::vector<std::string_view>& tags,

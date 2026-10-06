@@ -143,7 +143,6 @@ namespace givm::detail
 
 #include <givm/macro_undef.hpp>
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes>
@@ -152,6 +151,5 @@ namespace givm::detail
         return not command.definition ? TInputTypes::template index_of<use_skill::input_type>() : std::size_t(-1);
     }
 }
-#endif
 
 #endif

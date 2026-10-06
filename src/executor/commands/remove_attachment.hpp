@@ -215,7 +215,6 @@ namespace givm::detail
 
 #include <givm/macro_undef.hpp>
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes>
@@ -225,6 +224,5 @@ namespace givm::detail
         return definition && not *definition ? TInputTypes::template index_of<remove_attachment::input_type>() : std::size_t(-1);
     }
 }
-#endif
 
 #endif

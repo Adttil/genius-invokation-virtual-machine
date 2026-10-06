@@ -21,14 +21,50 @@ namespace
     constexpr givm::character_id opponent{ givm::player_id{ 1 }, 0 };
     constexpr std::size_t target_count = 257;
     enum class preparation { fixed, dynamic, concatenated, bad_concatenation, bad_fixed };
+    enum class fixed_error { missing, extra, order, response_index, nested_null, nested_type };
 
-    givm::defer_program_input make_owned_deferred(givm::program_entry relay, givm::program_entry leaf)
+    struct fixed_error_source
     {
+        using definition_category = givm::combat_status_view;
+        fixed_error error;
+        std::string_view name() const { return "FixedInputDiagnostics"; }
+        givm::program_entry compile(givm::definition_compile_context& context) const
+        {
+            using namespace givm;
+            const auto target = context.add_program(set_energy{}, return_response{});
+            const auto relay = context.add_program(defer_program{});
+            fixed_defer_program_input input;
+            const set_energy_input energy{ actor, 1 };
+            const return_response_input result{ 17 };
+            switch(error)
+            {
+            case fixed_error::missing: input = fixed_defer_invoke(target, energy); break;
+            case fixed_error::extra: input = fixed_defer_invoke(target, energy, result, result); break;
+            case fixed_error::order: input = fixed_defer_invoke(target, result, energy); break;
+            case fixed_error::response_index:
+                input = fixed_defer_invoke(target, energy, return_response_input{ return_response::dynamic }); break;
+            case fixed_error::nested_null:
+                input = fixed_defer_invoke(relay, fixed_defer_invoke(program_entry{})); break;
+            case fixed_error::nested_type:
+                input = fixed_defer_invoke(relay, fixed_defer_invoke(target, result, energy)); break;
+            }
+            return context.add_program(defer_program{ input });
+        }
+    };
+
+    template<bool Fixed = false>
+    auto make_owned_deferred(givm::program_entry relay, givm::program_entry leaf)
+    {
+        const auto pack = []<class... T>(givm::program_entry entry, const T&... inputs)
+        {
+            if constexpr(Fixed) return givm::fixed_defer_invoke(entry, inputs...);
+            else return givm::defer_invoke(entry, inputs...);
+        };
         std::vector<givm::character_id> targets(target_count, actor);
-        auto invocation = givm::defer_invoke(leaf, givm::modify_energy_input{ targets, 1 });
+        auto invocation = pack(leaf, givm::modify_energy_input{ targets, 1 });
         // Packing must already own the range, before the eventual invoke or compilation.
         std::ranges::fill(targets, opponent);
-        return givm::defer_invoke(relay, std::move(invocation));
+        return pack(relay, invocation);
     }
 
     struct input_source
@@ -51,8 +87,8 @@ namespace
             if(mode == preparation::fixed || mode == preparation::bad_fixed)
             {
                 const auto invocation = mode == preparation::bad_fixed
-                    ? defer_invoke(relay, defer_invoke(leaf, set_energy_input{ actor, 7 }))
-                    : make_owned_deferred(relay, leaf);
+                    ? fixed_defer_invoke(relay, fixed_defer_invoke(leaf, set_energy_input{ actor, 7 }))
+                    : make_owned_deferred<true>(relay, leaf);
                 const auto main = context.add_program(
                     set_energy{ .target = { relative_player::self, 0 }, .value = 2 },
                     defer_program{ invocation }, replace_cards{ .player = actor.player_id },
@@ -161,7 +197,8 @@ TEST_CASE("concatenated inputs report the logical position of a later mismatched
     CHECK(table[actor].state().energy == 0);
     CHECK(table[opponent].state().energy == 0);
 }
-TEST_CASE("fixed deferred payload type mismatches are compile diagnostics", "[program-input][debug][ownership]")
+#endif
+TEST_CASE("fixed deferred payload type mismatches are compile diagnostics", "[program-input][ownership]")
 {
     const auto source = givm::test::with_passive_skill(input_source{ preparation::bad_fixed });
     auto sources = givm_test::make_source_library();
@@ -184,5 +221,48 @@ TEST_CASE("fixed deferred payload type mismatches are compile diagnostics", "[pr
     }
     CHECK(found);
 }
-#endif
+
+TEST_CASE("fixed deferred protocol errors return compile diagnostics in every build mode", "[program-input][compile][ownership]")
+{
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
+    const auto error = GENERATE(fixed_error::missing, fixed_error::extra, fixed_error::order,
+        fixed_error::response_index, fixed_error::nested_null, fixed_error::nested_type);
+    CAPTURE(mode, error);
+    const fixed_error_source source{ error };
+    auto sources = givm_test::make_source_library();
+    REQUIRE(sources.add(source));
+    const auto result = givm::compile(sources, givm_test::basic_sources,
+        std::tuple{}, std::tuple{}, mode);
+    REQUIRE_FALSE(result);
+    REQUIRE(result.error().size() == 1);
+    const auto& diagnostic = result.error().front();
+    REQUIRE(diagnostic.location.source);
+    CHECK(diagnostic.location.source->name == std::string{ source.name() });
+    CHECK(diagnostic.location.command_index == 0);
+    const auto* fixed = std::get_if<givm::fixed_program_input_error>(&diagnostic.reason);
+    REQUIRE(fixed);
+    if(error == fixed_error::missing || error == fixed_error::extra)
+    {
+        const auto* count = std::get_if<givm::program_input_count_mismatch>(&fixed->reason);
+        REQUIRE(count);
+        CHECK(count->expected == 2);
+        CHECK(count->actual == (error == fixed_error::missing ? 1 : 3));
+    }
+    else if(error == fixed_error::response_index)
+    {
+        const auto* index = std::get_if<givm::invalid_response_index>(&fixed->reason);
+        REQUIRE(index);
+        CHECK(index->index == givm::return_response::dynamic);
+    }
+    else if(error == fixed_error::nested_null)
+        CHECK(std::get<givm::invalid_program_entry>(fixed->reason) == givm::invalid_program_entry::null_entry);
+    else
+    {
+        const auto* mismatch = std::get_if<givm::program_input_type_mismatch>(&fixed->reason);
+        REQUIRE(mismatch);
+        CHECK(mismatch->input_index == 0);
+        CHECK(mismatch->expected == "set_energy_input");
+        CHECK(mismatch->actual == "return_response_input");
+    }
+}
 }

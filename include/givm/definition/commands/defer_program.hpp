@@ -23,12 +23,29 @@ namespace givm
         program_inputs inputs;
     };
 
+    class fixed_defer_program_input
+    {
+    public:
+        fixed_defer_program_input() noexcept = default;
+
+        program_entry entry() const noexcept { return entry_; }
+        std::span<const unsigned char> bytes() const noexcept { return inputs_.bytes(); }
+
+    private:
+        program_entry entry_;
+        program_inputs inputs_;
+        std::vector<detail::program_input_description> descriptions_;
+
+        friend struct detail::program_inputs_builder;
+        friend class detail::program_input_validator;
+    };
+
     struct defer_program
     {
         using error_type = defer_program_error;
         using input_type = defer_program_input;
 
-        defer_program_input input{};
+        fixed_defer_program_input input{};
     };
 }
 

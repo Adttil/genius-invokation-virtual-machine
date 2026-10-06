@@ -283,7 +283,11 @@ namespace givm
                 if constexpr (AtTop) return stack_;
                 else return stack_.first;
             }
-            constexpr byte_type* end() const noexcept;
+            constexpr byte_type* end() const noexcept
+            {
+                if constexpr (AtTop) return stack_->top_ - Depth * substack_tail_size;
+                else return stack_.first->begin_ + stack_.second;
+            }
             constexpr byte_type* aligned_begin() const noexcept { return frame_view<IsMutable, T...>{ end() }.aligned_begin(); }
 
             std::conditional_t<AtTop, stack_type*, std::pair<stack_type*, size_t>> stack_;
@@ -716,14 +720,6 @@ namespace givm
 
     namespace detail
     {
-        template<bool IsMutable, bool AtTop, size_t Depth, class... T>
-        constexpr stack_frame_view<IsMutable, AtTop, Depth, T...>::byte_type*
-        stack_frame_view<IsMutable, AtTop, Depth, T...>::end() const noexcept
-        {
-            if constexpr (AtTop) return stack_->top_ - Depth * substack_tail_size;
-            else return stack_.first->begin_ + stack_.second;
-        }
-
         template<class Frame>
         class substack_view
         {

@@ -10,7 +10,7 @@ struct defer_program
     using error_type = defer_program_error;
     using input_type = defer_program_input;
 
-    defer_program_input input{};
+    fixed_defer_program_input input{};
 };
 ```
 
@@ -27,13 +27,13 @@ struct defer_program
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `input` | [`defer_program_input`](../command_inputs/defer_program_input.md) | 固定目标入口及参数；其中入口为空时由动态输入整体指定 |
+| `input` | [`fixed_defer_program_input`](../fixed_defer_program_input.md) | 固定目标入口及参数；其中入口为空时由动态输入整体指定 |
 
 ## 注意
 
 `defer_program{}` 消费一个动态输入，通过 [`defer_invoke`](../defer_invoke.md) 同时提供目标入口和参数，例如 `context.invoke(parent, defer_invoke(child, input_a, input_b))`。
 
-固定形式为 `defer_program{defer_invoke(child, input_a, input_b)}`。它不消费父程序的输入；编译时复制目标入口和已准备的全部参数，之后不再依赖命令对象。不需要参数时使用 `defer_invoke(child)`。固定和动态形式均整体指定入口与参数。
+固定形式为 `defer_program{fixed_defer_invoke(child, input_a, input_b)}`。它不消费父程序的输入；编译时检查参数的数量、类型、顺序和嵌套关系，再复制目标入口和全部参数字节，之后不再依赖命令对象。不需要参数时使用 `fixed_defer_invoke(child)`。固定和动态形式均整体指定入口与参数。
 
 目标程序与普通响应使用同一个 [`add_program`](../../executor/definition_compile_context/add_program.md)、入口和命令输入协议。没有延迟专用的程序类型。执行目标程序时完成其末段及派生结算，然后继续其他后续工作；其返回编号被忽略。
 

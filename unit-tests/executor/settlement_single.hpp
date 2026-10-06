@@ -41,7 +41,7 @@ namespace
             const auto delayed = context.add_program(modify_energy{ .target = { relative_player::self, 0 }, .delta = 2 },
                 return_response{ .index = 15 });
             return { log,
-                context.add_program(modify_energy{}, defer_program{ defer_invoke(delayed) }, return_response{ .index = 7 }),
+                context.add_program(modify_energy{}, defer_program{ fixed_defer_invoke(delayed) }, return_response{ .index = 7 }),
                 context.add_program(remove_summon{}, return_response{ .index = 7 }) };
         }
         static givm::summon_state query(const definition_type&, const givm::summon_state_limit&) { return { 20, 20 }; }

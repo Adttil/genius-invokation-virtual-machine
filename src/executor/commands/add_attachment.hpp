@@ -109,7 +109,6 @@ namespace givm::detail
 }
 
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes>
@@ -118,6 +117,5 @@ namespace givm::detail
         return not command.definition ? TInputTypes::template index_of<add_attachment::input_type>() : std::size_t(-1);
     }
 }
-#endif
 
 #endif

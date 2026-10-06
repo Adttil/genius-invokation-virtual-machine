@@ -16,6 +16,10 @@ namespace givm::detail
     template<class T>
     concept command_input = requires { command_input_types::index_of<std::remove_cvref_t<T>>(); };
 
+    template<class T>
+    concept fixed_command_input = (command_input<T> && not std::same_as<std::remove_cvref_t<T>, defer_program_input>)
+        || std::same_as<std::remove_cvref_t<T>, fixed_defer_program_input>;
+
     template<command_input T>
     constexpr auto command_input_members(const T& input) noexcept
     {
@@ -86,7 +90,14 @@ namespace givm::detail
         append_input_bytes(inputs, input.inputs.bytes());
     }
 
-#ifndef NDEBUG
+    template<class TDestination>
+    inline void push_command_input(TDestination& destination, const fixed_defer_program_input& input)
+    {
+        auto frame = destination.push(input.entry(), substack());
+        auto inputs = get<1>(frame);
+        append_input_bytes(inputs, input.bytes());
+    }
+
     template<command_input T>
     inline program_input_description describe_command_input(const T& input)
     {
@@ -102,10 +113,35 @@ namespace givm::detail
         }
         return result;
     }
-#endif
 
     struct program_inputs_builder
     {
+        template<command_input T>
+        static program_input_description describe_fixed_input(const T& input)
+        {
+            return describe_command_input(input);
+        }
+
+        static program_input_description describe_fixed_input(const fixed_defer_program_input& input)
+        {
+            return { command_input_types::index_of<defer_program_input>(), 0, input.entry_, input.descriptions_ };
+        }
+
+        template<fixed_command_input... T>
+        static fixed_defer_program_input pack_fixed(program_entry entry, const T&... inputs)
+        {
+            fixed_defer_program_input result;
+            result.entry_ = entry;
+            result.descriptions_.reserve(sizeof...(T));
+            (result.descriptions_.push_back(describe_fixed_input(inputs)), ...);
+            const auto values = std::forward_as_tuple(inputs...);
+            [&]<std::size_t... I>(std::index_sequence<I...>)
+            {
+                (push_command_input(result.inputs_.frames_, std::get<sizeof...(T) - 1 - I>(values)), ...);
+            }(std::index_sequence_for<T...>{});
+            return result;
+        }
+
         template<command_input... T>
         static program_inputs pack(const T&... inputs)
         {
@@ -164,6 +200,12 @@ namespace givm
     inline defer_program_input defer_invoke(program_entry entry, const T&... inputs)
     {
         return { entry, pack_inputs(inputs...) };
+    }
+
+    template<detail::fixed_command_input... T>
+    inline fixed_defer_program_input fixed_defer_invoke(program_entry entry, const T&... inputs)
+    {
+        return detail::program_inputs_builder::pack_fixed(entry, inputs...);
     }
 }
 

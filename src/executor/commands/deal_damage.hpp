@@ -360,7 +360,6 @@ namespace givm::detail
 
 #include <givm/macro_undef.hpp>
 
-#ifndef NDEBUG
 namespace givm::detail
 {
     template<class TInputTypes>
@@ -370,6 +369,5 @@ namespace givm::detail
             ? TInputTypes::template index_of<deal_damage_input>() : std::size_t(-1);
     }
 }
-#endif
 
 #endif

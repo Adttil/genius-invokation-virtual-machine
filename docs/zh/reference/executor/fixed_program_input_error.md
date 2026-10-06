@@ -21,6 +21,8 @@ struct fixed_program_input_error
 
 ## 注意
 
-该检查针对 [`defer_program{defer_invoke(...)}`](../definition/commands/defer_program.md) 已经提供的固定参数，包括嵌套延迟输入。未定义 `NDEBUG` 时执行，发布构建不保留诊断元数据与检查。
+该检查针对 [`defer_program{fixed_defer_invoke(...)}`](../definition/commands/defer_program.md) 已经提供的固定参数，包括嵌套延迟输入。Debug 和 Release 编译均执行，失败时作为整库编译的结构化诊断返回，不通过异常报告。
 
-响应时提供的动态输入仍在 [`invoke`](handle_context/invoke.md) 中检查，失败时抛出 [`program_input_error`](program_input_error.md)。
+参数描述在编译时使用，不写入固定程序或 Release 定义库。Debug 定义库额外保留程序输入要求，供后续动态调用检查使用。
+
+响应时提供的动态输入仅在 Debug 的 [`invoke`](handle_context/invoke.md) 中检查，失败时抛出 [`program_input_error`](program_input_error.md)。

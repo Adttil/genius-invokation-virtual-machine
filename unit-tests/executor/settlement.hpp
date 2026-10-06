@@ -57,7 +57,7 @@ namespace
             {
             case scenario::checkpoints:
                 main = context.add_program(modify_energy{}, defer_program{}, end_segment{}, modify_energy{},
-                    settle{}, observe, modify_energy{}, defer_program{ defer_invoke(leaf, modify_energy_input{ own_targets, 16 }) },
+                    settle{}, observe, modify_energy{}, defer_program{ fixed_defer_invoke(leaf, modify_energy_input{ own_targets, 16 }) },
                     settle{}, observe, return_response{});
                 break;
             case scenario::nested_pause:
@@ -66,9 +66,9 @@ namespace
                     modify_energy{ .target = { relative_player::self, 0 }, .delta = -4 });
                 main = context.add_program(end_segment{}, settle{}, settle{},
                     defer_program{}, end_segment{}, end_segment{},
-                    defer_program{ defer_invoke(tail) }, end_segment{}, settle{},
+                    defer_program{ fixed_defer_invoke(tail) }, end_segment{}, settle{},
                     modify_energy{ .target = { relative_player::self, 0 }, .delta = 16 },
-                    defer_program{ defer_invoke(tail) }, settle{}, end_segment{}, settle{}, return_response{});
+                    defer_program{ fixed_defer_invoke(tail) }, settle{}, end_segment{}, settle{}, return_response{});
                 break;
             }
             case scenario::forbid_segment:

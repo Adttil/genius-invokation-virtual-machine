@@ -78,6 +78,8 @@ static givm::program_entry handle(
 
 一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算。命令输入中的数组内容在调用时复制，返回后不再借用原数组；原数组须在复制期间保持有效，不能因本次调用扩容而失效。定义源须保证输入数量、具体类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时，在写入前检查入口、提交方式、重复提交及输入数量、类型与顺序，失败时抛出 [`program_input_error`](../executor/program_input_error.md)；数组长度不参与类型匹配。命令的值与执行前提在实际执行时检查，错误以 [`command_input_error`](../executor/command_input_error.md) 报告。发布构建不保留这些检查或对应诊断元数据，违反约定属于未定义行为。脚本适配器可在两种构建模式下使用相同的输入对象接口，不需要脚本自行生成检查信息或处理字节布局。
 
+固定延迟命令使用 [`fixed_defer_invoke`](fixed_defer_invoke.md) 打包参数，编译时在 Debug 和 Release 均检查参数协议。它的参数描述仅供编译使用，不写入固定程序；与运行期 `invoke` 的 Debug 检查分别管理。
+
 调试异常不提供整个响应或推进调用的回滚保证，捕获后不应在原执行现场继续推进。尾调用和借用对象的生命周期仍由定义源保证，不自动检查。
 
 入口是否执行以及何时执行由触发事件的操作决定。切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md)、技能的 [`cost_of_skill`](events/cost_of_skill.md) 与特技的 [`cost_of_technique`](events/cost_of_technique.md) 响应在报价时准备后续效果，确认行动后才执行。这些费用响应提交时必须使用首参数为 `givm::substack_t{}` 的 `invoke` 重载，没有输入的程序也不例外；使用普通重载时，Debug 抛出 `program_input_error`；Release 不检查，违反协议属于未定义行为。报价期间牌桌不变，先前响应只通过费用事件影响后续响应；费用响应不得使用随机数，违反此前提属于未定义行为。报价给出具体来源及完整目标，同一行动窗口内同一操作和目标组合只计算一次，返回的标识可反复读取结果；Debug 检查报价状态，Release 不搜索去重。
