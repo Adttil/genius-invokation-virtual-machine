@@ -32,12 +32,12 @@ namespace givm::detail
             ++summon_count;
             if(existing.definition_id() != input.definition)
                 continue;
-            if(not definition.can_handle<resummoning, summon_view>())
+            if(not definition.can_handle<this_summon_resummon, summon_view>())
                 return {};
-            resummoning event{ input.state };
+            this_summon_resummon event{ input.state };
             prepare_single_response(event, existing.id(), table, context, resume);
-            if(not continue_single_response<resummoning, summon_id>(library, table, context, random)) return continue_execution;
-            pop_single_response<resummoning, summon_id>(context);
+            if(not continue_single_response<this_summon_resummon, summon_id>(library, table, context, random)) return continue_execution;
+            pop_single_response<this_summon_resummon, summon_id>(context);
             return std::nullopt;
         }
 
@@ -50,9 +50,9 @@ namespace givm::detail
     inline execution_state finish_resummoning(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        if(not continue_single_response<resummoning, summon_id>(library, table, context, random)) return continue_execution;
-        pop_single_response<resummoning, summon_id>(context);
-        return context.advance(response_extent<resummoning>);
+        if(not continue_single_response<this_summon_resummon, summon_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<this_summon_resummon, summon_id>(context);
+        return context.advance(response_extent<this_summon_resummon>);
     }
 
     template<bool Fixed>
@@ -80,7 +80,7 @@ namespace givm::detail
 
         if(const auto state = prepare_summoning(library, table, context, random, input, context.position()))
             return *state;
-        return context.advance(response_extent<resummoning>);
+        return context.advance(response_extent<this_summon_resummon>);
     }
 
     inline void compile(program_writer& writer, const givm::summon& command, compile_mode)
@@ -92,7 +92,7 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_summon<false> });
-        compile_single_response<resummoning, summon_id>(writer, finish_resummoning);
+        compile_single_response<this_summon_resummon, summon_id>(writer, finish_resummoning);
     }
 }
 

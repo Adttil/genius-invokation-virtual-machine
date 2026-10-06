@@ -32,20 +32,20 @@ namespace
     struct summon_source
     {
         using definition_category = givm::summon_view;
-        struct definition_type { call_log* log; givm::program_entry body; givm::program_entry removal; };
+        struct definition_type { call_log* log; givm::normal_effect body; givm::normal_effect removal; };
         call_log* log;
         std::string_view name() const { return "SingleSettlementSummon"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
             using namespace givm;
-            const auto delayed = context.add_program(modify_energy{ .target = { relative_player::self, 0 }, .delta = 2 },
+            const auto delayed = context.add_normal_effect(modify_energy{ .target = { relative_player::self, 0 }, .delta = 2 },
                 return_response{ .index = 15 });
             return { log,
-                context.add_program(modify_energy{}, defer_program{ fixed_defer_invoke(delayed) }, return_response{ .index = 7 }),
-                context.add_program(remove_summon{}, return_response{ .index = 7 }) };
+                context.add_normal_effect(modify_energy{}, defer_program{ fixed_defer_invoke(delayed) }, return_response{ .index = 7 }),
+                context.add_normal_effect(remove_summon{}, return_response{ .index = 7 }) };
         }
         static givm::summon_state query(const definition_type&, const givm::summon_state_limit&) { return { 20, 20 }; }
-        static givm::program_entry handle(const definition_type& data, givm::resummoning& event,
+        static givm::normal_effect handle(const definition_type& data, givm::this_summon_resummon& event,
             givm::handle_context<givm::summon_view>& context, std::uint32_t index)
         {
             using namespace givm;
@@ -67,18 +67,18 @@ namespace
     struct prepared_source
     {
         using definition_category = givm::attachment_view;
-        struct definition_type { call_log* log; givm::program_entry body; };
+        struct definition_type { call_log* log; givm::normal_effect body; };
         call_log* log;
         std::string_view name() const { return "SingleSettlementPreparation"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
             if(log->switch_during_effect)
-                return { log, context.add_program(givm::modify_energy{},
+                return { log, context.add_normal_effect(givm::modify_energy{},
                     givm::set_active_character{ .target = { givm::relative_player::self, 1 } },
                     givm::return_response{ .index = 7 }) };
-            return { log, context.add_program(givm::modify_energy{}, givm::return_response{ .index = 7 }) };
+            return { log, context.add_normal_effect(givm::modify_energy{}, givm::return_response{ .index = 7 }) };
         }
-        static givm::program_entry handle(const definition_type& data, givm::prepared_skill_effect& event,
+        static givm::normal_effect handle(const definition_type& data, givm::this_prepared_skill_use& event,
             givm::handle_context<givm::attachment_view>& context, std::uint32_t index)
         {
             using namespace givm;
@@ -100,7 +100,7 @@ namespace
     struct driver_source
     {
         using definition_category = givm::character_view;
-        struct definition_type { givm::program_entry setup; };
+        struct definition_type { givm::normal_effect setup; };
         call_log* log;
         std::string_view name() const { return "SingleSettlementDriver"; }
         auto summon_dependencies() const { return std::array{ std::string_view{ "SingleSettlementSummon" } }; }
@@ -109,17 +109,17 @@ namespace
         {
             using namespace givm;
             if(log->prepared)
-                return { context.add_program(add_attachment{
+                return { context.add_normal_effect(add_attachment{
                     .definition = context.resolve_id<attachment_view>("SingleSettlementPreparation") }) };
             const auto definition = context.resolve_id<summon_view>("SingleSettlementSummon");
-            return { context.add_program(add_summon{ .definition = definition, .state = { 1, 1 } },
+            return { context.add_normal_effect(add_summon{ .definition = definition, .state = { 1, 1 } },
                 summon{ .definition = definition, .state = { 7, 3 } }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 10000, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, givm::round_started&,
+        static givm::normal_effect handle(const definition_type& data, givm::round_started&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t)
         {
             return context.invoke(data.setup);

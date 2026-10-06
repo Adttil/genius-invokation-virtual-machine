@@ -45,7 +45,7 @@ struct generate_combat_status
 在目标范围查找首个有效、定义 ID 相同的实体：
 
 - 没有匹配实体时，使用裁剪后的状态创建实体。
-- 已有匹配实体时，仅向该实体发送 [combat_status_regeneration](../events/combat_status_regeneration.md)，携带本次裁剪后的状态；响应可从自身读取原有状态。
+- 已有匹配实体时，仅向该实体发送 [this_combat_status_regenerate](../events/this_combat_status_regenerate.md)，携带本次裁剪后的状态；响应可从自身读取原有状态。
 - 返回的响应程序完整结算后，本命令结束。未提供响应或返回空入口时，不再追加实体。多个同定义实体也只通知首个。
 
 已有实体的响应可以通过 [modify_combat_status_state](modify_combat_status_state.md)、[set_combat_status_state](set_combat_status_state.md)、[remove_combat_status](remove_combat_status.md) 或 [add_combat_status](add_combat_status.md) 表达累加、刷新、删除重建和独立创建。

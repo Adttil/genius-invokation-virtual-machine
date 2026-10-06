@@ -70,8 +70,8 @@ struct skill_source
         return { .speed = givm::action_speed::combat, .energy = 1 };
     }
 
-    static givm::program_entry handle(
-        const int&, givm::skill_effect&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+    static givm::normal_effect handle(
+        const int&, givm::this_skill_use&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {
         return {};
     }

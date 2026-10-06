@@ -37,8 +37,8 @@ namespace
         struct definition_type
         {
             self_log* log;
-            givm::program_entry outer;
-            givm::program_entry nested;
+            givm::normal_effect outer;
+            givm::normal_effect nested;
             std::uint32_t health;
         };
         self_log* log;
@@ -56,13 +56,13 @@ namespace
                 .source = { givm::relative_player::self },
                 .target = { givm::relative_player::opponent },
                 .value = 2, .type = givm::damage_type::physical } };
-            return { log, context.add_program(std::tuple{
+            return { log, context.add_normal_effect(std::tuple{
                 givm::draw_cards{ .position = 0, .count = 1 },
                 givm::heal{ .source = { givm::relative_player::self },
                     .target = { givm::relative_player::self }, .value = 3 },
                 outer_damage[0],
                 givm::draw_cards{ .position = 0, .count = 1 }
-            }), context.add_program(std::tuple{
+            }), context.add_normal_effect(std::tuple{
                 nested_damage[0],
                 givm::deal_damage{}, givm::deal_damage{},
                 givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 }
@@ -72,15 +72,15 @@ namespace
         {
             return { .max_health = 20, .health = data.health };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
             CHECK(context.table().state().self_player == no_self);
             CHECK(context.table().state().active_player == first);
-            return self.id().player_id == second ? context.invoke(data.outer) : givm::program_entry{};
+            return self.id().player_id == second ? context.invoke(data.outer) : givm::normal_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_drawn& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -98,8 +98,8 @@ namespace
                 givm::deal_damage_input{ std::array{ givm::damage{ .source = first_character, .target = second_character,
                     .value = 1, .type = givm::damage_type::physical } } });
         }
-        static givm::program_entry handle(const definition_type&,
-            givm::damage_preparation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type&,
+            givm::damage_preparation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
             if(self.id().player_id != first) return {};
@@ -109,7 +109,7 @@ namespace
             if(event.value != 1) CHECK(event.target.player_id != owner);
             return {};
         }
-        static givm::program_entry handle(const definition_type&,
+        static givm::normal_effect handle(const definition_type&,
             givm::healed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -155,20 +155,20 @@ namespace
         struct definition_type
         {
             payment_log* log;
-            givm::program_entry payment;
+            givm::preview_effect payment;
         };
         payment_log* log;
         std::string_view name() const { return "OtherPlayerPayment"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
+            return { log, context.add_preview_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::cost_of_switch& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data,
+            givm::cost_of_switch& event, givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             const auto self = context.entity().character();
             ++data.log->previews;
@@ -177,9 +177,9 @@ namespace
             CHECK(context.table().state().self_player == no_self);
             event.requirement.dice_requirement.any = 0;
             event.requirement.speed = givm::action_speed::fast;
-            return context.invoke(givm::substack_t{}, data.payment);
+            return context.invoke(data.payment);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_drawn& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->draws;

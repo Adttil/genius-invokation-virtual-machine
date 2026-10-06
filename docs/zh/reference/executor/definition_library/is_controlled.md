@@ -57,12 +57,12 @@ struct effect_source
     std::string_view name() const { return "freeze"; }
     auto attachment_dependencies() const { return std::array{ givm::genshin_impact::frozen_3_3_0.name() }; }
 
-    givm::program_entry compile(givm::definition_compile_context& context) const
+    givm::normal_effect compile(givm::definition_compile_context& context) const
     {
-        return context.add_program(givm::attach{ .definition = context.resolve_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name()) });
+        return context.add_normal_effect(givm::attach{ .definition = context.resolve_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name()) });
     }
 
-    static givm::program_entry handle(const givm::program_entry& entry,
+    static givm::normal_effect handle(const givm::normal_effect& entry,
         givm::battle_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
     {
         return context.invoke(entry);

@@ -47,9 +47,9 @@ namespace
             reaction_log* log;
             bool first;
             givm::tag_id tag;
-            givm::program_entry change;
-            givm::program_entry nested;
-            givm::program_entry pause;
+            givm::immediate_effect change;
+            givm::immediate_effect nested;
+            givm::normal_effect pause;
         };
         reaction_log* log;
         bool first;
@@ -58,12 +58,12 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, first, *context.find_tag(tags()[0]),
-                context.add_program(std::tuple{ givm::set_active_character{} }),
-                context.add_program(std::tuple{ givm::deal_damage{} }),
-                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
+                context.add_immediate_effect(std::tuple{ givm::set_active_character{} }),
+                context.add_immediate_effect(std::tuple{ givm::deal_damage{} }),
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->recording = true;
             if(data.first)
@@ -78,8 +78,8 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             if(data.first) return {};
             event.cancel_reaction_bonus = data.log->mode == replacement::first || data.log->mode == replacement::second;
@@ -97,17 +97,17 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_effect& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first) return {};
@@ -115,7 +115,7 @@ namespace
             data.log->active_at_completion.push_back(context.table()[givm::player_id{ 1 }].state().active_character->index);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first || not data.log->recording) return {};
@@ -166,7 +166,7 @@ namespace
         {
             return data.state;
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();

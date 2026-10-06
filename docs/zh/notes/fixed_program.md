@@ -15,7 +15,7 @@
 
 ## 程序入口与输入
 
-`program_entry` 不以事件 Context 为模板参数。程序所需输入由其中动态命令按执行顺序组成，每个动态命令通过 `input_type` 指定输入类型，固定模式不占输入位置。输入对象数量、类型和顺序固定，帧内数组长度可变。debug 编译为各程序追加输入标记及定义、程序、命令位置信息；invoke 写入前核对入口、提交重载、是否重复提交，以及数量、类型与顺序，不符时抛出直接继承 `std::exception` 的 `program_input_error`。Release 移除诊断元数据、入口中的检查字段和检查代码，不保留这些错误路径中的显式 throw。
+`normal_effect` 不以事件 Context 为模板参数。程序所需输入由其中动态命令按执行顺序组成，每个动态命令通过 `input_type` 指定输入类型，固定模式不占输入位置。输入对象数量、类型和顺序固定，帧内数组长度可变。debug 编译为各程序追加输入标记及定义、程序、命令位置信息；invoke 写入前核对入口、提交重载、是否重复提交，以及数量、类型与顺序，不符时抛出直接继承 `std::exception` 的 `program_input_error`。Release 移除诊断元数据、入口中的检查字段和检查代码，不保留这些错误路径中的显式 throw。
 
 输入标记的选取仅用于 debug 检查，不决定编译出的操作。命令的编译重载按具体命令值选择固定参数或消费输入的执行路径。每个动态命令只有一个标记，即使其输入含有多个数组和固定部分。
 
@@ -37,7 +37,7 @@ Debug 的 `command_input_error` 检查保留在各命令实际使用参数之前
 
 ## 费用预览
 
-费用响应同样接收 `handle_context<TEntity>&`，但必须以 `context.invoke(substack_t{}, entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个操作和完整目标组合在一个行动窗口内只允许报价一次，费用可反复读取；Release 不保存“已报价”标记；Debug 保存报价状态并检查重复报价及未完成报价的使用。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
+费用响应同样接收 `handle_context<TEntity>&`，但必须以 `context.invoke(entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个操作和完整目标组合在一个行动窗口内只允许报价一次，费用可反复读取；Release 不保存“已报价”标记；Debug 保存报价状态并检查重复报价及未完成报价的使用。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
 
 报价时所有响应读取不变的 table，前一响应只通过费用事件影响后一响应。支付效果不会反馈到本次报价。缓存及复制策略见[费用预览与提交](event_dispatch/payment_commit.md)。
 
@@ -95,7 +95,7 @@ execute 自行设置后继执行位置，调度器不会统一提前递增。普
 
 ## 编译模式与文件组织
 
-整库 `compile` 显式接收 `compile_mode::normal` 或 `compile_mode::observed`。编译上下文保存该选择，所有 `add_program` 使用同一模式。两种模式生成相同的 `definition_library` 类型；内部指令类型、数量、数据类型与布局都可以不同。视图的提交与 `resume` 统一调用 executor 内部推进循环，不再选择另一套分派入口。
+整库 `compile` 显式接收 `compile_mode::normal` 或 `compile_mode::observed`。编译上下文保存该选择，所有 `add_normal_effect` 使用同一模式。两种模式生成相同的 `definition_library` 类型；内部指令类型、数量、数据类型与布局都可以不同。视图的提交与 `resume` 统一调用 executor 内部推进循环，不再选择另一套分派入口。
 
 每个 command 的公开描述、输入、独立的 `xxx_error` 类型及其 `error_string` 放在 [`definition/commands/`](../../../include/givm/definition/commands) 对应文件中；命令只用 `using error_type = xxx_error` 关联错误类型。编译检查、编译重载、调试输入标记生成与执行指令放在 [`src/executor/commands/`](../../../src/executor/commands) 的同名私有头中。两侧 [`definition/commands.hpp`](../../../include/givm/definition/commands.hpp) 与 [`src/executor/commands.hpp`](../../../src/executor/commands.hpp) 都只聚合包含，不在汇总头中实现格式化或其他函数。
 

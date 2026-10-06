@@ -34,9 +34,10 @@ namespace
         {
             scenario kind;
             log_state* log;
-            givm::program_entry main;
-            givm::program_entry leaf;
-            givm::program_entry relay;
+            givm::normal_effect main;
+            givm::immediate_effect immediate;
+            givm::normal_effect leaf;
+            givm::normal_effect relay;
         };
         scenario kind;
         log_state* log;
@@ -45,26 +46,27 @@ namespace
         {
             using namespace givm;
             const auto leaf = kind == scenario::nested_pause
-                ? context.add_program(replace_cards{ .player = player_id{ 0 } }, modify_energy{},
+                ? context.add_normal_effect(replace_cards{ .player = player_id{ 0 } }, modify_energy{},
                     return_response{ .index = 5 })
-                : context.add_program(modify_energy{}, return_response{ .index = 5 });
-            const auto relay = context.add_program(defer_program{}, return_response{ .index = 27 });
+                : context.add_normal_effect(modify_energy{}, return_response{ .index = 5 });
+            const auto relay = context.add_normal_effect(defer_program{}, return_response{ .index = 27 });
             dice_counts dice;
             dice[elemental_dice::omni] = 1;
             const add_dice observe{ .player = relative_player::self, .dice = dice };
-            program_entry main;
+            normal_effect main;
+            immediate_effect immediate;
             switch(kind)
             {
             case scenario::checkpoints:
-                main = context.add_program(modify_energy{}, defer_program{}, end_segment{}, modify_energy{},
+                main = context.add_normal_effect(modify_energy{}, defer_program{}, end_segment{}, modify_energy{},
                     settle{}, observe, modify_energy{}, defer_program{ fixed_defer_invoke(leaf, modify_energy_input{ own_targets, 16 }) },
                     settle{}, observe, return_response{});
                 break;
             case scenario::nested_pause:
             {
-                const auto tail = context.add_program(
+                const auto tail = context.add_normal_effect(
                     modify_energy{ .target = { relative_player::self, 0 }, .delta = -4 });
-                main = context.add_program(end_segment{}, settle{}, settle{},
+                main = context.add_normal_effect(end_segment{}, settle{}, settle{},
                     defer_program{}, end_segment{}, end_segment{},
                     defer_program{ fixed_defer_invoke(tail) }, end_segment{}, settle{},
                     modify_energy{ .target = { relative_player::self, 0 }, .delta = 16 },
@@ -72,23 +74,24 @@ namespace
                 break;
             }
             case scenario::forbid_segment:
-                main = context.add_program(end_segment{});
+                immediate = context.add_immediate_effect(end_segment{});
                 break;
             case scenario::forbid_settle:
-                main = context.add_program(settle{});
+                immediate = context.add_immediate_effect(settle{});
                 break;
             case scenario::truncate:
-                main = context.add_program(return_response{ .index = 9 },
+                main = context.add_normal_effect(return_response{ .index = 9 },
                     set_energy{ .target = { static_cast<relative_player>(99), 0 } }, defer_program{});
                 break;
             default:
-                main = context.add_program(defer_program{}, return_response{});
+                main = context.add_normal_effect(defer_program{}, return_response{});
                 break;
             }
-            return { kind, log, main, leaf, relay };
+            if(kind == scenario::root_inline) immediate = context.add_immediate_effect(defer_program{}, return_response{});
+            return { kind, log, main, immediate, leaf, relay };
         }
 
-        static givm::program_entry handle(const definition_type& data, givm::round_started&,
+        static givm::normal_effect handle(const definition_type& data, givm::round_started&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t index = 0)
         {
             using namespace givm;
@@ -96,7 +99,7 @@ namespace
             data.log->at_response.push_back(context.table()[own].state().energy);
             CHECK(&context.entity().table() == &context.table());
             if(data.kind == scenario::truncate)
-                return index == 0 ? context.invoke(data.main) : program_entry{};
+                return index == 0 ? context.invoke(data.main) : normal_effect{};
             if(data.kind == scenario::reuse && index == 0)
                 return context.invoke(data.leaf, modify_energy_input{ own_targets, 1 });
             if(index != (data.kind == scenario::reuse ? 5u : 0u)) return {};
@@ -120,25 +123,25 @@ namespace
                 return_response_input{ data.kind == scenario::reuse ? 10u : 4u });
         }
 
-        static givm::program_entry handle(const definition_type& data, givm::damage_calculation&,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data, givm::damage_calculation&,
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             using namespace givm;
             if(data.kind == scenario::forbid_segment || data.kind == scenario::forbid_settle)
-                return context.invoke(data.main);
+                return context.invoke(data.immediate);
             if(data.kind != scenario::root_inline) return {};
-            return context.invoke(data.main, defer_invoke(data.leaf, modify_energy_input{ own_targets, -1 }),
+            return context.invoke(data.immediate, defer_invoke(data.leaf, modify_energy_input{ own_targets, -1 }),
                 return_response_input{});
         }
 
-        static givm::program_entry handle(const definition_type& data, givm::dice_added& event,
+        static givm::normal_effect handle(const definition_type& data, givm::dice_added& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(event.player == own.player_id) data.log->energy.push_back(context.table()[own].state().energy);
             return {};
         }
 
-        static givm::program_entry handle(const definition_type& data, givm::round_end_declared&,
+        static givm::normal_effect handle(const definition_type& data, givm::round_end_declared&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t index = 0)
         {
             if(data.kind != scenario::root_inline) return {};
@@ -380,35 +383,20 @@ TEST_CASE("root deferred records survive action windows independent settlements 
     finish(copied, copied_table);
 }
 
-#ifndef NDEBUG
-TEST_CASE("inline responses cannot explicitly seal or settle their parent domain", "[settlement][debug]")
+TEST_CASE("immediate effects reject segment ends and settlement during compilation", "[settlement][effect][compile]")
 {
     const auto kind = GENERATE(scenario::forbid_segment, scenario::forbid_settle);
+    const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     log_state log;
     skill_source skill{ kind, &log };
-    character_source character;
-    givm::test::initialized_character_source victim{ .source_name = "Victim" };
-    const std::array damages{ givm::deal_damage{
-        .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 },
-        .value = 1, .type = givm::damage_type::physical } };
-    const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character, victim);
-    givm::table table{ { .self_player = givm::player_id{ 0 } },
-        { .active_character = own }, { .active_character = opponent } };
-    load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(character.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
-    givm::executor execution;
-    try
-    {
-        execution.start(library, table).resume(library, table, givm_test::zero_random);
-        FAIL("inline settlement must be rejected");
-    }
-    catch(const givm::command_input_error& error)
-    {
-        CHECK(std::holds_alternative<givm::settlement_in_inline_response>(error.reason));
-        CHECK(error.command == (kind == scenario::forbid_segment ? "end_segment" : "settle"));
-    }
+    auto sources = givm_test::make_source_library();
+    REQUIRE(sources.add(skill));
+    const auto result = givm::compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, mode);
+    REQUIRE_FALSE(result);
+    REQUIRE(result.error().size() == 1);
+    const auto* error = std::get_if<givm::effect_command_not_allowed>(&result.error().front().reason);
+    REQUIRE(error);
+    CHECK(error->category == givm::event_category::immediate);
+    CHECK(std::string{ error->command } == (kind == scenario::forbid_segment ? "end_segment" : "settle"));
 }
-#endif
 }

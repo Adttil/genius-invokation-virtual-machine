@@ -33,7 +33,7 @@ namespace givm::detail
     inline constexpr std::size_t prepare_action_phase_offset = 0;
     inline constexpr std::size_t action_phase_settlement_offset = 1;
     inline constexpr std::size_t action_phase_finish_offset = action_phase_settlement_offset + settlement_instruction_count;
-    inline constexpr std::size_t onpay_instruction_count = 2 + settlement_instruction_count;
+    inline constexpr std::size_t onpay_instruction_count = 2;
     inline constexpr std::size_t before_action_offset = action_phase_finish_offset + 1;
     inline constexpr std::size_t before_action_with_switch_offset = before_action_offset + 1;
     inline constexpr std::size_t before_action_settlement_offset = before_action_with_switch_offset + 1;
@@ -55,7 +55,7 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t after_card_effect_offset = card_will_be_played_broadcast_offset<Observed> + response_instruction_count<card_will_be_played>;
     template<bool Observed>
-    inline constexpr std::size_t card_played_settlement_offset = after_card_effect_offset<Observed> + response_instruction_count<card_effect>;
+    inline constexpr std::size_t card_played_settlement_offset = after_card_effect_offset<Observed> + response_instruction_count<this_card_play>;
     template<bool Observed>
     inline constexpr std::size_t card_played_finish_offset = card_played_settlement_offset<Observed> + settlement_instruction_count;
     template<bool Observed>
@@ -67,7 +67,7 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t after_skill_effect_offset = skill_will_be_used_broadcast_offset<Observed> + response_instruction_count<skill_will_be_used>;
     template<bool Observed>
-    inline constexpr std::size_t skill_used_settlement_offset = after_skill_effect_offset<Observed> + response_instruction_count<skill_effect>;
+    inline constexpr std::size_t skill_used_settlement_offset = after_skill_effect_offset<Observed> + response_instruction_count<this_skill_use>;
     template<bool Observed>
     inline constexpr std::size_t skill_used_finish_offset = skill_used_settlement_offset<Observed> + settlement_instruction_count;
     template<bool Observed>
@@ -79,7 +79,7 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t after_technique_effect_offset = technique_will_be_used_broadcast_offset<Observed> + response_instruction_count<technique_will_be_used>;
     template<bool Observed>
-    inline constexpr std::size_t technique_used_settlement_offset = after_technique_effect_offset<Observed> + response_instruction_count<technique_effect>;
+    inline constexpr std::size_t technique_used_settlement_offset = after_technique_effect_offset<Observed> + response_instruction_count<this_technique_use>;
     template<bool Observed>
     inline constexpr std::size_t technique_used_finish_offset = technique_used_settlement_offset<Observed> + settlement_instruction_count;
     template<bool Observed>
@@ -99,7 +99,7 @@ namespace givm::detail
     template<bool Observed>
     inline constexpr std::size_t prepared_skill_effect_offset = prepared_skill_start_offset<Observed> + 1;
     template<bool Observed>
-    inline constexpr std::size_t prepared_skill_settlement_offset = prepared_skill_effect_offset<Observed> + response_instruction_count<prepared_skill_effect>;
+    inline constexpr std::size_t prepared_skill_settlement_offset = prepared_skill_effect_offset<Observed> + response_instruction_count<this_prepared_skill_use>;
     template<bool Observed>
     inline constexpr std::size_t prepared_skill_finish_offset = prepared_skill_settlement_offset<Observed> + settlement_instruction_count;
     template<bool Observed>
@@ -108,8 +108,6 @@ namespace givm::detail
     inline execution_state complete_onpay_response(const definition_library&, unrestricted_table& table,
         execution_context& context, random_fn&)
     {
-        table.state().self_player = get<0>(context.stack().top<response_return>()).previous_player;
-        end_response<true>(context);
         context.stack().pop<response_return>();
         return context.jump(get<0>(context.stack().top<response_return>()).position);
     }
@@ -117,7 +115,6 @@ namespace givm::detail
     inline void compile_onpay_response(program_writer& writer, execute_fn continuation)
     {
         writer.write(continuation);
-        compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ complete_onpay_response });
     }
 
@@ -190,7 +187,7 @@ namespace givm::detail
         std::vector<action_skill_candidate> skills;
         for(auto skill : active.skills())
         {
-            if(not library[skill.definition_id()].can_handle<skill_effect, skill_view>()) continue;
+            if(not library[skill.definition_id()].can_handle<this_skill_use, skill_view>()) continue;
             auto flags = library.skill_flags(skill.definition_id());
             if(flags.contains(skill_flag_bits::normal_attack))
             {
@@ -201,7 +198,7 @@ namespace givm::detail
         }
         std::vector<attachment_id> techniques;
         if(active.has(equipment_type::technique)
-            && library[active.get(equipment_type::technique).definition_id()].can_handle<technique_effect, attachment_view>())
+            && library[active.get(equipment_type::technique).definition_id()].can_handle<this_technique_use, attachment_view>())
             techniques.push_back(active.get(equipment_type::technique).id());
         context.stack().push(
             dynamic_array<switch_handler_id>(collect_all_broadcast_targets<cost_of_switch>(library, table)),
@@ -236,12 +233,12 @@ namespace givm::detail
     inline execution_state finish_prepared_skill_effect(const definition_library& library,
         unrestricted_table& table, execution_context& context, random_fn& random)
     {
-        if(not continue_single_response<prepared_skill_effect, attachment_id>(library, table, context, random))
+        if(not continue_single_response<this_prepared_skill_use, attachment_id>(library, table, context, random))
             return continue_execution;
-        const auto speed = get<0>(context.stack().top<prepared_skill_effect, response_return>()).speed;
-        pop_single_response<prepared_skill_effect, attachment_id>(context);
+        const auto speed = get<0>(context.stack().top<this_prepared_skill_use, response_return>()).speed;
+        pop_single_response<this_prepared_skill_use, attachment_id>(context);
         context.stack().push(speed);
-        return context.advance(response_extent<prepared_skill_effect>);
+        return context.advance(response_extent<this_prepared_skill_use>);
     }
 
     template<bool Observed>
@@ -250,19 +247,18 @@ namespace givm::detail
         execution_context& context, random_fn& random)
     {
         context.enter_next();
-        const auto event = get<0>(context.stack().top<prepared_skill_effect>());
-        context.stack().pop<prepared_skill_effect>();
+        const auto event = get<0>(context.stack().top<this_prepared_skill_use>());
+        context.stack().pop<this_prepared_skill_use>();
         // The consumed attachment retains its identity and state for its own effect.
         prepare_single_response(event, event.attachment, table, context, context.position(), true);
         auto& stack = context.stack();
-        const auto frame = stack.top<prepared_skill_effect, response_return>();
+        const auto frame = stack.top<this_prepared_skill_use, response_return>();
         auto effect = get<0>(frame);
         const auto speed_offset = reinterpret_cast<const unsigned char*>(&get<0>(frame).speed) - stack.data();
         const auto attachment = std::as_const(table)[effect.attachment];
-        auto response = context.make_handle_context(library, attachment, random);
+        auto response = context.make_handle_context<event_category::normal>(library, attachment, random);
         stack.push(response_return{ table.state().self_player, get<1>(frame).position + sizeof(execute_fn) });
-        begin_response<true>(context);
-        const auto entry = library[attachment.definition_id()].handle<prepared_skill_effect>(effect, response, 0);
+        const auto entry = library[attachment.definition_id()].handle<this_prepared_skill_use>(effect, response, 0);
         // Keep the action's speed across input packing before entering its effect.
         *reinterpret_cast<action_speed*>(stack.data() + speed_offset) = effect.speed;
         if(effect.speed == action_speed::combat)
@@ -272,7 +268,7 @@ namespace givm::detail
             table.state().self_player = effect.attachment.character_id.player_id;
             return context.enter(entry);
         }
-        return complete_single_response<prepared_skill_effect, attachment_id>(library, table, context, random);
+        return complete_single_response<this_prepared_skill_use, attachment_id>(library, table, context, random);
     }
 
     template<bool Observed>
@@ -292,16 +288,16 @@ namespace givm::detail
                 context.enter_next();
                 return prepare_action_selection(library, table, context);
             }
-            if(not prepared && library[definition].can_handle<prepared_skill_effect, attachment_view>())
+            if(not prepared && library[definition].can_handle<this_prepared_skill_use, attachment_view>())
                 prepared = attachment.id();
         }
         if(prepared)
         {
             jump_to_action_instruction<before_action_finish_offset, prepared_skill_removal_offset<Observed>>(context);
             begin_response<true>(context);
-            context.stack().push(prepared_skill_effect{ .attachment = *prepared });
+            context.stack().push(this_prepared_skill_use{ .attachment = *prepared });
             table[*prepared].erase();
-            append_removal_record<attachment_removal_effect>(context, *prepared, attachment_removed{ *prepared });
+            append_removal_record<this_attachment_remove>(context, *prepared, attachment_removed{ *prepared });
             return continue_execution;
         }
         context.enter_next();
@@ -435,7 +431,6 @@ namespace givm::detail
                 get<0>(stack.top<response_return>()).position + sizeof(execute_fn) });
             const auto capacity = stack.size() + program.input_size;
             if(capacity > stack.capacity()) stack.reserve(std::bit_ceil(capacity));
-            begin_response<true>(context);
             const auto prepared = context.copy_program_inputs(program.entry,
                 std::span<const unsigned char>{ stack.data() + program.input_offset, program.input_size });
             table.state().self_player = program.self_player;
@@ -527,8 +522,8 @@ namespace givm::detail
         execution_context& context, random_fn& random
     )
     {
-        if(not continue_single_response<card_effect, hand_card_id>(library, table, context, random)) return continue_execution;
-        pop_single_response<card_effect, hand_card_id>(context);
+        if(not continue_single_response<this_card_play, hand_card_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<this_card_play, hand_card_id>(context);
         const auto& selected = std::get<card_selection>(get<0>(context.stack().top<action_selection, substack_t>()));
         const auto& cost = cost_event<cost_of_card>(context.stack(), selected.cost_offset);
         append_event_record(context, card_played{
@@ -536,7 +531,7 @@ namespace givm::detail
             .targets = cost.targets, .speed = cost.requirement.speed
         });
         context.stack().push(cost.requirement.speed);
-        return context.advance(response_extent<card_effect>);
+        return context.advance(response_extent<this_card_play>);
     }
 
     inline execution_state broadcast_card_will_be_played(
@@ -554,7 +549,7 @@ namespace givm::detail
         if(event.speed == action_speed::combat) table[event.card.player_id].state().can_plunge = false;
         context.advance(response_extent<card_will_be_played>);
         // The played card is already out of hand, but retains its definition and state.
-        prepare_single_response(card_effect{ .card = event.card, .targets = event.targets },
+        prepare_single_response(this_card_play{ .card = event.card, .targets = event.targets },
             event.card, table, context, context.position(), true, not event.effect_cancelled);
         return finish_card_effect(library, table, context, random);
     }
@@ -643,13 +638,13 @@ namespace givm::detail
         execution_context& context, random_fn& random
     )
     {
-        if(not continue_single_response<technique_effect, attachment_id>(library, table, context, random)) return continue_execution;
-        pop_single_response<technique_effect, attachment_id>(context);
+        if(not continue_single_response<this_technique_use, attachment_id>(library, table, context, random)) return continue_execution;
+        pop_single_response<this_technique_use, attachment_id>(context);
         const auto event = get<0>(context.stack().top<technique_used>());
         context.stack().pop<technique_used>();
         append_event_record(context, event);
         context.stack().push(event.speed);
-        return context.advance(response_extent<technique_effect>);
+        return context.advance(response_extent<this_technique_use>);
     }
 
     template<bool Observed>
@@ -670,7 +665,7 @@ namespace givm::detail
             .technique = event.technique, .targets = event.targets, .speed = event.speed,
             .effect_cancelled = event.effect_cancelled
         });
-        prepare_single_response(technique_effect{ .technique = event.technique, .targets = event.targets },
+        prepare_single_response(this_technique_use{ .technique = event.technique, .targets = event.targets },
             event.technique, table, context, context.position(), false, not event.effect_cancelled);
         return finish_technique_effect<Observed>(library, table, context, random);
     }
@@ -769,19 +764,19 @@ namespace givm::detail
         compile_onpay_response(writer, continue_card_onpay<Observed>);
         writer.write<execute_fn>(&prepare_card_play);
         compile_broadcast<card_will_be_played>(writer, broadcast_card_will_be_played);
-        compile_single_response<card_effect, hand_card_id>(writer, finish_card_effect);
+        compile_single_response<this_card_play, hand_card_id>(writer, finish_card_effect);
         compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ broadcast_card_played<Observed> });
         compile_onpay_response(writer, continue_skill_onpay<Observed>);
         writer.write<execute_fn>(&prepare_skill_use);
         compile_broadcast<skill_will_be_used>(writer, broadcast_skill_will_be_used<true>);
-        compile_single_response<skill_effect, skill_id>(writer, finish_skill_effect<true>);
+        compile_single_response<this_skill_use, skill_id>(writer, finish_skill_effect<true>);
         compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ broadcast_skill_used<Observed> });
         compile_onpay_response(writer, continue_technique_onpay<Observed>);
         writer.write<execute_fn>(&prepare_technique_use<Observed>);
         compile_broadcast<technique_will_be_used>(writer, broadcast_technique_will_be_used<Observed>);
-        compile_single_response<technique_effect, attachment_id>(writer, finish_technique_effect<Observed>);
+        compile_single_response<this_technique_use, attachment_id>(writer, finish_technique_effect<Observed>);
         compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ broadcast_technique_used<Observed> });
         compile_broadcast<elemental_tuning_modification>(writer, broadcast_elemental_tuning_modification);
@@ -791,7 +786,7 @@ namespace givm::detail
         writer.write(execute_fn{ broadcast_first_round_end<Observed> });
         compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ continue_prepared_skill_removal<Observed> });
-        compile_single_response<prepared_skill_effect, attachment_id>(writer, finish_prepared_skill_effect);
+        compile_single_response<this_prepared_skill_use, attachment_id>(writer, finish_prepared_skill_effect);
         compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ finish_prepared_skill_action<Observed> });
         compile_settlement(writer, begin_settlement);

@@ -22,7 +22,7 @@
 | [`source_selection_error`](definition/source_selection_error.md) | 选定定义不存在的诊断 |
 | [`deck_link_error`](definition/deck_link_error.md) | 牌组名称无法链接的诊断 |
 | [`definition_source_view`](definition/definition_source_view.md) | 定义源的只读视图 |
-| [`program_entry`](definition/program_entry.md) | 响应效果的入口 |
+| [`effect<Category>`](definition/effect.md) | 响应效果的入口 |
 | [`program_inputs`](definition/program_inputs.md) | 已准备并拥有的程序输入 |
 | [`fixed_defer_program_input`](definition/fixed_defer_program_input.md) | 固定延迟命令的编译用参数 |
 | [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |
@@ -45,6 +45,8 @@
 | [`supported_queries`](definition/supported_queries.md) | 定义类别支持的查询 |
 
 ## 类型别名
+
+`normal_effect`、`immediate_effect`、`preview_effect` 分别表示三类效果入口。事件类别见 [`event_category`](definition/event_category.md)。
 
 |  |  |
 | --- | --- |

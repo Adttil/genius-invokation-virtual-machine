@@ -7,6 +7,7 @@
 ```cpp
 struct dice_added
 {
+    static constexpr event_category category = event_category::normal;
     const player_id player;
     const dice_counts dice;
 };

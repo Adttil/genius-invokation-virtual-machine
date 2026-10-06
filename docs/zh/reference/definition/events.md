@@ -6,6 +6,10 @@
 
 事件用于实体响应；动态命令通过其声明的 [命令输入](command_inputs.md) 提交参数。输入类型可以显式复用字段相符的事件类型，复用本身不会增加广播。每次触发可以选择响应实体的范围与顺序，不要求所有事件使用统一的广播顺序。
 
+## 事件类别
+
+每个事件通过类内 `static constexpr event_category category` 指定类别：`normal` 事件允许进入事件队列，响应效果各自独立结算；`immediate` 事件在当前流程中立即处理，响应效果不可分段或结算；`preview` 事件用于费用报价，只准备稍后执行的效果。类别不决定响应者范围与顺序，详见 [`event_category`](event_category.md)。
+
 ## 全场广播
 
 核心命令采用全场广播时，先处理牌桌 `active_player` 指定的当前行动玩家，再处理对方。每方依次处理：
@@ -21,7 +25,7 @@
 
 全部普通实体响应及其返回的效果程序完成后，最后更新订阅本通知的[历史摘要](history_summary.md)。普通响应读取的摘要不包含当前通知的更新；嵌套通知若已经完成，其记录可以先于外层通知出现。
 
-具体命令可以规定单实体响应或其他范围，例如 `skill_effect` 只交给所用技能。订阅能力见 [`subscribed_events`](subscribed_events.md)；具有响应能力不表示一定会参与每次广播。
+具体命令可以规定单实体响应或其他范围，例如 `this_skill_use` 只交给所用技能。订阅能力见 [`subscribed_events`](subscribed_events.md)；具有响应能力不表示一定会参与每次广播。
 
 ## 历史摘要初始化
 
@@ -66,20 +70,20 @@
 | --- | --- |
 | [`hand_card_added`](events/hand_card_added.md) | 非抽牌方式加入手牌后的通知 |
 | [`card_drawn`](events/card_drawn.md) | 一张牌抽取完成后的通知 |
-| [`hand_card_discard_effect`](events/hand_card_discard_effect.md) | 仅向手牌自身发送的舍弃效果事件 |
-| [`deck_card_discard_effect`](events/deck_card_discard_effect.md) | 仅向牌堆牌自身发送的舍弃效果事件 |
+| [`this_hand_card_discard`](events/this_hand_card_discard.md) | 仅向手牌自身发送的舍弃效果事件 |
+| [`this_deck_card_discard`](events/this_deck_card_discard.md) | 仅向牌堆牌自身发送的舍弃效果事件 |
 | [`hand_card_discarded`](events/hand_card_discarded.md) | 手牌自身舍弃效果完成后的全场通知 |
 | [`deck_card_discarded`](events/deck_card_discarded.md) | 牌堆牌自身舍弃效果完成后的全场通知 |
 | [`card_candidate_chosen`](events/card_candidate_chosen.md) | 候选牌定义选定后的通知 |
 | [`elemental_tuning_modification`](events/elemental_tuning_modification.md) | 修饰元素调和的转换结果 |
 | [`elemental_tuning_completed`](events/elemental_tuning_completed.md) | 元素调和完成后的通知 |
 | [`card_will_be_played`](events/card_will_be_played.md) | 手牌效果生效前的事件 |
-| [`card_effect`](events/card_effect.md) | 执行打出的牌自身效果 |
+| [`this_card_play`](events/this_card_play.md) | 执行打出的牌自身效果 |
 | [`card_played`](events/card_played.md) | 打出手牌完成后的通知 |
 | [`skill_will_be_used`](events/skill_will_be_used.md) | 技能效果生效前的事件 |
-| [`skill_effect`](events/skill_effect.md) | 执行所选技能自身效果 |
+| [`this_skill_use`](events/this_skill_use.md) | 执行所选技能自身效果 |
 | [`skill_used`](events/skill_used.md) | 技能使用完成后的通知 |
-| [`prepared_skill_effect`](events/prepared_skill_effect.md) | 消耗准备技能附属并执行其自身效果 |
+| [`this_prepared_skill_use`](events/this_prepared_skill_use.md) | 消耗准备技能附属并执行其自身效果 |
 
 ## 伤害、治疗与元素
 
@@ -103,15 +107,15 @@
 | [`character_will_be_defeated`](events/character_will_be_defeated.md) | 角色被击倒前的事件 |
 | [`character_revived`](events/character_revived.md) | 角色被击倒后的通知 |
 | [`support_removed`](events/support_removed.md) | 支援移除后向其他有效实体广播的通知 |
-| [`support_state_changed`](events/support_state_changed.md) | 支援状态修改后的自身通知 |
+| [`this_support_state_change`](events/this_support_state_change.md) | 支援状态修改后的自身通知 |
 | [`summon_removed`](events/summon_removed.md) | 召唤物移除后向其他有效实体广播的通知 |
 | [`combat_status_removed`](events/combat_status_removed.md) | 出战状态移除后向其他有效实体广播的通知 |
 | [`attachment_removed`](events/attachment_removed.md) | 角色附属实体或装备移除后向其他有效实体广播的通知 |
-| [`resummoning`](events/resummoning.md) | 仅向已有召唤物发送的重复请求 |
-| [`combat_status_regeneration`](events/combat_status_regeneration.md) | 仅向已有出战状态发送的重复请求 |
-| [`combat_status_state_changed`](events/combat_status_state_changed.md) | 状态修改后的自身通知 |
-| [`attachment_reapplication`](events/attachment_reapplication.md) | 仅向已有角色附属实体发送的重复请求 |
-| [`attachment_state_changed`](events/attachment_state_changed.md) | 状态修改后的自身通知 |
+| [`this_summon_resummon`](events/this_summon_resummon.md) | 仅向已有召唤物发送的重复请求 |
+| [`this_combat_status_regenerate`](events/this_combat_status_regenerate.md) | 仅向已有出战状态发送的重复请求 |
+| [`this_combat_status_state_change`](events/this_combat_status_state_change.md) | 状态修改后的自身通知 |
+| [`this_attachment_reapply`](events/this_attachment_reapply.md) | 仅向已有角色附属实体发送的重复请求 |
+| [`this_attachment_state_change`](events/this_attachment_state_change.md) | 状态修改后的自身通知 |
 
 ## 标识类型别名
 
@@ -135,7 +139,7 @@
 | --- | --- |
 | [`cost_of_technique`](events/cost_of_technique.md) | 特技报价 |
 | [`technique_will_be_used`](events/technique_will_be_used.md) | 特技使用前广播 |
-| [`technique_effect`](events/technique_effect.md) | 特技自身效果 |
+| [`this_technique_use`](events/this_technique_use.md) | 特技自身效果 |
 | [`technique_used`](events/technique_used.md) | 特技使用后广播 |
 | [`technique_target_id`](events/technique_target_id.md) | 特技目标 |
 

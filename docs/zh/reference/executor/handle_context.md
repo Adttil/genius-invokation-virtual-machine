@@ -5,11 +5,13 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TEntity>
+template<class TEntity, event_category Category = event_category::normal>
 class handle_context;
 ```
 
-一次事件响应使用的上下文，持有本次响应实体的只读视图。定义可以读取该实体及其所属牌桌、向指定定义查询规则信息、取得随机值，并提交已经登记的后续效果及其全部输入。
+一次事件响应使用的上下文，持有本次响应实体的只读视图。定义可以读取该实体及其所属牌桌、向指定定义查询规则信息，并提交同类别的后续效果及其全部输入。普通和立即上下文提供随机源；预览上下文不提供随机源，提交的效果留到确认操作后执行。
+
+`normal_handle_context<TEntity>`、`immediate_handle_context<TEntity>`、`preview_handle_context<TEntity>` 是三类上下文的别名。
 
 由执行器传给定义源的 `handle`，仅在本次响应调用期间有效。定义源不自行构造，也不得在响应结束后保存或使用本对象。
 
@@ -18,6 +20,7 @@ class handle_context;
 | | |
 | --- | --- |
 | `TEntity` | 本次响应实体的只读 view 类型 |
+| `Category` | 响应事件的类别；同时决定可提交的效果类型 |
 
 ## 成员函数
 
@@ -34,4 +37,4 @@ class handle_context;
 | | |
 | --- | --- |
 | [定义源协议](../definition/source_protocol.md) | 事件响应与查询的定义方式 |
-| [`program_entry`](../definition/program_entry.md) | 已登记效果的入口 |
+| [`normal_effect`](../definition/effect.md) | 已登记效果的入口 |

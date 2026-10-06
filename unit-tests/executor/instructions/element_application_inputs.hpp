@@ -26,9 +26,9 @@ namespace
         {
             element_input_log* log;
             bool dynamic;
-            givm::program_entry application;
-            givm::program_entry during_reaction;
-            givm::program_entry after_reaction;
+            givm::normal_effect application;
+            givm::immediate_effect during_reaction;
+            givm::normal_effect after_reaction;
         };
 
         element_input_log* log;
@@ -42,15 +42,15 @@ namespace
             constexpr givm::relative_character_target target{
                 givm::relative_player::opponent, 0 };
             const auto application = dynamic
-                ? context.add_program(std::tuple{ givm::apply_element{}, givm::apply_element{}, givm::apply_element{} })
-                : context.add_program(std::tuple{
+                ? context.add_normal_effect(std::tuple{ givm::apply_element{}, givm::apply_element{}, givm::apply_element{} })
+                : context.add_normal_effect(std::tuple{
                     givm::apply_element{ .source = source, .target = target, .element = givm::element::pyro },
                     givm::apply_element{ .source = source, .target = target, .element = givm::element::none },
                     givm::apply_element{ .source = source, .target = target, .element = givm::element::cryo }
                 });
             return { log, dynamic, application,
-                context.add_program(std::tuple{ givm::apply_element{}, givm::apply_element{}, givm::replace_cards{ givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ givm::apply_element{} }) };
+                context.add_immediate_effect(std::tuple{ givm::apply_element{}, givm::apply_element{}, givm::replace_cards{ givm::player_id{ 0 } } }),
+                context.add_normal_effect(std::tuple{ givm::apply_element{} }) };
         }
 
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -58,7 +58,7 @@ namespace
             return { .max_health = 10, .health = 10 };
         }
 
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -71,8 +71,8 @@ namespace
                 givm::apply_element_input{ .source = self.id(), .target = target, .element = givm::element::cryo });
         }
 
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
             data.log->order.push_back(2);
@@ -84,7 +84,7 @@ namespace
                 givm::apply_element_input{ .source = self.id(), .target = event.target, .element = givm::element::dendro });
         }
 
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();

@@ -84,14 +84,14 @@ struct effect_source
     auto character_dependencies() const
     { return std::array<std::string_view, 1>{ "character" }; }
 
-    givm::program_entry compile(givm::definition_compile_context& context) const
+    givm::normal_effect compile(givm::definition_compile_context& context) const
     {
         const auto definition = context.resolve_id<givm::character_view>("character");
-        return context.add_program(
+        return context.add_normal_effect(
             givm::enter_character{ .player = givm::player_id{ 0 }, .definition = definition });
     }
 
-    static givm::program_entry handle(const givm::program_entry& entry,
+    static givm::normal_effect handle(const givm::normal_effect& entry,
         givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
     {
         return context.invoke(entry);

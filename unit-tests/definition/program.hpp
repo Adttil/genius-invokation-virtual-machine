@@ -9,7 +9,7 @@ namespace givm_test::definition::program
 {
 TEST_CASE("program entries preserve null identity", "[definition][program]")
 {
-    using entry_type = givm::program_entry;
+    using entry_type = givm::normal_effect;
     STATIC_REQUIRE(std::regular<entry_type>);
     STATIC_REQUIRE(not std::constructible_from<entry_type, std::size_t>);
 

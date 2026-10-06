@@ -30,7 +30,7 @@ namespace
         struct definition_type
         {
             reroll_log* log;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         reroll_log* log;
 
@@ -39,9 +39,9 @@ namespace
         {
             const auto command = log->dynamic ? givm::reroll_dice{}
                 : givm::reroll_dice{ .player = log->target, .reroll_count = log->count };
-            return { log, context.add_program(std::tuple{ command, givm::set_support_state{} }) };
+            return { log, context.add_normal_effect(std::tuple{ command, givm::set_support_state{} }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -55,13 +55,13 @@ namespace
         template<class TEvent>
             requires(std::same_as<TEvent, givm::dice_added> || std::same_as<TEvent, givm::dice_removed>
                 || std::same_as<TEvent, givm::dice_converted> || std::same_as<TEvent, givm::dice_roll_preparation>)
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             ++data.log->dice_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_played&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back(3);
@@ -75,20 +75,20 @@ namespace
         struct definition_type
         {
             reroll_log* log;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         reroll_log* log;
         constexpr std::string_view name() const { return "RerollCard"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::reroll_dice{} }) };
+            return { log, context.add_normal_effect(std::tuple{ givm::reroll_dice{} }) };
         }
         static givm::card_state query(const definition_type&, const givm::card_initial_state&)
         {
             return { .cost = { .speed = givm::action_speed::fast } };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::card_effect&, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_card_play&, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             data.log->order.push_back(0);

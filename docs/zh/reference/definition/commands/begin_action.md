@@ -28,7 +28,7 @@ enum class begin_action_error {};
 
 先发出 [`action_phase_started`](../events/action_phase_started.md)，每次选择行动前发出 [`before_action`](../events/before_action.md)。支持使用技能或特技、打出手牌、元素调和、主动切换出战角色和宣布结束；当前行动方必须已有出战角色。双方均宣布结束后，本命令才结束行动阶段。
 
-每次 `before_action` 及其响应程序完成后、建立行动候选前，检查出战角色的准备技能附属；快速行动后再次选择时也会检查。若角色未受控制，按附属遍历顺序选中第一个支持 [`prepared_skill_effect`](../events/prepared_skill_effect.md) 的有效实体，自动执行本次准备技能，不返回 `action_selection`。若受控制，则保留准备技能附属，正常进入行动选择。
+每次 `before_action` 及其响应程序完成后、建立行动候选前，检查出战角色的准备技能附属；快速行动后再次选择时也会检查。若角色未受控制，按附属遍历顺序选中第一个支持 [`this_prepared_skill_use`](../events/this_prepared_skill_use.md) 的有效实体，自动执行本次准备技能，不返回 `action_selection`。若受控制，则保留准备技能附属，正常进入行动选择。
 
 准备技能先离场并完成离场通知，再调用其自身效果；选定后不因离场响应改变状态而撤销。它无需支付，不发送普通技能或特技使用通知；默认战斗行动，可由响应改为快速行动，最终速度决定是否交接行动权和消耗 `can_plunge`。一次只消耗一个准备技能；跨回合或宣布结束本身不清除准备技能附属。
 
@@ -40,13 +40,13 @@ enum class begin_action_error {};
 
 技能、出牌与切换分别使用从零开始的候选索引。技能通过 [`skill_count`](../../executor/execution_view/action_selection/skill_count.md) 查询数量、[`skill_id`](../../executor/execution_view/action_selection/skill_id.md) 查询对应技能 ID。通过 [`card_count`](../../executor/execution_view/action_selection/card_count.md) 和 [`switch_target_count`](../../executor/execution_view/action_selection/switch_target_count.md) 查询数量，通过 [`card_id`](../../executor/execution_view/action_selection/card_id.md) 和 [`switch_target`](../../executor/execution_view/action_selection/switch_target.md) 查询对应实体 ID；技能和牌的效果目标仍使用 ID。
 
-技能候选仅包含出战角色中支持 [`skill_effect`](../events/skill_effect.md) 的有效技能。通过 [`calculate_skill_cost`](../../executor/execution_view/action_selection/calculate_skill_cost.md) 查询费用，按需独立进行 [`skill_payment_validate`](../../executor/execution_view/action_selection/skill_payment_validate.md) 和 [`skill_targets_validate`](../../executor/execution_view/action_selection/skill_targets_validate.md)，再通过 [`use_skill`](../../executor/execution_view/action_selection/use_skill.md) 提交技能、骰子及目标。支付后广播 [`skill_will_be_used`](../events/skill_will_be_used.md)，未取消时执行技能自身效果，之后均广播 [`skill_used`](../events/skill_used.md)；取消效果不撤销本次使用或支付。行动速度采用生效前响应的最终结果。
+技能候选仅包含出战角色中支持 [`this_skill_use`](../events/this_skill_use.md) 的有效技能。通过 [`calculate_skill_cost`](../../executor/execution_view/action_selection/calculate_skill_cost.md) 查询费用，按需独立进行 [`skill_payment_validate`](../../executor/execution_view/action_selection/skill_payment_validate.md) 和 [`skill_targets_validate`](../../executor/execution_view/action_selection/skill_targets_validate.md)，再通过 [`use_skill`](../../executor/execution_view/action_selection/use_skill.md) 提交技能、骰子及目标。支付后广播 [`skill_will_be_used`](../events/skill_will_be_used.md)，未取消时执行技能自身效果，之后均广播 [`skill_used`](../events/skill_used.md)；取消效果不撤销本次使用或支付。行动速度采用生效前响应的最终结果。
 
-特技来自出战角色的特技装备，至多一个，需支持 [`technique_effect`](../events/technique_effect.md)。通过 [`has_technique`](../../executor/execution_view/action_selection/has_technique.md) 查询是否存在主动特技，再由 [`calculate_technique_cost`](../../executor/execution_view/action_selection/calculate_technique_cost.md) 报价，按需独立检查支付和目标，最后用 [`use_technique`](../../executor/execution_view/action_selection/use_technique.md) 提交。特技也可消耗充能；支付后依次处理特技使用前广播、自身效果及使用后通知，取消原效果仍保留使用后通知。
+特技来自出战角色的特技装备，至多一个，需支持 [`this_technique_use`](../events/this_technique_use.md)。通过 [`has_technique`](../../executor/execution_view/action_selection/has_technique.md) 查询是否存在主动特技，再由 [`calculate_technique_cost`](../../executor/execution_view/action_selection/calculate_technique_cost.md) 报价，按需独立检查支付和目标，最后用 [`use_technique`](../../executor/execution_view/action_selection/use_technique.md) 提交。特技也可消耗充能；支付后依次处理特技使用前广播、自身效果及使用后通知，取消原效果仍保留使用后通知。
 
 通过 [`calculate_card_cost`](../../executor/execution_view/action_selection/calculate_card_cost.md) 同步计算出牌费用，通过 [`card_payment_validate`](../../executor/execution_view/action_selection/card_payment_validate.md) 与 [`card_targets_validate`](../../executor/execution_view/action_selection/card_targets_validate.md) 分别检查支付及用牌条件。目标检查按 span 中的目标数量分步进行，允许检查空选择，告知当前选择是否有效、能否完成或继续；检查第二目标时可假设第一目标合法。两项检查相互独立，由调用方按需使用。目标检查通过 [`card_target_validation`](../queries/card_target_validation.md) 返回结果，不接收随机源。费用响应不得使用随机数，调用随机函数属于未定义行为。
 
-[`play_card`](../../executor/execution_view/action_selection/play_card.md) 同步报价并提交，`play_card_with_cached_cost` 使用已有报价；Debug 报价时检查完整目标，提交时检查支付，Release 不检查。提交立即推进，先让牌离手，再逐个执行并完整结算已确认的费用效果，随后饱和扣除骰子与原付费角色的充能，并将实际变化通知登记到行动段。之后广播 [`card_will_be_played`](../events/card_will_be_played.md)，未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，并登记 [`card_played`](../events/card_played.md)。付款通知和行动通知按所属段结算。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
+[`play_card`](../../executor/execution_view/action_selection/play_card.md) 同步报价并提交，`play_card_with_cached_cost` 使用已有报价；Debug 报价时检查完整目标，提交时检查支付，Release 不检查。提交立即推进，先让牌离手，再逐个执行并完整结算已确认的费用效果，随后饱和扣除骰子与原付费角色的充能，并将实际变化通知登记到行动段。之后广播 [`card_will_be_played`](../events/card_will_be_played.md)，未被反制时执行本牌的 [`this_card_play`](../events/this_card_play.md)，并登记 [`card_played`](../events/card_played.md)。付款通知和行动通知按所属段结算。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
 
 通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`switch_payment_validate`](../../executor/execution_view/action_selection/switch_payment_validate.md)，依次检查骰子是否匹配费用、持有数量是否足够、非零充能费用的类型是否匹配及出战角色充能是否足够。
 
@@ -159,7 +159,7 @@ int main()
 | --- | --- |
 | [`action_phase_started`](../events/action_phase_started.md) | 本回合行动阶段开始的通知 |
 | [`before_action`](../events/before_action.md) | 当前行动玩家选择行动前的事件 |
-| [`prepared_skill_effect`](../events/prepared_skill_effect.md) | 代替选择而自动执行的准备技能 |
+| [`this_prepared_skill_use`](../events/this_prepared_skill_use.md) | 代替选择而自动执行的准备技能 |
 | [`cost_of_switch`](../events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
 | [`round_end_declared`](../events/round_end_declared.md) | 玩家宣布本回合结束的通知 |
 

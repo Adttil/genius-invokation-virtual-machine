@@ -30,7 +30,7 @@ struct observer_source
     std::string_view name() const { return "observer"; }
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
 
-    static givm::program_entry handle(
+    static givm::normal_effect handle(
         const definition_type& definition,
         givm::battle_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {

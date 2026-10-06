@@ -63,7 +63,7 @@ namespace givm::detail
         {
             std::construct_at(&card, player_entity.deck_cards<false>().back().id());
             player_entity.discard_top_deck_card();
-            append_removal_record<deck_card_discard_effect>(context, card, deck_card_discarded{ card });
+            append_removal_record<this_deck_card_discard>(context, card, deck_card_discarded{ card });
         }
         if constexpr(Observed)
             return execution_state::deck_cards_discarded;

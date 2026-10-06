@@ -11,10 +11,6 @@ namespace givm::detail
     inline execution_state execute_settle(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
     {
-#ifndef NDEBUG
-        if(is_inline_response(context))
-            throw command_input_error{ "settle", settlement_in_inline_response{} };
-#endif
         return begin_settlement(library, table, context, random);
     }
 

@@ -1,14 +1,15 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **combat_status_state_changed**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_combat_status_state_change**
 
-# givm::combat_status_state_changed
+# givm::this_combat_status_state_change
 
 定义于头文件 `<givm/definition.hpp>`
 
 出战状态的状态修改后的自身通知。设置和按增量修改状态都会在写入后通知该实体；响应读取牌桌时已经能看到新状态，返回的程序在修改命令结束前完成。
 
 ```cpp
-struct combat_status_state_changed
+struct this_combat_status_state_change
 {
+    static constexpr event_category category = event_category::normal;
     const combat_status_state previous;
     const combat_status_state current;
 };

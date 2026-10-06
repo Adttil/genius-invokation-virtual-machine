@@ -59,14 +59,14 @@ namespace
         {
             return { 20, 6 };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::attachment_reapplication&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_attachment_reapply&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             ++data.log->reapplications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::attachment_state_changed& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_attachment_state_change& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             ++data.log->state_changes;
@@ -90,11 +90,11 @@ namespace
             givm::definition_id<givm::attachment_view> moving;
             givm::definition_id<givm::attachment_view> old;
             givm::definition_id<givm::attachment_view> replacement;
-            givm::program_entry prepare;
-            givm::program_entry transfer;
-            givm::program_entry change;
-            givm::program_entry remove;
-            givm::program_entry replace;
+            givm::normal_effect prepare;
+            givm::normal_effect transfer;
+            givm::normal_effect change;
+            givm::normal_effect remove;
+            givm::normal_effect replace;
         };
 
         transfer_log* log;
@@ -115,7 +115,7 @@ namespace
                 .target = { .player = givm::relative_player::opponent, .offset = 1 },
                 .reset_round_usages = log->reset
             };
-            givm::program_entry transfer;
+            givm::normal_effect transfer;
             if(log->followup)
             {
                 const givm::relative_attachment_target target{
@@ -124,20 +124,20 @@ namespace
                 const auto set = log->dynamic ? givm::set_attachment_state{} : givm::set_attachment_state{ target, { 10, 2 } };
                 const auto modify = log->dynamic ? givm::modify_attachment_state{} : givm::modify_attachment_state{ target, -2, -1 };
                 const auto remove = log->dynamic ? givm::remove_attachment{} : givm::remove_attachment{ target };
-                transfer = context.add_program(std::tuple{ command, givm::settle{}, set, givm::settle{}, givm::add_attachment{}, modify, givm::settle{},
+                transfer = context.add_normal_effect(std::tuple{ command, givm::settle{}, set, givm::settle{}, givm::add_attachment{}, modify, givm::settle{},
                     givm::replace_cards{ givm::player_id{ 0 } }, remove, givm::set_support_state{} });
             }
-            else transfer = context.add_program(std::tuple{ givm::set_support_state{}, command, givm::set_support_state{} });
+            else transfer = context.add_normal_effect(std::tuple{ givm::set_support_state{}, command, givm::set_support_state{} });
             return { log, moving, context.resolve_id<givm::attachment_view>("Old"),
                 replacement,
-                log->occupied ? context.add_program(std::tuple{ givm::add_attachment{}, givm::add_attachment{} })
-                    : context.add_program(std::tuple{ givm::add_attachment{} }),
+                log->occupied ? context.add_normal_effect(std::tuple{ givm::add_attachment{}, givm::add_attachment{} })
+                    : context.add_normal_effect(std::tuple{ givm::add_attachment{} }),
                 transfer,
-                context.add_program(std::tuple{ givm::set_attachment_state{}, givm::settle{}, givm::replace_cards{ givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ givm::remove_attachment{} }),
-                context.add_program(std::tuple{ givm::add_attachment{} }) };
+                context.add_normal_effect(std::tuple{ givm::set_attachment_state{}, givm::settle{}, givm::replace_cards{ givm::player_id{ 0 } } }),
+                context.add_normal_effect(std::tuple{ givm::remove_attachment{} }),
+                context.add_normal_effect(std::tuple{ givm::add_attachment{} }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -174,7 +174,7 @@ namespace
                     data.log->source, target_character, data.log->reset }, after);
             return context.invoke(data.transfer, before, after);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::attachment_removed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             data.log->removed.push_back(event.attachment);
@@ -259,7 +259,7 @@ namespace
         {
             std::vector<givm::attachment_id>* removed;
             givm::definition_id<givm::attachment_view> attachment;
-            givm::program_entry entry;
+            givm::normal_effect entry;
         };
         std::vector<givm::attachment_id>* removed;
         std::string_view name() const { return "ZeroHealthController"; }
@@ -268,12 +268,12 @@ namespace
         {
             const auto attachment = context.resolve_id<givm::attachment_view>("RetainedAttachment");
             const givm::relative_attachment_target target{ .selector = attachment };
-            return { removed, attachment, context.add_program(std::tuple{
+            return { removed, attachment, context.add_normal_effect(std::tuple{
                 givm::add_attachment{}, givm::add_attachment{}, givm::set_attachment_state{ target, { 10, 3 } },
                 givm::modify_attachment_state{ target, -1, -1 }, givm::remove_attachment{ target }
             }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -281,7 +281,7 @@ namespace
                 givm::add_attachment_input{ { self.player().id(), 0 }, data.attachment, { 3, 1 } },
                 givm::add_attachment_input{ { self.player().id(), 1 }, data.attachment, { 5, 4 } });
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::attachment_removed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             data.removed->push_back(event.attachment);

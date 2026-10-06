@@ -14,4 +14,4 @@ struct discard_deck_cards_input
 
 默认构造的 [`discard_deck_cards{}`](../commands/discard_deck_cards.md) 所需的动态输入。响应通过 `invoke` 提交目标玩家与舍弃数量；执行时舍弃该玩家牌堆顶至多 `count` 张牌。
 
-此类型只描述输入，不广播。卡牌自身效果和全场通知分别使用 [`deck_card_discard_effect`](../events/deck_card_discard_effect.md) 与 [`deck_card_discarded`](../events/deck_card_discarded.md)。
+此类型只描述输入，不广播。卡牌自身效果和全场通知分别使用 [`this_deck_card_discard`](../events/this_deck_card_discard.md) 与 [`deck_card_discarded`](../events/deck_card_discarded.md)。

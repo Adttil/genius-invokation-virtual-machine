@@ -19,11 +19,11 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random, const set_support_state_input& input)
     {
-        support_state_changed event{ table[input.support].state(), input.state };
+        this_support_state_change event{ table[input.support].state(), input.state };
         table[input.support].state() = input.state;
         const auto support = std::as_const(table)[input.support];
         const auto definition = library[support.definition_id()];
-        if(not definition.can_handle<support_state_changed, support_view>())
+        if(not definition.can_handle<this_support_state_change, support_view>())
             return continue_execution;
         append_single_event_record(context, input.support, event);
         return continue_execution;

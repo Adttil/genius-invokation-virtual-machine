@@ -39,8 +39,8 @@ namespace givm_test::executor::runtime_argument_errors
         struct definition_type
         {
             scenario selected;
-            givm::program_entry effect;
-            givm::program_entry create;
+            givm::normal_effect effect;
+            givm::normal_effect create;
             bool* observed;
         };
 
@@ -55,7 +55,7 @@ namespace givm_test::executor::runtime_argument_errors
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto summon = context.resolve_id<givm::summon_view>("RuntimeArgumentSummon");
-            const auto create = context.add_program(std::tuple{
+            const auto create = context.add_normal_effect(std::tuple{
                 givm::add_summon{ .definition = summon, .state = { .value = 1, .usages = 1 } }
             });
             std::vector<givm::any_command> commands;
@@ -75,13 +75,13 @@ namespace givm_test::executor::runtime_argument_errors
                 commands.emplace_back(givm::remove_dice{});
                 break;
             }
-            return { selected, context.add_program(commands), create, observed };
+            return { selected, context.add_normal_effect(commands), create, observed };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 3, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -126,8 +126,8 @@ namespace givm_test::executor::runtime_argument_errors
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             if(data.selected == scenario::invalid_modified_damage)
             {

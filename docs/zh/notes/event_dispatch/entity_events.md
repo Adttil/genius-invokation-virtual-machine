@@ -42,9 +42,9 @@ table 内部的角色 handle 保留两个添加重载：`add(definition, state)`
 
 | 命令 | 动态输入 | 已有实体的定向通知 |
 | --- | --- | --- |
-| `summon` | `summon_input` | `resummoning` |
-| `generate_combat_status` | `generate_combat_status_input` | `combat_status_regeneration` |
-| `attach` | `attach_input` | `attachment_reapplication` |
+| `summon` | `summon_input` | `this_summon_resummon` |
+| `generate_combat_status` | `generate_combat_status_input` | `this_combat_status_regenerate` |
+| `attach` | `attach_input` | `this_attachment_reapply` |
 
 `add_summon`、`add_combat_status` 和 `add_attachment` 直接添加，不进行同定义实体判断，避免重复生成响应中的追加再次进入生成处理。新建实体没有全场的添加完成通知；只有重复生成和自身状态变化使用定向通知，离场后按类别全场广播 `summon_removed`、`combat_status_removed` 或 `attachment_removed`。
 

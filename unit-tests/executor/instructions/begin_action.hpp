@@ -41,7 +41,7 @@ namespace
         {
             action_log* log;
             givm::action_speed speed;
-            givm::program_entry payment;
+            givm::preview_effect payment;
             bool free_switch;
         };
         action_log* log;
@@ -53,13 +53,13 @@ namespace
         std::string_view name() const noexcept { return "ActionObserver"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            givm::program_entry payment;
+            givm::preview_effect payment;
             if(terminal_payment)
-                payment = context.add_program(std::tuple{
+                payment = context.add_preview_effect(std::tuple{
                     givm::settle{}, givm::end_game{ .result = givm::game_result::player_1_win }
                 });
             else if(draw_payment)
-                payment = context.add_program(std::tuple{
+                payment = context.add_preview_effect(std::tuple{
                     givm::draw_cards{ .position = 0, .count = 1 }
                 });
             return { log, speed, payment, free_switch };
@@ -68,24 +68,24 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::before_action&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->opportunities.push_back(context.table().state().active_player);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::preview_effect handle(
             const definition_type& data, givm::cost_of_switch& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             ++data.log->previews;
             event.requirement.speed = data.speed;
             if(data.free_switch) event.requirement.dice_requirement.any = 0;
-            if(data.payment) return context.invoke(givm::substack_t{}, data.payment);
+            if(data.payment) return context.invoke(data.payment);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -93,14 +93,14 @@ namespace
             data.log->switches.push_back(event.current);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::round_end_declared&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->declarations.push_back(context.table().state().active_player);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::round_ended&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -126,8 +126,8 @@ namespace
         {
             quote_control* control;
             givm::dice_counts initial_dice;
-            givm::program_entry first_payment;
-            givm::program_entry second_payment;
+            givm::preview_effect first_payment;
+            givm::preview_effect second_payment;
         };
         quote_control* control;
         std::string_view source_name = "Quote";
@@ -139,10 +139,10 @@ namespace
             return {
                 control,
                 initial_dice,
-                context.add_program(std::tuple{
+                context.add_preview_effect(std::tuple{
                     givm::draw_cards{ .position = 0, .count = 1 }
                 }),
-                context.add_program(std::tuple{
+                context.add_preview_effect(std::tuple{
                     givm::draw_cards{ .position = 0, .count = 2 }
                 })
             };
@@ -151,9 +151,9 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(
+        static givm::immediate_effect handle(
             const definition_type& data, givm::dice_roll_preparation& event,
-            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             if(data.initial_dice.total() != 0)
             {
@@ -161,9 +161,9 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(
+        static givm::preview_effect handle(
             const definition_type& data, givm::cost_of_switch& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             auto& control = *data.control;
             control.quoted.push_back(event.target);
@@ -179,7 +179,7 @@ namespace
             {
                 return {};
             }
-            return context.invoke(givm::substack_t{}, event.target.index == 1 ? data.first_payment : data.second_payment);
+            return context.invoke(event.target.index == 1 ? data.first_payment : data.second_payment);
         }
     };
 

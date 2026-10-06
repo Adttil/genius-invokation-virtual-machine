@@ -28,11 +28,11 @@ namespace
         using definition_category = givm::combat_status_view;
         fixed_error error;
         std::string_view name() const { return "FixedInputDiagnostics"; }
-        givm::program_entry compile(givm::definition_compile_context& context) const
+        givm::normal_effect compile(givm::definition_compile_context& context) const
         {
             using namespace givm;
-            const auto target = context.add_program(set_energy{}, return_response{});
-            const auto relay = context.add_program(defer_program{});
+            const auto target = context.add_normal_effect(set_energy{}, return_response{});
+            const auto relay = context.add_normal_effect(defer_program{});
             fixed_defer_program_input input;
             const set_energy_input energy{ actor, 1 };
             const return_response_input result{ 17 };
@@ -44,18 +44,18 @@ namespace
             case fixed_error::response_index:
                 input = fixed_defer_invoke(target, energy, return_response_input{ return_response::dynamic }); break;
             case fixed_error::nested_null:
-                input = fixed_defer_invoke(relay, fixed_defer_invoke(program_entry{})); break;
+                input = fixed_defer_invoke(relay, fixed_defer_invoke(normal_effect{})); break;
             case fixed_error::nested_type:
                 input = fixed_defer_invoke(relay, fixed_defer_invoke(target, result, energy)); break;
             }
-            return context.add_program(defer_program{ input });
+            return context.add_normal_effect(defer_program{ input });
         }
     };
 
     template<bool Fixed = false>
-    auto make_owned_deferred(givm::program_entry relay, givm::program_entry leaf)
+    auto make_owned_deferred(givm::normal_effect relay, givm::normal_effect leaf)
     {
-        const auto pack = []<class... T>(givm::program_entry entry, const T&... inputs)
+        const auto pack = []<class... T>(givm::normal_effect entry, const T&... inputs)
         {
             if constexpr(Fixed) return givm::fixed_defer_invoke(entry, inputs...);
             else return givm::defer_invoke(entry, inputs...);
@@ -73,36 +73,36 @@ namespace
         struct definition_type
         {
             preparation mode;
-            givm::program_entry main;
-            givm::program_entry relay;
-            givm::program_entry leaf;
+            givm::normal_effect main;
+            givm::normal_effect relay;
+            givm::normal_effect leaf;
         };
         preparation mode;
         std::string_view name() const { return "OwnedProgramInputs"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
             using namespace givm;
-            const auto leaf = context.add_program(modify_energy{}, return_response{ .index = 17 });
-            const auto relay = context.add_program(defer_program{}, return_response{ .index = 19 });
+            const auto leaf = context.add_normal_effect(modify_energy{}, return_response{ .index = 17 });
+            const auto relay = context.add_normal_effect(defer_program{}, return_response{ .index = 19 });
             if(mode == preparation::fixed || mode == preparation::bad_fixed)
             {
                 const auto invocation = mode == preparation::bad_fixed
                     ? fixed_defer_invoke(relay, fixed_defer_invoke(leaf, set_energy_input{ actor, 7 }))
                     : make_owned_deferred<true>(relay, leaf);
-                const auto main = context.add_program(
+                const auto main = context.add_normal_effect(
                     set_energy{ .target = { relative_player::self, 0 }, .value = 2 },
                     defer_program{ invocation }, replace_cards{ .player = actor.player_id },
                     modify_energy{ .target = { relative_player::self, 0 }, .delta = 3 });
                 return { mode, main, relay, leaf };
             }
-            return { mode, context.add_program(set_energy{}, defer_program{},
+            return { mode, context.add_normal_effect(set_energy{}, defer_program{},
                 replace_cards{ .player = actor.player_id }, modify_energy{}), relay, leaf };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 10000, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, givm::round_started&,
+        static givm::normal_effect handle(const definition_type& data, givm::round_started&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t)
         {
             using namespace givm;
@@ -255,7 +255,7 @@ TEST_CASE("fixed deferred protocol errors return compile diagnostics in every bu
         CHECK(index->index == givm::return_response::dynamic);
     }
     else if(error == fixed_error::nested_null)
-        CHECK(std::get<givm::invalid_program_entry>(fixed->reason) == givm::invalid_program_entry::null_entry);
+        CHECK(std::get<givm::invalid_effect>(fixed->reason) == givm::invalid_effect::null_entry);
     else
     {
         const auto* mismatch = std::get_if<givm::program_input_type_mismatch>(&fixed->reason);

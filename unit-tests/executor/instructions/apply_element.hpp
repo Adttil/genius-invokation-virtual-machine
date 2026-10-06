@@ -34,7 +34,7 @@ namespace
         struct definition_type
         {
             reaction_log* log;
-            givm::program_entry replacement_entry;
+            givm::immediate_effect replacement_entry;
             givm::tag_id replacement;
         };
 
@@ -51,7 +51,7 @@ namespace
         {
             return {
                 .log = log,
-                .replacement_entry = context.add_program(
+                .replacement_entry = context.add_immediate_effect(
                     std::tuple{
                         givm::apply_element{ .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 }, .element = givm::element::none },
                         givm::apply_element{ .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 }, .element = log->replacement_element }
@@ -61,10 +61,10 @@ namespace
             };
         }
 
-        static givm::program_entry handle(
+        static givm::immediate_effect handle(
             const definition_type& data,
             givm::elemental_reaction_will_occur& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->order.push_back(1);
             data.log->incoming = event.incoming_element;
@@ -79,7 +79,7 @@ namespace
             return {};
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
             givm::after_elemental_reaction&,
             givm::handle_context<givm::skill_view>&, std::uint32_t = 0)

@@ -6,9 +6,16 @@
 
 ```cpp
 template<class TEvent, class TDefinitionType, class TView>
-program_entry handle(
+    requires (TEvent::category != event_category::preview)
+effect<TEvent::category> handle(
     definition_id<TDefinitionType> id, TEvent& event,
-    handle_context<TView>& context, std::uint32_t response_index = 0) const;
+    handle_context<TView, TEvent::category>& context, std::uint32_t response_index = 0) const;
+
+template<class TEvent, class TDefinitionType, class TView>
+    requires (TEvent::category == event_category::preview)
+preview_effect handle(
+    definition_id<TDefinitionType> id, TEvent& event,
+    preview_handle_context<TView>& context) const;
 ```
 
 请求一个实体的定义响应当前事件。响应可以直接调整事件允许修改的内容，并通过提供的调用对象提交后续效果。
@@ -28,7 +35,7 @@ program_entry handle(
 | `id` | 本定义库中的有效定义 ID |
 | `event` | 要响应的事件，可修改的成员用于反馈本次事件的调整 |
 | `context` | 执行器提供的 [`handle_context<TView>`](../handle_context.md)，持有该定义类别对应的响应实体 |
-| `response_index` | 本次响应的编号，首轮为 0 |
+| `response_index` | 普通与立即响应的编号，首轮为 0；预览重载没有此参数 |
 
 ## 返回值
 

@@ -52,22 +52,22 @@ namespace
     struct support_source
     {
         using definition_category = givm::support_view;
-        struct definition_type { support_log* log; givm::program_entry remove; };
+        struct definition_type { support_log* log; givm::normal_effect remove; };
         std::string_view source_name;
         support_log* log;
         std::string_view name() const { return source_name; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, log->remove_empty ? context.add_program(std::tuple{
-                givm::replace_cards{ givm::player_id{ 0 } }, givm::remove_support{} }) : givm::program_entry{} };
+            return { log, log->remove_empty ? context.add_normal_effect(std::tuple{
+                givm::replace_cards{ givm::player_id{ 0 } }, givm::remove_support{} }) : givm::normal_effect{} };
         }
         static givm::support_state query(const definition_type& data, const givm::support_state_limit&)
         {
             ++data.log->limit_queries;
             return { 0xff, 3 };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::support_state_changed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_support_state_change& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             data.log->changed.push_back(self.id());
@@ -88,8 +88,8 @@ namespace
         {
             support_log* log;
             givm::definition_id<givm::support_view> support;
-            std::vector<givm::program_entry> actions;
-            givm::program_entry refill;
+            std::vector<givm::normal_effect> actions;
+            givm::normal_effect refill;
         };
         support_log* log;
         std::string_view name() const { return "SupportDriver"; }
@@ -107,22 +107,22 @@ namespace
                 switch(action.kind)
                 {
                 case operation::add:
-                    result.actions.push_back(context.add_program(std::tuple{ givm::add_support{ player, definition, action.state } }));
+                    result.actions.push_back(context.add_normal_effect(std::tuple{ givm::add_support{ player, definition, action.state } }));
                     break;
                 case operation::set:
-                    result.actions.push_back(context.add_program(std::tuple{ givm::set_support_state{ player, definition, action.state } }));
+                    result.actions.push_back(context.add_normal_effect(std::tuple{ givm::set_support_state{ player, definition, action.state } }));
                     break;
                 case operation::modify:
-                    result.actions.push_back(context.add_program(std::tuple{
+                    result.actions.push_back(context.add_normal_effect(std::tuple{
                         givm::modify_support_state{ player, definition, action.count, action.round_usages } }));
                     break;
                 case operation::remove:
-                    result.actions.push_back(context.add_program(std::tuple{ givm::remove_support{ player, definition } }));
+                    result.actions.push_back(context.add_normal_effect(std::tuple{ givm::remove_support{ player, definition } }));
                     break;
                 }
             }
             if(log->refill_on_removal)
-                result.refill = context.add_program(std::tuple{
+                result.refill = context.add_normal_effect(std::tuple{
                     givm::replace_cards{ givm::player_id{ 0 } },
                     givm::add_support{ .definition = replacement, .state = { 99, 2 } } });
             return result;
@@ -131,7 +131,7 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -151,7 +151,7 @@ namespace
                 return context.invoke(data.actions[index], givm::modify_support_state_input{ target, action.count, action.round_usages });
             return context.invoke(data.actions[index], givm::remove_support_input{ target });
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::support_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -170,13 +170,13 @@ namespace
     struct support_card
     {
         using definition_category = givm::card_definition;
-        struct definition_type { givm::program_entry add; givm::program_entry replace; };
+        struct definition_type { givm::normal_effect add; givm::normal_effect replace; };
         std::string_view name() const { return "SupportCard"; }
         auto support_dependencies() const { return std::array{ std::string_view{ "SupportB" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
             const givm::add_support add{ .definition = context.resolve_id<givm::support_view>("SupportB"), .state = { 17, 1 } };
-            return { context.add_program(std::tuple{ add }), context.add_program(std::tuple{ givm::remove_support{}, add }) };
+            return { context.add_normal_effect(std::tuple{ add }), context.add_normal_effect(std::tuple{ givm::remove_support{}, add }) };
         }
         static givm::card_state query(const definition_type&, const givm::card_initial_state&)
         {
@@ -192,8 +192,8 @@ namespace
             return full && query.target_count == 1 && support && support->player_id == player && query.table[*support].is_valid()
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_card_play& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             const auto player = self.player().id();

@@ -35,29 +35,29 @@ namespace
     struct reaction_observer
     {
         using definition_category = givm::skill_view;
-        struct definition_type { reaction_log* log; givm::program_entry nested; givm::tag_id replacement; };
+        struct definition_type { reaction_log* log; givm::normal_effect nested; givm::tag_id replacement; };
         reaction_log* log;
         std::string_view name() const { return "ReactionObserver"; }
         auto tags() const { return std::array{ std::string_view{ "EntityReactionReplacement" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::deal_damage{} }), *context.find_tag("EntityReactionReplacement") };
+            return { log, context.add_normal_effect(std::tuple{ givm::deal_damage{} }), *context.find_tag("EntityReactionReplacement") };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             if(data.log->take_over_effects) event.cancel_reaction_bonus = true;
             data.log->statuses_at_calculation.push_back(std::ranges::distance(
                 context.table()[data.log->source_player].combat_statuses()));
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             if(data.log->take_over_effects) event.cancel_default_effects = true;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->statuses_at_completion.push_back(std::ranges::distance(
@@ -77,7 +77,7 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::summon_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->removed_summons.push_back(event.summon);
@@ -112,20 +112,20 @@ namespace
     struct pausing_field
     {
         using definition_category = givm::combat_status_view;
-        struct definition_type { reaction_log* log; givm::program_entry repeat; };
+        struct definition_type { reaction_log* log; givm::normal_effect repeat; };
         reaction_log* log;
         std::string_view name() const { return "PausingField"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::set_combat_status_state{},
+            return { log, context.add_normal_effect(std::tuple{ givm::set_combat_status_state{},
                 givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
         static givm::combat_status_state query(const definition_type&, const givm::combat_status_state_limit&)
         {
             return { .count = 2 };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::combat_status_regeneration& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_combat_status_regenerate& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             ++data.log->repeated;
@@ -479,7 +479,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         auto combat_status_dependencies() const { return std::array{ std::string_view{ "PausingField" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{ givm::generate_combat_status{
+            return { context.add_immediate_effect(std::tuple{ givm::generate_combat_status{
                 .definition = context.resolve_id<givm::combat_status_view>("PausingField"), .state = { 2 } } }) };
         }
     };

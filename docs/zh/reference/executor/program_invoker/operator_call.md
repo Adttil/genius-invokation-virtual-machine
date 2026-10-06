@@ -6,14 +6,14 @@
 
 ```cpp
 template<class... T> // 每个 T 均须为核心命令声明的 input_type
-program_entry operator()(program_entry entry, T&&... inputs);
+normal_effect operator()(normal_effect entry, T&&... inputs);
 
-program_entry operator()(program_entry entry, const program_inputs& inputs);
+normal_effect operator()(normal_effect entry, const program_inputs& inputs);
 
 template<class... T> // 每个 T 均须为核心命令声明的 input_type
-program_entry operator()(substack_t, program_entry entry, T&&... inputs);
+normal_effect operator()(substack_t, normal_effect entry, T&&... inputs);
 
-program_entry operator()(substack_t, program_entry entry, const program_inputs& inputs);
+normal_effect operator()(substack_t, normal_effect entry, const program_inputs& inputs);
 ```
 
 提交要执行的效果，以及本次效果需要的全部命令输入。定义源通过 [`handle_context::invoke`](../handle_context/invoke.md) 使用它；入口、输入和生命周期约定见该接口。

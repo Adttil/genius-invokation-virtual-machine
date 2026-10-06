@@ -111,9 +111,6 @@ namespace givm::detail
         player_id previous_player;
         execution_position position;
         std::uint32_t result = return_response::null;
-#ifndef NDEBUG
-        bool previous_inline = false;
-#endif
     };
 
     template<class T>
@@ -265,15 +262,23 @@ namespace givm
             }
 
             template<class TEvent, class TView>
-            program_entry handle(
+            requires (TEvent::category != event_category::preview)
+            effect<TEvent::category> handle(
                 TEvent& event,
-                handle_context<TView>& context,
+                handle_context<TView, TEvent::category>& context,
                 std::uint32_t response_index = 0
             ) const
             {
                 return library_->template handle<TEvent>(
                     id_, event, context, response_index
                 );
+            }
+
+            template<class TEvent, class TView>
+            requires (TEvent::category == event_category::preview)
+            preview_effect handle(TEvent& event, handle_context<TView, event_category::preview>& context) const
+            {
+                return library_->template handle<TEvent>(id_, event, context);
             }
 
         private:
@@ -489,10 +494,11 @@ namespace givm
         }
 
         template<class TEvent, class TDefinitionType, class TView>
-        program_entry handle(
+        requires (TEvent::category != event_category::preview)
+        effect<TEvent::category> handle(
             definition_id<TDefinitionType> id,
             TEvent& event,
-            handle_context<TView>& context,
+            handle_context<TView, TEvent::category>& context,
             std::uint32_t response_index = 0
         ) const
         {
@@ -500,6 +506,15 @@ namespace givm
             const size_t index = id.value();
             const auto handle_fn = get_handle_fn<TEvent, TView>(id);
             return handle_fn(bucket.data[index], event, context, response_index);
+        }
+
+        template<class TEvent, class TDefinitionType, class TView>
+        requires (TEvent::category == event_category::preview)
+        preview_effect handle(definition_id<TDefinitionType> id, TEvent& event,
+            handle_context<TView, event_category::preview>& context) const
+        {
+            const auto& bucket = bucket_for<TDefinitionType>();
+            return get_handle_fn<TEvent, TView>(id)(bucket.data[id.value()], event, context);
         }
 
     private:

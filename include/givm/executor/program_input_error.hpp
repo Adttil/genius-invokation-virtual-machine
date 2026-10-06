@@ -28,12 +28,11 @@ namespace givm
         std::string expected;
         std::string actual;
     };
-    enum class invalid_program_entry { null_entry, different_library, unknown_entry };
-    struct program_invocation_mode_mismatch { bool expected_substack; bool actual_substack; };
+    enum class invalid_effect { null_entry, different_library, unknown_entry };
     struct repeated_program_invocation {};
     struct invalid_response_index { std::uint32_t index; };
     using program_input_error_reason = std::variant<program_input_count_mismatch, program_input_type_mismatch,
-        invalid_program_entry, program_invocation_mode_mismatch, repeated_program_invocation, invalid_response_index>;
+        invalid_effect, repeated_program_invocation, invalid_response_index>;
 
     inline std::string error_string(const program_input_count_mismatch& error)
     {
@@ -44,20 +43,15 @@ namespace givm
         return "input[" + std::to_string(error.input_index) + "] for command[" + std::to_string(error.command_index)
             + "] " + error.command + ": expected " + error.expected + ", actual " + error.actual;
     }
-    inline std::string error_string(invalid_program_entry error)
+    inline std::string error_string(invalid_effect error)
     {
         switch(error)
         {
-        case invalid_program_entry::null_entry: return "invoke requires a non-null program entry";
-        case invalid_program_entry::different_library: return "program entry belongs to a different definition library";
-        case invalid_program_entry::unknown_entry: return "program entry has no matching input description";
+        case invalid_effect::null_entry: return "invoke requires a non-null effect";
+        case invalid_effect::different_library: return "effect belongs to a different definition library";
+        case invalid_effect::unknown_entry: return "effect has no matching input description";
         }
         return {};
-    }
-    inline std::string error_string(const program_invocation_mode_mismatch& error)
-    {
-        return std::string{ "invocation mode mismatch: expected " } + (error.expected_substack ? "invoke(substack_t{}, ...)" : "invoke(...)")
-            + ", actual " + (error.actual_substack ? "invoke(substack_t{}, ...)" : "invoke(...)");
     }
     inline std::string error_string(repeated_program_invocation)
     {
@@ -150,26 +144,26 @@ namespace givm::detail
     public:
         explicit program_input_validator(program_debug_view debug) noexcept : debug_{ debug } {}
 
-        template<class TMarker>
+        template<event_category Category, class TMarker>
         std::expected<const debug_program_info*, program_input_failure> check_parameters(
-            program_entry entry, std::size_t count, TMarker marker) const
+            effect<Category> entry, std::size_t count, TMarker marker) const
         {
-            if(not entry) return std::unexpected{ program_input_failure{ invalid_program_entry::null_entry } };
+            if(not entry) return std::unexpected{ program_input_failure{ invalid_effect::null_entry } };
 #ifndef NDEBUG
             if(entry.library_identity_ != debug_.library_identity)
-                return std::unexpected{ program_input_failure{ invalid_program_entry::different_library } };
+                return std::unexpected{ program_input_failure{ invalid_effect::different_library } };
             if(entry.debug_index_ >= debug_.programs.size())
-                return std::unexpected{ program_input_failure{ invalid_program_entry::unknown_entry } };
+                return std::unexpected{ program_input_failure{ invalid_effect::unknown_entry } };
             const auto& program = debug_.programs[entry.debug_index_];
 #else
             const auto found = std::ranges::find(debug_.programs, entry.position_, &debug_program_info::position);
             if(found == debug_.programs.end())
-                return std::unexpected{ program_input_failure{ invalid_program_entry::unknown_entry } };
+                return std::unexpected{ program_input_failure{ invalid_effect::unknown_entry } };
             const auto& program = *found;
 #endif
             if(program.position != entry.position_ || program.inputs_begin > debug_.inputs.size()
                 || program.inputs_count > debug_.inputs.size() - program.inputs_begin)
-                return std::unexpected{ program_input_failure{ invalid_program_entry::unknown_entry } };
+                return std::unexpected{ program_input_failure{ invalid_effect::unknown_entry } };
             if(program.inputs_count != count)
                 return std::unexpected{ program_input_failure{
                     program_input_count_mismatch{ program.inputs_count, count }, &program } };
@@ -186,8 +180,9 @@ namespace givm::detail
             return &program;
         }
 
+        template<event_category Category>
         std::expected<const debug_program_info*, program_input_failure> check(
-            program_entry entry, std::span<const program_input_description> inputs) const
+            effect<Category> entry, std::span<const program_input_description> inputs) const
         {
             auto result = check_parameters(entry, inputs.size(), [&](std::size_t index) { return inputs[index].marker; });
             if(not result) return result;
@@ -232,13 +227,14 @@ namespace givm::detail
             return {};
         }
 
-        template<class TMarker>
-        const debug_program_info& validate_parameters(program_entry entry, std::size_t count, TMarker marker) const
+        template<event_category Category, class TMarker>
+        const debug_program_info& validate_parameters(effect<Category> entry, std::size_t count, TMarker marker) const
         {
             return checked(check_parameters(entry, count, marker));
         }
 
-        const debug_program_info& validate(program_entry entry, std::span<const program_input_description> inputs) const
+        template<event_category Category>
+        const debug_program_info& validate(effect<Category> entry, std::span<const program_input_description> inputs) const
         {
             return checked(check(entry, inputs));
         }

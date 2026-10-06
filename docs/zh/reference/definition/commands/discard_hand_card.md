@@ -37,7 +37,7 @@ struct discard_hand_card
 ## 结算
 
 1. 确定本次全部目标，将全部目标手牌及其附属状态标记为离场。
-2. 对第一张牌，仅向自身发送 `hand_card_discard_effect`，完整执行返回的程序。
+2. 对第一张牌，仅向自身发送 `this_hand_card_discard`，完整执行返回的程序。
 3. 为该牌全场广播 [`hand_card_discarded`](../events/hand_card_discarded.md)，完整执行所有响应。
 4. 对下一张牌重复步骤 2、3，直到本批全部结算完。
 

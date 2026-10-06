@@ -16,4 +16,4 @@ enum class program_kind { initialization, round, response };
 | --- | --- |
 | `initialization` | 对局开始时执行一次的初始化程序 |
 | `round` | 每个回合执行的根程序 |
-| `response` | 定义源通过 `add_program` 登记的响应程序 |
+| `response` | 定义源通过 `add_normal_effect` 登记的响应程序 |

@@ -81,7 +81,7 @@ namespace givm::detail
 {
     std::size_t append_commands(program_writer& writer, std::span<const any_command> commands, compile_mode mode,
         const definition_compile_context& context, program_kind kind, std::vector<compile_error>& errors, compile_location location,
-        program_input_records& input_records
+        program_input_records& input_records, event_category category = event_category::normal
     )
     {
         std::size_t inputs_count = 0;
@@ -89,6 +89,16 @@ namespace givm::detail
         const auto append_command = [&](const auto& command)
         {
             location.command_index = command_index++;
+            if constexpr(std::same_as<std::remove_cvref_t<decltype(command)>, end_segment>
+                || std::same_as<std::remove_cvref_t<decltype(command)>, settle>)
+            {
+                if(category == event_category::immediate)
+                {
+                    errors.push_back({ location, effect_command_not_allowed{ category,
+                        debug_command_name<std::remove_cvref_t<decltype(command)>> } });
+                    return;
+                }
+            }
             if constexpr(requires { typename std::remove_cvref_t<decltype(command)>::error_type; })
             {
                 auto command_errors = check(command, context, kind);
@@ -115,7 +125,9 @@ namespace givm::detail
                     input_records.inputs.push_back({ marker, *location.command_index,
                         debug_command_name<std::remove_cvref_t<decltype(command)>> });
             }
-            compile(writer, command, mode);
+            if constexpr(std::same_as<std::remove_cvref_t<decltype(command)>, return_response>)
+                compile_effect_return(writer, command, category);
+            else compile(writer, command, mode);
         };
         for(const auto& command : commands)
         {
@@ -373,9 +385,9 @@ namespace givm
         });
     }
 
-    program_entry definition_compile_context::add_program(std::span<const any_command> commands)
+    normal_effect definition_compile_context::compile_effect(std::span<const any_command> commands, event_category category)
     {
-        program_entry result{ program_.size() };
+        normal_effect result{ program_.size() };
         detail::program_writer writer{ program_ };
         const auto index = input_records_.programs.size();
 #ifndef NDEBUG
@@ -383,14 +395,15 @@ namespace givm
         result.debug_index_ = index;
 #endif
         input_records_.programs.push_back({ source_, program_count_, program_.size(), input_records_.inputs.size(), 0 });
+        if(category != event_category::immediate) writer.write(detail::execute_fn{ detail::begin_effect });
         const auto inputs_count =
             detail::append_commands(writer, commands, mode_, *this, program_kind::response, errors_,
-                { compile_stage::program, source_, program_kind::response, program_count_++, {} }, input_records_
+                { compile_stage::program, source_, program_kind::response, program_count_++, {} }, input_records_, category
             );
         input_records_.programs[index].inputs_count = inputs_count;
         if(std::ranges::none_of(commands, [](const auto& command)
             { return std::holds_alternative<return_response>(command); }))
-            detail::compile(writer, return_response{ return_response::null }, mode_);
+            detail::compile_effect_return(writer, return_response{ return_response::null }, category);
         return result;
     }
 

@@ -1,14 +1,15 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **resummoning**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_summon_resummon**
 
-# givm::resummoning
+# givm::this_summon_resummon
 
 定义于头文件 `<givm/definition.hpp>`
 
 [summon](../commands/summon.md) 找到已有同定义召唤物时，仅交给首个匹配实体的重复请求。响应程序结算完成后，原命令才结束。
 
 ```cpp
-struct resummoning
+struct this_summon_resummon
 {
+    static constexpr event_category category = event_category::normal;
     const summon_state state;
 };
 ```

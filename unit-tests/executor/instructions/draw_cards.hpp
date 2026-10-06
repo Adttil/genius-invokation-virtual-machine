@@ -56,8 +56,8 @@ namespace
         struct definition_type
         {
             draw_log* log;
-            givm::program_entry draw;
-            givm::program_entry pause;
+            givm::normal_effect draw;
+            givm::normal_effect pause;
         };
         draw_log* log;
 
@@ -68,22 +68,22 @@ namespace
             if(log->dynamic) commands = { givm::draw_cards{}, givm::draw_cards{} };
             else for(const auto position : log->positions)
                 commands.emplace_back(givm::draw_cards{ .player = log->player, .position = position });
-            const auto draw = context.add_program(commands);
+            const auto draw = context.add_normal_effect(commands);
             return { log, draw,
-                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
                 return context.invoke(data.draw, givm::draw_cards_input{ data.log->input }, givm::draw_cards_input{});
             return context.invoke(data.draw);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_drawn& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto card = context.table()[event.card];
@@ -102,7 +102,7 @@ namespace
         template<class TEvent>
             requires(std::same_as<TEvent, givm::hand_card_added> || std::same_as<TEvent, givm::hand_card_discarded>
                 || std::same_as<TEvent, givm::deck_card_discarded>)
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->unexpected_notifications;

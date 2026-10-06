@@ -126,7 +126,7 @@ namespace
         struct definition_type
         {
             std::vector<givm::character_id>* responses;
-            givm::program_entry entry;
+            givm::normal_effect entry;
             bool dynamic;
         };
         std::vector<givm::character_id>* responses;
@@ -135,7 +135,7 @@ namespace
         std::string_view name() const { return "SwitchOrderSource"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { responses, context.add_program(std::tuple{
+            return { responses, context.add_normal_effect(std::tuple{
                 dynamic ? givm::set_active_character{} : givm::set_active_character{ relative(0) },
                 dynamic ? givm::set_active_character{} : givm::set_active_character{ relative(1) },
                 dynamic ? givm::set_active_character{} : givm::set_active_character{ relative(0) }
@@ -145,7 +145,7 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -155,7 +155,7 @@ namespace
                     givm::set_active_character_input{ { player, 1 } }, givm::set_active_character_input{ { player, 1 } });
             return context.invoke(data.entry);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();

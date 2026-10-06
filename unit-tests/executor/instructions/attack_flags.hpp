@@ -32,21 +32,21 @@ namespace
     struct attack_source
     {
         using definition_category = givm::skill_view;
-        struct definition_type { attack_log* log; givm::program_entry damage; };
+        struct definition_type { attack_log* log; givm::normal_effect damage; };
         attack_log* log;
         bool normal;
         std::string_view name() const { return normal ? "Normal" : "Elemental"; }
         auto tags() const { return std::array{ std::string_view{ normal ? "normal_attack" : "elemental_skill" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::deal_damage{} }) };
+            return { log, context.add_normal_effect(std::tuple{ givm::deal_damage{} }) };
         }
         static givm::action_cost_requirement query(const definition_type&, const givm::skill_initial_cost&)
         {
             return { .dice_requirement = { .any = 3 } };
         }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::cost_of_skill& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data,
+                                         givm::cost_of_skill& event, givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             const auto self = context.entity();
             if(self.id() != event.skill) return {};
@@ -54,15 +54,15 @@ namespace
             if(event.flags.contains(givm::skill_flag_bits::charged_attack)) --event.requirement.dice_requirement.any;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::skill_will_be_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+                                         givm::skill_will_be_used& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             if(self.id() == event.skill && data.log->fast_skill) event.speed = givm::action_speed::fast;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::skill_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+                                         givm::this_skill_use& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             data.log->effects.push_back(event.flags);
@@ -71,15 +71,15 @@ namespace
                 .value = 1, .type = givm::damage_type::physical, .flags = event.flags.to_damage_flags()
             } } });
         }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::damage_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+                                         givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             if(const auto* id = std::get_if<givm::skill_id>(&event.source); id && *id == self.id())
                 data.log->damage.push_back(event.flags);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
                                          givm::skill_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -111,7 +111,7 @@ namespace
     struct attack_card
     {
         using definition_category = givm::card_definition;
-        struct definition_type { givm::card_state state; givm::program_entry effect; };
+        struct definition_type { givm::card_state state; givm::normal_effect effect; };
         bool fast = true;
         bool switch_character = false;
         std::int32_t switch_offset = 1;
@@ -119,15 +119,15 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { { .cost = { .speed = fast ? givm::action_speed::fast : givm::action_speed::combat } },
-                switch_character ? context.add_program(std::tuple{
+                switch_character ? context.add_normal_effect(std::tuple{
                     givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, switch_offset } }
-                }) : givm::program_entry{} };
+                }) : givm::normal_effect{} };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&) { return data.state; }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::card_effect&, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+                                         givm::this_card_play&, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
-            return data.effect ? context.invoke(data.effect) : givm::program_entry{};
+            return data.effect ? context.invoke(data.effect) : givm::normal_effect{};
         }
     };
 

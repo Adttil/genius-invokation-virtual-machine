@@ -46,33 +46,33 @@ namespace
         struct definition_type
         {
             flow_log* log;
-            program_entry batch;
-            program_entry targets;
-            program_entry nested;
-            program_entry revive;
-            program_entry marker;
+            normal_effect batch;
+            normal_effect targets;
+            normal_effect nested;
+            immediate_effect revive;
+            normal_effect marker;
         };
         flow_log* log;
         std::string_view name() const { return "TargetObserver"; }
         definition_type compile(definition_compile_context& context) const
         {
             const auto batch = log->dynamic
-                ? context.add_program(deal_damage{}, givm::heal{}, deal_damage{}, givm::heal{}, set_energy{})
-                : context.add_program(
+                ? context.add_normal_effect(deal_damage{}, givm::heal{}, deal_damage{}, givm::heal{}, set_energy{})
+                : context.add_normal_effect(
                     deal_damage{ .target = { relative_player::opponent, 1 }, .value = 1, .type = damage_type::physical },
                     deal_damage{ .target = { relative_player::opponent, 1 }, .value = 2, .type = damage_type::pyro },
                     givm::heal{ .target = { relative_player::opponent, 1 }, .value = 1 },
                     givm::heal{ .target = { relative_player::opponent, 1 }, .value = 2 },
                     set_energy{ .target = { relative_player::self, 0 }, .value = 2 });
-            return { log, batch, context.add_program(deal_damage{}),
-                context.add_program(deal_damage{}, return_response{ 1 }),
-                context.add_program(givm::heal{}), context.add_program(return_response{ 1 }) };
+            return { log, batch, context.add_normal_effect(deal_damage{}),
+                context.add_normal_effect(deal_damage{}, return_response{ 1 }),
+                context.add_immediate_effect(givm::heal{}), context.add_normal_effect(return_response{ 1 }) };
         }
         static character_state query(const definition_type&, const character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 3, .health = 10 };
         }
-        static program_entry handle(const definition_type& data, round_started&,
+        static normal_effect handle(const definition_type& data, round_started&,
             handle_context<skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->target_modes)
@@ -104,8 +104,8 @@ namespace
             heals.clear();
             return context.invoke(data.batch, packed);
         }
-        static program_entry handle(const definition_type& data, damage_preparation& event,
-            handle_context<skill_view>& context, std::uint32_t = 0)
+        static immediate_effect handle(const definition_type& data, damage_preparation& event,
+            handle_context<skill_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->hits.push_back(event.target);
             if(data.log->revive_in_range && not data.log->revived)
@@ -116,7 +116,7 @@ namespace
             }
             return {};
         }
-        static program_entry handle(const definition_type& data, after_damage& event,
+        static normal_effect handle(const definition_type& data, after_damage& event,
             handle_context<skill_view>& context, std::uint32_t index = 0)
         {
             if(index != 0)
@@ -137,13 +137,13 @@ namespace
             }
             return {};
         }
-        static program_entry handle(const definition_type& data, healed& event,
+        static normal_effect handle(const definition_type& data, healed& event,
             handle_context<skill_view>&, std::uint32_t = 0)
         {
             data.log->heals.push_back(event.value);
             return {};
         }
-        static program_entry handle(const definition_type& data, active_character_changed& event,
+        static normal_effect handle(const definition_type& data, active_character_changed& event,
             handle_context<skill_view>& context, std::uint32_t index = 0)
         {
             const auto player = event.current.player_id.index;

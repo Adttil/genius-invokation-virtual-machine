@@ -19,14 +19,14 @@ namespace
     struct invalid_commands_source
     {
         using definition_category = givm::support_view;
-        struct definition_type { givm::program_entry entry; };
+        struct definition_type { givm::normal_effect entry; };
         bool* finished;
 
         constexpr std::string_view name() const noexcept { return "Invalid command source"; }
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            context.add_program(std::tuple{ givm::set_energy{} });
+            context.add_normal_effect(std::tuple{ givm::set_energy{} });
             const std::array damages{
                 givm::deal_damage{ .target = { givm::relative_player::opponent, 0 }, .value = 1, .multiplier_denominator = 0, .type = givm::damage_type::physical },
                 givm::deal_damage{ .target = { givm::relative_player::opponent, 0 }, .value = 2, .multiplier_denominator = 0, .type = static_cast<givm::damage_type>(255) }
@@ -36,8 +36,8 @@ namespace
                 damages[0], damages[1],
                 givm::set_energy{ .target = { .selection = givm::character_selection::others }, .value = 1 }
             };
-            const auto entry = context.add_program(commands);
-            context.add_program(std::tuple{ givm::end_game{ static_cast<givm::game_result>(255) } });
+            const auto entry = context.add_normal_effect(commands);
+            context.add_normal_effect(std::tuple{ givm::end_game{ static_cast<givm::game_result>(255) } });
             *finished = true;
             return { entry };
         }

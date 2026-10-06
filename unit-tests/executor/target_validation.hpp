@@ -36,8 +36,8 @@ namespace
             return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(
-            const definition_type&, givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(
+            const definition_type&, givm::this_card_play&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             return {};
         }
@@ -61,8 +61,8 @@ namespace
             return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(
-            const definition_type&, givm::skill_effect&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(
+            const definition_type&, givm::this_skill_use&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             return {};
         }

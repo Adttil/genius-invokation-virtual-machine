@@ -84,16 +84,16 @@ namespace givm_test
         {
             if constexpr(Slot == givm::elemental_reaction::bloom || Slot == givm::elemental_reaction::quicken
                 || Slot >= givm::elemental_reaction::crystallize_cryo)
-                return { context.add_program(std::tuple{ givm::generate_combat_status{
+                return { context.add_immediate_effect(std::tuple{ givm::generate_combat_status{
                     .definition = context.resolve_id<givm::combat_status_view>(generated_name),
                     .state = Slot >= givm::elemental_reaction::crystallize_cryo
                         ? givm::combat_status_state{ 1, 0 }
                         : givm::combat_status_state{ Slot == givm::elemental_reaction::bloom ? 1u : 2u, 0 } } }), {} };
             else if constexpr(Slot == givm::elemental_reaction::burning)
-                return { context.add_program(std::tuple{ givm::summon{
+                return { context.add_immediate_effect(std::tuple{ givm::summon{
                     .definition = context.resolve_id<givm::summon_view>(generated_name), .state = { 1, 1 } } }), {} };
             else if constexpr(Slot == givm::elemental_reaction::frozen)
-                return { context.add_program(std::tuple{ givm::attach{} }),
+                return { context.add_immediate_effect(std::tuple{ givm::attach{} }),
                     context.resolve_id<givm::attachment_view>(generated_name) };
             else return base::compile(context);
         }

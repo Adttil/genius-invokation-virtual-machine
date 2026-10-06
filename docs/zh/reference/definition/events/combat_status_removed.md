@@ -9,6 +9,7 @@
 ```cpp
 struct combat_status_removed
 {
+    static constexpr event_category category = event_category::normal;
     const combat_status_id status;
 };
 ```

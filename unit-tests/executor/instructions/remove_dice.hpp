@@ -32,8 +32,8 @@ namespace
         struct definition_type
         {
             removed_dice_log* log;
-            givm::program_entry effect;
-            givm::program_entry nested;
+            givm::normal_effect effect;
+            givm::normal_effect nested;
         };
         removed_dice_log* log;
 
@@ -49,10 +49,10 @@ namespace
             const auto nested = log->dynamic ? givm::remove_dice{}
                 : givm::remove_dice{ .player = givm::relative_player::self, .dice = log->nested };
             return { log,
-                context.add_program(std::tuple{ zero, first, givm::settle{}, zero, last, zero }),
-                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
+                context.add_normal_effect(std::tuple{ zero, first, givm::settle{}, zero, last, zero }),
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
@@ -64,7 +64,7 @@ namespace
                     givm::remove_dice_input{ givm::player_id{ 1 }, {} });
             return context.invoke(data.effect);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::dice_removed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             const auto index = data.log->players.size();
@@ -100,16 +100,16 @@ namespace
         struct definition_type
         {
             collection_log* log;
-            givm::program_entry collect;
+            givm::normal_effect collect;
         };
         collection_log* log;
 
         constexpr std::string_view name() const { return "DiceCollector"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::remove_dice{}, givm::set_support_state{} }) };
+            return { log, context.add_normal_effect(std::tuple{ givm::remove_dice{}, givm::set_support_state{} }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_ended&, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();

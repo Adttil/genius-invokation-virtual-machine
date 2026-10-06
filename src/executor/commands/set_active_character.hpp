@@ -31,10 +31,10 @@ namespace givm::detail
         {
             for(const auto attachment : table[*state.active_character].attachments())
             {
-                if(library[attachment.definition_id()].can_handle<prepared_skill_effect, attachment_view>())
+                if(library[attachment.definition_id()].can_handle<this_prepared_skill_use, attachment_view>())
                 {
                     attachment.erase();
-                    append_removal_record<attachment_removal_effect>(context, attachment.id(),
+                    append_removal_record<this_attachment_remove>(context, attachment.id(),
                         attachment_removed{ attachment.id() });
                 }
             }

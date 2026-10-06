@@ -48,11 +48,13 @@ namespace
         struct definition_type
         {
             group_log* log;
-            givm::program_entry pair;
-            givm::program_entry single;
-            givm::program_entry change_aura;
-            givm::program_entry change_target_aura;
-            givm::program_entry count_response;
+            givm::normal_effect pair;
+            givm::normal_effect single;
+            givm::immediate_effect immediate_single;
+            givm::normal_effect change_aura;
+            givm::immediate_effect change_target_aura;
+            givm::normal_effect count_response;
+            givm::immediate_effect immediate_count_response;
             givm::tag_id replacement;
         };
         group_log* log;
@@ -62,66 +64,68 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log,
-                context.add_program(std::tuple{ givm::deal_damage{}, givm::deal_damage{} }),
-                context.add_program(std::tuple{ givm::deal_damage{} }),
-                context.add_program(std::tuple{
+                context.add_normal_effect(std::tuple{ givm::deal_damage{}, givm::deal_damage{} }),
+                context.add_normal_effect(std::tuple{ givm::deal_damage{} }),
+                context.add_immediate_effect(std::tuple{ givm::deal_damage{} }),
+                context.add_normal_effect(std::tuple{
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .element = givm::element::none },
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .element = givm::element::pyro }
                 }),
-                context.add_program(std::tuple{
+                context.add_immediate_effect(std::tuple{
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::none },
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro }
                 }),
-                context.add_program(std::tuple{ givm::replace_cards{ .player = attacking_player } }),
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ .player = attacking_player } }),
+                context.add_immediate_effect(std::tuple{ givm::replace_cards{ .player = attacking_player } }),
                 *context.find_tag("GroupReactionReplacement") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.pair,
                 givm::deal_damage_input{ std::array{ givm::damage{ .source = attacker, .target = victim(0), .value = 2, .type = givm::damage_type::physical } } },
                 givm::deal_damage_input{ std::array{ givm::damage{ .source = attacker, .target = victim(1), .value = 3, .type = givm::damage_type::physical } } });
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_preparation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_preparation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             if(data.log->enchant && event.target == victim(0) && event.type == givm::damage_type::physical)
                 event.type = givm::damage_type::electro;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             if(data.log->take_over) event.cancel_reaction_bonus = true;
             data.log->order.emplace_back(phase::calculation, event.target.index);
             if(data.log->nested && !data.log->nested_invoked && event.target == victim(0))
             {
                 data.log->nested_invoked = true;
-                return context.invoke(data.single, givm::deal_damage_input{ std::array{ givm::damage{
+                return context.invoke(data.immediate_single, givm::deal_damage_input{ std::array{ givm::damage{
                     .source = attacker, .target = victim(2), .value = 4, .type = givm::damage_type::physical } } });
             }
-            return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
+            return data.log->invoke_each_phase ? context.invoke(data.immediate_count_response) : givm::immediate_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::effect, event.target.index);
             data.log->final_types.push_back(event.type);
             if(data.log->change_aura_during_effect && event.target == victim(0))
                 return context.invoke(data.change_target_aura);
-            return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
+            return data.log->invoke_each_phase ? context.invoke(data.immediate_count_response) : givm::immediate_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::reaction, event.target.index);
             data.log->reactions.push_back(event.reaction.slot);
             if(data.log->take_over) event.cancel_default_effects = true;
-            return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
+            return data.log->invoke_each_phase ? context.invoke(data.immediate_count_response) : givm::immediate_effect{};
         }
         static void record_health(group_log& log, const givm::table& table)
         {
@@ -130,14 +134,14 @@ namespace
                 values.push_back(character.state().health);
             log.after_health.push_back(std::move(values));
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::after_reaction, event.target.index);
             record_health(*data.log, context.table());
-            return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
+            return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::normal_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::after_damage, event.target.index);
@@ -148,7 +152,7 @@ namespace
                     .source = attacker, .target = victim(2), .value = 4, .type = givm::damage_type::physical } } });
             if(data.log->change_aura_after_first && event.target == victim(0))
                 return context.invoke(data.change_aura);
-            return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::program_entry{};
+            return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::normal_effect{};
         }
     };
 
@@ -171,7 +175,7 @@ namespace
         std::string_view name() const { return source_name; }
         const auto& tags() const { return source_tags; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             ++data.log->attachment_responses;
@@ -188,7 +192,7 @@ namespace
             givm::definition_id<givm::skill_view> skill;
             givm::definition_id<givm::attachment_view> ordinary;
             givm::definition_id<givm::attachment_view> artifact;
-            givm::program_entry setup;
+            givm::normal_effect setup;
         };
         death_log* log;
 
@@ -203,7 +207,7 @@ namespace
             return { log, context.resolve_id<givm::skill_view>("RetainedSkill"),
                 context.resolve_id<givm::attachment_view>("RemovedAttachment"),
                 context.resolve_id<givm::attachment_view>("RemovedArtifact"),
-                context.add_program(std::tuple{ givm::add_attachment{}, givm::add_attachment{} }) };
+                context.add_normal_effect(std::tuple{ givm::add_attachment{}, givm::add_attachment{} }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -213,7 +217,7 @@ namespace
         {
             return query.skill_index == 0 ? data.skill : givm::definition_id<givm::skill_view>{};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -221,7 +225,7 @@ namespace
                 givm::add_attachment_input{ .target = self.id(), .definition = data.ordinary },
                 givm::add_attachment_input{ .target = self.id(), .definition = data.artifact });
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();

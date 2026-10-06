@@ -30,7 +30,7 @@ struct discard_deck_cards;
 
 先确定牌堆顶的本批卡牌，并将全部卡牌及其附属状态标记为离场。随后按从牌堆顶向下的顺序逐张结算：
 
-1. 仅向该牌发送 [`deck_card_discard_effect`](../events/deck_card_discard_effect.md)，完整执行其舍弃效果。
+1. 仅向该牌发送 [`this_deck_card_discard`](../events/this_deck_card_discard.md)，完整执行其舍弃效果。
 2. 全场广播 [`deck_card_discarded`](../events/deck_card_discarded.md)，完整执行全部响应。
 3. 再处理本批的下一张牌。
 

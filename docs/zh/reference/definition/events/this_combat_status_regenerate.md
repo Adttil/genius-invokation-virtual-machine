@@ -1,14 +1,15 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **combat_status_regeneration**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_combat_status_regenerate**
 
-# givm::combat_status_regeneration
+# givm::this_combat_status_regenerate
 
 定义于头文件 `<givm/definition.hpp>`
 
 [generate_combat_status](../commands/generate_combat_status.md) 找到已有同定义出战状态时，仅交给首个匹配实体的重复请求。响应程序结算完成后，原命令才结束。
 
 ```cpp
-struct combat_status_regeneration
+struct this_combat_status_regenerate
 {
+    static constexpr event_category category = event_category::normal;
     const combat_status_state state;
 };
 ```

@@ -155,7 +155,7 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         table[attachment].erase();
-        append_removal_record<attachment_removal_effect>(context, attachment, attachment_removed{ attachment });
+        append_removal_record<this_attachment_remove>(context, attachment, attachment_removed{ attachment });
         return continue_execution;
     }
 

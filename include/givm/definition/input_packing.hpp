@@ -127,11 +127,12 @@ namespace givm::detail
             return { command_input_types::index_of<defer_program_input>(), 0, input.entry_, input.descriptions_ };
         }
 
-        template<fixed_command_input... T>
-        static fixed_defer_program_input pack_fixed(program_entry entry, const T&... inputs)
+        template<event_category Category, fixed_command_input... T>
+        requires (Category != event_category::immediate)
+        static fixed_defer_program_input pack_fixed(effect<Category> entry, const T&... inputs)
         {
             fixed_defer_program_input result;
-            result.entry_ = entry;
+            result.entry_ = normal_effect{ entry };
             result.descriptions_.reserve(sizeof...(T));
             (result.descriptions_.push_back(describe_fixed_input(inputs)), ...);
             const auto values = std::forward_as_tuple(inputs...);
@@ -140,6 +141,13 @@ namespace givm::detail
                 (push_command_input(result.inputs_.frames_, std::get<sizeof...(T) - 1 - I>(values)), ...);
             }(std::index_sequence_for<T...>{});
             return result;
+        }
+
+        template<event_category Category>
+        requires (Category != event_category::immediate)
+        static defer_program_input defer(effect<Category> entry, program_inputs inputs)
+        {
+            return { normal_effect{ entry }, std::move(inputs) };
         }
 
         template<command_input... T>
@@ -191,19 +199,23 @@ namespace givm
         return detail::program_inputs_builder::concat(parts);
     }
 
-    inline defer_program_input defer_invoke(program_entry entry, program_inputs inputs)
+    template<event_category Category>
+    requires (Category != event_category::immediate)
+    inline defer_program_input defer_invoke(effect<Category> entry, program_inputs inputs)
     {
-        return { entry, std::move(inputs) };
+        return detail::program_inputs_builder::defer(entry, std::move(inputs));
     }
 
-    template<detail::command_input... T>
-    inline defer_program_input defer_invoke(program_entry entry, const T&... inputs)
+    template<event_category Category, detail::command_input... T>
+    requires (Category != event_category::immediate)
+    inline defer_program_input defer_invoke(effect<Category> entry, const T&... inputs)
     {
-        return { entry, pack_inputs(inputs...) };
+        return detail::program_inputs_builder::defer(entry, pack_inputs(inputs...));
     }
 
-    template<detail::fixed_command_input... T>
-    inline fixed_defer_program_input fixed_defer_invoke(program_entry entry, const T&... inputs)
+    template<event_category Category, detail::fixed_command_input... T>
+    requires (Category != event_category::immediate)
+    inline fixed_defer_program_input fixed_defer_invoke(effect<Category> entry, const T&... inputs)
     {
         return detail::program_inputs_builder::pack_fixed(entry, inputs...);
     }

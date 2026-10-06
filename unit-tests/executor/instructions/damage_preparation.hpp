@@ -37,19 +37,19 @@ namespace
     struct damage_bonus_source
     {
         using definition_category = givm::combat_status_view;
-        struct definition_type { preparation_log* log; givm::program_entry change_aura; givm::tag_id replacement; };
+        struct definition_type { preparation_log* log; givm::immediate_effect change_aura; givm::tag_id replacement; };
         preparation_log* log;
         std::string_view name() const { return "DamageBonus"; }
         auto tags() const { return std::array{ std::string_view{ "PreparedReactionReplacement" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{
+            return { log, context.add_immediate_effect(std::tuple{
                 givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::none },
                     givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro }
             }), *context.find_tag("PreparedReactionReplacement") };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::combat_status_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->calculated.push_back(event.reaction.slot);
             data.log->reacted_auras.push_back(event.reacted_aura);
@@ -73,21 +73,21 @@ namespace
                 return context.invoke(data.change_aura);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_effect& event, givm::handle_context<givm::combat_status_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::combat_status_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->applied.push_back(event.reaction.slot);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::combat_status_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::combat_status_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->side_effects.push_back(event.reaction.slot);
             CHECK_FALSE(event.cancel_default_effects);
             if(data.log->replace_reaction_bonus) event.cancel_default_effects = true;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
         {
             data.log->completed.push_back(event.reaction);
@@ -100,16 +100,16 @@ namespace
     struct infusion_source
     {
         using definition_category = givm::combat_status_view;
-        struct definition_type { givm::program_entry pause; givm::damage_type type; bool classify; };
+        struct definition_type { givm::immediate_effect pause; givm::damage_type type; bool classify; };
         givm::damage_type type;
         bool classify;
         std::string_view name() const { return "Infusion"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }), type, classify };
+            return { context.add_immediate_effect(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }), type, classify };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_preparation& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_preparation& event, givm::handle_context<givm::combat_status_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             if(event.type != givm::damage_type::physical) return {};
             event.type = data.type;
@@ -125,7 +125,7 @@ namespace
     struct preparation_driver
     {
         using definition_category = givm::skill_view;
-        struct definition_type { givm::program_entry entry; };
+        struct definition_type { givm::normal_effect entry; };
         std::span<const givm::deal_damage> damages;
         std::string_view name() const { return "PreparationDriver"; }
         auto combat_status_dependencies() const
@@ -138,10 +138,10 @@ namespace
                 givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("DamageBonus") },
                 givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("Infusion") } };
             for(const auto& item : damages) commands.emplace_back(item);
-            return { context.add_program(commands) };
+            return { context.add_normal_effect(commands) };
         }
 
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.entry);

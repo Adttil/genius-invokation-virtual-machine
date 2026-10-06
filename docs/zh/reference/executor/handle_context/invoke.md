@@ -6,17 +6,12 @@
 
 ```cpp
 template<class... T> // 每个 T 均须为核心命令声明的 input_type
-program_entry invoke(program_entry entry, T&&... inputs);
+effect<Category> invoke(effect<Category> entry, T&&... inputs);
 
-program_entry invoke(program_entry entry, const program_inputs& inputs);
-
-template<class... T> // 每个 T 均须为核心命令声明的 input_type
-program_entry invoke(substack_t, program_entry entry, T&&... inputs);
-
-program_entry invoke(substack_t, program_entry entry, const program_inputs& inputs);
+effect<Category> invoke(effect<Category> entry, const program_inputs& inputs);
 ```
 
-提交要执行的效果，以及本次效果需要的全部 [命令输入](../../definition/command_inputs.md)。普通响应使用不带标记的重载；费用响应使用首参数为 `substack_t{}` 的重载，保留到确认行动后执行。
+提交要执行的效果，以及本次效果需要的全部 [命令输入](../../definition/command_inputs.md)。上下文自动选择提交方式：普通和立即响应准备接下来执行的效果，预览响应缓存确认操作后才执行的效果。
 
 不需要输入的程序不传输入参数；其余程序按执行顺序逐项传入 `xxx_input` 对象。延迟命令的输入直接使用 [`defer_invoke`](../../definition/defer_invoke.md) 的返回值。Lua 等动态定义源适配器可以通过 [`pack_inputs`](../../definition/pack_inputs.md) 和 [`concat_inputs`](../../definition/concat_inputs.md) 准备 [`program_inputs`](../../definition/program_inputs.md)，再一次提交。
 
@@ -30,8 +25,7 @@ program_entry invoke(substack_t, program_entry entry, const program_inputs& inpu
 
 | | |
 | --- | --- |
-| `substack_t{}` | 费用预览提交所用的标记 |
-| `entry` | 当前定义库中通过 `add_program` 登记的非空入口 |
+| `entry` | 当前定义库中通过 `add_normal_effect` 登记的非空入口 |
 | `inputs` | 按命令执行顺序排列的输入对象；每个动态命令恰好对应一个对象，固定模式不占输入位置 |
 
 ## 返回值
@@ -40,7 +34,7 @@ program_entry invoke(substack_t, program_entry entry, const program_inputs& inpu
 
 ## 异常
 
-未定义 `NDEBUG` 时，在写入本次输入前检查入口、提交方式、重复提交以及输入对象的数量、具体类型和顺序；违反协议时抛出 [`program_input_error`](../program_input_error.md)。其中 `reason` 区分具体错误，可直接读取结构化字段，也可用 `what()` 或 [`error_string`](../error_string.md) 取得文本。发布构建不进行这些检查，也不保留对应诊断元数据；违反输入约定属于未定义行为。
+未定义 `NDEBUG` 时，在写入本次输入前检查入口、重复提交以及输入对象的数量、具体类型和顺序；违反协议时抛出 [`program_input_error`](../program_input_error.md)。其中 `reason` 区分具体错误，可直接读取结构化字段，也可用 `what()` 或 [`error_string`](../error_string.md) 取得文本。发布构建不进行这些检查，也不保留对应诊断元数据；违反输入约定属于未定义行为。
 
 协议检查失败时不写入本次输入，但不回滚此前响应对事件的修改，也不回滚本次推进已执行的其他效果。捕获异常用于定位定义错误，不应在原现场继续推进执行器。
 
@@ -48,7 +42,7 @@ program_entry invoke(substack_t, program_entry entry, const program_inputs& inpu
 
 ## 注意
 
-`cost_of_switch`、`cost_of_card`、`cost_of_skill` 和 `cost_of_technique` 响应若提交后续效果，必须调用 `context.invoke(substack_t{}, entry, inputs...)`，没有输入时也须传这个标记；普通响应使用 `context.invoke(entry, inputs...)`。调试构建检查是否选对重载。
+入口类别必须与上下文类别一致，不同类别不可互换。类型不匹配时 C++ 编译失败；提交方式没有运行期选择参数。
 
 程序要求的输入对象数量、类型和顺序由编译时的具体命令值决定。数组长度属于本次输入值，不参与类型匹配。例如 `deal_damage_input` 不论包含零条、一条还是多条伤害描述，都占一个输入位置。输入须与命令的 `input_type` 相同；字段相同本身不代表类型兼容，显式别名则是同一个类型。
 
@@ -85,13 +79,13 @@ struct passive_skill_source
 
     std::string_view name() const { return "响应选择出战"; }
 
-    givm::program_entry compile(givm::definition_compile_context& context) const
+    givm::normal_effect compile(givm::definition_compile_context& context) const
     {
-        return context.add_program(std::tuple{ givm::deal_damage{}, givm::deal_damage{}, givm::set_active_character{} });
+        return context.add_normal_effect(std::tuple{ givm::deal_damage{}, givm::deal_damage{}, givm::set_active_character{} });
     }
 
-    static givm::program_entry handle(
-        const givm::program_entry& entry,
+    static givm::normal_effect handle(
+        const givm::normal_effect& entry,
         givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {
         const auto self = context.entity();

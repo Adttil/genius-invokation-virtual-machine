@@ -43,7 +43,7 @@ struct return_response
 
 普通编号的范围为 0 至 `dynamic - 1`，不要求逐次递增。普通响应的程序及其后续结算全部完成后，再以该编号调用同一实体对原事件的 `handle`。返回 `null` 时继续其他响应者。即时响应只结束本次程序，不封闭外层当前段。
 
-[`add_program`](../../executor/definition_compile_context/add_program.md) 只处理到第一条本命令，其后命令不再检查、编译或要求输入。有效序列未显式返回时，自动补上 `return_response{ .index = return_response::null }`。
+[`add_normal_effect`](../../executor/definition_compile_context/add_effect.md) 只处理到第一条本命令，其后命令不再检查、编译或要求输入。有效序列未显式返回时，自动补上 `return_response{ .index = return_response::null }`。
 
 本命令不自动执行 [`end_segment`](end_segment.md)；普通响应和延迟程序的调用者负责末段收尾及后续工作。费用响应只调用一次，实际执行其缓存程序时忽略返回编号。[延迟程序](defer_program.md) 同样忽略返回编号，不延长登记它的父响应链。
 

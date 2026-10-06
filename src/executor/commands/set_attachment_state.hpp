@@ -30,10 +30,10 @@ namespace givm::detail
         execution_context& context, random_fn& random, attachment_id id, attachment_state state)
     {
         const auto attachment = table[id];
-        attachment_state_changed event{ attachment.state(), state };
+        this_attachment_state_change event{ attachment.state(), state };
         attachment.state() = state;
         const auto definition = library[attachment.definition_id()];
-        if(not definition.can_handle<attachment_state_changed, attachment_view>())
+        if(not definition.can_handle<this_attachment_state_change, attachment_view>())
             return continue_execution;
         append_single_event_record(context, id, event);
         return continue_execution;

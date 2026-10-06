@@ -61,7 +61,7 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         table[status].erase();
-        append_removal_record<combat_status_removal_effect>(context, status, combat_status_removed{ status });
+        append_removal_record<this_combat_status_remove>(context, status, combat_status_removed{ status });
         return continue_execution;
     }
 

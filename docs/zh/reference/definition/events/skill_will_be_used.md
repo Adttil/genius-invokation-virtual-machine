@@ -22,7 +22,7 @@ struct skill_will_be_used;
 
 ## 注意
 
-行动选择在费用结算完成后广播本事件；[`use_skill`](../commands/use_skill.md) 命令直接广播，不计算或支付技能费用。响应者可以将 `effect_cancelled` 设为 `true`，跳过技能自身的 [`skill_effect`](skill_effect.md)；这不会退还费用或取消之后的 [`skill_used`](skill_used.md) 广播。
+行动选择在费用结算完成后广播本事件；[`use_skill`](../commands/use_skill.md) 命令直接广播，不计算或支付技能费用。响应者可以将 `effect_cancelled` 设为 `true`，跳过技能自身的 [`this_skill_use`](this_skill_use.md)；这不会退还费用或取消之后的 [`skill_used`](skill_used.md) 广播。
 
 独立命令保留响应修改后的 `speed` 并传给完成通知，但不据此修改外层行动速度、当前行动玩家或下落攻击机会。
 

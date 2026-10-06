@@ -9,7 +9,6 @@ namespace givm::detail
     void compile_broadcast(program_writer& writer, execute_fn continuation)
     {
         writer.write(continuation);
-        if constexpr(not inline_event<TEvent>) compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ complete_broadcast_response<TEvent> });
     }
 
@@ -17,7 +16,6 @@ namespace givm::detail
     void compile_single_response(program_writer& writer, execute_fn continuation)
     {
         writer.write(continuation);
-        if constexpr(not inline_event<TEvent>) compile_settlement(writer, begin_settlement);
         writer.write(execute_fn{ complete_single_response<TEvent, TId> });
     }
 }

@@ -45,7 +45,7 @@ struct summon
 在目标范围查找首个有效、定义 ID 相同的实体：
 
 - 没有匹配实体时，目标玩家的有效召唤物数量小于其当前 [`player_state::summon_limit`](../../table/player_state.md) 才使用裁剪后的状态创建实体。达到或超过上限时，本次请求不创建实体，也不移除已有召唤物或广播 [summon_removed](../events/summon_removed.md)。
-- 已有匹配实体时，仅向该实体发送 [resummoning](../events/resummoning.md)，携带本次裁剪后的状态；响应可从自身读取原有状态。即使召唤区已满或上限为零，仍会发送该事件。
+- 已有匹配实体时，仅向该实体发送 [this_summon_resummon](../events/this_summon_resummon.md)，携带本次裁剪后的状态；响应可从自身读取原有状态。即使召唤区已满或上限为零，仍会发送该事件。
 - 返回的响应程序完整结算后，本命令结束。未提供响应或返回空入口时，不再追加实体。多个同定义实体也只通知首个。
 
 创建新实体时，`usages` 可以为零，创建时不执行耗尽离场。

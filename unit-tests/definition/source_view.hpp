@@ -111,7 +111,7 @@ namespace
             };
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& definition,
             givm::round_started&,
             givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
@@ -143,8 +143,8 @@ namespace
         {
             program_observation* observation;
             givm::definition_id<givm::support_view> support;
-            givm::program_entry first_entry;
-            givm::program_entry second_entry;
+            givm::normal_effect first_entry;
+            givm::normal_effect second_entry;
         };
 
         program_observation* observation;
@@ -165,11 +165,11 @@ namespace
             const auto support = context.resolve_id<givm::support_view>("ProgrammedSupport");
             observation->resolved_support = support;
 
-            const auto first_entry = context.add_program(std::tuple{
+            const auto first_entry = context.add_normal_effect(std::tuple{
                 givm::shuffle_deck{ .player = givm::player_id{ 0 } },
                 givm::shuffle_deck{ .player = givm::player_id{ 0 } }
             });
-            const auto second_entry = context.add_program(
+            const auto second_entry = context.add_normal_effect(
                 std::vector{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } }
             );
             observation->first_event_entry_set = bool{ first_entry };
@@ -190,7 +190,7 @@ namespace
         struct definition_type
         {
             program_observation* observation;
-            givm::program_entry onpay_entry;
+            givm::normal_effect onpay_entry;
         };
 
         program_observation* observation;
@@ -204,7 +204,7 @@ namespace
         {
             observation->onpay_compiled = true;
             using instruction_type = givm::any_command;
-            const auto entry = context.add_program(std::vector{
+            const auto entry = context.add_normal_effect(std::vector{
                 instruction_type{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } },
                 instruction_type{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } }
             });
@@ -267,7 +267,7 @@ namespace
             return false;
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type&,
             givm::round_started&,
             givm::handle_context<givm::support_view>&, std::uint32_t = 0)
@@ -275,8 +275,9 @@ namespace
             return {};
         }
 
-        template<class TView, class TEvent>
-        static givm::program_entry handle(const definition_type&, TEvent&, givm::handle_context<TView>&, std::uint32_t = 0)
+        template<class TView, class TEvent, class... TIndex>
+        static givm::effect<TEvent::category> handle(const definition_type&, TEvent&,
+            givm::handle_context<TView, TEvent::category>&, TIndex...)
         {
             FAIL("A disabled dynamic handler was invoked");
             std::unreachable();
@@ -310,7 +311,7 @@ namespace
             return false;
         }
 
-        static givm::program_entry handle(const definition_type&,
+        static givm::normal_effect handle(const definition_type&,
             givm::round_started&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             return {};
@@ -412,7 +413,7 @@ namespace
             observation->inspect(context);
             return {};
         }
-        static givm::program_entry handle(const definition_type&,
+        static givm::normal_effect handle(const definition_type&,
             givm::round_started&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             return {};
@@ -469,8 +470,9 @@ namespace
         }
 
         using metadata_support_source::handle;
-        template<class TView, class TEvent>
-        static givm::program_entry handle(const definition_type&, TEvent&, givm::handle_context<TView>&, std::uint32_t = 0)
+        template<class TView, class TEvent, class... TIndex>
+        static givm::effect<TEvent::category> handle(const definition_type&, TEvent&,
+            givm::handle_context<TView, TEvent::category>&, TIndex...)
         {
             FAIL("A disabled dynamic handler was invoked");
             std::unreachable();

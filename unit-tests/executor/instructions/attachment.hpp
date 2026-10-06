@@ -50,17 +50,17 @@ namespace
         std::string_view name() const { return source_name; }
         const auto& tags() const { return source_tags; }
         definition_type compile(givm::definition_compile_context&) const { return { log, source_name }; }
-        static givm::program_entry handle(const definition_type& data, givm::before_action&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::before_action&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             data.log->responders.emplace_back(data.name);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, givm::cost_of_card&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data, givm::cost_of_card&, givm::handle_context<givm::attachment_view, givm::event_category::preview>&)
         {
             data.log->cost_responders.emplace_back(data.name);
             return {};
         }
-        static givm::program_entry handle(const definition_type&, givm::attachment_removal_effect& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type&, givm::this_attachment_remove& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK_FALSE(self.is_valid());
@@ -75,9 +75,9 @@ namespace
         {
             attachment_log* log;
             bool prepare_equipment;
-            givm::program_entry initial;
-            givm::program_entry pause;
-            givm::program_entry nested;
+            givm::normal_effect initial;
+            givm::normal_effect pause;
+            givm::normal_effect nested;
         };
         attachment_log* log;
         bool prepare_equipment;
@@ -98,12 +98,12 @@ namespace
             };
             return {
                 log, prepare_equipment,
-                context.add_program(std::tuple{
+                context.add_normal_effect(std::tuple{
                     add("Weapon", 7), add("OrdinaryA", 1), add("Technique", 6),
                     add("Talent", 5), add("OrdinaryB", 2), add("Artifact", 3)
                 }),
-                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ add("NestedWeapon", 11) })
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }),
+                context.add_normal_effect(std::tuple{ add("NestedWeapon", 11) })
             };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -112,11 +112,11 @@ namespace
             result.allowed_weapon_types.set(givm::weapon_type::sword);
             return result;
         }
-        static givm::program_entry handle(const definition_type& data, givm::action_phase_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::action_phase_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            return data.prepare_equipment ? context.invoke(data.initial) : givm::program_entry{};
+            return data.prepare_equipment ? context.invoke(data.initial) : givm::normal_effect{};
         }
-        static givm::program_entry handle(const definition_type& data, givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto id = event.attachment;
             const auto attachment = context.table()[id];
@@ -146,7 +146,7 @@ namespace
         struct definition_type
         {
             bool remove;
-            givm::program_entry effect;
+            givm::normal_effect effect;
             givm::definition_id<givm::attachment_view> equipment;
             givm::tag_id target_tag;
             std::array<givm::tag_id, 5> weapon_types;
@@ -159,8 +159,8 @@ namespace
         {
             return {
                 remove,
-                remove ? context.add_program(std::tuple{ givm::remove_attachment{} })
-                    : context.add_program(std::tuple{ givm::add_attachment{} }),
+                remove ? context.add_normal_effect(std::tuple{ givm::remove_attachment{} })
+                    : context.add_normal_effect(std::tuple{ givm::add_attachment{} }),
                 context.resolve_id<givm::attachment_view>("NewWeapon"),
                 context.find_tag("equipment_target").value_or(givm::tag_id{}),
                 { context.find_tag("sword").value_or(givm::tag_id{}),
@@ -188,7 +188,7 @@ namespace
                         ? givm::target_validation::valid_complete : givm::target_validation::invalid;
             return givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data, givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::this_card_play& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto target = std::get<givm::character_id>(event.targets[0]);
             if(data.remove) return context.invoke(data.effect, givm::remove_attachment_input{ context.table()[target].get(givm::equipment_type::weapon).id() });
@@ -277,8 +277,8 @@ namespace
         {
             dynamic_attachment_log* log;
             givm::definition_id<givm::attachment_view> attachment;
-            givm::program_entry add;
-            givm::program_entry remove;
+            givm::normal_effect add;
+            givm::normal_effect remove;
         };
         dynamic_attachment_log* log;
         std::string_view name() const { return "DynamicAttachmentCharacter"; }
@@ -287,13 +287,13 @@ namespace
         {
             return {
                 log, context.resolve_id<givm::attachment_view>("DynamicAttachment"),
-                context.add_program(std::tuple{
+                context.add_normal_effect(std::tuple{
                     givm::add_attachment{
                         .definition = context.resolve_id<givm::attachment_view>("DynamicWeapon"),
                         .state = { 17 }
                     }, givm::add_attachment{}, givm::add_attachment{}
                 }),
-                context.add_program(std::tuple{ givm::remove_attachment{} })
+                context.add_normal_effect(std::tuple{ givm::remove_attachment{} })
             };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -302,7 +302,7 @@ namespace
             result.allowed_weapon_types.set(givm::weapon_type::sword);
             return result;
         }
-        static givm::program_entry handle(const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto& table = context.table();
             givm::character_id target{};
@@ -333,7 +333,7 @@ namespace
             FAIL("first dynamic attachment is missing");
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK_FALSE(context.table()[event.attachment].is_valid());
             data.log->left.push_back(event.attachment);

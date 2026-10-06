@@ -10,8 +10,8 @@
 - `make_data`、`programs`、`program_item` 及 setter 补写属于旧定义源接口。当前定义源通过 `compile(definition_compile_context&)` 直接生成完整定义数据，见[定义编译记录](../definition_compilation.md)。
 - 独立 `fixed_program` 类型和 `table.instruction(...)` 等旧命名不能照抄；当前定义库拥有程序存储，执行器从每次推进时显式传入的定义库取指。内部跳转/返回由执行器收束，详见[固定程序记录](../fixed_program.md)。
 - 旧稿把完整帧作为跨入口 ABI 讨论；当前命令不依赖外层 Context，响应通过尾调用 invoke 提交入口和初始事件，费用预览缓存全部输入；旧 onpay_context 已移除。行动观察与输入由 execution_view 提供，executor 不公开原始栈。
-- 出牌、技能的 action 矩阵与执行过程包含当时尚未接入的设计。当前出牌已通过 `begin_action` 提供，采用独立的 `card_effect` 原效果响应，具体接口及顺序见[费用预览与提交](../event_dispatch/payment_commit.md)。下文的旧出牌方案和技能设想不构成当前公开契约。
-- 下文的三个特殊终局入口和固定终局前缀已经废弃，当前只保留空入口占位，根程序从内部位置 1 开始。公开 end_game 指令携带结果，定义源通过 add_program 编入程序，不再使用 program_entry 的结果工厂。指令槽尺寸、返回位置的数值关系和后续优化仍只是内部记录，不能反推为公开数值 ABI。当前推进统一返回 finished，栈顶仅追加结果值，旧现场被逻辑废弃；旧终局观察与继续执行约定也不再适用。
+- 出牌、技能的 action 矩阵与执行过程包含当时尚未接入的设计。当前出牌已通过 `begin_action` 提供，采用独立的 `this_card_play` 原效果响应，具体接口及顺序见[费用预览与提交](../event_dispatch/payment_commit.md)。下文的旧出牌方案和技能设想不构成当前公开契约。
+- 下文的三个特殊终局入口和固定终局前缀已经废弃，当前只保留空入口占位，根程序从内部位置 1 开始。公开 end_game 指令携带结果，定义源通过 add_normal_effect 编入程序，不再使用 normal_effect 的结果工厂。指令槽尺寸、返回位置的数值关系和后续优化仍只是内部记录，不能反推为公开数值 ABI。当前推进统一返回 finished，栈顶仅追加结果值，旧现场被逻辑废弃；旧终局观察与继续执行约定也不再适用。
 
 ## 原稿正文
 
@@ -42,7 +42,7 @@ set_active_character{ .target = cost.target }
 
 栈顶总是以 `stage_t` 结尾，是为了让 executor 和当前指令在任意阻塞或重入点都能用同一接口找到阶段槽位。这个约定也让 activation frame、广播 frame、输入 frame 和指令临时 frame 都能作为“当前可重入状态”存在。`stage_t` 不是越细越好：只有同一条指令的不同重入点需要按不同栈顶形状解释时，才需要不同 stage。若两个阶段看到的栈顶形状相同，差异应优先放在该 frame 中的普通字段里，或直接继续执行，而不是增加新的 stage 值。
 
-程序入口在运行时表现为唯一固定程序中的 offset，但编译层还必须知道入口要求的栈布局 ABI，例如普通广播 frame、onpay 调用 frame 或根流程。`program_entry<Context>` 用模板参数保存这项编译期约束；运行时不按名称或类型动态猜参数。
+程序入口在运行时表现为唯一固定程序中的 offset，但编译层还必须知道入口要求的栈布局 ABI，例如普通广播 frame、onpay 调用 frame 或根流程。`normal_effect<Context>` 用模板参数保存这项编译期约束；运行时不按名称或类型动态猜参数。
 
 ## 唯一程序与根流程
 
@@ -63,9 +63,9 @@ fixed_program
        definition onpay subprograms ...
 ```
 
-前四个位置是固定程序格式的一部分。位置 0 存放一个内部不可执行占位，使全零的 `program_entry<Context>` 自然表示 null；位置 1 到 3 存放三条无状态的内部 `end_game` 指令，位置本身分别表示三种终局结果。根程序紧接固定前缀，因此 `root_entry` 永远是位置 4；`definition_library` 不需要保存额外的运行期根入口字段，`root_entry()` 可以直接构造这个格式常量。根程序长度可以变化，各 definition 子程序从根程序之后继续顺序追加，其入口仍取追加前的 `size()`。
+前四个位置是固定程序格式的一部分。位置 0 存放一个内部不可执行占位，使全零的 `normal_effect<Context>` 自然表示 null；位置 1 到 3 存放三条无状态的内部 `end_game` 指令，位置本身分别表示三种终局结果。根程序紧接固定前缀，因此 `root_entry` 永远是位置 4；`definition_library` 不需要保存额外的运行期根入口字段，`root_entry()` 可以直接构造这个格式常量。根程序长度可以变化，各 definition 子程序从根程序之后继续顺序追加，其入口仍取追加前的 `size()`。
 
-`program_entry<Context>` 的运行期载荷只是一个 `execution_position` 值，不包含程序指针、程序编号或其他 owner 信息。值 0 表示 null，值 1 到 3 表示不依赖 Context ABI 的静态终局入口，其余值是唯一程序中的普通 offset。Context 只约束普通入口；任意 Context 的响应都可以返回相应的终局入口。进入入口后 executor 的 `position`、activation 中的 `return_position` 和内部跳转目标都使用同一套值。`execution_position` 保持现有的 `detail::instruction_index`（即 `size_t`）别名，不引入另一层执行位置包装类型；裸数值和终局位置映射只存在于内部实现，定义扩展者通过 `program_entry<Context>` 的具名接口使用它们。
+`normal_effect<Context>` 的运行期载荷只是一个 `execution_position` 值，不包含程序指针、程序编号或其他 owner 信息。值 0 表示 null，值 1 到 3 表示不依赖 Context ABI 的静态终局入口，其余值是唯一程序中的普通 offset。Context 只约束普通入口；任意 Context 的响应都可以返回相应的终局入口。进入入口后 executor 的 `position`、activation 中的 `return_position` 和内部跳转目标都使用同一套值。`execution_position` 保持现有的 `detail::instruction_index`（即 `size_t`）别名，不引入另一层执行位置包装类型；裸数值和终局位置映射只存在于内部实现，定义扩展者通过 `normal_effect<Context>` 的具名接口使用它们。
 
 初始固定槽实现直接把前四个位置放进程序存储，后续程序入口仍取追加前的 `size()`，executor 以 `program[position]` 直接取指，不需要为普通 offset 做 `+1/-1` 编解码。把 null 放在 0 还使默认构造、全零初始化和频繁的空入口判断保持最直接；相比把特殊值放到整数上界，这个固定前缀避免了每次取指前的终局范围判断。旧动态队列现已删除，根流程和所有响应都使用这一地址空间。
 
@@ -143,7 +143,7 @@ source-facing handler 不接收 `schedule_fn`，而是返回一个强类型入�
 以下情况可以直接用固定程序表达：
 
 - 指令类型或常量参数不同。例如“对敌方出战角色造成 2 点物理伤害”和“对敌方下一个角色造成 2 点物理伤害”本来就是不同指令值；擦除后仍只是固定程序中的两个不同槽位。
-- 分支集合在编译时已知且数量较小。响应函数可以读取 table 和 event，再返回若干 `program_entry<Context>` 之一或 null。这已经是条件分支，不需要在 VM 中另造通用条件跳转。
+- 分支集合在编译时已知且数量较小。响应函数可以读取 table 和 event，再返回若干 `normal_effect<Context>` 之一或 null。这已经是条件分支，不需要在 VM 中另造通用条件跳转。
 - 结果只是运行期数值。响应函数可以直接修改 event，例如先发布 0 点伤害，再由持有层数的实体按当前层数增加伤害；手牌数、已损失生命、实际减费数等也属于同一类。
 - 动态次数属于一个明确规则动作。诸如“对所有满足条件的角色各造成伤害”或“最多消耗 N 层吸收伤害”应由一条领域指令内部完成遍历或取最小值，而不是展开成运行期数量的 VM 指令。
 
@@ -153,7 +153,7 @@ source-facing handler 不接收 `schedule_fn`，而是返回一个强类型入�
 
 因此分界可以概括为：有限且较小的控制分支由响应函数选择固定入口；任意运行期算术优先通过事件修改完成；具有无界次数但语义完整的规则动作由单条领域指令完成。只有无法归入这三类的新机制，才说明当前上下文 ABI 或指令粒度需要扩展。
 
-终局入口也是响应函数可以选择的静态分支。若响应无需先修改 table，可以直接返回当前 Context 下的具名终局 `program_entry`；若某段固定程序必须先执行若干副作用再结束，则最后可以使用一条 context-free 的终局跳转指令。该指令只把执行位置改为固定前缀中的终局位置，不承担终局状态存储；当前规则没有这种程序段时不必提前公开它。
+终局入口也是响应函数可以选择的静态分支。若响应无需先修改 table，可以直接返回当前 Context 下的具名终局 `normal_effect`；若某段固定程序必须先执行若干副作用再结束，则最后可以使用一条 context-free 的终局跳转指令。该指令只把执行位置改为固定前缀中的终局位置，不承担终局状态存储；当前规则没有这种程序段时不必提前公开它。
 
 ## 普通广播上下文
 
@@ -273,7 +273,7 @@ onpay 入口和减费生效参数一一对应，行动窗口中应保存为一�
 template<class CostEvent>
 struct onpay_item
 {
-    program_entry<onpay_context<CostEvent>> entry;
+    normal_effect<onpay_context<CostEvent>> entry;
     cost_effect_argument<CostEvent> argument;
 };
 ```
@@ -381,13 +381,13 @@ auto&& [handlers, cursor, event, handler, stage] =
 
 definition 模块需要拥有以下类型的完整定义：
 
-- `program_entry<Context>`。它是可空、带编译期上下文类型的入口值，会被写入源自己的 data，并由 handler 运行时返回。
+- `normal_effect<Context>`。它是可空、带编译期上下文类型的入口值，会被写入源自己的 data，并由 handler 运行时返回。
 - `any_instruction_for<Context>`。这是把异构动态来源整理为同构序列时使用的、带编译期 Context 的擦除值；它在从具体指令构造时完成静态上下文检查。native source 也可以直接返回原始具体指令序列，由编译器在逐元素追加时经过同一构造边界。
 - 当前 `executor::detail::any_instruction` 前移后的内部 `any_instruction`。第一阶段它仍是固定大小的拥有型擦除值，只保存执行所需 RTTI；类型别名 `context_type = void` 表示静态 Context 已丢失，不增加逐对象 Context 元数据或运行期查询。
 - 唯一的不可变程序容器和程序构建结果。`definition_library` 同时拥有根流程和所有 definition 程序段；强类型根入口由固定位置直接构造。
 - 程序声明元素。它类似依赖声明元素，保存“一次遍历即可取得的指令序列”和“如何把入口写入 data”。
 
-事件和 onpay 上下文类型在 definition core 中主要作为类型身份使用，例如 `handler_fn_t<View, Event>`、`handler_id<Event>`、订阅事件列表、`program_entry<Context>` 和 `any_instruction_for<Context>` 的模板参数；这里保留前置声明和类型列表即可，不要求事件完整定义。
+事件和 onpay 上下文类型在 definition core 中主要作为类型身份使用，例如 `handler_fn_t<View, Event>`、`handler_id<Event>`、订阅事件列表、`normal_effect<Context>` 和 `any_instruction_for<Context>` 的模板参数；这里保留前置声明和类型列表即可，不要求事件完整定义。
 
 具体 executor 指令类型不需要前移到 definition。`any_instruction_for<Context>` 的构造函数模板只需在看见具体指令类型的地方检查其可用 Context，并构造内部 `any_instruction`；具体指令类型及其 `execute` 实现仍属于 executor 指令集。内部 RTTI 的执行函数指针可以只依赖 `execution_context`、`card_table` 和 `random_fn` 的前置声明。
 
@@ -399,19 +399,19 @@ executor 模块负责定义 `execution_context`、stack、执行位置、执行�
 
 ### 程序上下文与入口类型
 
-`Context` 是编译期 ABI 身份，不是运行期标签。普通响应程序以事件类型本身作为上下文，例如 `program_entry<damage_effect>`；onpay 具有不同的栈布局，因此使用单独的类型身份：
+`Context` 是编译期 ABI 身份，不是运行期标签。普通响应程序以事件类型本身作为上下文，例如 `normal_effect<damage_effect>`；onpay 具有不同的栈布局，因此使用单独的类型身份：
 
 ```cpp
 template<class CostEvent>
 struct onpay_context;
 
-program_entry<damage_effect> damage_entry;
-program_entry<onpay_context<cost_of_card>> card_onpay_entry;
+normal_effect<damage_effect> damage_entry;
+normal_effect<onpay_context<cost_of_card>> card_onpay_entry;
 ```
 
 Context 不限于事件类型；固定主流程使用 `root_context` 作为入口 ABI 身份。根流程中不读取外层 frame 的领域指令仍然是 context-free；Context 描述真实栈依赖，不承担“通常应在哪里调用”的权限分类。回合尾部回跳和子程序返回标志由编译器内部生成，不暴露给定义源构造，也不需要作为 source-facing 指令参与 Context 检查。
 
-`program_entry<Context>` 的运行期载荷只是一个 `execution_position` 整数；模板参数不增加运行期字段，也不需要保存程序 owner。默认值 0 是 null，普通值表示唯一不可变程序中的 Context 入口，三个具名终局值表示不读取任何 Context ABI 的静态终局位置。不同 Context 的普通入口不能隐式互换；各 Context 类型可以分别构造数值相同的终局入口。普通事件 handler 返回 `program_entry<Event>`，费用事件 handler 返回 `program_entry<onpay_context<CostEvent>>`。这能在定义源包装层阻止把费用广播入口误当作 onpay 入口，或把某事件程序返回到另一种广播 frame，同时不妨碍任意响应直接终止对局。
+`normal_effect<Context>` 的运行期载荷只是一个 `execution_position` 整数；模板参数不增加运行期字段，也不需要保存程序 owner。默认值 0 是 null，普通值表示唯一不可变程序中的 Context 入口，三个具名终局值表示不读取任何 Context ABI 的静态终局位置。不同 Context 的普通入口不能隐式互换；各 Context 类型可以分别构造数值相同的终局入口。普通事件 handler 返回 `normal_effect<Event>`，费用事件 handler 返回 `normal_effect<onpay_context<CostEvent>>`。这能在定义源包装层阻止把费用广播入口误当作 onpay 入口，或把某事件程序返回到另一种广播 frame，同时不妨碍任意响应直接终止对局。
 
 具体指令与 Context 的兼容关系直接从指令类型推导：
 
@@ -560,12 +560,12 @@ auto programs(std::type_identity<Context>, const data_type& data) const;
 
 这里的成员、静态、const 性和具体返回类型不需要规定死，编译层像现有依赖接口一样用约束探测并保留普通重载解析。关键契约是：调用发生在依赖 dense id 已写入 data 之后，传入 `const data_type&`；定义源可以据此把依赖 id 直接存入指令。程序不再携带待编译的名称字符串，也不需要第二套名称到指令参数的映射。
 
-`programs(..., data)` 可以读取 `make_data()` 留下的源配置、脚本状态和已经解析的 id，但不能依赖 data 中正在由编译器逐项写回的其他 `program_entry`。入口字段在程序阶段开始时都应视为 null；这个限制避免程序声明顺序影响编译结果，也使所有 Context 的程序可以按任意稳定顺序写入。若以后确实需要固定程序之间的显式调用，应单独设计编译期引用或重定位，不借用半完成 data 隐式传递入口。
+`programs(..., data)` 可以读取 `make_data()` 留下的源配置、脚本状态和已经解析的 id，但不能依赖 data 中正在由编译器逐项写回的其他 `normal_effect`。入口字段在程序阶段开始时都应视为 null；这个限制避免程序声明顺序影响编译结果，也使所有 Context 的程序可以按任意稳定顺序写入。若以后确实需要固定程序之间的显式调用，应单独设计编译期引用或重定位，不借用半完成 data 隐式传递入口。
 
 `programs(...)` 的外层结果可以是 tuple-like 或只允许顺序遍历一次的 range。每个 `program_item` 包含：
 
 1. 一段 tuple-like 或可单遍遍历的 range。tuple-like 的元素可以是不同的原始具体指令；range 可以保存同一种具体指令，也可以保存 `any_instruction_for<Context>` 以表达运行期异构指令。两种形态也允许直接包含同 Context wrapper，只要每个元素都能构造 `any_instruction_for<Context>` 即可。
-2. 一个把编译后的 `program_entry<Context>` 写入 data 的 setter。
+2. 一个把编译后的 `normal_effect<Context>` 写入 data 的 setter。
 
 setter 和依赖 setter 一样可以是成员对象指针，也可以是任意合适的小型调用对象，不擦除成预先规定的函数类型。下面是概念示例，指令名称不构成最终 API 承诺：
 
@@ -603,7 +603,7 @@ data 确实经历三个逻辑阶段，但不需要把它们变成三个公开状
 
 1. `make_data()` 产生初始 data，此时可以只设置 Lua state 指针或定义源私有配置。
 2. 编译器通过已经完整生成的 `issued_id_map` 解析名称、标签和按标签依赖，把所有 dense id 写入 data。
-3. 编译器把该 data 以 `const data_type&` 传给各 Context 的 `programs(...)`，直接把序列写入最终固定程序，再通过各自 setter 把 `program_entry<Context>` 写回 data。
+3. 编译器把该 data 以 `const data_type&` 传给各 Context 的 `programs(...)`，直接把序列写入最终固定程序，再通过各自 setter 把 `normal_effect<Context>` 写回 data。
 
 只有完成第三阶段的 data 才会被放入 `definition_library` bucket，并在运行时作为 `const definition_data&` 暴露。前两个中间状态只是 `compile()` 内部局部对象，既不能进入 table，也不能被 handler 观察。这样避免为任意 source 自定义的 `data_type` 增加 typestate 包装，也不需要把依赖字段和程序入口拆成另一套平行存储。
 
@@ -629,7 +629,7 @@ Context 安全只建立在一个方向的边界上：程序段中的每个具体
 
 这里也不区分 op 和 instruction。程序序列中的元素就是 VM 的最小领域操作；共享逻辑放在可内联的 C++ helper 中。把一个语义操作人为降低成多条可复用小指令只会增加擦除槽位、dispatch 次数和 stack 协议，不作为本次架构的一层。
 
-编译器在每段可返回子程序末尾自动追加内部返回标志，定义源不需要看到该指令。根流程单独组装：初始化段和回合段之间没有返回标志，回合段末尾追加跳到 `round_entry` 的内部控制操作。位置 0 的占位、位置 1 到 3 的 `end_game`、返回标志和根回跳都由内部组装路径生成，不接受定义源提供的裸执行位置。未来可以把回跳融合进回合末尾指令，也可以把内部 `any_instruction` 的固定槽替换为变长紧密存储；`any_instruction_for<Context>` 的构造语义、`program_entry<Context>`、source sequence 和唯一执行位置地址空间都不依赖这些内部布局优化。
+编译器在每段可返回子程序末尾自动追加内部返回标志，定义源不需要看到该指令。根流程单独组装：初始化段和回合段之间没有返回标志，回合段末尾追加跳到 `round_entry` 的内部控制操作。位置 0 的占位、位置 1 到 3 的 `end_game`、返回标志和根回跳都由内部组装路径生成，不接受定义源提供的裸执行位置。未来可以把回跳融合进回合末尾指令，也可以把内部 `any_instruction` 的固定槽替换为变长紧密存储；`any_instruction_for<Context>` 的构造语义、`normal_effect<Context>`、source sequence 和唯一执行位置地址空间都不依赖这些内部布局优化。
 
 ## 迁移落地状态
 
@@ -649,6 +649,6 @@ Context 安全只建立在一个方向的边界上：程序段中的每个具体
 
 Catch2 放在行为迁移之前，因为测试框架本身是低风险、独立的构建改动，并能给后续每个小提交提供回归边界；不在这一步顺便建立庞大的规则测试体系。单测与头文件的一一映射表示测试所有权，不强制测试只能 include 同名头：当前向模板需要后续具体类型才能实例化时，可以直接引入有限的相关头文件，但不应无理由改用聚合全头文件。
 
-仍可推迟到实现时决定的只是局部命名与优化，例如回跳是否与回合末尾指令融合、固定程序容器的分块策略和调试信息格式。已确定的架构边界是：一次 definition 编译只发布一个包含全部 definition 程序与根流程的固定程序；位置 0 是 null 占位，位置 1 到 3 是结果由位置编码且永不返回的终局指令，根入口静态固定在位置 4 且不另存字段，definition 程序排在根程序之后；`execution_position` 继续是现有整数别名；`program_entry<Context>` 可以表示 null、普通 Context 入口或 Context 无关的终局入口；定义源程序段可以是异构原始指令 tuple-like，也可以是具体指令或 `any_instruction_for<Context>` 的单遍 range；每个元素在追加边界构造同 Context wrapper 并完成静态检查；内部表示不再保存 Context；data 只在完整后发布；运行期参数进入明确栈 ABI；handler 返回入口；table 修改只由固定程序中的指令完成；根回合段无限回跳并在终局时保留 stack、只把执行位置跳到相应 `end_game`。
+仍可推迟到实现时决定的只是局部命名与优化，例如回跳是否与回合末尾指令融合、固定程序容器的分块策略和调试信息格式。已确定的架构边界是：一次 definition 编译只发布一个包含全部 definition 程序与根流程的固定程序；位置 0 是 null 占位，位置 1 到 3 是结果由位置编码且永不返回的终局指令，根入口静态固定在位置 4 且不另存字段，definition 程序排在根程序之后；`execution_position` 继续是现有整数别名；`normal_effect<Context>` 可以表示 null、普通 Context 入口或 Context 无关的终局入口；定义源程序段可以是异构原始指令 tuple-like，也可以是具体指令或 `any_instruction_for<Context>` 的单遍 range；每个元素在追加边界构造同 Context wrapper 并完成静态检查；内部表示不再保存 Context；data 只在完整后发布；运行期参数进入明确栈 ABI；handler 返回入口；table 修改只由固定程序中的指令完成；根回合段无限回跳并在终局时保留 stack、只把执行位置跳到相应 `end_game`。
 
 [返回架构总览](../architecture.md)

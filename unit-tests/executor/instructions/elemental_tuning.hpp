@@ -59,8 +59,8 @@ namespace
             return { .cost = { .dice_requirement = { .any = 2 }, .speed = givm::action_speed::fast },
                 .elemental_tuning_allowed = data.allowed };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_tuning_modification& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_tuning_modification& event, givm::handle_context<givm::hand_card_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             if(event.card == self.id())
@@ -71,7 +71,7 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::elemental_tuning_completed& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -87,8 +87,9 @@ namespace
         {
             tuning_log* log;
             givm::element element;
-            givm::program_entry pause;
-            givm::program_entry payment;
+            givm::normal_effect pause;
+            givm::immediate_effect immediate_pause;
+            givm::preview_effect payment;
         };
         tuning_log* log;
         givm::element element = givm::element::pyro;
@@ -97,15 +98,16 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, element,
-                context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
+                context.add_immediate_effect(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
+                context.add_preview_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10, .element = data.element };
         }
-        static givm::program_entry handle(const definition_type&,
-            givm::dice_roll_preparation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type&,
+            givm::dice_roll_preparation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             for(auto& dice : event.fixed_dice)
             {
@@ -115,23 +117,23 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::cost_of_card& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data,
+            givm::cost_of_card& event, givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             ++data.log->quotes;
             --event.requirement.dice_requirement.any;
-            return context.invoke(givm::substack_t{}, data.payment);
+            return context.invoke(data.payment);
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_tuning_modification& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_tuning_modification& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             ++data.log->modifications;
             CHECK(context.table()[event.card].is_valid());
             CHECK(event.from == givm::elemental_dice::cryo);
             CHECK(context.table()[event.card.player_id].state().dice[givm::elemental_dice::cryo] == 1);
-            return data.log->nested ? context.invoke(data.pause) : givm::program_entry{};
+            return data.log->nested ? context.invoke(data.immediate_pause) : givm::immediate_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::elemental_tuning_completed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->completions;
@@ -140,14 +142,14 @@ namespace
             CHECK_FALSE(card.is_valid());
             CHECK(card.state().cost.dice_requirement.any == 2);
             CHECK(context.table()[event.card.player_id].state().dice[givm::elemental_dice::cryo] == 0);
-            return data.log->nested ? context.invoke(data.pause) : givm::program_entry{};
+            return data.log->nested ? context.invoke(data.pause) : givm::normal_effect{};
         }
         template<class TEvent>
             requires(std::same_as<TEvent, givm::dice_added> || std::same_as<TEvent, givm::dice_removed>
                 || std::same_as<TEvent, givm::dice_converted> || std::same_as<TEvent, givm::card_played>
                 || std::same_as<TEvent, givm::hand_card_discarded>
                 || std::same_as<TEvent, givm::deck_card_discarded>)
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->resource_events;

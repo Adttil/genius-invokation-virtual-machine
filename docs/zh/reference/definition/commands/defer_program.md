@@ -35,7 +35,7 @@ struct defer_program
 
 固定形式为 `defer_program{fixed_defer_invoke(child, input_a, input_b)}`。它不消费父程序的输入；编译时检查参数的数量、类型、顺序和嵌套关系，再复制目标入口和全部参数字节，之后不再依赖命令对象。不需要参数时使用 `fixed_defer_invoke(child)`。固定和动态形式均整体指定入口与参数。
 
-目标程序与普通响应使用同一个 [`add_program`](../../executor/definition_compile_context/add_program.md)、入口和命令输入协议。没有延迟专用的程序类型。执行目标程序时完成其末段及派生结算，然后继续其他后续工作；其返回编号被忽略。
+目标程序与普通响应使用同一个 [`add_normal_effect`](../../executor/definition_compile_context/add_effect.md)、入口和命令输入协议。没有延迟专用的程序类型。执行目标程序时完成其末段及派生结算，然后继续其他后续工作；其返回编号被忽略。
 
 延迟保存的是已选入口和已准备的参数，不会重新调用登记者的 `handle`。[`defer_invoke`](../defer_invoke.md) 先拥有参数和数组内容；动态提交在 [`invoke`](../../executor/handle_context/invoke.md) 时复制这份快照，固定形式则在编译时复制。目标执行时保留登记该命令时的本方归属。
 
@@ -63,8 +63,8 @@ struct delayed_dice_source
     using definition_category = givm::card_definition;
     struct definition_type
     {
-        givm::program_entry first;
-        givm::program_entry delayed;
+        givm::normal_effect first;
+        givm::normal_effect delayed;
     };
 
     std::string_view name() const { return "延迟产骰"; }
@@ -72,16 +72,16 @@ struct delayed_dice_source
     definition_type compile(givm::definition_compile_context& context) const
     {
         return {
-            context.add_program(std::tuple{
+            context.add_normal_effect(std::tuple{
                 givm::defer_program{}, givm::return_response{ .index = 1 }
             }),
-            context.add_program(std::tuple{
+            context.add_normal_effect(std::tuple{
                 givm::add_dice{}, givm::return_response{ .index = 7 }
             })
         };
     }
 
-    static givm::program_entry handle(
+    static givm::normal_effect handle(
         const definition_type& data, givm::round_started&,
         givm::handle_context<givm::deck_card_view>& context,
         std::uint32_t response_index = 0)

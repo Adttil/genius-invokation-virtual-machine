@@ -209,25 +209,71 @@ namespace givm
             return id_map_.query_by_tag<TCategory>(filter);
         }
 
-        program_entry add_program(std::span<const any_command> commands);
+        template<event_category Category>
+        effect<Category> add_effect(std::span<const any_command> commands)
+        {
+            return effect<Category>{ compile_effect(commands, Category) };
+        }
 
-        template<detail::command_sequence TCommands>
+        template<event_category Category, detail::command_sequence TCommands>
         requires (not std::convertible_to<TCommands, std::span<const any_command>>)
-        program_entry add_program(TCommands&& commands)
+        effect<Category> add_effect(TCommands&& commands)
         {
             const auto sequence = detail::make_command_sequence(std::forward<TCommands>(commands));
-            return add_program(std::span<const any_command>{ sequence });
+            return add_effect<Category>(std::span<const any_command>{ sequence });
+        }
+
+        template<event_category Category, class... TCommands>
+        requires (std::constructible_from<any_command, TCommands> && ...)
+        effect<Category> add_effect(TCommands&&... commands)
+        {
+            const std::array<any_command, sizeof...(TCommands)> sequence{ any_command{ std::forward<TCommands>(commands) }... };
+            return add_effect<Category>(std::span<const any_command>{ sequence });
+        }
+
+        normal_effect add_normal_effect(std::span<const any_command> commands)
+        {
+            return add_effect<event_category::normal>(commands);
         }
 
         template<class... TCommands>
-        requires (std::constructible_from<any_command, TCommands> && ...)
-        program_entry add_program(TCommands&&... commands)
+        requires ((std::constructible_from<any_command, TCommands> && ...)
+            || (sizeof...(TCommands) == 1 && (detail::command_sequence<TCommands> && ...)))
+        normal_effect add_normal_effect(TCommands&&... commands)
         {
-            const std::array<any_command, sizeof...(TCommands)> sequence{ any_command{ std::forward<TCommands>(commands) }... };
-            return add_program(std::span<const any_command>{ sequence });
+            return add_effect<event_category::normal>(std::forward<TCommands>(commands)...);
         }
 
+        immediate_effect add_immediate_effect(std::span<const any_command> commands)
+        {
+            return add_effect<event_category::immediate>(commands);
+        }
+
+        template<class... TCommands>
+        requires ((std::constructible_from<any_command, TCommands> && ...)
+            || (sizeof...(TCommands) == 1 && (detail::command_sequence<TCommands> && ...)))
+        immediate_effect add_immediate_effect(TCommands&&... commands)
+        {
+            return add_effect<event_category::immediate>(std::forward<TCommands>(commands)...);
+        }
+
+        preview_effect add_preview_effect(std::span<const any_command> commands)
+        {
+            return add_effect<event_category::preview>(commands);
+        }
+
+        template<class... TCommands>
+        requires ((std::constructible_from<any_command, TCommands> && ...)
+            || (sizeof...(TCommands) == 1 && (detail::command_sequence<TCommands> && ...)))
+        preview_effect add_preview_effect(TCommands&&... commands)
+        {
+            return add_effect<event_category::preview>(std::forward<TCommands>(commands)...);
+        }
+
+
     private:
+        normal_effect compile_effect(std::span<const any_command> commands, event_category category);
+
         void report(compile_error_reason reason) const
         {
             errors_.push_back({ { stage_, source_, {}, {}, {} }, std::move(reason) });

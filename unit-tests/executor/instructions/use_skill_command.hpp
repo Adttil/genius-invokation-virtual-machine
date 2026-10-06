@@ -41,13 +41,13 @@ namespace
     struct command_skill_source
     {
         using definition_category = givm::skill_view;
-        struct definition_type { command_log* log; givm::program_entry effect; };
+        struct definition_type { command_log* log; givm::normal_effect effect; };
         command_log* log;
         std::string_view name() const { return "CommandSkill"; }
         auto tags() const { return std::array{ std::string_view{ "normal_attack" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{
+            return { log, context.add_normal_effect(std::tuple{
                 givm::draw_cards{ .position = 0, .count = 1 }, givm::replace_cards{ owner }
             }) };
         }
@@ -55,8 +55,8 @@ namespace
         {
             return { .dice_requirement = { .any = 8 }, .speed = givm::action_speed::combat, .energy = 3 };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::skill_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_skill_use& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK(self.id() == data.log->skill);
@@ -64,23 +64,23 @@ namespace
             CHECK(event.flags.value() == data.log->flags.value());
             CHECK(event.targets == data.log->targets);
             data.log->events.push_back("effect");
-            return data.log->empty_effect ? givm::program_entry{} : context.invoke(data.effect);
+            return data.log->empty_effect ? givm::normal_effect{} : context.invoke(data.effect);
         }
     };
 
     struct command_observer_source
     {
         using definition_category = givm::skill_view;
-        struct definition_type { command_log* log; givm::program_entry before; givm::program_entry after; };
+        struct definition_type { command_log* log; givm::immediate_effect before; givm::normal_effect after; };
         command_log* log;
         std::string_view name() const { return "CommandObserver"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::replace_cards{ owner } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::replace_cards{ owner } }) };
+            return { log, context.add_immediate_effect(std::tuple{ givm::replace_cards{ owner } }),
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::replace_cards{ owner } }) };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::skill_will_be_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::skill_will_be_used& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             CHECK(event.skill == data.log->skill);
             CHECK(event.flags.value() == data.log->flags.value());
@@ -92,7 +92,7 @@ namespace
             data.log->events.push_back("will");
             return context.invoke(data.before);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::skill_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.skill == data.log->skill);
@@ -103,26 +103,26 @@ namespace
             data.log->events.push_back("used");
             return context.invoke(data.after);
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::cost_of_skill&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data,
+            givm::cost_of_skill&, givm::handle_context<givm::skill_view, givm::event_category::preview>&)
         {
             ++data.log->cost_broadcasts;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::dice_removed&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->payments;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_drawn& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(data.log->record)
                 data.log->events.push_back(event.card.player_id == owner ? "draw:owner" : "draw:opponent");
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_played& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             CHECK(event.speed == data.log->card_speed);
@@ -167,7 +167,7 @@ namespace
     struct command_card_source
     {
         using definition_category = givm::card_definition;
-        struct definition_type { command_log* log; givm::program_entry effect; bool dynamic; };
+        struct definition_type { command_log* log; givm::normal_effect effect; bool dynamic; };
         command_log* log;
         bool dynamic;
         std::string_view name() const { return "CommandTalent"; }
@@ -178,7 +178,7 @@ namespace
                 .player = givm::relative_player::opponent,
                 .definition = context.resolve_id<givm::skill_view>("CommandSkill")
             };
-            return { log, context.add_program(std::tuple{ command, givm::draw_cards{ .position = 0, .count = 1 } }), dynamic };
+            return { log, context.add_normal_effect(std::tuple{ command, givm::draw_cards{ .position = 0, .count = 1 } }), dynamic };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {
@@ -191,8 +191,8 @@ namespace
             return query.target_count == 2 ? givm::target_validation::valid_complete
                 : givm::target_validation::valid_incomplete;
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_card_play& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             data.log->events.push_back("card-effect");
             if(data.dynamic)

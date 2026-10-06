@@ -34,3 +34,5 @@ using compile_error_reason = std::variant</* 下表中的全部错误类型 */>;
 需要编译检查的命令各自提供错误类型；`end_segment`、`settle` 等无参数流程命令不增加错误候选。可以直接用 `std::get_if<givm::set_active_character_error>(&error.reason)` 检查切人命令的错误，也可沿用 `givm::set_active_character::error_type` 别名，不需要先取得一层通用命令错误。
 
 `fixed_program_input_error` 的 `reason` 使用 [`program_input_error_reason`](program_input_error_reason.md)，在 Debug 和 Release 编译时检查固定延迟调用的入口、输入数量、类型和嵌套参数。检查直接返回诊断，不依赖运行期异常检查。
+
+`effect_command_not_allowed` 报告立即效果中的 `end_segment` 或 `settle`，字段 `category` 为事件类别，`command` 为命令名称。该检查在所有构建模式启用。

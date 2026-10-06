@@ -10,7 +10,7 @@
 
 源库的完整接口可通过 `<givm/definition_source_interface.hpp>` 引入。编写具体定义源时使用 `<givm/definition_source.hpp>`，其中包含源库、命令、事件、查询以及完整的编译与响应上下文。
 
-最终编译由 `<givm/compile.hpp>` 提供的 [`givm::compile`](../executor/compile.md) 完成。[`program_entry`](program_entry.md) 表示效果入口，定义源通过 [`definition_compile_context`](../executor/definition_compile_context.md) 登记效果，通过 [`handle_context`](../executor/handle_context.md) 响应事件。需要同时编译和运行完整对局时，也可使用 `<givm/givm.hpp>`。
+最终编译由 `<givm/compile.hpp>` 提供的 [`givm::compile`](../executor/compile.md) 完成。[`normal_effect`](effect.md) 表示效果入口，定义源通过 [`definition_compile_context`](../executor/definition_compile_context.md) 登记效果，通过 [`handle_context`](../executor/handle_context.md) 响应事件。需要同时编译和运行完整对局时，也可使用 `<givm/givm.hpp>`。
 
 ## 必需成员
 
@@ -61,14 +61,19 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 源可以为所属类别的只读实体 view 和可订阅事件提供以下静态函数，其中 `definition_type` 代表本源 `compile` 的实际返回类型：
 
 ```cpp
-static givm::program_entry handle(
+static givm::effect<TEvent::category> handle(
     const definition_type& definition, TEvent& event,
-    givm::handle_context<TView>& context, std::uint32_t response_index = 0);
+    givm::handle_context<TView, TEvent::category>& context, std::uint32_t response_index = 0);
+
+// preview 事件的响应没有编号形参。
+static givm::preview_effect handle(
+    const definition_type& definition, TPreviewEvent& event,
+    givm::preview_handle_context<TView>& context);
 ```
 
 `TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。普通静态源只按匹配的函数判断是否响应，没有匹配函数就不响应；已有函数的返回类型必须正确。
 
-响应函数通过 [`context.entity()`](../executor/handle_context/entity.md) 取得响应实体，通过 `context.table()` 读取其所属牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。`response_index` 是本次响应编号，首次为 0；不使用该编号的响应可省略形参名，保留 `std::uint32_t = 0`。返回类型须为 `program_entry`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_program`](../executor/definition_compile_context/add_program.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，费用响应则以 `return context.invoke(givm::substack_t{}, entry, inputs...);` 提交延迟效果。
+响应函数通过 [`context.entity()`](../executor/handle_context/entity.md) 取得响应实体，通过 `context.table()` 读取其所属牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。`response_index` 是本次响应编号，首次为 0；不使用该编号的响应可省略形参名，保留 `std::uint32_t = 0`。返回类型须为 `effect<TEvent::category>`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_normal_effect`](../executor/definition_compile_context/add_effect.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，预览响应也以 `return context.invoke(entry, inputs...);` 缓存稍后执行的效果，上下文自动选择保存方式。
 
 响应返回的程序执行期间，牌桌的 [`self_player`](../table/table_state.md) 表示该响应实体所属玩家；固定效果命令中的 [`relative_player::self`](commands/relative_player.md) 与 `opponent` 据此确定双方。嵌套响应的程序结束后恢复外层本方，费用响应延迟执行时也使用原响应实体所属玩家。`handle` 调用本身不切换本方；读取自身所属玩家应使用 `context.entity().player().id()`，不能把 `context.table().state().self_player` 当作当前响应者的所属玩家。
 
@@ -76,19 +81,21 @@ static givm::program_entry handle(
 
 [`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个动态命令对应一个由其 `input_type` 指定的 [`xxx_input`](command_inputs.md) 对象；使用固定参数的命令不占输入位置。输入类型可以是独立结构体，也可以是字段相符事件的显式别名；是否发送事件仍由命令决定。编译后输入对象的数量、类型和顺序固定，各对象中的数组长度可以在响应时决定。例如一个 `deal_damage_input` 表示一次伤害描述，其 `selection` 可以展开为多个目标；多条命令在同段内产生的结果由结算机制聚合。响应通过 `context.invoke(entry, inputs...)` 提交全部输入；延迟输入直接使用 [`defer_invoke`](defer_invoke.md) 的返回值。Lua 等动态定义源适配器也可使用 [`pack_inputs`](pack_inputs.md)、[`concat_inputs`](concat_inputs.md) 准备 [`program_inputs`](program_inputs.md)，再一次提交。
 
-一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算。命令输入中的数组内容在调用时复制，返回后不再借用原数组；原数组须在复制期间保持有效，不能因本次调用扩容而失效。定义源须保证输入数量、具体类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时，在写入前检查入口、提交方式、重复提交及输入数量、类型与顺序，失败时抛出 [`program_input_error`](../executor/program_input_error.md)；数组长度不参与类型匹配。命令的值与执行前提在实际执行时检查，错误以 [`command_input_error`](../executor/command_input_error.md) 报告。发布构建不保留这些检查或对应诊断元数据，违反约定属于未定义行为。脚本适配器可在两种构建模式下使用相同的输入对象接口，不需要脚本自行生成检查信息或处理字节布局。
+一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算。命令输入中的数组内容在调用时复制，返回后不再借用原数组；原数组须在复制期间保持有效，不能因本次调用扩容而失效。定义源须保证输入数量、具体类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时，在写入前检查入口、重复提交及输入数量、类型与顺序，失败时抛出 [`program_input_error`](../executor/program_input_error.md)；数组长度不参与类型匹配。命令的值与执行前提在实际执行时检查，错误以 [`command_input_error`](../executor/command_input_error.md) 报告。发布构建不保留这些检查或对应诊断元数据，违反约定属于未定义行为。脚本适配器可在两种构建模式下使用相同的输入对象接口，不需要脚本自行生成检查信息或处理字节布局。
 
 固定延迟命令使用 [`fixed_defer_invoke`](fixed_defer_invoke.md) 打包参数，编译时在 Debug 和 Release 均检查参数协议。它的参数描述仅供编译使用，不写入固定程序；与运行期 `invoke` 的 Debug 检查分别管理。
 
 调试异常不提供整个响应或推进调用的回滚保证，捕获后不应在原执行现场继续推进。尾调用和借用对象的生命周期仍由定义源保证，不自动检查。
 
-入口是否执行以及何时执行由触发事件的操作决定。切换的 [`cost_of_switch`](events/cost_of_switch.md)、出牌的 [`cost_of_card`](events/cost_of_card.md)、技能的 [`cost_of_skill`](events/cost_of_skill.md) 与特技的 [`cost_of_technique`](events/cost_of_technique.md) 响应在报价时准备后续效果，确认行动后才执行。这些费用响应提交时必须使用首参数为 `givm::substack_t{}` 的 `invoke` 重载，没有输入的程序也不例外；使用普通重载时，Debug 抛出 `program_input_error`；Release 不检查，违反协议属于未定义行为。报价期间牌桌不变，先前响应只通过费用事件影响后续响应；费用响应不得使用随机数，违反此前提属于未定义行为。报价给出具体来源及完整目标，同一行动窗口内同一操作和目标组合只计算一次，返回的标识可反复读取结果；Debug 检查报价状态，Release 不搜索去重。
+入口是否执行以及何时执行由事件类别和触发操作决定。`normal` 响应接收编号、返回普通效果，效果返回前完成自己的尾部结算。`immediate` 响应同样接收编号，返回的立即效果不可分段或结算，其记录归入外层段。`preview` 响应不接收编号，上下文没有 `random()`；通过同样的 `invoke` 形式缓存预览效果，在确认行动后才执行。入口类别与上下文类别不匹配时 C++ 编译失败。
 
-可打出的牌提供 [`card_effect`](events/card_effect.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`skill_effect`](events/skill_effect.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。主动特技由特技装备提供 [`technique_effect`](events/technique_effect.md) 原效果响应，未提供时不能通过行动选择主动使用。卡牌初始状态、技能与特技初始费用和目标检查采用下述查询接口。
+切换、出牌、技能与特技的费用事件属于 `preview`。报价给出具体来源及完整目标，同一行动窗口内同一操作和目标组合只计算一次，返回的标识可反复读取结果；Debug 检查报价状态，Release 不搜索去重。
 
-准备技能附属提供 [`prepared_skill_effect`](events/prepared_skill_effect.md) 响应。行动阶段依据是否提供此响应识别准备技能；它在角色未受控制时自动代替行动选择，无需支付，也不产生技能或特技使用通知。响应可修改本次行动速度，并提交效果程序；即使返回空入口，本次准备技能仍会被消耗。
+可打出的牌提供 [`this_card_play`](events/this_card_play.md) 原效果响应。原效果在费用结算与反制响应完成后执行，没有后续效果时也可返回空入口。主动技能提供 [`this_skill_use`](events/this_skill_use.md) 原效果响应，未提供时不会成为行动候选；技能分类使用定义标签。主动特技由特技装备提供 [`this_technique_use`](events/this_technique_use.md) 原效果响应，未提供时不能通过行动选择主动使用。卡牌初始状态、技能与特技初始费用和目标检查采用下述查询接口。
 
-角色定义不订阅事件，负责提供初始状态、初始技能组和分类标签。角色被动能力定义为角色持有的技能，通过相应事件响应参与[全场广播](events.md#全场广播)，不提供 `skill_effect` 时不会成为主动技能候选。
+准备技能附属提供 [`this_prepared_skill_use`](events/this_prepared_skill_use.md) 响应。行动阶段依据是否提供此响应识别准备技能；它在角色未受控制时自动代替行动选择，无需支付，也不产生技能或特技使用通知。响应可修改本次行动速度，并提交效果程序；即使返回空入口，本次准备技能仍会被消耗。
+
+角色定义不订阅事件，负责提供初始状态、初始技能组和分类标签。角色被动能力定义为角色持有的技能，通过相应事件响应参与[全场广播](events.md#全场广播)，不提供 `this_skill_use` 时不会成为主动技能候选。
 
 每次事件是否实际生效，由响应函数根据事件和对局状态判断。需要按源对象配置选择响应能力时，使用下述[动态定义源](#动态定义源)协议。
 
@@ -134,7 +141,7 @@ template<class Q>
 bool can_query() const;
 ```
 
-动态源须为所属类别支持的每个实体 view 与事件组合完整提供 `can_handle` 和静态 `handle`，并为每种支持的查询完整提供 `can_query` 和静态 `query`。能力判断的返回类型必须是 `bool`；普通响应返回 `program_entry`，查询返回 `Q::result_t`。即使能力判断始终返回 `false`，对应函数仍须存在且签名正确。这些要求在构造 [`definition_source_view`](definition_source_view/constructor.md) 时由 C++ 编译检查，缺失接口或返回类型错误都会导致编译错误。可以使用泛型函数覆盖这些组合，适配器所需的脚本状态、回调引用等数据由 `compile` 返回的配置保存。
+动态源须为所属类别支持的每个实体 view 与事件组合完整提供 `can_handle` 和静态 `handle`，并为每种支持的查询完整提供 `can_query` 和静态 `query`。能力判断的返回类型必须是 `bool`；普通响应返回 `normal_effect`，查询返回 `Q::result_t`。即使能力判断始终返回 `false`，对应函数仍须存在且签名正确。这些要求在构造 [`definition_source_view`](definition_source_view/constructor.md) 时由 C++ 编译检查，缺失接口或返回类型错误都会导致编译错误。可以使用泛型函数覆盖这些组合，适配器所需的脚本状态、回调引用等数据由 `compile` 返回的配置保存。
 
 | 判断结果 | 编译定义库时的行为 |
 | --- | --- |
@@ -173,10 +180,10 @@ struct passive_skill_source
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
 
-    static givm::program_entry handle(
+    static givm::immediate_effect handle(
         const int& extra_rerolls,
         givm::dice_roll_preparation& event,
-        givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
     {
         event.reroll_count[0] += extra_rerolls;
         return {};

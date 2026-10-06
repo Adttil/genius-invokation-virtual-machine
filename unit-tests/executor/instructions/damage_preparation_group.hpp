@@ -48,8 +48,8 @@ namespace
         struct definition_type
         {
             preparation_log* log;
-            givm::program_entry entry;
-            givm::program_entry nested;
+            givm::normal_effect entry;
+            givm::immediate_effect nested;
             std::array<givm::deal_damage_input, 2> inputs;
             std::size_t input_count;
         };
@@ -59,10 +59,10 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             definition_type result{ .log = log,
-                .nested = context.add_program(std::tuple{ givm::deal_damage{} }), .input_count = inputs.size() };
+                .nested = context.add_immediate_effect(std::tuple{ givm::deal_damage{} }), .input_count = inputs.size() };
             if(not inputs.empty())
             {
-                result.entry = context.add_program(std::vector<givm::deal_damage>(inputs.size()));
+                result.entry = context.add_normal_effect(std::vector<givm::deal_damage>(inputs.size()));
                 std::ranges::copy(inputs, result.inputs.begin());
             }
             return result;
@@ -71,29 +71,29 @@ namespace
         {
             return { .max_health = 20, .health = 20 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.input_count == 2) return context.invoke(data.entry, data.inputs[0], data.inputs[1]);
             return context.invoke(data.entry, data.inputs[0]);
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_preparation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_preparation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::preparation, event.target.index);
             if(data.log->infuse_anemo && event.type == givm::damage_type::physical)
                 event.type = givm::damage_type::anemo;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::reaction, event.target.index);
             data.log->reactions.push_back(event.reaction.slot);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::calculation, event.target.index);
             data.log->original_auras.push_back(event.reacted_aura);
@@ -102,29 +102,29 @@ namespace
                 event.value += 2;
             return invoke_nested(data, event.target, phase::calculation, context);
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::effect, event.target.index);
             data.log->types.push_back(event.type);
             data.log->values.push_back(event.value);
             return invoke_nested(data, event.target, phase::effect, context);
         }
-        static givm::program_entry invoke_nested(const definition_type& data, givm::character_id current,
-            phase current_phase, givm::handle_context<givm::skill_view>& context)
+        static givm::immediate_effect invoke_nested(const definition_type& data, givm::character_id current,
+            phase current_phase, givm::immediate_handle_context<givm::skill_view>& context)
         {
             if(data.log->nested_phase != current_phase || data.log->nested_invoked) return {};
             data.log->nested_invoked = true;
             return context.invoke(data.nested, givm::deal_damage_input{ std::array{ givm::damage{
                 .source = source, .target = current, .value = 3, .type = givm::damage_type::physical } } });
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->dying.push_back(event.target.index);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::completion, event.target.index);

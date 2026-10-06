@@ -5,8 +5,8 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class... T>
-fixed_defer_program_input fixed_defer_invoke(program_entry entry, const T&... inputs);
+template<event_category Category, class... T>
+fixed_defer_program_input fixed_defer_invoke(effect<Category> entry, const T&... inputs);
 ```
 
 为固定延迟命令准备入口和参数，同时保留编译检查所需的描述。它复制参数中的数组内容和嵌套参数，原输入可以在返回后销毁。
@@ -18,3 +18,5 @@ fixed_defer_program_input fixed_defer_invoke(program_entry entry, const T&... in
 本函数不访问定义库。参数协议由编译器检查，Debug 和 Release 均执行；失败时通过 [`fixed_program_input_error`](../executor/fixed_program_input_error.md) 返回诊断。编译成功后只复制入口和参数字节，不将这份参数描述写入固定程序。
 
 响应期间准备动态延迟输入使用 [`defer_invoke`](defer_invoke.md)。运行期打包对象不必保留编译用描述。
+
+目标类别只允许 `normal` 和 `preview`；`immediate_effect` 在 C++ 编译时被拒绝。

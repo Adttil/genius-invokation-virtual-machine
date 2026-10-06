@@ -64,7 +64,7 @@ namespace
 
 TEST_CASE("program entries default to the null entry", "[definition][program]")
 {
-    using entry_type = givm::program_entry;
+    using entry_type = givm::normal_effect;
     const entry_type entry{};
 
     CHECK(entry.is_null());

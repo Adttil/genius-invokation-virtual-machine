@@ -1,11 +1,11 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **skill_effect**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_skill_use**
 
-# givm::skill_effect
+# givm::this_skill_use
 
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-struct skill_effect;
+struct this_skill_use;
 ```
 
 执行所选技能自身效果时，提供这项技能及其目标。技能定义通过响应中的 `invoke` 提交入口以实现技能效果。[`use_skill{}`](../commands/use_skill.md) 通过本事件的别名 [`use_skill_input`](../command_inputs/use_skill_input.md) 提交参数。

@@ -32,7 +32,7 @@ namespace
         using query = givm::summon_state_limit;
         using generate = givm::summon;
         using generation = givm::summon_input;
-        using regeneration = givm::resummoning;
+        using regeneration = givm::this_summon_resummon;
         using add = givm::add_summon;
         using addition = givm::add_summon_input;
         using set = givm::set_summon_state;
@@ -60,14 +60,14 @@ namespace
         using query = givm::combat_status_state_limit;
         using generate = givm::generate_combat_status;
         using generation = givm::generate_combat_status_input;
-        using regeneration = givm::combat_status_regeneration;
+        using regeneration = givm::this_combat_status_regenerate;
         using add = givm::add_combat_status;
         using addition = givm::add_combat_status_input;
         using set = givm::set_combat_status_state;
         using modify = givm::modify_combat_status_state;
         using modification = givm::modify_combat_status_state_input;
         using change = givm::set_combat_status_state_input;
-        using changed = givm::combat_status_state_changed;
+        using changed = givm::this_combat_status_state_change;
         using remove = givm::remove_combat_status;
         using removal = givm::remove_combat_status_input;
         using removed = givm::combat_status_removed;
@@ -88,14 +88,14 @@ namespace
         using query = givm::attachment_state_limit;
         using generate = givm::attach;
         using generation = givm::attach_input;
-        using regeneration = givm::attachment_reapplication;
+        using regeneration = givm::this_attachment_reapply;
         using add = givm::add_attachment;
         using addition = givm::add_attachment_input;
         using set = givm::set_attachment_state;
         using modify = givm::modify_attachment_state;
         using modification = givm::modify_attachment_state_input;
         using change = givm::set_attachment_state_input;
-        using changed = givm::attachment_state_changed;
+        using changed = givm::this_attachment_state_change;
         using remove = givm::remove_attachment;
         using removal = givm::remove_attachment_input;
         using removed = givm::attachment_removed;
@@ -175,9 +175,9 @@ namespace
         struct definition_type
         {
             lifecycle_log<T>* log;
-            givm::program_entry change;
-            givm::program_entry add;
-            givm::program_entry remove;
+            givm::normal_effect change;
+            givm::normal_effect add;
+            givm::normal_effect remove;
         };
         lifecycle_log<T>* log;
 
@@ -200,16 +200,16 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log,
-                context.add_program(std::tuple{ typename T::set{} }),
-                context.add_program(std::tuple{ typename T::add{} }),
-                context.add_program(std::tuple{ typename T::remove{} }) };
+                context.add_normal_effect(std::tuple{ typename T::set{} }),
+                context.add_normal_effect(std::tuple{ typename T::add{} }),
+                context.add_normal_effect(std::tuple{ typename T::remove{} }) };
         }
         static typename T::state query(const definition_type& data, const typename T::query&)
         {
             ++data.log->limit_queries;
             return { data.log->limit[0], data.log->limit[1] };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             typename T::regeneration& event, givm::handle_context<typename T::view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -236,7 +236,7 @@ namespace
         }
         template<class TEvent>
         requires std::is_same_v<TEvent, typename T::changed>
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent& event, givm::handle_context<typename T::view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -250,11 +250,11 @@ namespace
             return {};
         }
 
-        template<class TEvent>
+        template<class TEvent, class... TIndex>
         requires (not std::is_same_v<TEvent, typename T::regeneration>
             && not std::is_same_v<TEvent, typename T::changed>)
-        static givm::program_entry handle(const definition_type&,
-            TEvent&, givm::handle_context<typename T::view>&, std::uint32_t = 0)
+        static givm::effect<TEvent::category> handle(const definition_type&,
+            TEvent&, givm::handle_context<typename T::view, TEvent::category>&, TIndex...)
         {
             FAIL("A disabled lifecycle handler was invoked");
             std::unreachable();
@@ -276,7 +276,7 @@ namespace
         {
             lifecycle_log<T>* log;
             givm::definition_id<typename T::view> entity;
-            std::vector<givm::program_entry> entries;
+            std::vector<givm::normal_effect> entries;
             givm::definition_id<givm::summon_view> other_summon;
 
         };
@@ -334,22 +334,22 @@ namespace
                 switch(action.operation)
                 {
                 case operation::generate:
-                    result.entries.push_back(context.add_program(std::tuple{ typename T::generate{ player, definition, state } }));
+                    result.entries.push_back(context.add_normal_effect(std::tuple{ typename T::generate{ player, definition, state } }));
                     break;
                 case operation::add:
-                    result.entries.push_back(context.add_program(std::tuple{ typename T::add{ player, definition, state } }));
+                    result.entries.push_back(context.add_normal_effect(std::tuple{ typename T::add{ player, definition, state } }));
                     break;
                 case operation::set:
-                    result.entries.push_back(context.add_program(std::tuple{ set() }));
+                    result.entries.push_back(context.add_normal_effect(std::tuple{ set() }));
                     break;
                 case operation::remove:
-                    result.entries.push_back(context.add_program(std::tuple{ remove() }));
+                    result.entries.push_back(context.add_normal_effect(std::tuple{ remove() }));
                     break;
                 case operation::modify:
-                    result.entries.push_back(context.add_program(std::tuple{ modify(action.delta) }));
+                    result.entries.push_back(context.add_normal_effect(std::tuple{ modify(action.delta) }));
                     break;
                 case operation::modify_twice:
-                    result.entries.push_back(context.add_program(std::tuple{ modify(action.delta), modify(action.next_delta) }));
+                    result.entries.push_back(context.add_normal_effect(std::tuple{ modify(action.delta), modify(action.next_delta) }));
                     break;
                 }
             }
@@ -359,7 +359,7 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             observe_created(*data.log, context.table());
@@ -409,7 +409,7 @@ namespace
                     typename T::modification{ target, action.delta[0], action.delta[1] });
             }
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             typename T::removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto id = T::removed_id(event);
@@ -812,20 +812,20 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
 
         std::string_view name() const { return "OverLimitFlameDriver"; }
         auto summon_dependencies() const { return std::array{ givm::genshin_impact::burning_flame_3_3_0.name() }; }
-        givm::program_entry compile(givm::definition_compile_context& context) const
+        givm::normal_effect compile(givm::definition_compile_context& context) const
         {
             const auto flame = context.resolve_id<givm::summon_view>(givm::genshin_impact::burning_flame_3_3_0.name());
-            return context.add_program(std::tuple{
+            return context.add_normal_effect(std::tuple{
                 givm::summon{ .definition = flame, .state = { 1, 2 } },
                 givm::modify_summon_state{ .definition = flame, .usages = 1, .ignore_limit = true },
                 givm::summon{ .definition = flame, .state = { 1, 1 } }
             });
         }
-        static givm::character_state query(const givm::program_entry&, const givm::character_initial_state&)
+        static givm::character_state query(const givm::normal_effect&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const givm::program_entry& entry,
+        static givm::normal_effect handle(const givm::normal_effect& entry,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(entry);
@@ -884,7 +884,7 @@ TEMPLATE_TEST_CASE("zero state remains unless the entity response removes it",
     }
 }
 
-TEST_CASE("summons without the exhaustion tag remain available for resummoning at zero usages", "[entity-state][summon]")
+TEST_CASE("summons without the exhaustion tag remain available for this_summon_resummon at zero usages", "[entity-state][summon]")
 {
     lifecycle_log<summon_traits> log;
     log.dynamic = GENERATE(false, true);
@@ -1018,7 +1018,7 @@ TEST_CASE("summon capacity defaults to four and blocks new entities independentl
     CHECK(log.left.empty());
 }
 
-TEST_CASE("a full summon area still dispatches resummoning but its response cannot add beyond capacity", "[summon][entity-generation]")
+TEST_CASE("a full summon area still dispatches this_summon_resummon but its response cannot add beyond capacity", "[summon][entity-generation]")
 {
     lifecycle_log<summon_traits> log;
     log.dynamic = GENERATE(false, true);

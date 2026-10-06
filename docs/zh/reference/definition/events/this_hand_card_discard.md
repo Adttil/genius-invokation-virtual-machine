@@ -1,11 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **hand_card_discard_effect**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_hand_card_discard**
 
-# givm::hand_card_discard_effect
+# givm::this_hand_card_discard
 
 定义于头文件 `<givm/definition.hpp>`。
 
 ```cpp
-struct hand_card_discard_effect {};
+struct this_hand_card_discard {
+    static constexpr event_category category = event_category::normal;
+};
 ```
 
 [discard_hand_card](../commands/discard_hand_card.md) 产生的自身舍弃效果事件。仅交给被舍弃的 `hand_card_view`，通过 `context.entity()` 取得该牌，不携带重复的卡牌 ID。卡牌已经无效，定义和状态在安全清理前仍可读取。

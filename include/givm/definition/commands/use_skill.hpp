@@ -39,7 +39,7 @@ namespace givm
         return {};
     }
 
-    using use_skill_input = skill_effect;
+    using use_skill_input = this_skill_use;
 
     struct use_skill
     {

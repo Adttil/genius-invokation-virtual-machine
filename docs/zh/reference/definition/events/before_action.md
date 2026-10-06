@@ -14,7 +14,7 @@ struct before_action;
 
 `table.state().active_player` 表示即将行动的玩家。在正常行动机会中，若 `first_ended` 为 `true`，则对手已经宣告结束，本玩家可以继续行动。
 
-本事件及其响应程序结束后，才检查出战角色的 [`prepared_skill_effect`](prepared_skill_effect.md) 响应能力。存在可执行的准备技能时自动执行该行动；否则提供玩家选择。快速行动后再次进入选择前也进行该检查。
+本事件及其响应程序结束后，才检查出战角色的 [`this_prepared_skill_use`](this_prepared_skill_use.md) 响应能力。存在可执行的准备技能时自动执行该行动；否则提供玩家选择。快速行动后再次进入选择前也进行该检查。
 
 ## 示例
 
@@ -36,7 +36,7 @@ struct observer_source
     std::string_view name() const { return "observer"; }
     definition_type compile(givm::definition_compile_context&) const { return { count }; }
 
-    static givm::program_entry handle(
+    static givm::normal_effect handle(
         const definition_type& definition,
         givm::before_action&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
     {

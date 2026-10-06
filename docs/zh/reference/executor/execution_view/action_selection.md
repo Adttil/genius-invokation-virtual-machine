@@ -54,13 +54,13 @@ class execution_view<execution_state::action_selection>;
 
 ## 注意
 
-执行器在提供本现场之前已经检查准备技能。未受控制的出战角色若存在支持 [`prepared_skill_effect`](../../definition/events/prepared_skill_effect.md) 的附属，会先自动执行该行动，不提供本次选择现场；受控制时保留准备技能附属并正常提供选择。
+执行器在提供本现场之前已经检查准备技能。未受控制的出战角色若存在支持 [`this_prepared_skill_use`](../../definition/events/this_prepared_skill_use.md) 的附属，会先自动执行该行动，不提供本次选择现场；受控制时保留准备技能附属并正常提供选择。
 
 本现场通过 `use_technique`、`use_skill`、`play_card`、`elemental_tuning`、`switch_active_character` 或 `declare_round_end` 提交并推进行动；费用行动也可使用相应的 `_with_cached_cost` 版本。费用预览、支付检查与目标检查不算行动输入，不推进执行器。本现场不提供 `resume`。
 
 技能、出牌与切换分别使用从零开始的候选索引。可通过 `skill_count`、`card_count` 与 `switch_target_count` 查询候选数量，通过 `skill_id`、`card_id` 与 `switch_target` 取得相应实体 ID，用于查询牌桌并显示候选信息；候选索引仅用于当前行动现场。
 
-技能候选只包含当前行动玩家出战角色中支持 [`skill_effect`](../../definition/events/skill_effect.md) 响应的有效技能。不支持主动效果的被动技能仍保留在角色技能集合中，但不作为主动行动候选。技能目标同样使用 ID 和至多两个元素的目标 span，支付与目标检查彼此独立。
+技能候选只包含当前行动玩家出战角色中支持 [`this_skill_use`](../../definition/events/this_skill_use.md) 响应的有效技能。不支持主动效果的被动技能仍保留在角色技能集合中，但不作为主动行动候选。技能目标同样使用 ID 和至多两个元素的目标 span，支付与目标检查彼此独立。
 
 出牌与调和共享当前行动玩家仍在手中的有效手牌候选。调和无需计算费用，卡牌许可与骰子合法性可以分别检查；完成后仍由当前玩家选择行动。
 

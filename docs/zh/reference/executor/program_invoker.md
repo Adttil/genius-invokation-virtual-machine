@@ -23,4 +23,4 @@ class program_invoker;
 | | |
 | --- | --- |
 | [定义源协议](../definition/source_protocol.md) | 事件响应与查询的定义方式 |
-| [`program_entry`](../definition/program_entry.md) | 已登记效果的入口 |
+| [`normal_effect`](../definition/effect.md) | 已登记效果的入口 |

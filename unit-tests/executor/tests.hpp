@@ -2,6 +2,7 @@
 #include "action_quotes.hpp"
 #include "card_equipment_queries.hpp"
 #include "compile_boundary.hpp"
+#include "effects.hpp"
 #include "executor.hpp"
 #include "history_summaries.hpp"
 #include "library.hpp"

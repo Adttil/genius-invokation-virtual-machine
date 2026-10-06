@@ -32,7 +32,7 @@ namespace givm::detail
         {
             const auto old = character.get(type).id();
             table[old].erase();
-            append_removal_record<attachment_removal_effect>(context, old, attachment_removed{ old });
+            append_removal_record<this_attachment_remove>(context, old, attachment_removed{ old });
         }
         if(type == equipment_type::none) character.add(input.definition, input.state);
         else character.add(input.definition, input.state, type);

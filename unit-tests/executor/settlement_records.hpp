@@ -39,8 +39,9 @@ namespace
         struct definition_type
         {
             record_log* log;
-            program_entry heal;
-            program_entry nested;
+            normal_effect heal;
+            immediate_effect prevent;
+            immediate_effect nested;
         };
         record_log* log;
         std::string_view name() const { return "RecordObserver"; }
@@ -48,17 +49,17 @@ namespace
         definition_type compile(definition_compile_context& context) const
         {
             const auto nested = log->kind == scenario::enter_dying
-                ? context.add_program(enter_character{ player_id{ 1 }, context.resolve_id<character_view>("RecordVictim") },
+                ? context.add_immediate_effect(enter_character{ player_id{ 1 }, context.resolve_id<character_view>("RecordVictim") },
                     deal_damage{}, givm::heal{})
-                : context.add_program(deal_damage{}, givm::heal{});
-            return { log, context.add_program(givm::heal{}), nested };
+                : context.add_immediate_effect(deal_damage{}, givm::heal{});
+            return { log, context.add_normal_effect(givm::heal{}), context.add_immediate_effect(givm::heal{}), nested };
         }
         static character_state query(const definition_type&, const character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static program_entry handle(const definition_type& data, character_will_be_defeated& event,
-            handle_context<skill_view>& context, std::uint32_t = 0)
+        static immediate_effect handle(const definition_type& data, character_will_be_defeated& event,
+            handle_context<skill_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             auto& log = *data.log;
             log.dying.push_back(event.target.index);
@@ -67,7 +68,7 @@ namespace
             if(log.kind == scenario::repeat_dying)
             {
                 if(log.dying.size() == 1)
-                    return context.invoke(data.heal, heal_input{ std::array{ heal_input::item{ source, event.target, 2, healing_kind::prevent_defeat } } });
+                    return context.invoke(data.prevent, heal_input{ std::array{ heal_input::item{ source, event.target, 2, healing_kind::prevent_defeat } } });
                 if(event.target == target(1))
                     return context.invoke(data.nested,
                         deal_damage_input{ std::array{ damage{ .source = source, .target = target(0), .value = 2, .type = damage_type::physical } } },
@@ -79,14 +80,14 @@ namespace
                     heal_input{ std::array{ heal_input::item{ source, event.target, 1, healing_kind::prevent_defeat } } });
             return {};
         }
-        static program_entry handle(const definition_type& data, healing& event,
-            handle_context<skill_view>&, std::uint32_t = 0)
+        static immediate_effect handle(const definition_type& data, healing& event,
+            handle_context<skill_view, event_category::immediate>&, std::uint32_t = 0)
         {
             ++data.log->calculations;
             event.value = 0;
             return {};
         }
-        static program_entry handle(const definition_type& data, healed& event,
+        static normal_effect handle(const definition_type& data, healed& event,
             handle_context<skill_view>& context, std::uint32_t = 0)
         {
             data.log->healed_values.push_back(event.value);
@@ -100,7 +101,7 @@ namespace
             }
             return {};
         }
-        static program_entry handle(const definition_type& data, character_revived& event,
+        static normal_effect handle(const definition_type& data, character_revived& event,
             handle_context<skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.target == target(0));
@@ -108,7 +109,7 @@ namespace
             data.log->order.push_back(2);
             return {};
         }
-        static program_entry handle(const definition_type& data, after_damage& event,
+        static normal_effect handle(const definition_type& data, after_damage& event,
             handle_context<skill_view>& context, std::uint32_t = 0)
         {
             data.log->damage_targets.push_back(event.target.index);
@@ -155,7 +156,7 @@ namespace
     struct card_source
     {
         using definition_category = card_definition;
-        struct definition_type { hand_log* log; program_entry remove; };
+        struct definition_type { hand_log* log; normal_effect remove; };
         std::string_view source_name;
         hand_log* log;
         std::string_view name() const { return source_name; }
@@ -167,11 +168,11 @@ namespace
         definition_type compile(definition_compile_context& context) const
         {
             if constexpr(Gate)
-                return { log, context.add_program(discard_hand_card{
+                return { log, context.add_normal_effect(discard_hand_card{
                     .definition = context.resolve_id<card_definition>("Retained") }) };
             else return { log, {} };
         }
-        static program_entry handle(const definition_type& data, hand_card_discard_effect&,
+        static normal_effect handle(const definition_type& data, this_hand_card_discard&,
             handle_context<hand_card_view>& context, std::uint32_t = 0)
         {
             if constexpr(Gate)
@@ -187,7 +188,7 @@ namespace
     struct hand_observer_source
     {
         using definition_category = character_view;
-        struct definition_type { hand_log* log; program_entry create; };
+        struct definition_type { hand_log* log; normal_effect create; };
         hand_log* log;
         std::string_view name() const { return "HandRecordObserver"; }
         auto card_dependencies() const
@@ -197,23 +198,23 @@ namespace
         definition_type compile(definition_compile_context& context) const
         {
             const auto gate = context.resolve_id<card_definition>("Gate");
-            return { log, context.add_program(create_hand_card{ .definition = gate },
+            return { log, context.add_normal_effect(create_hand_card{ .definition = gate },
                 discard_hand_card{ .definition = gate },
                 create_hand_card{ .definition = context.resolve_id<card_definition>("Retained") },
                 create_hand_card{ .definition = context.resolve_id<card_definition>("Overflow") }) };
         }
-        static program_entry handle(const definition_type& data, round_started&,
+        static normal_effect handle(const definition_type& data, round_started&,
             handle_context<skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.create);
         }
-        static program_entry handle(const definition_type& data, hand_card_discarded&,
+        static normal_effect handle(const definition_type& data, hand_card_discarded&,
             handle_context<skill_view>&, std::uint32_t = 0)
         {
             data.log->order.push_back('D');
             return {};
         }
-        static program_entry handle(const definition_type& data, hand_card_added& event,
+        static normal_effect handle(const definition_type& data, hand_card_added& event,
             handle_context<skill_view>& context, std::uint32_t = 0)
         {
             const auto card = context.table()[event.card];

@@ -40,7 +40,7 @@ struct modify_support_state
 
 执行到命令时，分别读取目标各字段的当前值，加上对应的有符号增量，再将结果限制在零与 [support_state_limit](../queries/support_state_limit.md) 对应字段之间。负增量表示消耗，正增量表示增加；`INT64_MIN`、`INT64_MAX` 也按这一规则处理，不发生算术回绕。
 
-先写入新状态，再仅向被修改的实体发送 [support_state_changed](../events/support_state_changed.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
+先写入新状态，再仅向被修改的实体发送 [this_support_state_change](../events/this_support_state_change.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
 
 通知包含修改前和裁剪后的状态；返回的响应程序完整结算后才继续下一条命令。
 

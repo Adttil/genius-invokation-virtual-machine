@@ -12,7 +12,8 @@
 #include <utility>
 #include <vector>
 
-#include "program_entry.hpp"
+#include "effect.hpp"
+#include "events.hpp"
 #include "subscribed_events.hpp"
 #include "supported_queries.hpp"
 #include "definition_categories.hpp"
@@ -22,18 +23,16 @@ namespace givm
 {
     class definition_compile_context;
     class definition_library;
-    template<class TEntity>
+    template<class TEntity, event_category Category = event_category::normal>
     class handle_context;
 
     using definition_data = std::any;
 
     template<class TEntity, class TEvent>
-    using handle_fn_t = program_entry (*)(
-        const definition_data&,
-        TEvent&,
-        handle_context<TEntity>&,
-        std::uint32_t
-    );
+    using handle_fn_t = std::conditional_t<TEvent::category == event_category::preview,
+        effect<TEvent::category> (*)(const definition_data&, TEvent&, handle_context<TEntity, TEvent::category>&),
+        effect<TEvent::category> (*)(const definition_data&, TEvent&, handle_context<TEntity, TEvent::category>&, std::uint32_t)>;
+
 }
 
 namespace givm::detail
@@ -519,44 +518,47 @@ namespace givm
             }
 
             using definition_type = detail::definition_for_source_t<TSource>;
-            if constexpr(requires(
-                const definition_type& definition,
-                TEvent& event,
-                handle_context<TView>& context,
-                std::uint32_t response_index
-            )
+            using context_type = handle_context<TView, TEvent::category>;
+            using effect_type = effect<TEvent::category>;
+            if constexpr(TEvent::category == event_category::preview)
             {
-                TSource::handle(definition, event, context, response_index);
-            })
-            {
-                using result_type = decltype(TSource::handle(
-                    std::declval<const definition_type&>(),
-                    std::declval<TEvent&>(),
-                    std::declval<handle_context<TView>&>(),
-                    std::declval<std::uint32_t>()
-                ));
-                static_assert(std::same_as<result_type, program_entry>, "source handle must return program_entry");
-
-                return +[](
-                    const definition_data& data,
-                    TEvent& event,
-                    handle_context<TView>& context,
-                    std::uint32_t response_index
-                )
+                if constexpr(requires(const definition_type& definition, TEvent& event, context_type& context)
+                    { TSource::handle(definition, event, context); })
                 {
-                    return TSource::handle(
-                        std::any_cast<const definition_type&>(data),
-                        event,
-                        context,
-                        response_index
-                    );
-                };
+                    static_assert(std::same_as<decltype(TSource::handle(std::declval<const definition_type&>(),
+                        std::declval<TEvent&>(), std::declval<context_type&>())), effect_type>,
+                        "source handle must return the effect matching the event category");
+                    return +[](const definition_data& data, TEvent& event, context_type& context)
+                    {
+                        return TSource::handle(std::any_cast<const definition_type&>(data), event, context);
+                    };
+                }
+                else
+                {
+                    static_assert(not detail::is_dynamic_source<TSource>,
+                        "dynamic source must provide handle(definition, event, context) for every preview event");
+                    return nullptr;
+                }
             }
             else
             {
-                static_assert(not detail::is_dynamic_source<TSource>,
-                    "dynamic source must provide handle(definition, event, context, response_index) for every subscribed view/event pair, even when can_handle returns false");
-                return nullptr;
+                if constexpr(requires(const definition_type& definition, TEvent& event, context_type& context,
+                    std::uint32_t response_index) { TSource::handle(definition, event, context, response_index); })
+                {
+                    static_assert(std::same_as<decltype(TSource::handle(std::declval<const definition_type&>(),
+                        std::declval<TEvent&>(), std::declval<context_type&>(), std::declval<std::uint32_t>())), effect_type>,
+                        "source handle must return the effect matching the event category");
+                    return +[](const definition_data& data, TEvent& event, context_type& context, std::uint32_t response_index)
+                    {
+                        return TSource::handle(std::any_cast<const definition_type&>(data), event, context, response_index);
+                    };
+                }
+                else
+                {
+                    static_assert(not detail::is_dynamic_source<TSource>,
+                        "dynamic source must provide handle(definition, event, context, response_index) for every normal or immediate event");
+                    return nullptr;
+                }
             }
         }
 

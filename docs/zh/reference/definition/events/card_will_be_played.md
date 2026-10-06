@@ -22,7 +22,7 @@ struct card_will_be_played;
 
 ## 注意
 
-此时牌已经离手，费用效果与骰子支付均已完成。反制只取消本牌的 [`card_effect`](card_effect.md)，不退还费用，也不撤销离手；之后仍发出 [`card_played`](card_played.md)。目标与行动速度在确认出牌时确定，响应不能改写。
+此时牌已经离手，费用效果与骰子支付均已完成。反制只取消本牌的 [`this_card_play`](this_card_play.md)，不退还费用，也不撤销离手；之后仍发出 [`card_played`](card_played.md)。目标与行动速度在确认出牌时确定，响应不能改写。
 
 ## 示例
 

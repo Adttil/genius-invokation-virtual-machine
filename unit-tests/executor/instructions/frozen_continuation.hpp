@@ -18,20 +18,20 @@ namespace
     struct pausing_frozen
     {
         using definition_category = givm::attachment_view;
-        struct definition_type { std::size_t* applications; givm::program_entry pause; };
+        struct definition_type { std::size_t* applications; givm::normal_effect pause; };
         std::size_t* applications;
         std::string_view name() const { return "PausingFrozen"; }
         auto tags() const { return std::array{ std::string_view{ "control" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { applications, context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
+            return { applications, context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
         static givm::attachment_state query(const definition_type&, const givm::attachment_state_limit&)
         {
             return { .count = 1 };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::attachment_reapplication&, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_attachment_reapply&, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             ++*data.applications;
             return context.invoke(data.pause);

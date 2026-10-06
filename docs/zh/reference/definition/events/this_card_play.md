@@ -1,11 +1,11 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **card_effect**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_card_play**
 
-# givm::card_effect
+# givm::this_card_play
 
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-struct card_effect;
+struct this_card_play;
 ```
 
 执行打出的牌自身效果时，提供这张牌及其目标。牌定义通过响应通过 `invoke` 提交的效果入口实现原本的用牌效果。

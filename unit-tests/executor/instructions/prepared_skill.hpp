@@ -51,7 +51,7 @@ namespace
             prepared_log* log;
             std::string_view name;
             givm::action_speed speed;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         prepared_log* log;
         std::string_view source_name;
@@ -59,10 +59,10 @@ namespace
         std::string_view name() const { return source_name; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, source_name, speed, context.add_program(std::tuple{ givm::deal_damage{} }) };
+            return { log, source_name, speed, context.add_normal_effect(std::tuple{ givm::deal_damage{} }) };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::prepared_skill_effect& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_prepared_skill_use& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK(event.attachment == self.id());
@@ -95,7 +95,7 @@ namespace
     struct observer_source
     {
         using definition_category = givm::skill_view;
-        struct definition_type { prepared_log* log; givm::program_entry pause; givm::program_entry initialization; };
+        struct definition_type { prepared_log* log; givm::normal_effect pause; givm::normal_effect initialization; };
         prepared_log* log;
         TProgram program;
         std::string_view name() const { return "PreparedObserver"; }
@@ -106,32 +106,32 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::replace_cards{ owner } }),
-                context.add_program(program(context)) };
+            return { log, context.add_normal_effect(std::tuple{ givm::replace_cards{ owner } }),
+                context.add_normal_effect(program(context)) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::battle_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.initialization);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::before_action&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->opportunities.push_back(context.table().state().active_player);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto removed = context.table()[event.attachment];
             const auto definition = (*data.log->library)[removed.definition_id()];
-            if(not definition.template can_handle<givm::prepared_skill_effect, givm::attachment_view>()) return {};
+            if(not definition.template can_handle<givm::this_prepared_skill_use, givm::attachment_view>()) return {};
             CHECK_FALSE(removed.is_valid());
             data.log->events.push_back("removed:" + std::string{ definition.name() });
             data.log->removed.push_back(event.attachment);
             std::size_t remaining = 0;
             for(const auto attachment : removed.character().attachments())
-                if((*data.log->library)[attachment.definition_id()].template can_handle<givm::prepared_skill_effect, givm::attachment_view>())
+                if((*data.log->library)[attachment.definition_id()].template can_handle<givm::this_prepared_skill_use, givm::attachment_view>())
                     ++remaining;
             data.log->remaining_at_removal.push_back(remaining);
             if(data.log->pause_removal)
@@ -141,15 +141,15 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             if(not event.flags.contains(givm::damage_flag_bits::prepared_skill)) return {};
             REQUIRE(std::holds_alternative<givm::attachment_id>(event.source));
             CHECK(std::get<givm::attachment_id>(event.source) == data.log->effects.back());
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(not event.flags.contains(givm::damage_flag_bits::prepared_skill)) return {};
@@ -162,49 +162,49 @@ namespace
             data.log->plunge_at_damage.push_back(context.table()[owner].state().can_plunge);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::active_character_changed&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->switches;
             return {};
         }
-        static givm::program_entry handle(const definition_type&,
-            givm::cost_of_switch& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type&,
+            givm::cost_of_switch& event, givm::handle_context<givm::skill_view, givm::event_category::preview>&)
         {
             event.requirement.dice_requirement.any = 0;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::skill_will_be_used&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::skill_will_be_used&, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             ++data.log->skill_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::skill_used&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->skill_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::technique_will_be_used&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::technique_will_be_used&, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             ++data.log->technique_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::technique_used&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->technique_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::dice_removed&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->payment_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::energy_changed&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->payment_notifications;

@@ -71,6 +71,17 @@ namespace givm
         return "fixed program input: " + std::visit([](const auto& reason) { return error_string(reason); }, error.reason);
     }
 
+    struct effect_command_not_allowed
+    {
+        event_category category;
+        std::string_view command;
+    };
+
+    inline std::string error_string(const effect_command_not_allowed& error)
+    {
+        return std::string{ error.command } + ": cannot split or settle an immediate effect";
+    }
+
     namespace detail
     {
         using command_error_types = decltype([]<class... T>(type_list<T...>)
@@ -86,7 +97,7 @@ namespace givm
         using common_compile_error_types = type_list<source_conflict, source_missing_dependency, source_selection_error,
             definition_resolution_error, definition_metadata_error, history_field_empty_name, history_field_duplicate_name,
             history_field_layout_overflow, history_storage_layout_overflow, history_field_access_error,
-            history_field_not_found, history_field_type_mismatch, fixed_program_input_error>;
+            history_field_not_found, history_field_type_mismatch, fixed_program_input_error, effect_command_not_allowed>;
     }
 
     using compile_error_reason = type_list_cat<detail::common_compile_error_types, detail::command_error_types>::apply<std::variant>;

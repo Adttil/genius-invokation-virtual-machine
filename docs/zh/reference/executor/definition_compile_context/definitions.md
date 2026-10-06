@@ -46,8 +46,8 @@ struct food_source
     std::string_view name() const { return "示例料理"; }
     auto tags() const { return std::array<std::string_view, 1>{ "料理" }; }
     int compile(givm::definition_compile_context&) const { return 0; }
-    static givm::program_entry handle(const int&,
-        givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
+    static givm::normal_effect handle(const int&,
+        givm::this_card_play&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
     { return {}; }
 };
 
@@ -62,7 +62,7 @@ struct search_source
         std::println("当前卡牌定义数: {}", std::ranges::size(cards));
         for(const auto card : cards)
         {
-            if(card.has_tag("料理") && card.can_handle<givm::card_effect, givm::hand_card_view>())
+            if(card.has_tag("料理") && card.can_handle<givm::this_card_play, givm::hand_card_view>())
             {
                 std::println("可打出的料理牌: {}", context[card.id()].name());
                 std::println("自定义初始状态查询: {}", card.has_query<givm::card_initial_state>());

@@ -57,7 +57,7 @@ struct transfer_attachment
 
 转移总是保留 `count`。`reset_round_usages` 为 `false` 时也保留 `round_usages`；为 `true` 时，将它设为 [attachment_state_limit](../queries/attachment_state_limit.md) 返回的 `round_usages`。若定义用该字段的不同位段编码多个独立次数，上限查询应返回这些次数全部恢复后的编码值。
 
-被转移的实体不产生自身离场、重复附属或入场效果；可选的次数恢复也不发送 [attachment_state_changed](../events/attachment_state_changed.md)，不借用回合开始事件。转移后的实体位于目标角色的附属列表末尾；装备仍遵守通常广播中的固定类别顺序。
+被转移的实体不产生自身离场、重复附属或入场效果；可选的次数恢复也不发送 [this_attachment_state_change](../events/this_attachment_state_change.md)，不借用回合开始事件。转移后的实体位于目标角色的附属列表末尾；装备仍遵守通常广播中的固定类别顺序。
 
 转移后实体取得属于目标角色的新 ID，旧 ID 对应的实体失效。正在进行的外层广播不会因此补入新实体；实体身份及访问约定见 [实体的身份与访问](../../table/entity_access.md)。
 

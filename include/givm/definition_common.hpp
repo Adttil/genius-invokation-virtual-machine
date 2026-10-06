@@ -1,7 +1,7 @@
 #ifndef GIVM_DEFINITION_COMMON_HPP
 #define GIVM_DEFINITION_COMMON_HPP
 
-#include "definition/program_entry.hpp"
+#include "definition/effect.hpp"
 #include "definition/history_summary.hpp"
 #include "definition/events.hpp"
 #include "definition/queries.hpp"

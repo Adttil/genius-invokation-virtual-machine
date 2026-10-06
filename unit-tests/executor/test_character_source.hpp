@@ -30,7 +30,7 @@ namespace givm::test
     struct initialization_skill_source
     {
         using definition_category = skill_view;
-        struct definition_type { program_entry entry; };
+        struct definition_type { normal_effect entry; };
 
         TProgram program;
         std::span<const std::string_view> cards{};
@@ -45,9 +45,9 @@ namespace givm::test
         auto combat_status_dependencies() const { return combat_statuses; }
         definition_type compile(definition_compile_context& context) const
         {
-            return { context.add_program(program(context)) };
+            return { context.add_normal_effect(program(context)) };
         }
-        static program_entry handle(const definition_type& data,
+        static normal_effect handle(const definition_type& data,
             battle_started&, handle_context<skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.entry);

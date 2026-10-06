@@ -19,8 +19,9 @@ namespace givm::genshin_impact
 
         struct definition_type
         {
-            program_entry modify;
-            program_entry remove;
+            immediate_effect modify;
+            normal_effect regenerate;
+            normal_effect remove;
         };
 
         constexpr std::string_view name() const noexcept
@@ -31,8 +32,9 @@ namespace givm::genshin_impact
         definition_type compile(definition_compile_context& context) const
         {
             return {
-                context.add_program(std::tuple{ modify_combat_status_state{} }),
-                context.add_program(std::tuple{ remove_combat_status{} })
+                context.add_immediate_effect(std::tuple{ modify_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ modify_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ remove_combat_status{} })
             };
         }
 
@@ -41,9 +43,9 @@ namespace givm::genshin_impact
             return { .count = 2, .round_usages = 0 };
         }
 
-        static program_entry handle(
+        static immediate_effect handle(
             const definition_type& definition,
-            damage_effect& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            damage_effect& event, handle_context<combat_status_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(event.type == damage_type::piercing || event.value == 0 || status.state().count == 0
@@ -55,18 +57,18 @@ namespace givm::genshin_impact
                 modify_combat_status_state_input{ .status = status.id(), .count = -static_cast<std::int64_t>(absorbed) });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_regenerate& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
-            return context.invoke(definition.modify,
+            return context.invoke(definition.regenerate,
                 modify_combat_status_state_input{ .status = status.id(), .count = event.state.count });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_state_change& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(event.current.count != 0)
@@ -81,7 +83,8 @@ namespace givm::genshin_impact
 
         struct definition_type
         {
-            program_entry remove;
+            immediate_effect remove;
+            normal_effect expire;
         };
 
         constexpr std::string_view name() const noexcept
@@ -96,7 +99,8 @@ namespace givm::genshin_impact
 
         definition_type compile(definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{ remove_attachment{} }) };
+            return { context.add_immediate_effect(std::tuple{ remove_attachment{} }),
+                context.add_normal_effect(std::tuple{ remove_attachment{} }) };
         }
 
         static constexpr attachment_state query(const definition_type&, const attachment_state_limit&) noexcept
@@ -104,9 +108,9 @@ namespace givm::genshin_impact
             return { .count = 1, .round_usages = 0 };
         }
 
-        static program_entry handle(
+        static immediate_effect handle(
             const definition_type& definition,
-            damage_calculation& event, handle_context<attachment_view>& context, std::uint32_t = 0)
+            damage_calculation& event, handle_context<attachment_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto attachment = context.entity();
             if(event.target != attachment.character().id()
@@ -117,12 +121,12 @@ namespace givm::genshin_impact
             return context.invoke(definition.remove, remove_attachment_input{ attachment.id() });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
             round_started&, handle_context<attachment_view>& context, std::uint32_t = 0)
         {
             const auto attachment = context.entity();
-            return context.invoke(definition.remove, remove_attachment_input{ attachment.id() });
+            return context.invoke(definition.expire, remove_attachment_input{ attachment.id() });
         }
     };
 
@@ -132,9 +136,9 @@ namespace givm::genshin_impact
 
         struct definition_type
         {
-            program_entry consume;
-            program_entry refresh;
-            program_entry remove;
+            immediate_effect consume;
+            normal_effect refresh;
+            normal_effect remove;
         };
 
         constexpr std::string_view name() const noexcept
@@ -145,9 +149,9 @@ namespace givm::genshin_impact
         definition_type compile(definition_compile_context& context) const
         {
             return {
-                context.add_program(std::tuple{ modify_combat_status_state{} }),
-                context.add_program(std::tuple{ set_combat_status_state{} }),
-                context.add_program(std::tuple{ remove_combat_status{} })
+                context.add_immediate_effect(std::tuple{ modify_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ set_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ remove_combat_status{} })
             };
         }
 
@@ -157,9 +161,9 @@ namespace givm::genshin_impact
             return { .count = 1, .round_usages = 0 };
         }
 
-        static program_entry handle(
+        static immediate_effect handle(
             const definition_type& definition,
-            damage_calculation& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            damage_calculation& event, handle_context<combat_status_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(status.state().count == 0
@@ -188,18 +192,18 @@ namespace givm::genshin_impact
                 modify_combat_status_state_input{ .status = status.id(), .count = -1 });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_regenerate& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             return context.invoke(definition.refresh,
                 set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_state_change& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(event.current.count != 0)
@@ -214,9 +218,9 @@ namespace givm::genshin_impact
 
         struct definition_type
         {
-            program_entry consume;
-            program_entry refresh;
-            program_entry remove;
+            immediate_effect consume;
+            normal_effect refresh;
+            normal_effect remove;
         };
 
         constexpr std::string_view name() const noexcept
@@ -227,9 +231,9 @@ namespace givm::genshin_impact
         definition_type compile(definition_compile_context& context) const
         {
             return {
-                context.add_program(std::tuple{ modify_combat_status_state{} }),
-                context.add_program(std::tuple{ set_combat_status_state{} }),
-                context.add_program(std::tuple{ remove_combat_status{} })
+                context.add_immediate_effect(std::tuple{ modify_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ set_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ remove_combat_status{} })
             };
         }
 
@@ -239,9 +243,9 @@ namespace givm::genshin_impact
             return { .count = 3, .round_usages = 0 };
         }
 
-        static program_entry handle(
+        static immediate_effect handle(
             const definition_type& definition,
-            damage_calculation& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            damage_calculation& event, handle_context<combat_status_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(status.state().count == 0
@@ -270,18 +274,18 @@ namespace givm::genshin_impact
                 modify_combat_status_state_input{ .status = status.id(), .count = -1 });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_regenerate& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             return context.invoke(definition.refresh,
                 set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_state_change& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(event.current.count != 0)
@@ -296,9 +300,9 @@ namespace givm::genshin_impact
 
         struct definition_type
         {
-            program_entry consume;
-            program_entry refresh;
-            program_entry remove;
+            immediate_effect consume;
+            normal_effect refresh;
+            normal_effect remove;
         };
 
         constexpr std::string_view name() const noexcept
@@ -309,9 +313,9 @@ namespace givm::genshin_impact
         definition_type compile(definition_compile_context& context) const
         {
             return {
-                context.add_program(std::tuple{ modify_combat_status_state{} }),
-                context.add_program(std::tuple{ set_combat_status_state{} }),
-                context.add_program(std::tuple{ remove_combat_status{} })
+                context.add_immediate_effect(std::tuple{ modify_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ set_combat_status_state{} }),
+                context.add_normal_effect(std::tuple{ remove_combat_status{} })
             };
         }
 
@@ -321,9 +325,9 @@ namespace givm::genshin_impact
             return { .count = 2, .round_usages = 0 };
         }
 
-        static program_entry handle(
+        static immediate_effect handle(
             const definition_type& definition,
-            damage_calculation& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            damage_calculation& event, handle_context<combat_status_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(status.state().count == 0
@@ -352,18 +356,18 @@ namespace givm::genshin_impact
                 modify_combat_status_state_input{ .status = status.id(), .count = -1 });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_regeneration& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_regenerate& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             return context.invoke(definition.refresh,
                 set_combat_status_state_input{ .status = status.id(), .state = event.state });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            combat_status_state_changed& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
+            this_combat_status_state_change& event, handle_context<combat_status_view>& context, std::uint32_t = 0)
         {
             const auto status = context.entity();
             if(event.current.count != 0)
@@ -378,8 +382,8 @@ namespace givm::genshin_impact
 
         struct definition_type
         {
-            program_entry end_phase;
-            program_entry accumulate;
+            normal_effect end_phase;
+            normal_effect accumulate;
         };
 
         constexpr std::string_view name() const noexcept
@@ -395,8 +399,8 @@ namespace givm::genshin_impact
         definition_type compile(definition_compile_context& context) const
         {
             return {
-                context.add_program(std::tuple{ deal_damage{}, settle{}, modify_summon_state{} }),
-                context.add_program(std::tuple{ modify_summon_state{} })
+                context.add_normal_effect(std::tuple{ deal_damage{}, settle{}, modify_summon_state{} }),
+                context.add_normal_effect(std::tuple{ modify_summon_state{} })
             };
         }
 
@@ -406,16 +410,16 @@ namespace givm::genshin_impact
             return { .value = 1, .usages = 2 };
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
-            resummoning& event, handle_context<summon_view>& context, std::uint32_t = 0)
+            this_summon_resummon& event, handle_context<summon_view>& context, std::uint32_t = 0)
         {
             const auto summon = context.entity();
             return context.invoke(definition.accumulate,
                 modify_summon_state_input{ .summons = std::array{ summon.id() }, .usages = event.state.usages });
         }
 
-        static program_entry handle(
+        static normal_effect handle(
             const definition_type& definition,
             round_ended&, handle_context<summon_view>& context, std::uint32_t = 0)
         {
@@ -448,7 +452,7 @@ namespace givm::genshin_impact
 
         struct definition_type
         {
-            program_entry effect;
+            immediate_effect effect;
             definition_id<attachment_view> frozen;
         };
 
@@ -480,31 +484,31 @@ namespace givm::genshin_impact
             if constexpr(Slot == elemental_reaction::bloom || Slot == elemental_reaction::quicken)
             {
                 const auto definition = context.resolve_id<combat_status_view>(combat_status_dependencies()[0]);
-                return { context.add_program(std::tuple{ generate_combat_status{ .definition = definition,
+                return { context.add_immediate_effect(std::tuple{ generate_combat_status{ .definition = definition,
                     .state = { Slot == elemental_reaction::bloom ? 1u : 2u, 0 } } }), {} };
             }
             else if constexpr(Slot == elemental_reaction::burning)
             {
                 const auto definition = context.resolve_id<summon_view>(burning_flame_3_3_0.name());
-                return { context.add_program(std::tuple{ summon{ .definition = definition, .state = { 1, 1 } } }), {} };
+                return { context.add_immediate_effect(std::tuple{ summon{ .definition = definition, .state = { 1, 1 } } }), {} };
             }
             else if constexpr(Slot >= elemental_reaction::crystallize_cryo)
             {
                 const auto definition = context.resolve_id<combat_status_view>(shield_3_3_0.name());
-                return { context.add_program(std::tuple{ generate_combat_status{ .definition = definition, .state = { 1, 0 } } }), {} };
+                return { context.add_immediate_effect(std::tuple{ generate_combat_status{ .definition = definition, .state = { 1, 0 } } }), {} };
             }
             else if constexpr(Slot == elemental_reaction::frozen)
-                return { context.add_program(std::tuple{ attach{} }), context.resolve_id<attachment_view>(frozen_3_3_0.name()) };
+                return { context.add_immediate_effect(std::tuple{ attach{} }), context.resolve_id<attachment_view>(frozen_3_3_0.name()) };
             else if constexpr(Slot == elemental_reaction::overloaded)
-                return { context.add_program(std::tuple{ set_active_character{} }), {} };
+                return { context.add_immediate_effect(std::tuple{ set_active_character{} }), {} };
             else if constexpr(Slot == elemental_reaction::superconduct || Slot == elemental_reaction::electro_charged
                 || (Slot >= elemental_reaction::swirl_cryo && Slot <= elemental_reaction::swirl_electro))
-                return { context.add_program(std::tuple{ deal_damage{} }), {} };
+                return { context.add_immediate_effect(std::tuple{ deal_damage{} }), {} };
             else return {};
         }
 
-        static program_entry handle(const definition_type&, damage_calculation& event,
-            handle_context<reaction_view>&, std::uint32_t = 0)
+        static immediate_effect handle(const definition_type&, damage_calculation& event,
+            handle_context<reaction_view, event_category::immediate>&, std::uint32_t = 0)
         {
             constexpr std::uint32_t bonus = Slot == elemental_reaction::melt || Slot == elemental_reaction::vaporize
                 || Slot == elemental_reaction::overloaded ? 2
@@ -514,8 +518,8 @@ namespace givm::genshin_impact
             return {};
         }
 
-        static program_entry handle(const definition_type& definition, elemental_reaction_will_occur& event,
-            handle_context<reaction_view>& context, std::uint32_t = 0)
+        static immediate_effect handle(const definition_type& definition, elemental_reaction_will_occur& event,
+            handle_context<reaction_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             if constexpr(Slot == elemental_reaction::superconduct || Slot == elemental_reaction::electro_charged
                 || (Slot >= elemental_reaction::swirl_cryo && Slot <= elemental_reaction::swirl_electro))

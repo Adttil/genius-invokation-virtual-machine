@@ -55,7 +55,7 @@ handler 不能通过 `context.table()` 修改持久状态，持久副作用由�
 
 领域指令可以准备自己的响应者集合，或直接调用单个 definition handler。具体指令和事件的公开约定说明响应范围、调用顺序及提交效果的处理；完整内部帧由源码维护。采用辅助工具的默认遍历不构成所有广播都必须遵循的规则。
 
-`card_effect` 与 `skill_effect` 分别是直接调用本牌、本技能定义的事件，各自流程负责准备和清理返回位置；实体重复生成和自身 `state_changed` 也只调用相应实体，不收集全场响应者。实体删除后才按类别全场广播 `summon_removed`、`combat_status_removed` 或 `attachment_removed`，不再提供离场前或添加完成事件。费用预览有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `load_deck` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
+`this_card_play` 与 `this_skill_use` 分别是直接调用本牌、本技能定义的事件，各自流程负责准备和清理返回位置；实体重复生成和自身 `state_changed` 也只调用相应实体，不收集全场响应者。实体删除后才按类别全场广播 `summon_removed`、`combat_status_removed` 或 `attachment_removed`，不再提供离场前或添加完成事件。费用预览有自己的响应缓存协议。角色初始化则属于查询：`enter_character` 与 `load_deck` 读取定义库已保存的 `character_initial_state` 结果，不再参与 handler 或广播。
 
 ## 与当前实现逐项核对
 

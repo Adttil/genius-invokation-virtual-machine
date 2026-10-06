@@ -1,19 +1,20 @@
-[givm](../../../reference.md) / [执行](../../executor.md) / [definition_compile_context](../definition_compile_context.md) / **add_program**
+[givm](../../../reference.md) / [执行](../../executor.md) / [definition_compile_context](../definition_compile_context.md) / **add_effect**
 
-# givm::definition_compile_context::add_program
+# givm::definition_compile_context::add_effect
 
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-program_entry add_program(std::span<const any_command> commands); // (1)
+template<event_category Category>
+effect<Category> add_effect(std::span<const any_command> commands); // (1)
 
-template<class TCommands>
+template<event_category Category, class TCommands>
     requires /* 命令序列，且不能隐式转换为 span<const any_command> */
-program_entry add_program(TCommands&& commands); // (2)
+effect<Category> add_effect(TCommands&& commands); // (2)
 
-template<class... TCommands>
+template<event_category Category, class... TCommands>
     requires (std::constructible_from<any_command, TCommands> && ...)
-program_entry add_program(TCommands&&... commands); // (3)
+effect<Category> add_effect(TCommands&&... commands); // (3)
 ```
 
 登记响应事件时需要依次执行的一段效果，并取得可在以后响应时提交的入口。
@@ -36,7 +37,7 @@ program_entry add_program(TCommands&&... commands); // (3)
 
 ## 返回值
 
-返回登记效果的 [`program_entry`](../../definition/program_entry.md)。命令参数验证失败时，将诊断加入本次 [`compile`](../compile.md) 的错误列表；诊断包含当前源、响应程序编号和命令下标。只有整库编译成功后，返回入口才可用于执行。
+返回登记效果的 [`effect<Category>`](../../definition/effect.md)。命令参数验证失败时，将诊断加入本次 [`compile`](../compile.md) 的错误列表；诊断包含当前源、响应程序编号和命令下标。只有整库编译成功后，返回入口才可用于执行。
 
 ## 注意
 
@@ -44,7 +45,9 @@ program_entry add_program(TCommands&&... commands); // (3)
 
 命令序列在第一条 [`return_response`](../../definition/commands/return_response.md) 处结束；之后的命令不再检查、编译或计入输入要求。没有显式返回时补固定返回 `return_response::null`，结束该实体的响应链。
 
-本函数不自动插入 [`end_segment`](../../definition/commands/end_segment.md) 或 [`settle`](../../definition/commands/settle.md)。普通响应和延迟程序的调用者负责末段收尾及后续结算；同一个入口既能普通执行，也能交给 [`defer_program`](../../definition/commands/defer_program.md) 延迟执行，后者忽略返回编号。
+`normal` 和 `preview` 效果在返回前自动完成末段收尾与结算、退出自己的结算域并恢复外层本方。`immediate` 效果不结算，其记录归入外层段；编译时禁止它包含 `end_segment` 或 `settle`。普通和预览效果可以交给 [`defer_program`](../../definition/commands/defer_program.md)，延迟执行忽略返回编号；立即效果不能用于延迟调用。
+
+具名接口 `add_normal_effect`、`add_immediate_effect`、`add_preview_effect` 分别选择对应类别。它们同样支持 span、命令序列及不定参数。
 
 命令及其中借用的数据须在本次调用期间保持有效。返回前完成编译，不保留传入序列或命令对象；调用后可以销毁它们。
 
@@ -67,17 +70,17 @@ struct support_source
 
     std::string_view name() const { return "洗牌助手"; }
 
-    givm::program_entry compile(givm::definition_compile_context& context) const
+    givm::normal_effect compile(givm::definition_compile_context& context) const
     {
-        auto entry = context.add_program(
+        auto entry = context.add_normal_effect(
             std::tuple{ givm::shuffle_deck{ .player = givm::player_id{ 0 } } }
         );
         std::println("已登记回合结束效果: {}", static_cast<bool>(entry));
         return entry;
     }
 
-    static givm::program_entry handle(
-        const givm::program_entry& entry,
+    static givm::normal_effect handle(
+        const givm::normal_effect& entry,
         givm::round_ended&,
         givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
     {

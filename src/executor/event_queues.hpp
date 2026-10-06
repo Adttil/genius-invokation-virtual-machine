@@ -16,7 +16,7 @@
 
 namespace givm::detail
 {
-    inline constexpr std::size_t settlement_instruction_count = 8;
+    inline constexpr std::size_t settlement_instruction_count = 6;
     inline constexpr std::size_t settlement_extent = settlement_instruction_count * sizeof(execute_fn);
 
     struct damage_notification_record
@@ -40,15 +40,6 @@ namespace givm::detail
         bool retained = true;
     };
 
-    template<class TEvent>
-    inline constexpr bool inline_event = std::is_same_v<TEvent, damage_preparation>
-        || std::is_same_v<TEvent, damage_calculation> || std::is_same_v<TEvent, damage_effect>
-        || std::is_same_v<TEvent, elemental_reaction_will_occur> || std::is_same_v<TEvent, healing>
-        || std::is_same_v<TEvent, character_will_be_defeated> || std::is_same_v<TEvent, dice_roll_preparation>
-        || std::is_same_v<TEvent, card_will_be_played> || std::is_same_v<TEvent, skill_will_be_used>
-        || std::is_same_v<TEvent, changing_energy> || std::is_same_v<TEvent, changing_secret_points>
-        || std::is_same_v<TEvent, technique_will_be_used> || std::is_same_v<TEvent, elemental_tuning_modification>;
-
     using record_execute_fn = std::optional<execution_state> (*)(
         const definition_library&, unrestricted_table&, execution_context&, random_fn&);
 
@@ -70,7 +61,7 @@ namespace givm::detail
     struct deferred_record
     {
         mixed_record_header header;
-        program_entry entry;
+        normal_effect entry;
         player_id player;
         std::size_t input_size;
     };
@@ -176,13 +167,6 @@ namespace givm::detail
         return { boundary.damage_end, boundary.hand_end, domain.last_boundary + boundary.header.extent };
     }
 
-#ifndef NDEBUG
-    inline bool is_inline_response(const execution_context& context) noexcept
-    {
-        return current_domain(context).inline_response;
-    }
-#endif
-
     template<bool Independent>
     void begin_response(execution_context& context)
     {
@@ -192,14 +176,6 @@ namespace givm::detail
             context.hand_entry_events().push(substack());
             context.mixed_events().push(event_domain{}, substack());
         }
-#ifndef NDEBUG
-        else
-        {
-            auto& domain = current_domain(context);
-            get<0>(context.stack().top<response_return>()).previous_inline = domain.inline_response;
-            domain.inline_response = true;
-        }
-#endif
     }
 
     template<bool Independent>
@@ -211,9 +187,6 @@ namespace givm::detail
             context.hand_entry_events().pop<substack_t>();
             context.mixed_events().pop<event_domain, substack_t>();
         }
-#ifndef NDEBUG
-        else current_domain(context).inline_response = get<0>(context.stack().top<response_return>()).previous_inline;
-#endif
     }
 
 }

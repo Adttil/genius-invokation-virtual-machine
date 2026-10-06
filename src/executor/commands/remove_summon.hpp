@@ -34,7 +34,7 @@ namespace givm::detail
     inline void remove_summon_and_record(unrestricted_table& table, execution_context& context, summon_id id)
     {
         table[id].erase();
-        append_removal_record<summon_removal_effect>(context, id, summon_removed{ id });
+        append_removal_record<this_summon_remove>(context, id, summon_removed{ id });
     }
 
     template<bool Fixed>

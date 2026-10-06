@@ -19,7 +19,7 @@ namespace givm_test::executor::compile_boundary
         struct skill_source
         {
             using definition_category = givm::skill_view;
-            struct definition_type { givm::program_entry entry; };
+            struct definition_type { givm::normal_effect entry; };
             sequence_form form;
 
             constexpr std::string_view name() const noexcept { return "CompileBoundarySkill"; }
@@ -31,31 +31,31 @@ namespace givm_test::executor::compile_boundary
                 const givm::draw_cards next_draw{ .position = 0 };
                 const givm::add_dice dice{};
                 const std::array<givm::any_command, 4> commands{ energy, draw, next_draw, dice };
-                context.add_program();
+                context.add_normal_effect();
                 switch(form)
                 {
                 case sequence_form::span:
-                    return { context.add_program(std::span<const givm::any_command>{ commands }) };
+                    return { context.add_normal_effect(std::span<const givm::any_command>{ commands }) };
                 case sequence_form::array:
-                    return { context.add_program(commands) };
+                    return { context.add_normal_effect(commands) };
                 case sequence_form::vector:
-                    return { context.add_program(std::vector<givm::any_command>{ energy, draw, next_draw, dice }) };
+                    return { context.add_normal_effect(std::vector<givm::any_command>{ energy, draw, next_draw, dice }) };
                 case sequence_form::tuple:
-                    return { context.add_program(std::tuple{ energy, draw, next_draw, dice }) };
+                    return { context.add_normal_effect(std::tuple{ energy, draw, next_draw, dice }) };
                 case sequence_form::list:
-                    return { context.add_program(std::list<givm::any_command>{ energy, draw, next_draw, dice }) };
+                    return { context.add_normal_effect(std::list<givm::any_command>{ energy, draw, next_draw, dice }) };
                 case sequence_form::subset_variant:
                 {
                     using command = std::variant<givm::set_energy, givm::draw_cards, givm::add_dice>;
-                    return { context.add_program(std::vector<command>{ energy, draw, next_draw, dice }) };
+                    return { context.add_normal_effect(std::vector<command>{ energy, draw, next_draw, dice }) };
                 }
                 case sequence_form::variadic:
-                    return { context.add_program(energy, draw, next_draw, dice) };
+                    return { context.add_normal_effect(energy, draw, next_draw, dice) };
                 }
                 throw std::logic_error{ "invalid test command sequence form" };
             }
 
-            static givm::program_entry handle(const definition_type& definition,
+            static givm::normal_effect handle(const definition_type& definition,
                 givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
             {
                 const auto self = context.entity();

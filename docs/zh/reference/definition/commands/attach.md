@@ -47,7 +47,7 @@ struct attach
 在目标范围查找首个有效、定义 ID 相同的实体：
 
 - 没有匹配实体时，使用裁剪后的状态创建实体。装备替换遵守 [add_attachment](add_attachment.md) 的规则。
-- 已有匹配实体时，仅向该实体发送 [attachment_reapplication](../events/attachment_reapplication.md)，携带本次裁剪后的状态；响应可从自身读取原有状态。
+- 已有匹配实体时，仅向该实体发送 [this_attachment_reapply](../events/this_attachment_reapply.md)，携带本次裁剪后的状态；响应可从自身读取原有状态。
 - 返回的响应程序完整结算后，本命令结束。未提供响应或返回空入口时，不再追加实体。多个同定义实体也只通知首个。
 
 已有实体的响应可以通过 [modify_attachment_state](modify_attachment_state.md)、[set_attachment_state](set_attachment_state.md)、[remove_attachment](remove_attachment.md) 或 [add_attachment](add_attachment.md) 表达累加、刷新、删除重建和独立创建。

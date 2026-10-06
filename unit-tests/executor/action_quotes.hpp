@@ -54,7 +54,7 @@ namespace
         {
             return givm::target_validation::valid_complete_or_continue;
         }
-        static givm::program_entry handle(definition_type log, givm::card_effect& event,
+        static givm::normal_effect handle(definition_type log, givm::this_card_play& event,
             givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             log->order.push_back("effect");
@@ -74,10 +74,10 @@ namespace
             bool target_prices;
             bool terminal;
             std::uint8_t extra_fire;
-            givm::program_entry fee;
-            givm::program_entry consume;
-            givm::program_entry mark;
-            givm::program_entry end;
+            givm::preview_effect fee;
+            givm::normal_effect consume;
+            givm::preview_effect mark;
+            givm::preview_effect end;
         };
         payment_log* log;
         bool target_prices = false;
@@ -87,32 +87,31 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, target_prices, terminal, extra_fire,
-                context.add_program(givm::replace_cards{ player }, givm::discard_hand_card{},
+                context.add_preview_effect(givm::replace_cards{ player }, givm::discard_hand_card{},
                     givm::set_active_character{}, givm::set_energy{}, givm::add_dice{}, givm::return_response{}),
-                context.add_program(givm::remove_dice{}),
-                context.add_program(givm::set_energy{}),
-                context.add_program(givm::replace_cards{ player }, givm::end_game{ givm::game_result::both_loss }) };
+                context.add_normal_effect(givm::remove_dice{}),
+                context.add_preview_effect(givm::set_energy{}),
+                context.add_preview_effect(givm::replace_cards{ player }, givm::end_game{ givm::game_result::both_loss }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 3, .health = 10, .energy = 3 };
         }
-        static givm::program_entry handle(const definition_type& data, givm::cost_of_card& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t response = 0)
+        static givm::preview_effect handle(const definition_type& data, givm::cost_of_card& event,
+            givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             if(context.entity().character().id() != original) return {};
-            CHECK(response == 0);
             data.log->quoted.push_back(event.targets);
             if(data.target_prices)
             {
                 const auto target = std::get<givm::character_id>(event.targets[0]);
                 event.requirement.dice_requirement.any = static_cast<std::uint8_t>(target.index + 1);
-                return context.invoke(givm::substack_t{}, data.mark,
+                return context.invoke(data.mark,
                     givm::set_energy_input{ original, static_cast<std::uint32_t>(target.index + 1) });
             }
             event.requirement.dice_requirement.any = 3;
             event.requirement.energy = 3;
-            if(data.terminal) return context.invoke(givm::substack_t{}, data.end);
+            if(data.terminal) return context.invoke(data.end);
             const auto card = [&]
             {
                 for(auto candidate : context.entity().player().hand_cards())
@@ -120,19 +119,19 @@ namespace
                 return givm::hand_card_id{};
             }();
             const std::array discarded{ card };
-            return context.invoke(givm::substack_t{}, data.fee,
+            return context.invoke(data.fee,
                 givm::discard_hand_card_input{ discarded }, givm::set_active_character_input{ next },
                 givm::set_energy_input{ original, 1 }, givm::add_dice_input{ player, dice(data.extra_fire, 0, 0) },
                 givm::return_response_input{ 97 });
         }
-        static givm::program_entry handle(const definition_type& data, givm::hand_card_discarded&,
+        static givm::normal_effect handle(const definition_type& data, givm::hand_card_discarded&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(context.entity().character().id() != original) return {};
             data.log->order.push_back("discard-chain");
             return context.invoke(data.consume, givm::remove_dice_input{ player, dice(1, 1, 0) });
         }
-        static givm::program_entry handle(const definition_type& data, givm::dice_removed& event,
+        static givm::normal_effect handle(const definition_type& data, givm::dice_removed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(context.entity().character().id() != original) return {};
@@ -140,14 +139,14 @@ namespace
             data.log->removed.push_back(event.dice);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, givm::energy_changed& event,
+        static givm::normal_effect handle(const definition_type& data, givm::energy_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(context.entity().character().id() == original)
                 data.log->energy.emplace_back(event.previous, event.current);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, givm::card_played&,
+        static givm::normal_effect handle(const definition_type& data, givm::card_played&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(context.entity().character().id() == original) data.log->order.push_back("played");

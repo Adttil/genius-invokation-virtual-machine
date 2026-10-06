@@ -61,7 +61,7 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         table[support].erase();
-        append_removal_record<support_removal_effect>(context, support, support_removed{ support });
+        append_removal_record<this_support_remove>(context, support, support_removed{ support });
         return continue_execution;
     }
 

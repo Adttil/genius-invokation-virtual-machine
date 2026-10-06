@@ -61,7 +61,7 @@ namespace
         {
             skill_log* log;
             givm::action_cost_requirement cost;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         skill_log* log;
         std::uint8_t dice = 1;
@@ -79,7 +79,7 @@ namespace
         {
             return { log, { .dice_requirement = { .any = dice }, .energy = energy,
                 .energy_tag = energy_tag.empty() ? givm::tag_id{} : *context.find_tag(energy_tag) },
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::action_cost_requirement query(const definition_type& data, const givm::skill_initial_cost&)
         {
@@ -98,9 +98,9 @@ namespace
             return query.target_count == 1 ? givm::target_validation::valid_incomplete
                 : givm::target_validation::valid_complete;
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
-            givm::skill_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::this_skill_use& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK(event.skill == self.id());
@@ -120,9 +120,9 @@ namespace
         skill_log* log;
         std::string_view name() const noexcept { return "UntargetedSkill"; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
-            givm::skill_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::this_skill_use& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK(event.skill == self.id());
@@ -139,7 +139,7 @@ namespace
         skill_log* log;
         std::string_view name() const noexcept { return "PassiveSkill"; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::before_action&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             ++data.log->passive_responses;
@@ -156,12 +156,12 @@ namespace
             givm::definition_id<givm::skill_view> active;
             givm::definition_id<givm::skill_view> passive;
             givm::definition_id<givm::skill_view> untargeted;
-            givm::program_entry payment;
-            givm::program_entry before;
-            givm::program_entry after;
-            givm::program_entry dice_removed;
-            givm::program_entry energy_changed;
-            givm::program_entry selection;
+            givm::preview_effect payment;
+            givm::immediate_effect before;
+            givm::normal_effect after;
+            givm::normal_effect dice_removed;
+            givm::normal_effect energy_changed;
+            givm::normal_effect selection;
             givm::tag_id energy_tag;
         };
         skill_log* log;
@@ -180,13 +180,13 @@ namespace
                 context.resolve_id<givm::skill_view>("ActiveSkill"),
                 context.resolve_id<givm::skill_view>("PassiveSkill"),
                 context.resolve_id<givm::skill_view>("UntargetedSkill"),
-                context.add_program(
+                context.add_preview_effect(
                     std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
+                context.add_immediate_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
                 energy_tag.empty() ? givm::tag_id{} : *context.find_tag(energy_tag)
             };
         }
@@ -205,26 +205,26 @@ namespace
             default: return {};
             }
         }
-        static givm::program_entry handle(
+        static givm::preview_effect handle(
             const definition_type& data, givm::cost_of_skill& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             ++data.log->cost_queries;
             event.requirement.dice_requirement.any += data.log->extra_dice;
             event.requirement.energy += data.log->extra_energy;
-            if(data.log->nested) return context.invoke(givm::substack_t{}, data.payment);
+            if(data.log->nested) return context.invoke(data.payment);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::preview_effect handle(
             const definition_type& data, givm::cost_of_switch& event,
-            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::preview>&)
         {
             event.requirement.dice_requirement.any = data.log->extra_dice;
             event.requirement.energy = data.log->extra_energy;
             event.requirement.energy_tag = data.log->switch_energy_tag;
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::dice_removed&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -233,7 +233,7 @@ namespace
             if(data.log->nested) return context.invoke(data.dice_removed);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::energy_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -245,9 +245,9 @@ namespace
             if(data.log->nested) return context.invoke(data.energy_changed);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::immediate_effect handle(
             const definition_type& data, givm::skill_will_be_used& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->events.push_back("will");
             event.effect_cancelled = data.log->cancelled;
@@ -255,7 +255,7 @@ namespace
             if(data.log->nested) return context.invoke(data.before);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::skill_used& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -266,7 +266,7 @@ namespace
             if(data.log->nested) return context.invoke(data.after);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::card_drawn&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -297,8 +297,8 @@ namespace
             return { .cost = { .dice_requirement = { .any = data.dice }, .speed = givm::action_speed::fast,
                 .energy = data.energy, .energy_tag = data.energy_tag } };
         }
-        static givm::program_entry handle(
-            const definition_type& data, givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(
+            const definition_type& data, givm::this_card_play&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             ++data.log->card_effects;
             return {};
@@ -308,17 +308,17 @@ namespace
     struct enter_skill_character_source
     {
         using definition_category = givm::character_view;
-        struct definition_type { givm::program_entry entry; };
+        struct definition_type { givm::normal_effect entry; };
         std::string_view name() const noexcept { return "EnterSkillCharacter"; }
         auto character_dependencies() const { return std::array{ std::string_view{ "SkillCharacter" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{
+            return { context.add_normal_effect(std::tuple{
                 givm::enter_character{ .player = givm::player_id{ 1 },
                     .definition = context.resolve_id<givm::character_view>("SkillCharacter") }
             }) };
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.entry);

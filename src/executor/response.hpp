@@ -18,7 +18,7 @@
 namespace givm::detail
 {
     template<class TEvent>
-    inline constexpr std::size_t response_instruction_count = 2 + (inline_event<TEvent> ? 0 : settlement_instruction_count);
+    inline constexpr std::size_t response_instruction_count = 2;
 
     template<class TEvent>
     inline constexpr std::size_t response_extent = response_instruction_count<TEvent> * sizeof(execute_fn);
@@ -167,20 +167,19 @@ namespace givm::detail
             const auto return_position = get<3>(frame).position + sizeof(execute_fn);
             if constexpr(Queued) context.stack().push(queued_response_completion{ completion });
             context.stack().push(response_return{ previous_player, return_position });
-            begin_response<not inline_event<TEvent>>(context);
             const auto [caller, call] = context.stack().top<
                 givm::frame<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>, [] { if constexpr(Queued) return givm::frame<queued_response_completion, response_return>;
                     else return givm::frame<response_return>; }()>();
             auto& event = get<2>(caller);
             player_id player{};
-            const auto entry = std::visit([&](auto id) -> program_entry
+            const auto entry = std::visit([&](auto id) -> effect<TEvent::category>
             {
                 const auto entity = std::as_const(table)[id];
                 if(not entity) return {};
                 if constexpr(requires { entity.character(); })
                     if(not entity.character().state().alive) return {};
                 player = entity.player().id();
-                auto response = context.make_handle_context(library, entity, random);
+                auto response = context.make_handle_context<TEvent::category>(library, entity, random);
                 return library[entity.definition_id()].template handle<TEvent>(event, response, index);
             }, handler);
             if(entry)
@@ -189,7 +188,6 @@ namespace givm::detail
                 context.enter(entry);
                 return false;
             }
-            end_response<not inline_event<TEvent>>(context);
             if constexpr(Queued) context.stack().pop<queued_response_completion, response_return>();
             else context.stack().pop<response_return>();
             frame = context.stack().top<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>();
@@ -204,8 +202,6 @@ namespace givm::detail
         execution_context& context, random_fn&)
     {
         const auto result = get<0>(context.stack().top<response_return>()).result;
-        table.state().self_player = get<0>(context.stack().top<response_return>()).previous_player;
-        end_response<not inline_event<TEvent>>(context);
         context.stack().pop<response_return>();
         const auto frame = context.stack().top<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>();
         auto& progress = get<1>(frame);
@@ -247,16 +243,14 @@ namespace givm::detail
         const auto return_position = get<2>(frame).position + sizeof(execute_fn);
         if constexpr(Queued) context.stack().push(queued_response_completion{ completion });
         context.stack().push(response_return{ previous_player, return_position });
-        begin_response<not inline_event<TEvent>>(context);
         const auto [caller, call] = context.stack().top<
             givm::frame<single_response_progress<TId>, TEvent, response_return>, [] { if constexpr(Queued) return givm::frame<queued_response_completion, response_return>;
                 else return givm::frame<response_return>; }()>();
         auto& event = get<1>(caller);
-        auto response = context.make_handle_context(library, entity, random);
+        auto response = context.make_handle_context<TEvent::category>(library, entity, random);
         const auto entry = definition.template handle<TEvent>(event, response, progress.response_index);
         if(not entry)
         {
-            end_response<not inline_event<TEvent>>(context);
             if constexpr(Queued) context.stack().pop<queued_response_completion, response_return>();
             else context.stack().pop<response_return>();
             return true;
@@ -271,8 +265,6 @@ namespace givm::detail
         execution_context& context, random_fn&)
     {
         const auto result = get<0>(context.stack().top<response_return>()).result;
-        table.state().self_player = get<0>(context.stack().top<response_return>()).previous_player;
-        end_response<not inline_event<TEvent>>(context);
         context.stack().pop<response_return>();
         const auto frame = context.stack().top<single_response_progress<TId>, TEvent, response_return>();
         get<0>(frame).response_index = result;

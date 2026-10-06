@@ -72,9 +72,6 @@ namespace givm::detail
     struct event_domain
     {
         std::size_t last_boundary = no_boundary;
-#ifndef NDEBUG
-        bool inline_response = false;
-#endif
     };
 
     class execution_context
@@ -148,38 +145,42 @@ namespace givm::detail
 
         constexpr execution_state yield(execution_state state) const noexcept { return state; }
 
-        program_invoker make_program_invoker()
+        template<event_category Category = event_category::normal>
+        program_invoker<Category> make_program_invoker()
         {
-            return program_invoker{ stack_
+            return program_invoker<Category>{ stack_
 #ifndef NDEBUG
                 , debug_
 #endif
             };
         }
 
-        template<class TEntity>
-        handle_context<TEntity> make_handle_context(const definition_library& library, TEntity entity, random_fn& random)
+        template<event_category Category, class TEntity>
+        requires (Category != event_category::preview)
+        handle_context<TEntity, Category> make_handle_context(const definition_library& library, TEntity entity, random_fn& random)
         {
-            return handle_context<TEntity>{ library, entity, random, make_program_invoker() };
+            return handle_context<TEntity, Category>{ library, entity, &random, make_program_invoker<Category>() };
         }
 
-        template<bool Substack = false, class TEntity>
-        static handle_context<TEntity> make_handle_context(
-            frame_stack& stack, const definition_library& library, TEntity entity, random_fn& random)
+        template<class TEntity>
+        static preview_handle_context<TEntity> make_preview_context(
+            frame_stack& stack, const definition_library& library, TEntity entity)
         {
-            return handle_context<TEntity>{ library, entity, random, program_invoker{ stack
+            return preview_handle_context<TEntity>{ library, entity, {}, program_invoker<event_category::preview>{ stack
 #ifndef NDEBUG
-                , detail::program_debug_view{ library.debug_library_identity_, library.debug_programs_, library.input_markers_ }, Substack
+                , detail::program_debug_view{ library.debug_library_identity_, library.debug_programs_, library.input_markers_ }
 #endif
             } };
         }
 
-        program_entry copy_program_inputs(program_entry entry, std::span<const unsigned char> inputs)
+        template<event_category Category>
+        effect<Category> copy_program_inputs(effect<Category> entry, std::span<const unsigned char> inputs)
         {
             return make_program_invoker().copy_inputs(entry, inputs);
         }
 
-        constexpr execution_state enter(program_entry entry)
+        template<event_category Category>
+        constexpr execution_state enter(effect<Category> entry)
         {
             GIVM_ASSERT(static_cast<bool>(entry));
             return jump(entry.position_);
@@ -196,7 +197,7 @@ namespace givm::detail
         friend class ::givm::executor;
         constexpr execution_context() noexcept = default;
 
-        execution_position position_ = null_program_position;
+        execution_position position_ = null_effect_position;
         frame_stack stack_;
         frame_stack damage_events_;
         frame_stack hand_entry_events_;

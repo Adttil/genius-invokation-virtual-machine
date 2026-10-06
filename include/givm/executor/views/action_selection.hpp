@@ -214,7 +214,7 @@ namespace givm::detail
 
     struct cached_cost_program
     {
-        program_entry entry;
+        preview_effect entry;
         player_id self_player;
         std::size_t input_offset;
         std::size_t input_size;
@@ -291,20 +291,18 @@ namespace givm::detail
 #endif
         const auto programs_offset = record.programs_offset;
         const auto event_offset = record.event_offset;
-        auto zero_random = []() -> std::uint32_t { return 0; };
-        random_fn random{ zero_random };
         for(stack_count_t index = 0; index < handler_count; ++index)
         {
             const auto handler = get<type>(get<0>(stack.top<action_window_frame>()))[index];
             const auto initial_size = stack.size();
             player_id self{};
-            const auto entry = std::visit([&](auto id) -> program_entry
+            const auto entry = std::visit([&](auto id) -> preview_effect
             {
                 const auto entity = card_table[id];
                 self = entity.player().id();
                 if(not entity) return {};
-                auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
-                return library[entity.definition_id()].template handle<TCost>(event, response, 0);
+                auto response = execution_context::make_preview_context(stack, library, entity);
+                return library[entity.definition_id()].template handle<TCost>(event, response);
             }, handler);
             const auto size = stack.size() - initial_size;
             std::size_t input_offset = 0;

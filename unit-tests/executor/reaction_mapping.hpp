@@ -21,27 +21,27 @@ namespace
     struct reaction_source
     {
         using definition_category = givm::reaction_view;
-        struct definition_type { std::uint32_t bonus; reaction_log* log; givm::program_entry effect; };
+        struct definition_type { std::uint32_t bonus; reaction_log* log; givm::immediate_effect effect; };
         std::string_view source_name;
         std::uint32_t bonus;
         reaction_log* log = nullptr;
         std::string_view name() const { return source_name; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { bonus, log, context.add_program(givm::modify_energy{}) };
+            return { bonus, log, context.add_immediate_effect(givm::modify_energy{}) };
         }
         static givm::element_aura query(const definition_type&, const givm::reaction_aura&)
         {
             return givm::element_aura::dendro;
         }
-        static givm::program_entry handle(const definition_type& data, givm::damage_calculation& event,
-            givm::handle_context<givm::reaction_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data, givm::damage_calculation& event,
+            givm::handle_context<givm::reaction_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             event.value += data.bonus;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data, givm::elemental_reaction_will_occur& event,
-            givm::handle_context<givm::reaction_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data, givm::elemental_reaction_will_occur& event,
+            givm::handle_context<givm::reaction_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             if(not data.log) return {};
             data.log->origins.push_back(event.source_player());

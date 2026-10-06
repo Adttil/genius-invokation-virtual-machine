@@ -9,6 +9,7 @@
 ```cpp
 struct support_removed
 {
+    static constexpr event_category category = event_category::normal;
     const support_id support;
 };
 ```

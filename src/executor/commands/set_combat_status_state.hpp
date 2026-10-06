@@ -27,11 +27,11 @@ namespace givm::detail
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random, const set_combat_status_state_input& input)
     {
-        combat_status_state_changed event{ table[input.status].state(), input.state };
+        this_combat_status_state_change event{ table[input.status].state(), input.state };
         table[input.status].state() = input.state;
         const auto status = std::as_const(table)[input.status];
         const auto definition = library[status.definition_id()];
-        if(not definition.can_handle<combat_status_state_changed, combat_status_view>())
+        if(not definition.can_handle<this_combat_status_state_change, combat_status_view>())
             return continue_execution;
         append_single_event_record(context, input.status, event);
         return continue_execution;

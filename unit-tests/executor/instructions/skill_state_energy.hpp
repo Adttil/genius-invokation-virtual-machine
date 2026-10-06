@@ -51,21 +51,21 @@ namespace
     struct mutable_skill_source
     {
         using definition_category = givm::skill_view;
-        struct definition_type { mutation_log* log; givm::program_entry effect; };
+        struct definition_type { mutation_log* log; givm::normal_effect effect; };
         mutation_log* log;
 
         std::string_view name() const { return "MutableSkill"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{
+            return { log, context.add_normal_effect(std::tuple{
                 givm::modify_energy{ .target = { givm::relative_player::self, 0 }, .delta = 1 } }) };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::skill_effect&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_skill_use&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             data.log->energy_during_effect.push_back(self.character().state().energy);
-            return data.log->explicit_energy ? context.invoke(data.effect) : givm::program_entry{};
+            return data.log->explicit_energy ? context.invoke(data.effect) : givm::normal_effect{};
         }
     };
 
@@ -76,7 +76,7 @@ namespace
         {
             mutation_log* log;
             givm::definition_id<givm::skill_view> skill;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         mutation_log* log;
 
@@ -85,28 +85,28 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto skill = context.resolve_id<givm::skill_view>("MutableSkill");
-            givm::program_entry effect;
+            givm::normal_effect effect;
             switch(log->kind)
             {
             case mutation_kind::skill:
-                effect = context.add_program(std::tuple{ log->dynamic ? givm::set_skill_state{}
+                effect = context.add_normal_effect(std::tuple{ log->dynamic ? givm::set_skill_state{}
                     : givm::set_skill_state{ .character = log->relative, .definition = skill,
                         .state = { log->value } } });
                 break;
             case mutation_kind::assign:
-                effect = context.add_program(std::tuple{ log->dynamic ? givm::set_energy{}
+                effect = context.add_normal_effect(std::tuple{ log->dynamic ? givm::set_energy{}
                     : givm::set_energy{ .target = log->relative, .value = log->value } });
                 break;
             case mutation_kind::modify:
-                effect = context.add_program(std::tuple{ log->dynamic ? givm::modify_energy{}
+                effect = context.add_normal_effect(std::tuple{ log->dynamic ? givm::modify_energy{}
                     : givm::modify_energy{ .target = log->relative, .delta = log->delta } });
                 break;
             case mutation_kind::sequence:
                 if(log->dynamic)
-                    effect = context.add_program(std::tuple{ givm::set_energy{}, givm::modify_energy{},
+                    effect = context.add_normal_effect(std::tuple{ givm::set_energy{}, givm::modify_energy{},
                         givm::modify_energy{}, givm::modify_energy{}, givm::modify_energy{} });
                 else
-                    effect = context.add_program(std::tuple{
+                    effect = context.add_normal_effect(std::tuple{
                         givm::set_energy{ .target = log->relative, .value = 2 },
                         givm::modify_energy{ .target = log->relative, .delta = std::numeric_limits<std::int64_t>::max() },
                         givm::modify_energy{ .target = log->relative, .delta = -1 },
@@ -114,16 +114,16 @@ namespace
                         givm::modify_energy{ .target = log->relative, .delta = 2 } });
                 break;
             case mutation_kind::use_skill:
-                effect = context.add_program(std::tuple{ givm::use_skill{ .definition = skill } });
+                effect = context.add_normal_effect(std::tuple{ givm::use_skill{ .definition = skill } });
                 break;
             case mutation_kind::batch_sequence:
-                effect = context.add_program(std::tuple{ givm::modify_energy{}, givm::modify_energy{},
+                effect = context.add_normal_effect(std::tuple{ givm::modify_energy{}, givm::modify_energy{},
                     givm::modify_energy{}, givm::modify_energy{}, givm::modify_energy{} });
                 break;
             }
             return { log, skill, effect };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto& log = *data.log;
@@ -168,20 +168,20 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::changing_energy&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::changing_energy&, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             FAIL("direct energy mutation must not broadcast changing_energy");
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::energy_changed& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             CHECK(event.previous != event.current);
             ++data.log->energy_notifications;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::skill_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->energy_after_skill.push_back(context.table()[event.skill.character_id].state().energy);

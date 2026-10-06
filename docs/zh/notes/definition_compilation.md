@@ -203,15 +203,15 @@ std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) c
 ### 加入响应程序
 
 ```cpp
-program_entry add_program(std::span<const any_command> commands);
+normal_effect add_normal_effect(std::span<const any_command> commands);
 
 template<class TCommands>
     requires /* 命令序列，且不能隐式转换为 span<const any_command> */
-program_entry add_program(TCommands&& commands);
+normal_effect add_normal_effect(TCommands&& commands);
 
 template<class... TCommands>
     requires (std::constructible_from<any_command, TCommands> && ...)
-program_entry add_program(TCommands&&... commands);
+normal_effect add_normal_effect(TCommands&&... commands);
 ```
 
 `commands` 可为异构 tuple-like、同构 input range、包含 `any_command` 的范围，或直接提供零个及多个命令。头文件包装将命令统一为 `span<const any_command>`，非模板后端在 cpp 中逐项检查和编译，不保存调用方序列或元素引用。编译及编译前允许类型擦除与动态分派；游戏执行仍使用编译出的 opcode，不遍历命令 variant。入口不绑定外层事件类型，所需输入由具体命令值按执行顺序确定；不消费响应输入的命令不占输入位置，编译后入口的输入数量、类型和顺序固定。
@@ -242,20 +242,20 @@ definition_type compile(definition_compile_context& context) const
 }
 ```
 
-需要响应程序时，definition 同样直接保存 `add_program` 返回的入口：
+需要响应程序时，definition 同样直接保存 `add_normal_effect` 返回的入口：
 
 ```cpp
 struct definition_type
 {
     std::uint32_t maximum_count;
-    program_entry absorption;
+    normal_effect absorption;
 };
 
 definition_type compile(definition_compile_context& context) const
 {
     return {
         .maximum_count = maximum_count,
-        .absorption = context.add_program(std::tuple{
+        .absorption = context.add_normal_effect(std::tuple{
             modify_combat_status_state{}
         })
     };
@@ -275,21 +275,21 @@ handler 在对局运行时响应事件。此时 source 对象不再参与；hand
 handler 的签名为：
 
 ```cpp
-static program_entry handle(
+static normal_effect handle(
     const TDefinition& definition, TEvent& event,
     handle_context<TEntityView>& context, std::uint32_t = 0);
 ```
 
-`TDefinition` 必须为本源 `compile` 的返回类型。`context.entity()` 是当前响应者，`event` 是本次事件，`context.table()` 只读，通过 `context.random()` 取得随机值，通过 `context.invoke(...)` 提交后续效果。末尾编号表示当前是该实体对本事件的哪次响应，首次为 0。返回类型必须为 `program_entry`；无后续效果时返回空入口，需要后续操作时一次性提交全部输入并立即返回 `invoke` 的结果。
+`TDefinition` 必须为本源 `compile` 的返回类型。`context.entity()` 是当前响应者，`event` 是本次事件，`context.table()` 只读，通过 `context.random()` 取得随机值，通过 `context.invoke(...)` 提交后续效果。末尾编号表示当前是该实体对本事件的哪次响应，首次为 0。返回类型必须为 `normal_effect`；无后续效果时返回空入口，需要后续操作时一次性提交全部输入并立即返回 `invoke` 的结果。
 
-静态源没有匹配调用表示不支持这项响应；有调用而返回类型错误时不能静默退化为无响应。普通事件与费用事件使用相同签名。普通响应通过 `context.invoke(entry, ...)` 提交，费用响应通过 `context.invoke(substack_t{}, entry, ...)` 仅收集输入与入口。写入方式由重载在编译期选择；Debug 保存预期方式以诊断错误重载，Release 不保存模式字段，也不检查误用。
+响应类别由事件的 `static constexpr event_category category` 指定。普通和立即响应接收编号，预览响应没有编号。`handle_context<TEntity, Category>` 仅接受同类别效果，统一通过 `invoke(entry, inputs...)` 提交；预览上下文自动缓存输入，且没有随机源接口。类别在编译期确定，不保留运行期方式字段。
 
 计数护盾响应示例：
 
 ```cpp
-static program_entry handle(
+static immediate_effect handle(
     const definition_type& definition, damage_effect& event,
-    handle_context<combat_status_view>& context, std::uint32_t = 0)
+    handle_context<combat_status_view, event_category::immediate>& context, std::uint32_t = 0)
 {
     const auto self = context.entity();
     if(event.target.player_id != self.player().id()
@@ -327,7 +327,7 @@ bool can_handle() const;
 
 未声明 `is_dynamic` 或其值为 `false` 时，source 为静态源，只按静态 `handle` 是否存在判断响应能力，不调用源的 `can_handle`。这样普通 C++ 定义可以直接写自己需要的响应重载。
 
-`is_dynamic` 为 `true` 的源必须为所属类别的各个实体 view 与可订阅事件组合提供返回 `bool` 的 const 成员 `can_handle` 和返回 `program_entry` 的静态 `handle`。动态历史摘要使用单个事件模板参数的 `can_handle<Event>()`，并完整提供返回 `void` 的摘要 `handle`。所有接口在构造 `definition_source_view` 时进行 C++ 编译检查，包括能力判断返回 `false` 的分支；缺失接口或返回类型错误不再推迟到编译定义库时抛出异常。
+`is_dynamic` 为 `true` 的源必须为所属类别的各个实体 view 与可订阅事件组合提供返回 `bool` 的 const 成员 `can_handle` 和返回 `normal_effect` 的静态 `handle`。动态历史摘要使用单个事件模板参数的 `can_handle<Event>()`，并完整提供返回 `void` 的摘要 `handle`。所有接口在构造 `definition_source_view` 时进行 C++ 编译检查，包括能力判断返回 `false` 的分支；缺失接口或返回类型错误不再推迟到编译定义库时抛出异常。
 
 能力判断返回 `false` 时不安装 handler，返回 `true` 时安装对应的静态 `handle`。不支持的分支不会被正常分派调用，因此其函数体无须产生有效结果；定义源若绕过能力选择自行调用该分支，属于未定义行为。
 
@@ -353,7 +353,7 @@ bool can_handle() const;
 
 Lua 等动态来源通过声明 `is_dynamic = true` 的 C++ adapter 接入。adapter 为所属类别的全部事件和查询提供完整的 `handle`、`query`、`can_handle`、`can_query`，可以用泛型函数覆盖；名称、标签、依赖和编译接口仍与静态 source 一致。脚本侧可以只提供实际支持的回调集合，由能力判断选择，不必复制 C++ 模板协议。adapter 可以从脚本元数据返回名称、标签和依赖 range，在 `compile(...)` 中解析依赖并加入脚本提供的程序，再把运行时回调所需的稳定句柄放进 definition。
 
-adapter 把定义的固定命令序列交给 `add_program`。每个程序所需输入对象的数量、类型和顺序由命令序列确定；响应时计算输入值与各数组的内容。C++ 调用逐项提交专用输入对象，动态 adapter 为具体输入调用 `pack_inputs`，将得到的 `program_inputs` 片段按执行顺序保存，再通过 `concat_inputs` 合并提交。C++ 包装承担复制和 debug 匹配检查，脚本不需要理解字节布局。命令实现不因外层事件和实体类别组合而复制。
+adapter 把定义的固定命令序列交给 `add_normal_effect`。每个程序所需输入对象的数量、类型和顺序由命令序列确定；响应时计算输入值与各数组的内容。C++ 调用逐项提交专用输入对象，动态 adapter 为具体输入调用 `pack_inputs`，将得到的 `program_inputs` 片段按执行顺序保存，再通过 `concat_inputs` 合并提交。C++ 包装承担复制和 debug 匹配检查，脚本不需要理解字节布局。命令实现不因外层事件和实体类别组合而复制。
 
 ## 注册与生命周期
 
@@ -404,7 +404,7 @@ using definition_selection = std::array<std::span<const std::string_view>, defin
 
 命令的参数错误独立定义为 `givm::xxx_error`，命令内的 `error_type` 只保留别名。该错误及其文本格式化与公开命令一起位于 definition 的对应命令文件，不需要 executor；整库错误的原因 variant、位置类型与总格式化位于 `executor/compile_error.hpp`。两个 `commands.hpp` 都只负责聚合包含。命令和输入类型列表由 `definition/any_command.hpp` 集中保存，不让错误格式化反向依赖命令实现。
 
-编译上下文只保存当前阶段 `stage_` 和可选源 `source_`，不长期保存程序类别、程序编号和命令下标全为空的完整 `compile_location`。普通上下文诊断在产生时组合位置；`add_program` 检查命令时单独构造程序位置。`program_count_` 仍然保留，用于记录同一个定义源内第几次调用 `add_program`：响应程序的编号从零开始，错误中据此区分该源登记的不同程序。这个计数不参与游戏运行期。
+编译上下文只保存当前阶段 `stage_` 和可选源 `source_`，不长期保存程序类别、程序编号和命令下标全为空的完整 `compile_location`。普通上下文诊断在产生时组合位置；`add_normal_effect` 检查命令时单独构造程序位置。`program_count_` 仍然保留，用于记录同一个定义源内第几次调用 `add_normal_effect`：响应程序的编号从零开始，错误中据此区分该源登记的不同程序。这个计数不参与游戏运行期。
 
 依赖其他定义的效果应在定义源的 `compile(context)` 中构造，通过 `context.resolve_id` 解析已声明依赖，或通过基础定义查询取得本次编译选定的反应定义 ID。上层牌组链接使用编译结果中的 `id_map`。不再提供独立的映射构建入口，也不先编译一份临时库来预取另一轮编译的 ID。
 
@@ -433,7 +433,7 @@ definition library 通过 issued id 提供 definition view、名称、标签和�
 3. 建立局部 `definition_library`，按 ID 预填名称、标签位集、响应函数表、历史摘要响应列表和非空查询的自定义函数指针；缺少自定义查询时保留空指针。编译条目引用登记缓存和最终库，并暂存空查询的自定义函数指针。
 4. 为全部历史摘要调用 `layout(...)` 并确定字段布局。此时上下文已经可以查看全部选中定义的声明和自定义能力。
 5. 编译调用方提供的初始化程序和回合程序，补入回合推进及回跳连接。
-6. 为每个选中的 source 建立 `definition_compile_context` 并调用一次 `compile(...)`。名称依赖解析使用已分配 ID；`add_program(...)` 当场检查并追加响应程序、补内部返回连接并返回入口。本源编译未产生错误时，执行其空查询并保存结果；否则跳过本源空查询，继续其他源的编译与诊断收集。
+6. 为每个选中的 source 建立 `definition_compile_context` 并调用一次 `compile(...)`。名称依赖解析使用已分配 ID；`add_normal_effect(...)` 当场检查并追加响应程序、补内部返回连接并返回入口。本源编译未产生错误时，执行其空查询并保存结果；否则跳过本源空查询，继续其他源的编译与诊断收集。
 7. 全部 definition 完成后，用默认查询函数补齐非空查询表中的空项，并完成程序链接。
 8. 无验证错误时，同时发布不可变的 `definition_library` 和本次编译使用的 `issued_id_map`；否则仅返回收集到的诊断列表。释放仅编译期间需要的条目。
 

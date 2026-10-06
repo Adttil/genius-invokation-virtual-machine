@@ -55,10 +55,10 @@ namespace
         {
             batch_log* log;
             givm::definition_id<givm::summon_view> ordinary;
-            givm::program_entry setup;
-            givm::program_entry action;
-            givm::program_entry nested;
-            givm::program_entry restore;
+            givm::normal_effect setup;
+            givm::normal_effect action;
+            givm::normal_effect nested;
+            givm::normal_effect restore;
         };
         batch_log* log;
         std::string_view name() const { return "SummonBatchDriver"; }
@@ -76,18 +76,18 @@ namespace
                     index == 1 || index == 7 ? persistent : ordinary,
                     { index + 1, index == 1 || index == 7 ? 5u : 1u } });
             const auto action = log->set_then_remove
-                ? context.add_program(std::tuple{ givm::set_summon_state{}, givm::remove_summon{} })
-                : context.add_program(std::tuple{ givm::modify_summon_state{} });
-            const auto nested = context.add_program(std::tuple{ givm::remove_summon{},
+                ? context.add_normal_effect(std::tuple{ givm::set_summon_state{}, givm::remove_summon{} })
+                : context.add_normal_effect(std::tuple{ givm::modify_summon_state{} });
+            const auto nested = context.add_normal_effect(std::tuple{ givm::remove_summon{},
                 givm::add_summon{ givm::relative_player::self, ordinary, { 19, 2 } } });
-            return { log, ordinary, context.add_program(setup), action, nested,
-                context.add_program(std::tuple{ givm::set_summon_state{} }) };
+            return { log, ordinary, context.add_normal_effect(setup), action, nested,
+                context.add_normal_effect(std::tuple{ givm::set_summon_state{} }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->phase++ == 0) return context.invoke(data.setup);
@@ -109,7 +109,7 @@ namespace
             }
             return context.invoke(data.action, givm::modify_summon_state_input{ targets, 0, -1 });
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::summon_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK_FALSE(context.table()[event.summon].is_valid());

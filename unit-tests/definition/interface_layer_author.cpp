@@ -15,13 +15,13 @@ namespace givm_test::interface_layers
         struct skill_source
         {
             using definition_category = givm::skill_view;
-            struct definition_type { givm::program_entry entry; };
+            struct definition_type { givm::normal_effect entry; };
 
             constexpr std::string_view name() const noexcept { return "LayeredSkill"; }
 
             definition_type compile(givm::definition_compile_context& context) const
             {
-                return { context.add_program(givm::set_energy{}, givm::add_dice{}) };
+                return { context.add_normal_effect(givm::set_energy{}, givm::add_dice{}) };
             }
 
             static givm::action_cost_requirement query(const definition_type&, const givm::skill_initial_cost&)
@@ -37,7 +37,7 @@ namespace givm_test::interface_layers
                     ? givm::target_validation::valid_complete : givm::target_validation::invalid;
             }
 
-            static givm::program_entry handle(const definition_type& definition,
+            static givm::normal_effect handle(const definition_type& definition,
                 givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
             {
                 const auto self = context.entity();

@@ -95,13 +95,13 @@ namespace givm
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
-        struct card_effect,
-        struct hand_card_discard_effect
+        struct this_card_play,
+        struct this_hand_card_discard
     >{};
 
     template<>
     struct subscribed_events<deck_card_view> : type_list<
-        struct deck_card_discard_effect,
+        struct this_deck_card_discard,
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -190,8 +190,8 @@ namespace givm
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
-        struct support_removal_effect,
-        struct support_state_changed
+        struct this_support_remove,
+        struct this_support_state_change
     >{};
 
     template<>
@@ -242,8 +242,8 @@ namespace givm
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
-        struct summon_removal_effect,
-        struct resummoning
+        struct this_summon_remove,
+        struct this_summon_resummon
     >{};
 
     template<>
@@ -294,9 +294,9 @@ namespace givm
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
-        struct combat_status_removal_effect,
-        struct combat_status_regeneration,
-        struct combat_status_state_changed
+        struct this_combat_status_remove,
+        struct this_combat_status_regenerate,
+        struct this_combat_status_state_change
     >{};
 
     template<>
@@ -356,7 +356,7 @@ namespace givm
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
-        struct skill_effect
+        struct this_skill_use
     >{};
 
     template<>
@@ -407,11 +407,11 @@ namespace givm
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
-        struct attachment_removal_effect,
-        struct attachment_reapplication,
-        struct attachment_state_changed,
-        struct technique_effect,
-        struct prepared_skill_effect
+        struct this_attachment_remove,
+        struct this_attachment_reapply,
+        struct this_attachment_state_change,
+        struct this_technique_use,
+        struct this_prepared_skill_use
     >{};
 }
 

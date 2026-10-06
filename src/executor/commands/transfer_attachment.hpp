@@ -101,7 +101,7 @@ namespace givm::detail
             target.add(definition, state, type);
 
         if(removed)
-            append_removal_record<attachment_removal_effect>(context, *removed, attachment_removed{ *removed });
+            append_removal_record<this_attachment_remove>(context, *removed, attachment_removed{ *removed });
         return continue_execution;
     }
 

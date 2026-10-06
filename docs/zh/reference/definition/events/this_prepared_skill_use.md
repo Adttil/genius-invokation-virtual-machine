@@ -1,12 +1,13 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **prepared_skill_effect**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_prepared_skill_use**
 
-# givm::prepared_skill_effect
+# givm::this_prepared_skill_use
 
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-struct prepared_skill_effect
+struct this_prepared_skill_use
 {
+    static constexpr event_category category = event_category::normal;
     const attachment_id attachment;
     action_speed speed = action_speed::combat;
 };

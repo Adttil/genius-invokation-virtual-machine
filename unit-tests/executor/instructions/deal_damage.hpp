@@ -64,10 +64,10 @@ namespace
             return { .max_health = 10, .health = 10 };
         }
 
-        static givm::program_entry handle(
+        static givm::immediate_effect handle(
             const definition_type& data,
             givm::damage_calculation& event,
-            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::calculation);
             event.value += data.log->calculation_bonus;
@@ -76,10 +76,10 @@ namespace
             return {};
         }
 
-        static givm::program_entry handle(
+        static givm::immediate_effect handle(
             const definition_type& data,
             givm::damage_effect& event,
-            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::effect);
             event.value = event.value < data.log->effect_reduction
@@ -88,10 +88,10 @@ namespace
             return {};
         }
 
-        static givm::program_entry handle(
+        static givm::immediate_effect handle(
             const definition_type& data,
             givm::elemental_reaction_will_occur& event,
-            givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::reaction_will_occur);
             data.log->reaction = event.reaction.slot;
@@ -99,7 +99,7 @@ namespace
             return {};
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
             givm::after_elemental_reaction&,
             givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
@@ -108,7 +108,7 @@ namespace
             return {};
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
             givm::after_damage& event,
             givm::handle_context<givm::skill_view>&, std::uint32_t = 0)

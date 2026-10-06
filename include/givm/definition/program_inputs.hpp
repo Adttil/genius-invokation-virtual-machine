@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "program_entry.hpp"
+#include "effect.hpp"
 #include "../utils/stack.hpp"
 
 namespace givm::detail
@@ -17,13 +17,13 @@ namespace givm::detail
     {
         std::size_t marker;
         std::uint32_t response_index = 0;
-        program_entry entry;
+        normal_effect entry;
         std::vector<program_input_description> children;
     };
 
     struct deferred_program_input
     {
-        program_entry entry;
+        normal_effect entry;
         std::size_t input_bytes;
     };
 }

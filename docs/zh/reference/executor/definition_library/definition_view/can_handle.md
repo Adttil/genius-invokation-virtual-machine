@@ -44,10 +44,10 @@ struct support_source
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
 
-    static givm::program_entry handle(
+    static givm::immediate_effect handle(
         const int& extra_rerolls,
         givm::dice_roll_preparation& event,
-        givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
+        givm::handle_context<givm::support_view, givm::event_category::immediate>& context, std::uint32_t = 0)
     {
         event.reroll_count[0] += extra_rerolls;
         return {};

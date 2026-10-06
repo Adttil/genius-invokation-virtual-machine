@@ -33,18 +33,18 @@ namespace
     struct revival_attachment
     {
         using definition_category = givm::attachment_view;
-        struct definition_type { dying_log* log; givm::program_entry entry; };
+        struct definition_type { dying_log* log; givm::immediate_effect entry; };
         dying_log* log;
         std::string_view name() const { return "RevivalAttachment"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto entry = log->pause
-                ? context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } }, givm::heal{} })
-                : context.add_program(std::tuple{ givm::heal{} });
+                ? context.add_immediate_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } }, givm::heal{} })
+                : context.add_immediate_effect(std::tuple{ givm::heal{} });
             return { log, entry };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::character_will_be_defeated& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::character_will_be_defeated& event, givm::handle_context<givm::attachment_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK(self.character().id() == event.target);
@@ -55,7 +55,7 @@ namespace
             if(not data.log->revive) return {};
             return context.invoke(data.entry, givm::heal_input{ std::array{ givm::heal_input::item{ .source = self.id(), .target = event.target, .value = 2 , .kind = givm::healing_kind::prevent_defeat} } });
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage&, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -72,32 +72,32 @@ namespace
         struct definition_type
         {
             dying_log* log;
-            givm::program_entry attach;
+            givm::normal_effect attach;
             givm::definition_id<givm::attachment_view> attachment;
-            givm::program_entry defeat;
+            givm::normal_effect defeat;
         };
         dying_log* log;
         std::string_view name() const { return "DyingObserver"; }
         auto attachment_dependencies() const { return std::array{ std::string_view{ "RevivalAttachment" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::attach{} }),
+            return { log, context.add_normal_effect(std::tuple{ givm::attach{} }),
                 context.resolve_id<givm::attachment_view>("RevivalAttachment"),
-                log->pause_defeat ? context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } })
-                    : givm::program_entry{} };
+                log->pause_defeat ? context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } })
+                    : givm::normal_effect{} };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.attach, givm::attach_input{
                 .target = victim, .definition = data.attachment, .state = { 1 } });
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             CHECK(event.target == victim);
             const auto target = context.table()[event.target];
@@ -107,7 +107,7 @@ namespace
             data.log->order.push_back(1);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->after_health.push_back(context.table()[event.target].state().health);

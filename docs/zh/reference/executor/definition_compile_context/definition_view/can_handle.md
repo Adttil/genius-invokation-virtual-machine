@@ -24,6 +24,6 @@ bool can_handle() const noexcept;
 
 ## 注意
 
-卡牌和卡牌状态的定义类别与实体 view 不同，调用时应显式指定形态，例如 `can_handle<givm::card_effect, givm::hand_card_view>()`。历史摘要使用自身的定义类别作为默认形态。
+卡牌和卡牌状态的定义类别与实体 view 不同，调用时应显式指定形态，例如 `can_handle<givm::this_card_play, givm::hand_card_view>()`。历史摘要使用自身的定义类别作为默认形态。
 
 本函数只报告响应能力，不执行响应，也不保证某次实际事件满足效果触发条件。动态定义源是否启用响应由其能力声明决定。

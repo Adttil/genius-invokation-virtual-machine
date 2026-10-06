@@ -25,11 +25,11 @@ namespace givm::detail
         else
         {
             auto& stack = context.stack();
-            const auto [entry, inputs] = stack.top<program_entry, substack_t>();
+            const auto [entry, inputs] = stack.top<normal_effect, substack_t>();
             const auto begin = stack.size() - substack_tail_size - inputs.size();
             append_deferred_record(context, entry, table.state().self_player,
                 std::span<const unsigned char>{ stack.data() + begin, inputs.size() });
-            stack.pop<program_entry, substack_t>();
+            stack.pop<normal_effect, substack_t>();
             return context.enter_next();
         }
     }

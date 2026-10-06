@@ -33,8 +33,8 @@ namespace
         struct definition_type
         {
             increase_log* log;
-            givm::program_entry increase;
-            givm::program_entry pause;
+            givm::normal_effect increase;
+            givm::normal_effect pause;
         };
         increase_log* log;
         std::string_view name() const { return "HealthIncreaseSource"; }
@@ -42,28 +42,28 @@ namespace
         {
             const auto command = log->dynamic ? givm::increase_max_health{} : givm::increase_max_health{
                 .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::self, 0 }, .value = log->value };
-            return { log, context.add_program(std::tuple{ command }), log->pause
-                ? context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::program_entry{} };
+            return { log, context.add_normal_effect(std::tuple{ command }), log->pause
+                ? context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::normal_effect{} };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
         {
             return data.log->initial;
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
                 return context.invoke(data.increase, givm::increase_max_health_input{ target, target, data.log->value });
             return context.invoke(data.increase);
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::healing& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::healing& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             ++data.log->calculation_count;
             event.value = 0;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::healed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.target == target);
@@ -72,7 +72,7 @@ namespace
             CHECK(state.max_health == data.log->initial.max_health + event.value);
             CHECK(state.health == data.log->initial.health + event.value);
             data.log->actual.push_back(event.value);
-            return data.pause ? context.invoke(data.pause) : givm::program_entry{};
+            return data.pause ? context.invoke(data.pause) : givm::normal_effect{};
         }
     };
 }

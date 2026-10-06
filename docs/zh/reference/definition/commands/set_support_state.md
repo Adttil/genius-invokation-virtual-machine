@@ -39,7 +39,7 @@ struct set_support_state
 
 执行时读取 [support_state_limit](../queries/support_state_limit.md)，将提供的 `state` 各字段分别裁剪至对应上限。然后以裁剪结果替换目标的完整状态。`state{}` 的两个字段均为零。
 
-先写入新状态，再仅向被修改的实体发送 [support_state_changed](../events/support_state_changed.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
+先写入新状态，再仅向被修改的实体发送 [this_support_state_change](../events/this_support_state_change.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
 
 通知包含修改前和裁剪后的状态；返回的响应程序完整结算后才继续下一条命令。
 

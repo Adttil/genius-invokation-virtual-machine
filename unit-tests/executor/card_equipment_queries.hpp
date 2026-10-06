@@ -62,8 +62,8 @@ namespace
             return target && query(data, givm::card_equipment_target_validation{ parameters.card, parameters.table[*target] })
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::card_effect&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_card_play&, givm::handle_context<givm::hand_card_view>&, std::uint32_t = 0)
         {
             ++data.log->card_effects;
             return {};
@@ -73,17 +73,17 @@ namespace
     struct artifact_source
     {
         using definition_category = givm::attachment_view;
-        struct definition_type { observation* log; givm::program_entry payment; };
+        struct definition_type { observation* log; givm::preview_effect payment; };
         observation* log;
 
         std::string_view name() const { return "TalentDiscountArtifact"; }
         auto tags() const { return std::array<std::string_view, 1>{ "artifact" }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::modify_attachment_state{} }) };
+            return { log, context.add_preview_effect(std::tuple{ givm::modify_attachment_state{} }) };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::cost_of_card& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data,
+            givm::cost_of_card& event, givm::handle_context<givm::attachment_view, givm::event_category::preview>& context)
         {
             const auto self = context.entity();
             if(self.state().round_usages == 0 || event.requirement.dice_requirement.any == 0) return {};
@@ -92,10 +92,10 @@ namespace
                 return {};
             ++data.log->discounts;
             --event.requirement.dice_requirement.any;
-            return context.invoke(givm::substack_t{}, data.payment,
+            return context.invoke(data.payment,
                 givm::modify_attachment_state_input{ .attachment = self.id(), .round_usages = -1 });
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_drawn& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -114,7 +114,7 @@ namespace
         {
             observation* log;
             givm::definition_id<givm::attachment_view> artifact;
-            givm::program_entry setup;
+            givm::normal_effect setup;
         };
         observation* log;
 
@@ -123,9 +123,9 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.resolve_id<givm::attachment_view>("TalentDiscountArtifact"),
-                context.add_program(std::tuple{ givm::add_attachment{}, givm::add_attachment{} }) };
+                context.add_normal_effect(std::tuple{ givm::add_attachment{}, givm::add_attachment{} }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::battle_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();

@@ -6,8 +6,8 @@
 
 ```cpp
 using program_input_error_reason = std::variant<program_input_count_mismatch,
-    program_input_type_mismatch, invalid_program_entry,
-    program_invocation_mode_mismatch, repeated_program_invocation, invalid_response_index>;
+    program_input_type_mismatch, invalid_effect,
+    repeated_program_invocation, invalid_response_index>;
 ```
 
 [`program_input_error`](program_input_error.md) 的具体原因。以下结构体、枚举均位于 `givm` 命名空间。
@@ -43,19 +43,6 @@ struct program_input_type_mismatch;
 | `expected` | `std::string` | 所需输入类型的名称 |
 | `actual` | `std::string` | 实际输入类型的名称，或无法取得 variant 值的说明 |
 
-### `program_invocation_mode_mismatch`
-
-```cpp
-struct program_invocation_mode_mismatch;
-```
-
-普通响应与费用响应使用了错误的 `invoke` 重载。
-
-| 名称 | 类型 | 说明 |
-| --- | --- | --- |
-| `expected_substack` | `bool` | 本次响应是否要求使用带 `substack_t{}` 的费用提交重载 |
-| `actual_substack` | `bool` | 实际是否使用了带 `substack_t{}` 的重载 |
-
 ### `repeated_program_invocation`
 
 ```cpp
@@ -78,10 +65,10 @@ struct invalid_response_index;
 
 ## 枚举
 
-### `invalid_program_entry`
+### `invalid_effect`
 
 ```cpp
-enum class invalid_program_entry;
+enum class invalid_effect;
 ```
 
 不能在当前定义库中使用的程序入口。

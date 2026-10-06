@@ -1,9 +1,11 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **combat_status_removal_effect**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_combat_status_remove**
 
-# givm::combat_status_removal_effect
+# givm::this_combat_status_remove
 
 ```cpp
-struct combat_status_removal_effect {};
+struct this_combat_status_remove {
+    static constexpr event_category category = event_category::normal;
+};
 ```
 
 实体已离场后仅告知它自身的效果事件。通过 `context.entity()` 读取离场实体的 ID、定义和状态，事件不重复携带 ID。

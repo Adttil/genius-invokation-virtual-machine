@@ -60,7 +60,7 @@ namespace givm::detail
         for(const auto card : cards.first(count))
         {
             table[card].erase();
-            append_removal_record<hand_card_discard_effect>(context, card, hand_card_discarded{ card });
+            append_removal_record<this_hand_card_discard>(context, card, hand_card_discarded{ card });
         }
         context.stack().pop<hand_card_id[]>();
         return continue_execution;

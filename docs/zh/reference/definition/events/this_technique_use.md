@@ -1,11 +1,11 @@
-[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **technique_effect**
+[givm](../../../reference.md) / [定义](../../definition.md) / [事件](../events.md) / **this_technique_use**
 
-# givm::technique_effect
+# givm::this_technique_use
 
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-struct technique_effect;
+struct this_technique_use;
 ```
 
 执行所选特技自身效果时，提供这项特技及其目标。特技定义在响应中通过 `invoke` 提交程序，实现特技效果。

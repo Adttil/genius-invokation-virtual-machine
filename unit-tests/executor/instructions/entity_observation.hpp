@@ -51,7 +51,7 @@ namespace
     struct creation_program_source
     {
         using definition_category = givm::character_view;
-        struct definition_type { givm::program_entry entry; };
+        struct definition_type { givm::normal_effect entry; };
 
         constexpr std::string_view name() const noexcept { return "CreationProgram"; }
         constexpr auto character_dependencies() const noexcept
@@ -68,14 +68,14 @@ namespace
             const auto character = context.resolve_id<givm::character_view>("ObservedCharacter");
             const auto card = context.resolve_id<givm::card_definition>("ObservedCard");
             const auto other_card = context.resolve_id<givm::card_definition>("OtherObservedCard");
-            return { context.add_program(std::tuple{
+            return { context.add_normal_effect(std::tuple{
                 givm::enter_character{ .player = givm::player_id{ 1 }, .definition = character },
                 givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = card },
                 givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = other_card, .position = 0 }
             }) };
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.entry) return context.invoke(data.entry);
@@ -95,7 +95,7 @@ namespace
         using definition_category = givm::character_view;
         struct definition_type
         {
-            givm::program_entry entry;
+            givm::normal_effect entry;
             std::uint32_t* calls;
         };
         std::uint32_t* calls;
@@ -104,10 +104,10 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{}), calls };
+            return { context.add_normal_effect(std::tuple{}), calls };
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK_FALSE(data.entry.is_null());
@@ -123,7 +123,7 @@ namespace
         struct definition_type
         {
             entity_event_log* log;
-            givm::program_entry draw_response;
+            givm::normal_effect draw_response;
         };
         entity_event_log* log;
         bool respond_to_draws = false;
@@ -138,12 +138,12 @@ namespace
             return {
                 log,
                 respond_to_draws
-                    ? context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 1 } } })
-                    : givm::program_entry::null()
+                    ? context.add_normal_effect(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 1 } } })
+                    : givm::normal_effect::null()
             };
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::card_drawn& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -154,7 +154,7 @@ namespace
             return {};
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -170,7 +170,7 @@ namespace
         struct definition_type
         {
             entity_event_log* log;
-            givm::program_entry entry;
+            givm::normal_effect entry;
         };
         entity_event_log* log;
         int behavior;
@@ -183,18 +183,18 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             if(behavior == 1)
-                return { log, context.add_program(std::tuple{
+                return { log, context.add_normal_effect(std::tuple{
                     givm::settle{}, givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
             if(behavior == 2)
-                return { log, context.add_program(std::tuple{
+                return { log, context.add_normal_effect(std::tuple{
                     givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, -1 } },
                     givm::settle{}, givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
-            return { log, givm::program_entry::null() };
+            return { log, givm::normal_effect::null() };
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -211,7 +211,7 @@ namespace
         struct definition_type
         {
             entity_event_log* log;
-            givm::program_entry entry;
+            givm::normal_effect entry;
         };
         entity_event_log* log;
 
@@ -222,11 +222,11 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{
+            return { log, context.add_normal_effect(std::tuple{
                 givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::self, -1 } }
             }) };
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {

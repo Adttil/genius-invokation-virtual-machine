@@ -20,7 +20,7 @@
 
 ### 第一步：非模板编译入口与静态库（已完成）
 
-1. `definition_compile_context::add_program` 提供 `span<const any_command>` 入口，保留命令序列包装，并支持不定参数。
+1. `definition_compile_context::add_normal_effect` 提供 `span<const any_command>` 入口，保留命令序列包装，并支持不定参数。
 2. 初始化程序和回合程序采用相同边界，保留原有泛型序列的使用方式。
 3. 将实际命令编译循环、错误收集和调试输入标记生成移入 cpp。
 4. 公开具名的 `definition_compile_result`，其中保存 `library` 和 `id_map`。

@@ -7,6 +7,7 @@
 ```cpp
 struct hand_card_added
 {
+    static constexpr event_category category = event_category::normal;
     const hand_card_id card;
 };
 ```

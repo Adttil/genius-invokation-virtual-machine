@@ -35,8 +35,8 @@ namespace
         struct definition_type
         {
             input_log* log;
-            givm::program_entry main;
-            givm::program_entry nested;
+            givm::normal_effect main;
+            givm::normal_effect nested;
             bool runtime_inputs;
         };
         input_log* log;
@@ -53,21 +53,21 @@ namespace
                 givm::set_active_character{}
             };
             const auto main = runtime_commands
-                ? context.add_program(std::vector<givm::any_command>{
+                ? context.add_normal_effect(std::vector<givm::any_command>{
                     givm::set_active_character{}, givm::settle{},
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
                     givm::set_active_character{},
                     givm::draw_cards{ .position = 0, .count = 1 },
                     givm::set_active_character{}
                 })
-                : context.add_program(commands);
-            return { log, main, context.add_program(std::tuple{ givm::set_active_character{} }), runtime_commands };
+                : context.add_normal_effect(commands);
+            return { log, main, context.add_normal_effect(std::tuple{ givm::set_active_character{} }), runtime_commands };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, givm::round_started&,
+        static givm::normal_effect handle(const definition_type& data, givm::round_started&,
                            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const givm::set_active_character_input first{ .current = { givm::player_id{ 0 }, 1 } };
@@ -80,7 +80,7 @@ namespace
             }
             return context.invoke(data.main, first, second, third);
         }
-        static givm::program_entry handle(const definition_type& data, givm::active_character_changed& event,
+        static givm::normal_effect handle(const definition_type& data, givm::active_character_changed& event,
                            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(context.table()[event.current.player_id].state().active_character == event.current);
@@ -97,14 +97,14 @@ namespace
         struct definition_type
         {
             input_log* log;
-            givm::program_entry payment;
+            givm::preview_effect payment;
         };
         input_log* log;
 
         std::string_view name() const noexcept { return "CachedInputSource"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::vector<givm::any_command>{
+            return { log, context.add_preview_effect(std::vector<givm::any_command>{
                 givm::set_active_character{}, givm::settle{},
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
                 givm::set_active_character{}
@@ -114,8 +114,8 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data, givm::cost_of_switch& event,
-                           givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data, givm::cost_of_switch& event,
+                           givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             const auto self = context.entity().character();
             const auto previous = *context.table()[self.player().id()].state().active_character;
@@ -123,9 +123,9 @@ namespace
             event.requirement.dice_requirement.any = 0;
             const givm::set_active_character_input first{ .current = self.id().index == 0 ? event.target : self.id() };
             const givm::set_active_character_input second{ .current = previous };
-            return context.invoke(givm::substack_t{}, data.payment, first, second);
+            return context.invoke(data.payment, first, second);
         }
-        static givm::program_entry handle(const definition_type& data, givm::active_character_changed& event,
+        static givm::normal_effect handle(const definition_type& data, givm::active_character_changed& event,
                            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -254,7 +254,8 @@ namespace
         using definition_category = givm::character_view;
         struct definition_type
         {
-            givm::program_entry entry;
+            givm::normal_effect entry;
+            givm::preview_effect preview_entry;
             std::size_t count;
             bool runtime_inputs;
         };
@@ -269,18 +270,23 @@ namespace
             commands.emplace_back(givm::replace_cards{ .player = givm::player_id{ 0 } });
             commands.emplace_back(givm::deal_damage{});
             commands.emplace_back(givm::set_energy{});
-            return { context.add_program(commands), count, runtime_inputs };
+            return { context.add_normal_effect(commands), context.add_preview_effect(commands), count, runtime_inputs };
         }
 
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 3, .health = 10 };
         }
-        template<class Event>
+        template<class Event, class... TIndex>
         requires (std::same_as<Event, givm::round_started> or std::same_as<Event, givm::cost_of_switch>)
-        static givm::program_entry handle(const definition_type& data,
-            Event& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::effect<Event::category> handle(const definition_type& data,
+            Event& event, givm::handle_context<givm::skill_view, Event::category>& context, TIndex...)
         {
+            const auto entry = [&]
+            {
+                if constexpr(Event::category == givm::event_category::preview) return data.preview_entry;
+                else return data.entry;
+            }();
             const auto self = context.entity().character();
             if constexpr(std::same_as<Event, givm::cost_of_switch>)
                 event.requirement.dice_requirement.any = 0;
@@ -297,8 +303,8 @@ namespace
                 .value = 2, .type = givm::damage_type::physical } } }, end));
             const auto inputs = givm::concat_inputs(parts);
             if constexpr(std::same_as<Event, givm::cost_of_switch>)
-                return context.invoke(givm::substack_t{}, data.entry, inputs);
-            else return context.invoke(data.entry, inputs);
+                return context.invoke(entry, inputs);
+            else return context.invoke(entry, inputs);
 
         }
     };
@@ -377,7 +383,6 @@ namespace
         typed_wrong_order,
         runtime_wrong_order,
         null_entry,
-        wrong_mode,
         repeated,
         foreign_entry
     };
@@ -388,53 +393,56 @@ namespace
         struct definition_type
         {
             input_mismatch error;
-            givm::program_entry entry;
-            givm::program_entry* foreign;
+            givm::normal_effect entry;
+            givm::preview_effect preview_entry;
+            givm::normal_effect* foreign;
         };
         input_mismatch error;
-        givm::program_entry* exported = nullptr;
-        givm::program_entry* foreign = nullptr;
+        givm::normal_effect* exported = nullptr;
+        givm::normal_effect* foreign = nullptr;
 
         std::string_view name() const noexcept { return "MismatchedInput"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            context.add_program(std::tuple{});
-            givm::program_entry entry;
+            context.add_normal_effect(std::tuple{});
+            std::vector<givm::any_command> commands;
             switch(error)
             {
             case input_mismatch::typed_missing:
             case input_mismatch::runtime_missing:
-                entry = context.add_program(std::tuple{ givm::set_active_character{} });
+                commands = { givm::set_active_character{} };
                 break;
             case input_mismatch::typed_wrong_type:
             case input_mismatch::runtime_wrong_type:
-                entry = context.add_program(std::tuple{ givm::remove_summon{} });
+                commands = { givm::remove_summon{} };
                 break;
             case input_mismatch::typed_wrong_order:
             case input_mismatch::runtime_wrong_order:
-                entry = context.add_program(std::tuple{ givm::set_active_character{ { givm::relative_player::self, 0 } }, givm::set_active_character{}, givm::remove_summon{} });
+                commands = { givm::set_active_character{ { givm::relative_player::self, 0 } }, givm::set_active_character{}, givm::remove_summon{} };
                 break;
             default:
-                entry = context.add_program(std::tuple{
-                    givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } } });
+                commands = {
+                    givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } } };
             }
+            const auto entry = context.add_normal_effect(commands);
+            const auto preview_entry = context.add_preview_effect(commands);
             if(exported) *exported = entry;
-            return { error, entry, foreign };
+            return { error, entry, preview_entry, foreign };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        template<class TEvent>
+        template<class TEvent, class... TIndex>
         requires (std::same_as<TEvent, givm::round_started> or std::same_as<TEvent, givm::cost_of_switch>)
-        static givm::program_entry handle(const definition_type& data,
-                           TEvent&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::effect<TEvent::category> handle(const definition_type& data,
+                           TEvent&, givm::handle_context<givm::skill_view, TEvent::category>& context, TIndex...)
         {
             const auto self = context.entity().character();
             const auto invoke = [&](auto... inputs)
             {
                 if constexpr(std::same_as<TEvent, givm::cost_of_switch>)
-                    return context.invoke(givm::substack_t{}, data.foreign ? *data.foreign : data.entry, inputs...);
+                    return context.invoke(data.preview_entry, inputs...);
                 else
                     return context.invoke(data.foreign ? *data.foreign : data.entry, inputs...);
             };
@@ -446,10 +454,7 @@ namespace
             switch(data.error)
             {
             case input_mismatch::null_entry:
-                return context.invoke(givm::program_entry{});
-            case input_mismatch::wrong_mode:
-                if constexpr(std::same_as<TEvent, givm::cost_of_switch>) return context.invoke(data.entry);
-                else return context.invoke(givm::substack_t{}, data.entry);
+                return context.invoke(givm::effect<TEvent::category>{});
             case input_mismatch::repeated:
                 invoke();
                 return invoke();
@@ -492,7 +497,7 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
                                input_mismatch::runtime_missing, input_mismatch::runtime_extra,
                                input_mismatch::typed_wrong_type, input_mismatch::runtime_wrong_type,
                                input_mismatch::typed_wrong_order, input_mismatch::runtime_wrong_order,
-                               input_mismatch::null_entry, input_mismatch::wrong_mode, input_mismatch::repeated);
+                               input_mismatch::null_entry, input_mismatch::repeated);
     CAPTURE(mode, cached, error);
     const auto source = givm::test::with_passive_skill(mismatched_input_source{ error });
     const givm::test::initialized_character_source plain;
@@ -520,19 +525,13 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
             CHECK(givm::error_string(*diagnostic) == exception.what());
             if(error == input_mismatch::null_entry)
             {
-                CHECK(std::get<givm::invalid_program_entry>(diagnostic->reason) == givm::invalid_program_entry::null_entry);
+                CHECK(std::get<givm::invalid_effect>(diagnostic->reason) == givm::invalid_effect::null_entry);
                 return;
             }
             REQUIRE(diagnostic->source);
             CHECK(diagnostic->source->name == std::string{ source.name() });
-            CHECK(diagnostic->program_index == 1);
-            if(error == input_mismatch::wrong_mode)
-            {
-                const auto& reason = std::get<givm::program_invocation_mode_mismatch>(diagnostic->reason);
-                CHECK(reason.expected_substack == cached);
-                CHECK(reason.actual_substack != cached);
-            }
-            else if(error == input_mismatch::repeated)
+            CHECK(diagnostic->program_index == (cached ? 2 : 1));
+            if(error == input_mismatch::repeated)
                 CHECK(std::holds_alternative<givm::repeated_program_invocation>(diagnostic->reason));
             else if(const auto* reason = std::get_if<givm::program_input_count_mismatch>(&diagnostic->reason))
             {
@@ -569,8 +568,8 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
 
 TEST_CASE("debug entries reject foreign libraries and remain usable in library copies", "[program-input][debug]")
 {
-    givm::program_entry exported;
-    givm::program_entry foreign;
+    givm::normal_effect exported;
+    givm::normal_effect foreign;
     const auto source = givm::test::with_passive_skill(mismatched_input_source{ input_mismatch::foreign_entry, &exported, &foreign });
     const auto init = std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [first, first_ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal, init, std::tuple{}, source);
@@ -589,7 +588,7 @@ TEST_CASE("debug entries reject foreign libraries and remain usable in library c
     try { run(second, second_ids); FAIL("expected foreign entry error"); }
     catch(const givm::program_input_error& error)
     {
-        CHECK(std::get<givm::invalid_program_entry>(error.reason) == givm::invalid_program_entry::different_library);
+        CHECK(std::get<givm::invalid_effect>(error.reason) == givm::invalid_effect::different_library);
     }
     const auto copied = first;
     CHECK(run(copied, first_ids) == givm::execution_state::finished);

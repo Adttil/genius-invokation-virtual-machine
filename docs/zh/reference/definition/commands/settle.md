@@ -16,7 +16,7 @@ struct settle {};
 
 普通响应和延迟程序的调用者在程序返回时自动完成末段及后续工作；初始化、回合等根程序需要显式使用本命令。根程序中的 [`end_segment`](end_segment.md) 只保存段边界，不能代替 `settle`。结束对局不会隐式执行尚未处理的延迟程序。
 
-即时响应共享外层当前段，禁止执行本命令。未定义 `NDEBUG` 时，违规执行抛出 [`command_input_error`](../../executor/command_input_error.md)，原因为 `settlement_in_inline_response`；发布构建不进行此检查。
+立即效果共享外层段，不能包含 `end_segment` 或 `settle`。在 Debug 和 Release 的库编译中都返回 `effect_command_not_allowed` 诊断，不进入运行期检查。
 
 ## 参阅
 

@@ -15,7 +15,7 @@ class program_input_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `source` | `const std::optional<definition_name>` | 入口所属定义的类别与名称；不能确定入口时为空 |
-| `program_index` | `const std::optional<std::size_t>` | 该定义通过 `add_program` 登记的响应程序编号，从零开始；不能确定入口时为空 |
+| `program_index` | `const std::optional<std::size_t>` | 该定义通过 `add_normal_effect` 登记的响应程序编号，从零开始；不能确定入口时为空 |
 | `reason` | `const program_input_error_reason` | [入口或输入协议的具体错误](program_input_error_reason.md) |
 
 ## 成员函数

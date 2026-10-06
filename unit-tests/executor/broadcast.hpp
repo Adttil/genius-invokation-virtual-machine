@@ -43,7 +43,7 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type&, givm::before_action&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type&, givm::before_action&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             FAIL_CHECK("Global broadcasts do not dispatch to the character definition itself");
             return {};
@@ -56,7 +56,7 @@ namespace
         struct definition_type
         {
             std::vector<givm::character_id>* handlers;
-            givm::program_entry entry;
+            givm::normal_effect entry;
             bool terminal;
         };
         std::string_view source_name;
@@ -66,14 +66,14 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             if(terminal)
-                return { handlers, context.add_program(std::tuple{
+                return { handlers, context.add_normal_effect(std::tuple{
                     givm::settle{}, givm::end_game{ .result = givm::game_result::player_1_win }
                 }), true };
-            return { handlers, context.add_program(std::tuple{
+            return { handlers, context.add_normal_effect(std::tuple{
                 givm::apply_element{}
             }), false };
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::round_started&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -92,8 +92,8 @@ namespace
         struct definition_type
         {
             std::vector<givm::hand_card_id>* drawn;
-            givm::program_entry draw_entry;
-            givm::program_entry selection_entry;
+            givm::normal_effect draw_entry;
+            givm::normal_effect selection_entry;
         };
         std::vector<givm::hand_card_id>* drawn;
 
@@ -102,22 +102,22 @@ namespace
         {
             return {
                 drawn,
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 2 } }),
-                context.add_program(std::tuple{
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 2 } }),
+                context.add_normal_effect(std::tuple{
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
                     givm::replace_cards{ .player = givm::player_id{ 0 } }
                 })
             };
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::round_started&,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.draw_entry);
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::card_drawn& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -131,16 +131,16 @@ namespace
         struct definition_type
         {
             std::vector<std::uint32_t>* samples;
-            givm::program_entry entry;
+            givm::normal_effect entry;
         };
         std::vector<std::uint32_t>* samples;
 
         std::string_view name() const noexcept { return "HandleContext"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { samples, context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
+            return { samples, context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
                            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -158,9 +158,9 @@ namespace
         {
             std::vector<givm::character_id>* handlers;
             std::uint32_t* nested_responses;
-            givm::program_entry empty;
-            givm::program_entry change_active;
-            givm::program_entry draw;
+            givm::normal_effect empty;
+            givm::normal_effect change_active;
+            givm::normal_effect draw;
         };
         std::vector<givm::character_id>* handlers;
         std::uint32_t* nested_responses;
@@ -169,11 +169,11 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { handlers, nested_responses,
-                context.add_program(std::tuple{}),
-                context.add_program(std::tuple{ givm::set_active_character{} }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
+                context.add_normal_effect(std::tuple{}),
+                context.add_normal_effect(std::tuple{ givm::set_active_character{} }),
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
                                           givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -186,7 +186,7 @@ namespace
             default: return context.invoke(data.draw);
             }
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
                                           givm::card_drawn&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++*data.nested_responses;
@@ -210,7 +210,7 @@ namespace
         std::string_view name() const { return source_name; }
         const auto& tags() const { return source_tags; }
         definition_type compile(givm::definition_compile_context&) const { return { log, source_name }; }
-        static givm::program_entry handle(const definition_type& data, givm::before_action&, givm::handle_context<TView>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::before_action&, givm::handle_context<TView>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             std::string label = std::to_string(self.player().id().index) + ":" + std::string{ data.name };
@@ -226,7 +226,7 @@ namespace
         struct definition_type
         {
             std::vector<std::string>* log;
-            givm::program_entry prepare;
+            givm::normal_effect prepare;
         };
         std::vector<std::string>* log;
 
@@ -248,7 +248,7 @@ namespace
                 };
                 return std::tuple{ add("OrdinaryA"), add("Talent"), add("Weapon"), add("Technique"), add("OrdinaryB"), add("Artifact") };
             };
-            return { log, context.add_program(std::tuple_cat(
+            return { log, context.add_normal_effect(std::tuple_cat(
                 attachments(givm::relative_player::self), attachments(givm::relative_player::opponent),
                 std::tuple{
                     givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("CombatStatus"), .state = { 1 } },
@@ -260,13 +260,13 @@ namespace
                 }
             )) };
         }
-        static givm::program_entry handle(const definition_type& data, givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
-            return self.id() == givm::deck_card_id{ givm::player_id{ 0 }, 0 } ? context.invoke(data.prepare) : givm::program_entry{};
+            return self.id() == givm::deck_card_id{ givm::player_id{ 0 }, 0 } ? context.invoke(data.prepare) : givm::normal_effect{};
         }
         template<class TCard>
-        static givm::program_entry handle(const definition_type& data, givm::before_action&, givm::handle_context<TCard>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data, givm::before_action&, givm::handle_context<TCard>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             const auto zone = std::same_as<TCard, givm::hand_card_view> ? ":hand:" : ":deck:";

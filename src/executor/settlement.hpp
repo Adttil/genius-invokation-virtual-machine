@@ -32,7 +32,7 @@ namespace givm::detail
             if(not continue_broadcast<TEvent, true>(library, table, context, random, complete))
                 return continue_execution;
             pop_broadcast<TEvent>(context);
-            if constexpr(inline_event<TEvent>)
+            if constexpr(TEvent::category == event_category::immediate)
                 return resume_notification(library, table, context, random);
             else return context.jump(get<0>(context.stack().top<notification_continuation>()).resume);
         }
@@ -41,8 +41,6 @@ namespace givm::detail
             execution_context& context, random_fn& random)
         {
             const auto result = get<1>(context.stack().top<queued_response_completion, response_return>()).result;
-            table.state().self_player = get<1>(context.stack().top<queued_response_completion, response_return>()).previous_player;
-            end_response<not inline_event<TEvent>>(context);
             context.stack().pop<queued_response_completion, response_return>();
             const auto frame = context.stack().top<handler_id<TEvent>[], broadcast_progress, TEvent, response_return>();
             auto& progress = get<1>(frame);
@@ -78,8 +76,6 @@ namespace givm::detail
             execution_context& context, random_fn& random)
         {
             const auto result = get<1>(context.stack().top<queued_response_completion, response_return>()).result;
-            table.state().self_player = get<1>(context.stack().top<queued_response_completion, response_return>()).previous_player;
-            end_response<not inline_event<TEvent>>(context);
             context.stack().pop<queued_response_completion, response_return>();
             get<0>(context.stack().top<single_response_progress<TId>, TEvent, response_return>()).response_index = result;
             return resume(library, table, context, random);
@@ -242,7 +238,7 @@ namespace givm::detail
                         context.stack().push(active_selection_progress{ .resume = resume, .loop = context.position(),
                             .first_player = table.state().active_player });
                         context.stack().push(player, character_id{});
-                        context.advance(4 * sizeof(execute_fn));
+                        context.advance(2 * sizeof(execute_fn));
                         return context.yield(execution_state::active_character_selection);
                     }
                     return context.jump(resume);
@@ -299,7 +295,6 @@ namespace givm::detail
             context.stack().push(notification_continuation{ continue_records, context.position() },
                 queued_response_completion{ complete_deferred },
                 response_return{ table.state().self_player, context.position() + sizeof(execute_fn) });
-            begin_response<true>(context);
             const auto inputs = std::span<const unsigned char>{ context.mixed_events().data()
                 + progress.current + record_extent(sizeof(deferred_record)), record.input_size };
             const auto entry = context.copy_program_inputs(record.entry, inputs);
@@ -310,8 +305,6 @@ namespace givm::detail
         static execution_state complete_deferred(const definition_library& library, unrestricted_table& table,
             execution_context& context, random_fn& random)
         {
-            table.state().self_player = get<1>(context.stack().top<queued_response_completion, response_return>()).previous_player;
-            end_response<true>(context);
             context.stack().pop<queued_response_completion, response_return>();
             return context.jump(get<0>(context.stack().top<notification_continuation>()).resume);
         }
@@ -488,7 +481,7 @@ namespace givm::detail
                 if(not attachment) continue;
                 const auto id = attachment.id();
                 attachment.erase();
-                return queued_removal<attachment_removal_effect, attachment_removed, attachment_id>::start(
+                return queued_removal<this_attachment_remove, attachment_removed, attachment_id>::start(
                     library, table, context, random, id, attachment_removed{ id }, clear_defeated_attachments,
                     context.position() + sizeof(execute_fn));
             }
@@ -513,28 +506,14 @@ namespace givm::detail
             execution_context& context, random_fn& random)
         {
             return seal(library, table, context, random, context.position() + sizeof(execute_fn),
-                context.position() + 5 * sizeof(execute_fn));
+                context.position() + 3 * sizeof(execute_fn));
         }
 
         static execution_state start(const definition_library& library, unrestricted_table& table,
             execution_context& context, random_fn& random)
         {
-            return start_records(library, table, context, random, context.position() + 7 * sizeof(execute_fn),
+            return start_records(library, table, context, random, context.position() + 5 * sizeof(execute_fn),
                 context.position() + sizeof(execute_fn));
-        }
-
-        static execution_state return_queued(const definition_library& library, unrestricted_table& table,
-            execution_context& context, random_fn& random)
-        {
-            return seal(library, table, context, random, context.position() + sizeof(execute_fn),
-                context.position() + 2 * sizeof(execute_fn));
-        }
-
-        static execution_state start_response(const definition_library& library, unrestricted_table& table,
-            execution_context& context, random_fn& random)
-        {
-            return start_records(library, table, context, random, context.position() + sizeof(execute_fn),
-                context.position() - 2 * sizeof(execute_fn));
         }
 
         static execution_state accept_active_selection(const definition_library& library, unrestricted_table& table,
@@ -587,7 +566,7 @@ namespace givm::detail
     template<class TEvent>
     void append_event_record(execution_context& context, const TEvent& event)
     {
-        static_assert(not inline_event<TEvent>);
+        static_assert(TEvent::category == event_category::normal, "only normal events can enter the event queue");
         append_record(context, event_record<TEvent>{
             { settlement_driver::process_event<TEvent>, record_extent(sizeof(event_record<TEvent>)) }, event });
     }
@@ -595,6 +574,7 @@ namespace givm::detail
     template<class TEvent, class TId>
     void append_single_event_record(execution_context& context, TId entity, const TEvent& event)
     {
+        static_assert(TEvent::category == event_category::normal, "only normal events can enter the event queue");
         using record = single_event_record<TEvent, TId>;
         append_record(context, record{ { settlement_driver::process_single_event<TEvent, TId>,
             record_extent(sizeof(record)) }, entity, event });
@@ -603,12 +583,14 @@ namespace givm::detail
     template<class TSelfEvent, class TEvent, class TId>
     void append_removal_record(execution_context& context, TId entity, const TEvent& event)
     {
+        static_assert(TEvent::category == event_category::normal, "only normal events can enter the event queue");
+        static_assert(TSelfEvent::category == event_category::normal, "only normal self events can enter the event queue");
         using record = removal_record<TSelfEvent, TEvent, TId>;
         append_record(context, record{ { settlement_driver::process_removal<TSelfEvent, TEvent, TId>,
             record_extent(sizeof(record)) }, entity, event });
     }
 
-    inline void append_deferred_record(execution_context& context, program_entry entry, player_id player,
+    inline void append_deferred_record(execution_context& context, normal_effect entry, player_id player,
         std::span<const unsigned char> inputs)
     {
         const auto extent = record_extent(sizeof(deferred_record)) + record_extent(inputs.size());
@@ -620,8 +602,6 @@ namespace givm::detail
         writer.write(begin);
         writer.write(execute_fn{ settlement_driver::start });
         writer.write(execute_fn{ resume_notification });
-        writer.write(execute_fn{ settlement_driver::return_queued });
-        writer.write(execute_fn{ settlement_driver::start_response });
         writer.write(execute_fn{ complete_queued_response });
         writer.write(execute_fn{ settlement_driver::accept_active_selection });
         writer.write(execute_fn{ settlement_driver::apply_active_selections });

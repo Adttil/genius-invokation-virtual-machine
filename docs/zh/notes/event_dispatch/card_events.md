@@ -6,7 +6,7 @@
 
 ## 取消效果不回滚行动
 
-[`card_will_be_played`](../../reference/definition/events/card_will_be_played.md) 位于支付提交之后、牌定义效果生效之前。反制只取消本牌的 `card_effect`，不退还费用，也不撤销牌离手；两个目标与行动速度均已确定，在前后事件中保持只读。牌先标记删除，再执行缓存 onpay、扣骰和骰子变化广播，随后执行出牌前广播；未反制时调用本牌原效果，最后均广播 `card_played`。后者不携带反制结果字段。
+[`card_will_be_played`](../../reference/definition/events/card_will_be_played.md) 位于支付提交之后、牌定义效果生效之前。反制只取消本牌的 `this_card_play`，不退还费用，也不撤销牌离手；两个目标与行动速度均已确定，在前后事件中保持只读。牌先标记删除，再执行缓存 onpay、扣骰和骰子变化广播，随后执行出牌前广播；未反制时调用本牌原效果，最后均广播 `card_played`。后者不携带反制结果字段。
 
 技能采用同样的边界：无效化 `skill_will_be_used` 中的技能效果不撤销支付，费用竞争在此前的费用计算阶段已经完成。`skill_used` 所触发的后续效果应排在技能定义自身效果之后。不能因为效果被取消，就把已经提交的行动解释为从未发生。
 

@@ -5,10 +5,11 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class... T> // 每个 T 均须为核心命令声明的 input_type
-defer_program_input defer_invoke(program_entry entry, const T&... inputs);
+template<event_category Category, class... T> // 每个 T 均须为核心命令声明的 input_type
+defer_program_input defer_invoke(effect<Category> entry, const T&... inputs);
 
-defer_program_input defer_invoke(program_entry entry, program_inputs inputs);
+template<event_category Category>
+defer_program_input defer_invoke(effect<Category> entry, program_inputs inputs);
 ```
 
 准备一次延迟效果需要的程序入口和全部参数。它只准备数据；实际登记和执行由 [`defer_program`](commands/defer_program.md) 完成。
@@ -41,3 +42,5 @@ defer_program_input defer_invoke(program_entry entry, program_inputs inputs);
 | [`defer_program`](commands/defer_program.md) | 登记延迟效果，包含完整示例 |
 | [`pack_inputs`](pack_inputs.md) | 单独准备拥有型参数 |
 | [`concat_inputs`](concat_inputs.md) | 合并运行时准备的输入片段 |
+
+目标类别只允许 `normal` 和 `preview`；`immediate_effect` 在 C++ 编译时被拒绝。

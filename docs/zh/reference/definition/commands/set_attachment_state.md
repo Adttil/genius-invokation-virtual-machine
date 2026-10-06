@@ -45,7 +45,7 @@ struct set_attachment_state
 
 例如当前值为 3、定义上限为 2，普通模式设置为 3 或 4 均得到 3，设置为 2 得到 2。需要补足次数且保留原有次数时，定义应提交原值与补足目标中的较大者；直接提交较小的值表示明确降低。
 
-先写入新状态，再仅向被修改的实体发送 [attachment_state_changed](../events/attachment_state_changed.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
+先写入新状态，再仅向被修改的实体发送 [this_attachment_state_change](../events/this_attachment_state_change.md)。层数或本回合次数为零时是否离场，由定义在此响应中决定。
 
 通知包含修改前和裁剪后的状态；返回的响应程序完整结算后才继续下一条命令。
 

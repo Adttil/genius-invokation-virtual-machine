@@ -39,9 +39,9 @@ namespace
         struct definition_type
         {
             discard_log* log;
-            givm::program_entry discard;
-            givm::program_entry effect;
-            givm::program_entry notification;
+            givm::normal_effect discard;
+            givm::normal_effect effect;
+            givm::normal_effect notification;
         };
         discard_log* log;
         constexpr std::string_view name() const { return "DiscardCard"; }
@@ -49,20 +49,20 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto discard = log->dynamic
-                ? context.add_program(std::tuple{ givm::discard_hand_card{}, givm::settle{}, givm::discard_deck_cards{} })
-                : context.add_program(std::tuple{
+                ? context.add_normal_effect(std::tuple{ givm::discard_hand_card{}, givm::settle{}, givm::discard_deck_cards{} })
+                : context.add_normal_effect(std::tuple{
                     givm::discard_hand_card{ .player = givm::relative_player::opponent,
                         .definition = context.resolve_id<givm::card_definition>(name()) }, givm::settle{},
                     givm::discard_deck_cards{ .count = 2, .player = givm::relative_player::opponent } });
-            return { log, discard, context.add_program(std::tuple{
+            return { log, discard, context.add_normal_effect(std::tuple{
                 givm::replace_cards{ givm::player_id{ 1 } }, givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } } }) };
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } } }) };
         }
         static givm::card_state query(const definition_type&, const givm::card_initial_state&)
         {
             return { .cost = { .energy = 3 } };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -73,17 +73,17 @@ namespace
                 givm::discard_hand_card_input{ std::array{ hand_card } },
                 givm::discard_deck_cards_input{ .player = givm::player_id{ 0 }, .count = 2 });
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::hand_card_discard_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_hand_card_discard& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK_FALSE(self.is_valid());
             CHECK(self.state().cost.energy == 3);
             data.log->order.push_back('h');
-            return data.log->self_effects ? context.invoke(data.effect) : givm::program_entry{};
+            return data.log->self_effects ? context.invoke(data.effect) : givm::normal_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::deck_card_discard_effect& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_deck_card_discard& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK_FALSE(self.is_valid());
@@ -92,12 +92,12 @@ namespace
                 CHECK(context.table()[givm::player_id{ 0 }].deck_card_count() == (data.log->self_effects ? 2 : 3));
             data.log->effect_cards.push_back(context.entity().id());
             data.log->order.push_back('d');
-            return data.log->self_effects ? context.invoke(data.effect) : givm::program_entry{};
+            return data.log->self_effects ? context.invoke(data.effect) : givm::normal_effect{};
         }
         template<class TView, class TEvent>
             requires((std::same_as<TView, givm::hand_card_view> || std::same_as<TView, givm::deck_card_view>)
                 && (std::same_as<TEvent, givm::hand_card_discarded> || std::same_as<TEvent, givm::deck_card_discarded>))
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent& event, givm::handle_context<TView>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
@@ -131,16 +131,16 @@ namespace
         struct definition_type
         {
             discard_damage_log* log;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         discard_damage_log* log;
         constexpr std::string_view name() const { return "DiscardDamageCard"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::apply_element{}, givm::deal_damage{} }) };
+            return { log, context.add_normal_effect(std::tuple{ givm::apply_element{}, givm::deal_damage{} }) };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::deck_card_discard_effect& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_deck_card_discard& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK_FALSE(self.is_valid());
@@ -164,14 +164,14 @@ namespace
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_calculation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             REQUIRE(std::holds_alternative<givm::deck_card_id>(event.source));
             CHECK(std::get<givm::deck_card_id>(event.source) == data.log->card);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -186,7 +186,7 @@ namespace
             data.log->order.push_back('A');
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::deck_card_discarded& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
@@ -374,7 +374,7 @@ namespace
         struct definition_type
         {
             hand_discard_batch_log* log;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         hand_discard_batch_log* log;
         std::string_view source_name;
@@ -382,13 +382,13 @@ namespace
         constexpr auto card_dependencies() const { return std::array{ std::string_view{ "BatchCardA" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{
+            return { log, context.add_normal_effect(std::tuple{
                 givm::create_hand_card{ .definition = context.resolve_id<givm::card_definition>("BatchCardA") },
                 givm::replace_cards{ givm::player_id{ 0 } }
             }) };
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::hand_card_discard_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_hand_card_discard& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             for(const auto id : data.log->selected) CHECK_FALSE(context.table()[id].is_valid());
@@ -405,8 +405,8 @@ namespace
         {
             hand_discard_batch_log* log;
             givm::definition_id<givm::card_definition> selected_definition;
-            givm::program_entry discard;
-            givm::program_entry pause;
+            givm::normal_effect discard;
+            givm::normal_effect pause;
         };
         hand_discard_batch_log* log;
         constexpr std::string_view name() const { return "BatchObserver"; }
@@ -418,13 +418,13 @@ namespace
         {
             const auto definition = context.resolve_id<givm::card_definition>(log->missing ? "BatchAbsentCard" : "BatchCardA");
             const auto discard = log->dynamic
-                ? context.add_program(std::tuple{ givm::discard_hand_card{} })
-                : context.add_program(std::tuple{ givm::discard_hand_card{
+                ? context.add_normal_effect(std::tuple{ givm::discard_hand_card{} })
+                : context.add_normal_effect(std::tuple{ givm::discard_hand_card{
                     .player = givm::relative_player::opponent, .definition = definition, .count = log->count } });
             return { log, definition, discard,
-                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             auto& log = *data.log;
@@ -448,7 +448,7 @@ namespace
             }
             return context.invoke(data.discard);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::hand_card_added& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             CHECK(std::ranges::find_if(data.log->original,
@@ -456,7 +456,7 @@ namespace
             data.log->order.push_back('A');
             return context.invoke(data.pause);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::hand_card_discarded& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             for(const auto id : data.log->selected) CHECK_FALSE(context.table()[id].is_valid());

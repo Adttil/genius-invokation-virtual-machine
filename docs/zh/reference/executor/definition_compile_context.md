@@ -26,7 +26,10 @@ class definition_compile_context;
 | [`operator[]`](definition_compile_context/operator_at.md) | 按 ID 取得定义的元数据视图 |
 | [`find_tag`](definition_compile_context/find_tag.md) | 查找本次集合中的标签 ID |
 | [`find_ids_by_tag`](definition_compile_context/find_ids_by_tag.md) | 筛选本次集合中满足标签条件的定义 |
-| [`add_program`](definition_compile_context/add_program.md) | 登记一段效果并取得入口 |
+| [`add_normal_effect`](definition_compile_context/add_normal_effect.md) | 登记普通效果 |
+| [`add_immediate_effect`](definition_compile_context/add_immediate_effect.md) | 登记立即效果 |
+| [`add_preview_effect`](definition_compile_context/add_preview_effect.md) | 登记预览效果 |
+| [`add_effect`](definition_compile_context/add_effect.md) | 登记一段效果并取得入口 |
 | [`definition_count<Category>()`](../definition/history_summary.md#定义源协议) | 取得最终编译集合内指定类别的定义数量 |
 | [`history_field<T>(name)`](../definition/history_summary.md#定义源协议) | 取得当前摘要自身字段的访问键 |
 | [`resolve_history_field<T>(summary, name)`](../definition/history_summary.md#定义源协议) | 取得已声明依赖的摘要字段读取键 |

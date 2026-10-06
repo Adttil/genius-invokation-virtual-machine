@@ -5,7 +5,9 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-struct history_summary_initialization {};
+struct history_summary_initialization {
+    static constexpr event_category category = event_category::normal;
+};
 ```
 
 仅供[历史摘要](../history_summary.md)订阅的初始化事件，没有成员。

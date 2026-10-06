@@ -28,8 +28,8 @@ namespace
         struct definition_type
         {
             technique_log* log;
-            givm::program_entry pause;
-            givm::program_entry payment;
+            givm::normal_effect pause;
+            givm::preview_effect payment;
         };
         technique_log* log;
         constexpr std::string_view name() const { return "Technique"; }
@@ -37,8 +37,8 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log,
-                context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ givm::modify_attachment_state{} }) };
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
+                context.add_preview_effect(std::tuple{ givm::modify_attachment_state{} }) };
         }
         static givm::action_cost_requirement query(const definition_type&, const givm::technique_initial_cost&)
         {
@@ -51,24 +51,24 @@ namespace
             return target && target->player_id != query.technique.player().id()
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::cost_of_technique& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type& data,
+                                         givm::cost_of_technique& event, givm::handle_context<givm::attachment_view, givm::event_category::preview>& context)
         {
             const auto self = context.entity();
             --event.requirement.dice_requirement.any;
             data.log->events.push_back("quote");
-            return context.invoke(givm::substack_t{}, data.payment,
+            return context.invoke(data.payment,
                 givm::modify_attachment_state_input{ .attachment = self.id(), .count = -1 });
         }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::technique_will_be_used& event, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+                                         givm::technique_will_be_used& event, givm::handle_context<givm::attachment_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->events.push_back("before");
             event.effect_cancelled = data.log->cancelled;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-                                         givm::technique_effect& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+                                         givm::this_technique_use& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK(event.technique == self.id());
@@ -78,7 +78,7 @@ namespace
             data.log->events.push_back("effect");
             return context.invoke(data.pause);
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
                                          givm::technique_used& event, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             CHECK(event.effect_cancelled == data.log->cancelled);
@@ -90,12 +90,12 @@ namespace
     struct technique_owner
     {
         using definition_category = givm::character_view;
-        struct definition_type { givm::program_entry equip; };
+        struct definition_type { givm::normal_effect equip; };
         constexpr std::string_view name() const { return "TechniqueOwner"; }
         constexpr auto attachment_dependencies() const { return std::array{ std::string_view{ "Technique" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{ givm::add_attachment{
+            return { context.add_normal_effect(std::tuple{ givm::add_attachment{
                 .definition = context.resolve_id<givm::attachment_view>("Technique"), .state = { 2 }
             } }) };
         }
@@ -103,7 +103,7 @@ namespace
         {
             return { .max_health = 10, .max_energy = 3, .health = 10, .energy = 3 };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
                                          givm::action_phase_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.equip);

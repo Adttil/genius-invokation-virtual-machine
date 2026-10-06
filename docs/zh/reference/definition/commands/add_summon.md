@@ -44,7 +44,7 @@ struct add_summon
 
 目标玩家的有效召唤物数量小于其当前 [`player_state::summon_limit`](../../table/player_state.md) 时，直接创建独立实体；同定义实体的存在不改变本次操作，但同样占用容量。`usages` 可以为零，创建时不执行耗尽离场。
 
-容量按命令实际执行时目标玩家的有效召唤物计数；已移除的实体和另一位玩家的召唤物不占用该玩家的容量。每位玩家的上限默认为 4。达到或超过上限时（包括上限为零），本命令不创建实体，也不移除已有召唤物或广播 [summon_removed](../events/summon_removed.md)。从 [resummoning](../events/resummoning.md) 响应中执行本命令时，也遵循相同的容量规则。
+容量按命令实际执行时目标玩家的有效召唤物计数；已移除的实体和另一位玩家的召唤物不占用该玩家的容量。每位玩家的上限默认为 4。达到或超过上限时（包括上限为零），本命令不创建实体，也不移除已有召唤物或广播 [summon_removed](../events/summon_removed.md)。从 [this_summon_resummon](../events/this_summon_resummon.md) 响应中执行本命令时，也遵循相同的容量规则。
 
 显式指定 `.state = {}` 时，两个字段均为零；部分初始化 `state` 时，省略的字段也会初始化为零。
 

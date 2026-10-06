@@ -70,7 +70,7 @@ namespace
             givm::action_speed speed;
             bool single_target;
             bool optional_targets;
-            givm::program_entry effect;
+            givm::normal_effect effect;
         };
         play_log* log;
         std::string_view source_name;
@@ -83,7 +83,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, cost, speed, single_target, optional_targets,
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {
@@ -117,9 +117,9 @@ namespace
             return second != nullptr && second->player_id != first.player_id
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
-            givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+            givm::this_card_play& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             CHECK(event.card == self.id());
@@ -135,7 +135,7 @@ namespace
             requires(std::same_as<TEvent, givm::card_drawn>
                 || std::same_as<TEvent, givm::card_will_be_played>
                 || std::same_as<TEvent, givm::card_played>)
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
             TEvent&, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
@@ -151,11 +151,11 @@ namespace
         struct definition_type
         {
             play_log* log;
-            givm::program_entry first_payment;
-            givm::program_entry second_payment;
-            givm::program_entry before;
-            givm::program_entry after;
-            givm::program_entry selection;
+            givm::preview_effect first_payment;
+            givm::preview_effect second_payment;
+            givm::immediate_effect before;
+            givm::normal_effect after;
+            givm::normal_effect selection;
         };
         play_log* log;
         std::string_view name() const noexcept { return "PlayObserver"; }
@@ -163,29 +163,29 @@ namespace
         {
             return {
                 log,
-                context.add_program(
+                context.add_preview_effect(
                     std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(
+                context.add_preview_effect(
                     std::tuple{ givm::draw_cards{ .position = 0, .count = 2 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
-                context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } })
+                context.add_immediate_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } })
             };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::program_entry handle(
+        static givm::preview_effect handle(
             const definition_type& data, givm::cost_of_card& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
             data.log->quoted.push_back(event.card);
             event.requirement.dice_requirement.any += data.log->extra_cost;
             if(not data.log->enable_payment) return {};
-            return context.invoke(givm::substack_t{}, event.requirement.dice_requirement.any > 2 ? data.second_payment : data.first_payment);
+            return context.invoke(event.requirement.dice_requirement.any > 2 ? data.second_payment : data.first_payment);
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::dice_removed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -198,9 +198,9 @@ namespace
             }
             return {};
         }
-        static givm::program_entry handle(
+        static givm::immediate_effect handle(
             const definition_type& data, givm::card_will_be_played& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             check_removed_card(context.table(), event.card, event.definition_id);
             if(data.log->record) data.log->events.push_back("will");
@@ -208,7 +208,7 @@ namespace
             if(data.log->nested) return context.invoke(data.before);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::card_played& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -218,7 +218,7 @@ namespace
             if(data.log->nested) return context.invoke(data.after);
             return {};
         }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data, givm::card_drawn& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -237,9 +237,9 @@ namespace
         play_log* log;
         std::string_view name() const noexcept { return "ZeroCostCard"; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
-            givm::card_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
+            givm::this_card_play& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             check_removed_card(context.table(), event.card, self.definition_id());

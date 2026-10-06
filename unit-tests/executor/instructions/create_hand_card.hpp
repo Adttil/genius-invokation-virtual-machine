@@ -49,8 +49,8 @@ namespace
         {
             creation_log* log;
             givm::definition_id<givm::card_definition> card;
-            givm::program_entry create;
-            givm::program_entry nested;
+            givm::normal_effect create;
+            givm::normal_effect nested;
         };
         creation_log* log;
 
@@ -64,11 +64,11 @@ namespace
             const auto nested = log->dynamic ? givm::create_hand_card{}
                 : givm::create_hand_card{ .definition = card };
             return { log, card,
-                context.add_program(std::tuple{ create,
+                context.add_normal_effect(std::tuple{ create,
                     givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 }, create }),
-                context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
+                context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             if(data.log->dynamic)
@@ -79,7 +79,7 @@ namespace
         }
         template<class TEvent>
             requires(std::same_as<TEvent, givm::card_drawn> || std::same_as<TEvent, givm::hand_card_added>)
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto card = context.table()[event.card];
@@ -101,7 +101,7 @@ namespace
         }
         template<class TEvent>
             requires(std::same_as<TEvent, givm::hand_card_discarded> || std::same_as<TEvent, givm::deck_card_discarded>)
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent&, givm::handle_context<givm::deck_card_view>&, std::uint32_t = 0)
         {
             ++data.log->discards;
@@ -127,7 +127,7 @@ namespace
         template<class TEvent>
             requires(std::same_as<TEvent, givm::card_drawn>
                 || (AnyEntry && std::same_as<TEvent, givm::hand_card_added>))
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             TEvent&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             data.log->responses.push_back(AnyEntry ? 'A' : 'D');
@@ -138,7 +138,7 @@ namespace
     struct entry_order_driver_source
     {
         using definition_category = givm::card_definition;
-        struct definition_type { givm::program_entry effect; };
+        struct definition_type { givm::normal_effect effect; };
         entry_order_log* log;
 
         constexpr std::string_view name() const { return "EntryOrderDriver"; }
@@ -151,14 +151,14 @@ namespace
         {
             const auto first = context.resolve_id<givm::attachment_view>(log->reverse ? "AnyEntry" : "DrawOnly");
             const auto second = context.resolve_id<givm::attachment_view>(log->reverse ? "DrawOnly" : "AnyEntry");
-            return { context.add_program(std::tuple{
+            return { context.add_normal_effect(std::tuple{
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = first },
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = second },
                 givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 },
                 givm::create_hand_card{ .player = givm::relative_player::opponent,
                     .definition = context.resolve_id<givm::card_definition>("CreatedCard") } }) };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.effect);

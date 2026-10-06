@@ -19,7 +19,7 @@ namespace givm
 
     struct defer_program_input
     {
-        program_entry entry;
+        normal_effect entry;
         program_inputs inputs;
     };
 
@@ -28,11 +28,11 @@ namespace givm
     public:
         fixed_defer_program_input() noexcept = default;
 
-        program_entry entry() const noexcept { return entry_; }
+        normal_effect entry() const noexcept { return entry_; }
         std::span<const unsigned char> bytes() const noexcept { return inputs_.bytes(); }
 
     private:
-        program_entry entry_;
+        normal_effect entry_;
         program_inputs inputs_;
         std::vector<detail::program_input_description> descriptions_;
 

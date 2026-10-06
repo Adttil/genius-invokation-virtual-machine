@@ -48,7 +48,7 @@ namespace
         struct definition_type
         {
             overflow_log* log;
-            givm::program_entry draw_entry;
+            givm::normal_effect draw_entry;
         };
 
         std::string_view source_name;
@@ -62,12 +62,12 @@ namespace
             return {
                 log,
                 draws
-                    ? context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } })
-                    : givm::program_entry::null()
+                    ? context.add_normal_effect(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } })
+                    : givm::normal_effect::null()
             };
         }
 
-        static givm::program_entry handle(
+        static givm::normal_effect handle(
             const definition_type& data,
             givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
@@ -81,7 +81,7 @@ namespace
             return {};
         }
 
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::card_drawn& event, givm::handle_context<givm::deck_card_view>&, std::uint32_t = 0)
         {
             if(event.overflow) data.log->removed = event.card;

@@ -53,8 +53,8 @@ namespace
         std::string_view name() const { return source_name; }
         auto tags() const { return std::array{ source_tag }; }
         definition_type compile(givm::definition_compile_context&) const { return { log }; }
-        static givm::program_entry handle(const definition_type& data,
-            givm::attachment_reapplication&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
+        static givm::normal_effect handle(const definition_type& data,
+            givm::this_attachment_reapply&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
         {
             ++data.log->reapplied;
             return {};
@@ -68,10 +68,10 @@ namespace
         struct definition_type
         {
             control_log* log;
-            givm::program_entry initialization;
-            givm::program_entry dynamic_operations;
-            givm::program_entry end_phase;
-            givm::program_entry round_start;
+            givm::normal_effect initialization;
+            givm::normal_effect dynamic_operations;
+            givm::normal_effect end_phase;
+            givm::normal_effect round_start;
             givm::definition_id<givm::attachment_view> control;
         };
         control_log* log;
@@ -86,14 +86,14 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(program(context)),
-                dynamic_operations ? context.add_program(std::tuple{
-                    givm::attach{}, givm::add_attachment{}, givm::set_active_character{} }) : givm::program_entry{},
-                end_phase.empty() ? givm::program_entry{} : context.add_program(end_phase),
-                pause_round_start ? context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::program_entry{},
+            return { log, context.add_normal_effect(program(context)),
+                dynamic_operations ? context.add_normal_effect(std::tuple{
+                    givm::attach{}, givm::add_attachment{}, givm::set_active_character{} }) : givm::normal_effect{},
+                end_phase.empty() ? givm::normal_effect{} : context.add_normal_effect(end_phase),
+                pause_round_start ? context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::normal_effect{},
                 context.resolve_id<givm::attachment_view>("Control") };
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::battle_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(not data.log->initialized)
@@ -111,21 +111,21 @@ namespace
                 givm::add_attachment_input{ .target = actor, .definition = data.control, .state = { 1 } },
                 givm::set_active_character_input{ .current = ally });
         }
-        static givm::program_entry handle(const definition_type&,
-            givm::cost_of_switch& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        static givm::preview_effect handle(const definition_type&,
+            givm::cost_of_switch& event, givm::handle_context<givm::skill_view, givm::event_category::preview>&)
         {
             event.requirement.dice_requirement.any = 0;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(context.table()[event.current.player_id].state().active_character == event.current);
             data.log->switches.push_back(event.current);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::damage_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        static givm::immediate_effect handle(const definition_type& data,
+            givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             data.log->values_before_shield.push_back(event.value);
             data.log->controlled_before_shield.push_back(data.log->library->is_controlled(context.table()[event.target]));
@@ -133,28 +133,28 @@ namespace
                 event.value = 0;
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->final_values.push_back(event.value);
             data.log->controlled_after_damage.push_back(data.log->library->is_controlled(context.table()[event.target]));
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_ended&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->controlled_at_end_phase.push_back(data.log->library->is_controlled(context.table()[target]));
-            return data.end_phase ? context.invoke(data.end_phase) : givm::program_entry{};
+            return data.end_phase ? context.invoke(data.end_phase) : givm::normal_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             ++data.log->rounds_started;
             data.log->dice_at_round_start.push_back({ context.table()[givm::player_id{ 0 }].state().dice.total(),
                 context.table()[givm::player_id{ 1 }].state().dice.total() });
-            return data.round_start ? context.invoke(data.round_start) : givm::program_entry{};
+            return data.round_start ? context.invoke(data.round_start) : givm::normal_effect{};
         }
-        static givm::program_entry handle(const definition_type& data,
+        static givm::normal_effect handle(const definition_type& data,
             givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.log->library->name(context.table()[event.attachment].definition_id()) == givm::genshin_impact::frozen_3_3_0.name())

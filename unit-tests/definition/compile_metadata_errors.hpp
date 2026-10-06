@@ -43,7 +43,7 @@ namespace
             return { query_calls };
         }
 
-        static givm::program_entry handle(const definition_type&,
+        static givm::normal_effect handle(const definition_type&,
             givm::round_started&, givm::handle_context<givm::support_view>&, std::uint32_t = 0)
         {
             return {};

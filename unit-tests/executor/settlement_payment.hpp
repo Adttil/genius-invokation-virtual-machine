@@ -38,9 +38,9 @@ namespace
         {
             payment_log* log;
             input_error error;
-            givm::program_entry payment;
-            givm::program_entry relay;
-            givm::program_entry leaf;
+            givm::preview_effect payment;
+            givm::normal_effect relay;
+            givm::normal_effect leaf;
         };
 
         payment_log* log;
@@ -50,11 +50,11 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto leaf = context.add_program(
+            const auto leaf = context.add_normal_effect(
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
                 givm::modify_energy{}, givm::set_active_character{}, givm::return_response{});
-            const auto relay = context.add_program(givm::defer_program{}, givm::return_response{});
-            return { log, error, context.add_program(givm::defer_program{}, givm::return_response{}), relay, leaf };
+            const auto relay = context.add_normal_effect(givm::defer_program{}, givm::return_response{});
+            return { log, error, context.add_preview_effect(givm::defer_program{}, givm::return_response{}), relay, leaf };
         }
 
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -62,11 +62,10 @@ namespace
             return { .max_health = 10, .max_energy = 10000, .health = 10 };
         }
 
-        static givm::program_entry handle(const definition_type& data, givm::cost_of_switch& event,
-            givm::handle_context<givm::skill_view>& context, std::uint32_t index = 0)
+        static givm::preview_effect handle(const definition_type& data, givm::cost_of_switch& event,
+            givm::handle_context<givm::skill_view, givm::event_category::preview>& context)
         {
-            data.log->quote_indices.push_back(index);
-            if(index != 0) return {};
+            data.log->quote_indices.push_back(0);
             event.requirement.dice_requirement.any = 0;
             const auto self = context.entity().character().id();
             const auto original = *context.table()[self.player_id].state().active_character;
@@ -75,13 +74,13 @@ namespace
             const auto leaf = data.error == input_error::nested_type
                 ? givm::defer_invoke(data.leaf, givm::set_energy_input{ self, 7 }, target, givm::return_response_input{ 23 })
                 : givm::defer_invoke(data.leaf, givm::modify_energy_input{ targets, 1 }, target, givm::return_response_input{ 23 });
-            return context.invoke(givm::substack_t{}, data.payment,
+            return context.invoke(data.payment,
                 givm::defer_invoke(data.relay, leaf, givm::return_response_input{ 19 }),
                 givm::return_response_input{
                     data.error == input_error::response_index ? givm::return_response::dynamic : 17u });
         }
 
-        static givm::program_entry handle(const definition_type& data, givm::active_character_changed& event,
+        static givm::normal_effect handle(const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(context.entity().character().id() != first) return {};
