@@ -187,15 +187,16 @@ TEST_CASE("normal attack previews preserve prepayment charged and plunging flags
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     auto action = executor.view_in<givm::execution_state::action_selection>();
-    const auto flags = action.calculate_skill_cost(library, table, 0).flags;
+    const auto quote_1 = action.calculate_skill_cost(library, table, 0);
+    const auto flags = action.skill_cost(quote_1).flags;
     CHECK(flags.contains(givm::skill_flag_bits::normal_attack));
     CHECK(flags.contains(givm::skill_flag_bits::charged_attack));
     CHECK(flags.contains(givm::skill_flag_bits::plunging_attack));
-    CHECK(action.skill_cost(0).requirement.dice_requirement.any == 2);
+    CHECK(action.skill_cost(quote_1).requirement.dice_requirement.any == 2);
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 2;
-    REQUIRE(action.skill_payment_validate(table, 0, payment) == givm::skill_payment_validation::valid);
-    executor.submitted(action.use_skill_with_cached_cost(library, table, givm_test::omni_random, 0, payment));
+    REQUIRE(action.skill_payment_validate(table, quote_1, payment) == givm::skill_payment_validation::valid);
+    executor.submitted(action.use_skill_with_cached_cost(library, table, givm_test::omni_random, quote_1, payment));
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
     CHECK_FALSE(table[givm::player_id{ 0 }].state().can_plunge);
@@ -207,7 +208,8 @@ TEST_CASE("normal attack previews preserve prepayment charged and plunging flags
     CHECK(log.damage[0].contains(givm::damage_flag_bits::charged_attack));
     CHECK(log.damage[0].contains(givm::damage_flag_bits::plunging_attack));
     return_to_player_zero(executor, library, table);
-    const auto next = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0).flags;
+    const auto quote_2 = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0);
+    const auto next = executor.view_in<givm::execution_state::action_selection>().skill_cost(quote_2).flags;
     CHECK(next.contains(givm::skill_flag_bits::charged_attack));
     CHECK_FALSE(next.contains(givm::skill_flag_bits::plunging_attack));
 }
@@ -222,8 +224,10 @@ TEST_CASE("charged attack uses even dice counts including zero and ignores non-n
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
-    CHECK(action.calculate_skill_cost(library, table, 0).flags.contains(givm::skill_flag_bits::charged_attack) == (dice % 2 == 0));
-    const auto flags = action.calculate_skill_cost(library, table, 1).flags;
+    const auto quote_1 = action.calculate_skill_cost(library, table, 0);
+    CHECK(action.skill_cost(quote_1).flags.contains(givm::skill_flag_bits::charged_attack) == (dice % 2 == 0));
+    const auto quote_2 = action.calculate_skill_cost(library, table, 1);
+    const auto flags = action.skill_cost(quote_2).flags;
     CHECK(flags.contains(givm::skill_flag_bits::elemental_skill));
     CHECK_FALSE(flags.contains(givm::skill_flag_bits::charged_attack));
     CHECK_FALSE(flags.contains(givm::skill_flag_bits::plunging_attack));
@@ -244,7 +248,8 @@ TEST_CASE("only final combat speed consumes plunging opportunity and effects may
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     return_to_player_zero(executor, library, table);
     CHECK(table[givm::player_id{ 0 }].state().can_plunge == (fast || switch_character));
-    const auto flags = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0).flags;
+    const auto quote_1 = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0);
+    const auto flags = executor.view_in<givm::execution_state::action_selection>().skill_cost(quote_1).flags;
     CHECK(flags.contains(givm::skill_flag_bits::plunging_attack) == (fast || switch_character));
 }
 
@@ -299,7 +304,8 @@ TEST_CASE("initial character choices grant plunging opportunities and library co
     REQUIRE(advance(executor, library, table, false) == givm::execution_state::action_selection);
     CHECK(table[givm::player_id{ 0 }].state().can_plunge);
     CHECK(table[givm::player_id{ 1 }].state().can_plunge);
-    CHECK(executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0)
+    const auto quote_1 = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0);
+    CHECK(executor.view_in<givm::execution_state::action_selection>().skill_cost(quote_1)
         .flags.contains(givm::skill_flag_bits::plunging_attack));
 }
 }

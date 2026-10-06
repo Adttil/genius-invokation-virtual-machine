@@ -6,36 +6,28 @@
 
 ```cpp
 constexpr skill_payment_validation skill_payment_validate(
-    const table& card_table, std::size_t skill_index, const dice_counts& paid_dice
+    const table& card_table, skill_cost_id id, const dice_counts& paid_dice
 ) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
-[`skill_payment_validation`](../../skill_payment_validation.md)
 
-检查所选骰子与出战角色充能能否支付指定技能的使用费用。
+检查选中骰子是否匹配已报价费用、是否持有这些骰子，以及当前出战角色的充能类型和数量。
 
 ## 参数
 
 | | |
 | --- | --- |
 | `card_table` | 当前行动发生的牌桌。 |
-| `skill_index` | 从零开始的技能候选索引，须小于 [`skill_count()`](skill_count.md)，且该候选已经完整报价。 |
-| `paid_dice` | 准备支付的各类骰子数量。 |
+| `id` | 本窗口的对应报价标识。 |
+| `paid_dice` | 按颜色和数量选择的支付骰子。 |
 
 ## 返回值
 
-依次进行以下检查，遇到第一个失败立即返回：
+`skill_payment_validation` 检查结果。
 
-1. 所选骰子能否恰好满足费用，不匹配时返回 `requirement_mismatch`。
-2. 当前行动玩家是否持有所选骰子，不足时返回 `insufficient_dice`。
-3. 充能费用非零时，出战角色与费用的 `energy_tag` 是否相等，不匹配时返回 `energy_tag_mismatch`。充能费用为零时忽略类型。
-4. 出战角色充能数量是否足够，不足时返回 `insufficient_energy`。
+## 异常
 
-全部通过时返回 `valid`。
+Debug 检查现场、候选或报价标识的有效性，并以结构化异常报告误用。费用响应抛出的异常直接传递；失败报价不能采用或在当前窗口重算。Release 不执行这些输入校验。
 
 ## 注意
 
-Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
-
-费用匹配规则见 [`elemental_dice_requirement`](../../../enums/elemental_dice_requirement.md)。本操作读取已计算费用和牌桌，不重新报价、不检查目标、不提交行动或修改牌桌。
-
-支付检查与 [`skill_targets_validate`](skill_targets_validate.md) 相互独立，由调用方按需使用；[`use_skill`](use_skill.md) 在 Debug 提交时自动执行检查，Release 不检查。检查通过后仍须提交输入，提交同时推进。
+本操作只读取报价和牌桌，不执行费用效果或推进。Debug 提交自动执行支付检查，Release 由调用方保证输入有效。确认时付得起不表示费用效果结束后资源仍足够，实际付款采用逐色及充能饱和扣除。

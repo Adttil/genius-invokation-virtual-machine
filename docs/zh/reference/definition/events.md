@@ -52,9 +52,6 @@
 | [`secret_points_changed`](events/secret_points_changed.md) | 秘传点数变化后的通知 |
 | [`changing_energy`](events/changing_energy.md) | 角色充能变化前的调整事件 |
 | [`energy_changed`](events/energy_changed.md) | 角色充能变化后的通知 |
-| [`calculating_card_payment`](events/calculating_card_payment.md) | 打出手牌时的支付计算事件 |
-| [`calculating_skill_payment`](events/calculating_skill_payment.md) | 使用技能时的支付计算事件 |
-| [`calculating_switch_payment`](events/calculating_switch_payment.md) | 切换出战角色时的支付计算事件 |
 | [`cost_of_switch`](events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
 | [`cost_of_skill`](events/cost_of_skill.md) | 技能使用的费用计算事件 |
 | [`cost_of_card`](events/cost_of_card.md) | 出牌的费用计算事件 |

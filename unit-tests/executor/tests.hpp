@@ -1,4 +1,5 @@
 #include "broadcast.hpp"
+#include "action_quotes.hpp"
 #include "card_equipment_queries.hpp"
 #include "compile_boundary.hpp"
 #include "executor.hpp"

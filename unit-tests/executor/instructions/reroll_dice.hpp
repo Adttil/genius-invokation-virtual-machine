@@ -279,8 +279,8 @@ TEST_CASE("a played card finishes both rerolls before the card-played notificati
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.card_count() == 1);
-    action.calculate_card_cost(library, table, 0);
-    executor.submitted(action.play_card_with_cached_cost(library, table, random, 0, {}));
+    const auto quote_1 = action.calculate_card_cost(library, table, 0);
+    executor.submitted(action.play_card_with_cached_cost(library, table, random, quote_1, {}));
     for(int index = 1; index <= 2; ++index)
     {
         REQUIRE(advance(executor, library, table, random) == givm::execution_state::dice_reroll_selection);

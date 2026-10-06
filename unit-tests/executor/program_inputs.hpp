@@ -208,10 +208,12 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
     log.active.clear();
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.switch_target_count() == 2);
-    CHECK(action.calculate_switch_cost(library, table, 1).requirement.dice_requirement.any == 0);
-    CHECK(action.calculate_switch_cost(library, table, 0).requirement.dice_requirement.any == 0);
-    CHECK(action.switch_cost(1).requirement.dice_requirement.any == 0);
-    CHECK(action.switch_cost(0).requirement.dice_requirement.any == 0);
+    const auto quote_1 = action.calculate_switch_cost(library, table, 1);
+    CHECK(action.switch_cost(quote_1).requirement.dice_requirement.any == 0);
+    const auto quote_2 = action.calculate_switch_cost(library, table, 0);
+    CHECK(action.switch_cost(quote_2).requirement.dice_requirement.any == 0);
+    CHECK(action.switch_cost(quote_1).requirement.dice_requirement.any == 0);
+    CHECK(action.switch_cost(quote_2).requirement.dice_requirement.any == 0);
     const givm::character_id original{ givm::player_id{ 0 }, 0 };
     const givm::character_id other_responder{ givm::player_id{ 0 }, 1 };
     CHECK(log.quote_active == std::vector(4, original));
@@ -223,7 +225,7 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
         auto branch_table = table;
         const auto selected = action.switch_target(candidate);
         log.active.clear();
-        branch.submitted(branch.view_in<givm::execution_state::action_selection>().switch_active_character_with_cached_cost(library, branch_table, random, candidate, {}));
+        branch.submitted(branch.view_in<givm::execution_state::action_selection>().switch_active_character_with_cached_cost(library, branch_table, random, candidate == 0 ? quote_2 : quote_1, {}));
         REQUIRE(advance(branch, library, branch_table, random) == givm::execution_state::card_selection);
         CHECK(log.active == std::vector{ selected });
         auto paused_copy = branch;
@@ -304,6 +306,7 @@ namespace
 
 TEST_CASE("dynamic damage array inputs retain their contents through cached and copied continuations", "[program-input][onpay][deal_damage]")
 {
+    std::optional<givm::switch_cost_id> quote_1;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto count = GENERATE(std::size_t{ 0 }, std::size_t{ 1 }, std::size_t{ 4 });
     const bool runtime_inputs = GENERATE(false, true);
@@ -338,10 +341,10 @@ TEST_CASE("dynamic damage array inputs retain their contents through cached and 
         REQUIRE(advance_array(execution, table) == givm::execution_state::action_selection);
         const auto action = execution.view_in<givm::execution_state::action_selection>();
         REQUIRE(action.switch_target_count() == 1);
-        action.calculate_switch_cost(library, table, 0);
+        quote_1 = action.calculate_switch_cost(library, table, 0);
         CHECK(table[target].state().health == 10);
         CHECK(table[owner].state().energy == 0);
-        execution.submitted(action.switch_active_character_with_cached_cost(library, table, random, 0, {}));
+        execution.submitted(action.switch_active_character_with_cached_cost(library, table, random, *quote_1, {}));
     }
     REQUIRE(advance_array(execution, table) == givm::execution_state::card_selection);
     CHECK(table[target].state().health == 10 - count);

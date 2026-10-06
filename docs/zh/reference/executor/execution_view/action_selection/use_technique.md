@@ -1,4 +1,4 @@
-[givm](../../../../reference.md) / [行动选择](../action_selection.md) / **use_technique**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **use_technique**
 
 # givm::execution_view<execution_state::action_selection>::use_technique
 
@@ -7,49 +7,41 @@
 ```cpp
 template<class TRandom>
 execution_state use_technique(
-    const definition_library& library, table& card_table, TRandom& random,
-    const dice_counts& paid_dice, std::span<const technique_target_id> targets = {}
-) const;
-
-template<class TRandom>
-execution_state use_technique_with_cached_cost(
-    const definition_library& library, table& card_table, TRandom& random,
+    const definition_library& library, table& card_table, TRandom& random_source,
     const dice_counts& paid_dice, std::span<const technique_target_id> targets = {}
 ) const;
 ```
 
-选择当前特技装备，提交支付骰子与至多两个目标，并推进到下一处暂停现场。
+对具体的使用特技选择报价，并立即采用结果推进行动。
 
 ## 模板参数
 
 | | |
 | --- | --- |
-| `TRandom` | 非 `const`、非 `volatile` 的可调用对象类型，其无参数调用结果可隐式转换为 `std::uint32_t`。 |
+| `TRandom` | 可调用并返回 `std::uint32_t` 的随机源类型。 |
 
 ## 参数
 
 | | |
 | --- | --- |
-| `library` | 与当前执行现场配套的定义库。 |
-| `card_table` | 当前对局牌桌。 |
-| `random` | 本次推进使用的随机源，以左值传入。 |
-| `paid_dice` | 本次支付的骰子，须满足报价及持有数量。 |
-| `targets` | 按顺序提供的目标，默认空 span；最多采用前两个，其余忽略。 |
+| `library` | 与当前现场及牌桌配套的定义库。 |
+| `card_table` | 当前行动发生的牌桌。 |
+| `random_source` | 后续执行使用的随机源；报价不消耗随机数。 |
+| `paid_dice` | 原选支付骰子的颜色及数量。 |
+| `targets` | 完整的目标选择；省略表示两个空槽。 |
 
 ## 返回值
 
-推进后到达的 [`execution_state`](../../execution_state.md)，可能是下一处输入、观察或终局现场。
+推进后到达的执行现场。
 
 ## 异常
 
-未定义 `NDEBUG` 时，现场已失效或种类错误会抛出 [`execution_view_error`](../../execution_view_error.md)；输入合法性结果失败时抛出 [`view_input_error`](../../view_input_error.md)；实体 ID 越界或已移除的诊断沿用 [`command_input_error`](../../command_input_error.md)。这些检查均在填写选择和开始推进之前。进入执行后，定义源、随机源及命令检查产生的异常向外传播，执行不提供回滚。
+Debug 检查现场、候选或报价标识的有效性，并以结构化异常报告误用。费用响应抛出的异常直接传递；失败报价不能采用或在当前窗口重算。Release 不执行这些输入校验。
 
 ## 注意
 
-若即时报价已经成功，而后续 Debug 输入检查失败，报价仍然保留；修正输入后应调用 `use_technique_with_cached_cost`，不能重新报价。
+相当于先调用 `calculate_technique_cost`，再使用返回标识调用 `use_technique_with_cached_cost`。只用于尚未报价的操作与目标组合。需要预览费用、检查支付或修正输入时，先显式报价并保存标识。
 
-`use_technique` 同步计算费用并提交；`use_technique_with_cached_cost` 使用已经完整计算的费用与对应支付效果，不重新报价。每个特技在一个行动现场只能计算一次费用。
+如果直接接口在完成报价后抛出 Debug 支付异常，它不会返回报价标识，也不回滚报价；调用方不能在本窗口重算这个组合。
 
-调用方须保证存在特技、出战角色未受控、支付与目标合法。Debug 自动检查这些条件，Release 不检查。目标在 Debug 下按前缀逐步验证，最终选择须允许完成。
-
-充能按报价从支付时的出战角色扣除。支付响应结算后广播 [`technique_will_be_used`](../../../definition/events/technique_will_be_used.md)，未取消时单播 [`technique_effect`](../../../definition/events/technique_effect.md)；最后总是广播 [`technique_used`](../../../definition/events/technique_used.md)。行动是否交给对方由最终速度决定。
+目标最多两个，超过两项的内容忽略。`std::monostate` 表示空槽，遇到首个空槽即结束目标序列；报价无需额外保存目标数量。完整目标必须合法，分步检查仍由相应的 `*_targets_validate` 提供。

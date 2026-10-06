@@ -86,6 +86,15 @@
 
 ## 常量
 
-|  |  |
 | --- | --- |
 | [`selection_capacity`](executor/selection_capacity.md) | 单次选择可表示的位置数量 |
+
+## 行动报价标识
+
+| | |
+| --- | --- |
+| [`action_cost_id`](executor/action_cost_id.md) | 行动窗口中的报价标识。 |
+| [`switch_cost_id`](executor/switch_cost_id.md) | 切换角色报价标识。 |
+| [`card_cost_id`](executor/card_cost_id.md) | 出牌报价标识。 |
+| [`skill_cost_id`](executor/skill_cost_id.md) | 使用技能报价标识。 |
+| [`technique_cost_id`](executor/technique_cost_id.md) | 使用特技报价标识。 |

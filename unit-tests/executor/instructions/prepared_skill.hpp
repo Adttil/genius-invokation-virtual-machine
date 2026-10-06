@@ -1,3 +1,4 @@
+#include <optional>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -364,6 +365,7 @@ TEST_CASE("control preserves a prepared attachment through declarations until th
 
 TEST_CASE("only successful character changes cancel prepared attachments", "[prepared-skill][switch]")
 {
+    std::optional<givm::switch_cost_id> quote_1;
     const bool observed = GENERATE(false, true);
     enum class scenario { unchanged, forced, immune, voluntary, overloaded };
     const auto choice = GENERATE(scenario::unchanged, scenario::forced, scenario::immune, scenario::voluntary, scenario::overloaded);
@@ -407,9 +409,9 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
         const auto view = executor.view_in<givm::execution_state::action_selection>();
         REQUIRE(view.is_controlled(library, table));
         REQUIRE(view.switch_target_count() == 1);
-        view.calculate_switch_cost(library, table, 0);
-        REQUIRE(view.switch_payment_validate(table, 0, {}) == givm::switch_payment_validation::valid);
-        executor.submitted(view.switch_active_character_with_cached_cost(library, table, givm_test::zero_random, 0, {}));
+        quote_1 = view.calculate_switch_cost(library, table, 0);
+        REQUIRE(view.switch_payment_validate(table, *quote_1, {}) == givm::switch_payment_validation::valid);
+        executor.submitted(view.switch_active_character_with_cached_cost(library, table, givm_test::zero_random, *quote_1, {}));
         REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     }
     else REQUIRE(state == givm::execution_state::finished);

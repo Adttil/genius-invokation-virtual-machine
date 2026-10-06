@@ -14,7 +14,7 @@
 
 旧 `calculating_card_payment`、`calculating_skill_payment`、`calculating_switch_payment` 方案把 payment 放入 table：分别使用手牌、技能以及切换目标角色对应的槽位。响应通过 command 修改槽位中的费用、行动速度或 `on_pay`；后一个响应读取前一个响应执行后的最新槽位。
 
-当前主动切人采用 `cost_of_switch` 事件计算费用，把确认行动后才需提交的效果另行保存；当前手牌、技能和角色状态中没有上述 payment/`on_pay` 槽位。保留下来的 `calculating_*_payment` 类型不能当作旧存放方案仍在运行的证据，也不能与现有切人费用流程混用。
+当前主动切人采用 `cost_of_switch` 事件计算费用，把确认行动后才需提交的效果另行保存；当前手牌、技能和角色状态中没有上述 payment/`on_pay` 槽位。旧 `calculating_*_payment` 类型及其订阅声明已删除；该历史方案不能与现有费用报价混用。
 
 费用预览为什么不能立即消耗效果次数、提交为什么只执行选中行动对应的效果，集中在[费用预览与提交](payment_commit.md)。
 

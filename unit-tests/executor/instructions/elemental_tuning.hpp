@@ -1,3 +1,4 @@
+#include <optional>
 #include <cstddef>
 #include <array>
 #include <concepts>
@@ -214,6 +215,7 @@ TEST_CASE("elemental tuning shares card candidates and validates card attributes
 
 TEST_CASE("elemental tuning converts one die and resumes both broadcasts without paying cached card costs", "[elemental_tuning][compile-mode]")
 {
+    std::optional<givm::card_cost_id> quote_1;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const bool empowered = GENERATE(false, true);
     const bool nested = GENERATE(false, true);
@@ -240,7 +242,8 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
     const auto selected_card = action.card_id(0);
     if(quoted)
     {
-        CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 1);
+        quote_1 = action.calculate_card_cost(library, table, 0);
+        CHECK(action.card_cost(*quote_1).requirement.dice_requirement.any == 1);
         CHECK(table[selected_card].state().cost.dice_requirement.any == 2);
     }
     execution.submitted(action.elemental_tuning(library, table, givm_test::zero_random, 0, givm::elemental_dice::cryo));

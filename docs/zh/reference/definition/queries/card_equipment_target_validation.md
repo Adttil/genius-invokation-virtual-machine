@@ -31,4 +31,4 @@ struct card_equipment_target_validation;
 
 本查询只判断装备对象，不检查支付或其他完整用牌条件，不提交目标选择，也不返回效果入口。减费响应可通过 [`handle_context::query`](../../executor/handle_context/query.md) 按需调用；动态定义源按现有协议提供 `can_query` 和 `query`。
 
-用于费用预览时，定义组合仍须满足 [`cost_of_card`](../events/cost_of_card.md) 的目标无关约定：费用以及支付时消耗哪个实体的次数，都不能因尚未选择的目标而变化。本查询不保证合法装备对象唯一，也不检查这种兼容性。
+费用预览已经在 [`cost_of_card`](../events/cost_of_card.md) 中给出完整目标。减费响应可先确认本实体与已选目标的关系，再使用本查询检查装备适用性；费用及确认时消耗的次数可以依赖该目标。本查询不保证合法装备对象唯一。

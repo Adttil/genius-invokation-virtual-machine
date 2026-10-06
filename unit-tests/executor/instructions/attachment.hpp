@@ -373,13 +373,14 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
         const std::array<givm::card_target_id, 1> invalid_targets{ invalid };
         CHECK(action.card_targets_validate(library, table, equipment_index, invalid_targets) == givm::target_validation::invalid);
     }
-    CHECK(action.calculate_card_cost(library, table, equipment_index).requirement.dice_requirement.any == 0);
+    const auto quote_1 = action.calculate_card_cost(library, table, equipment_index, targets);
+    CHECK(action.card_cost(quote_1).requirement.dice_requirement.any == 0);
     CHECK(log.cost_responders == initial_order);
-    CHECK(action.card_payment_validate(table, equipment_index, {}) == givm::card_payment_validation::valid);
+    CHECK(action.card_payment_validate(table, quote_1, {}) == givm::card_payment_validation::valid);
     log.events.clear();
     log.responders.clear();
     log.pause_after_removal = true;
-    execution.submitted(action.play_card_with_cached_cost(library, table, zero_random, equipment_index, {}, targets));
+    execution.submitted(action.play_card_with_cached_cost(library, table, zero_random, quote_1, {}));
     REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
     CHECK(log.events == std::vector<std::string>{ "left:7" });
     CHECK_FALSE(table[old_weapon].is_valid());

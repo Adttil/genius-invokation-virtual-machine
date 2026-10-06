@@ -1,15 +1,33 @@
-[givm](../../../../reference.md) / [行动选择](../action_selection.md) / **technique_payment_validate**
+[givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **technique_payment_validate**
 
-# technique_payment_validate
+# givm::execution_view<execution_state::action_selection>::technique_payment_validate
 
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-technique_payment_validation technique_payment_validate(const table& card_table, const dice_counts& paid_dice) const noexcept(/* Release 为 true，Debug 为 false */);
+constexpr technique_payment_validation technique_payment_validate(
+    const table& card_table, technique_cost_id id, const dice_counts& paid_dice
+) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
 
-检查已经计算的特技报价。依次检查骰子费用匹配、持有骰子数量、充能标签、出战角色的充能数量；第一次失败立即返回相应枚举值。检查不提交行动，也不检查受控与目标。
+检查选中骰子是否匹配已报价费用、是否持有这些骰子，以及当前出战角色的充能类型和数量。
+
+## 参数
+
+| | |
+| --- | --- |
+| `card_table` | 当前行动发生的牌桌。 |
+| `id` | 本窗口的对应报价标识。 |
+| `paid_dice` | 按颜色和数量选择的支付骰子。 |
+
+## 返回值
+
+`technique_payment_validation` 检查结果。
+
+## 异常
+
+Debug 检查现场、候选或报价标识的有效性，并以结构化异常报告误用。费用响应抛出的异常直接传递；失败报价不能采用或在当前窗口重算。Release 不执行这些输入校验。
 
 ## 注意
 
-Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
+本操作只读取报价和牌桌，不执行费用效果或推进。Debug 提交自动执行支付检查，Release 由调用方保证输入有效。确认时付得起不表示费用效果结束后资源仍足够，实际付款采用逐色及充能饱和扣除。

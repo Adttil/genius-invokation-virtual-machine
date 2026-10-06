@@ -37,7 +37,7 @@ Debug 的 `command_input_error` 检查保留在各命令实际使用参数之前
 
 ## 费用预览
 
-费用响应同样接收 `handle_context<TEntity>&`，但必须以 `context.invoke(substack_t{}, entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个候选在一个行动窗口内只允许报价一次，费用可反复读取；Release 不保存“已报价”标记；Debug 保存报价状态并检查重复报价及未完成报价的使用。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
+费用响应同样接收 `handle_context<TEntity>&`，但必须以 `context.invoke(substack_t{}, entry, inputs...)` 提交；普通响应使用不带标记的重载。是否向子栈写入由重载在编译期选择，Debug 额外保存预期模式用于诊断，Release 不保存。费用提交只缓存入口和整段初始输入，确认后才执行。每个操作和完整目标组合在一个行动窗口内只允许报价一次，费用可反复读取；Release 不保存“已报价”标记；Debug 保存报价状态并检查重复报价及未完成报价的使用。此规则与单次响应不得重复 `invoke` 的 Debug 检查不同。
 
 报价时所有响应读取不变的 table，前一响应只通过费用事件影响后一响应。支付效果不会反馈到本次报价。缓存及复制策略见[费用预览与提交](event_dispatch/payment_commit.md)。
 

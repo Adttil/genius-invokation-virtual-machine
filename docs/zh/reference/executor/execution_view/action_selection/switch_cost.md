@@ -5,26 +5,25 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-constexpr const cost_of_switch& switch_cost(std::size_t target_index) const noexcept(/* Release 为 true，Debug 为 false */);
+const cost_of_switch& switch_cost(switch_cost_id id) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
-[`cost_of_switch`](../../../definition/events/cost_of_switch.md)
 
-取得指定角色的当前切换费用。
+读取指定报价的切换角色费用及已经确定的行动信息。
 
 ## 参数
 
 | | |
 | --- | --- |
-| `target_index` | 从零开始的切换候选索引，须小于 [`switch_target_count()`](switch_target_count.md)。 |
+| `id` | 本窗口的对应报价标识。 |
 
 ## 返回值
 
-指定候选已经完整计算的只读费用引用。
+借用的只读 `cost_of_switch` 引用。
+
+## 异常
+
+Debug 检查现场、候选或报价标识的有效性，并以结构化异常报告误用。费用响应抛出的异常直接传递；失败报价不能采用或在当前窗口重算。Release 不执行这些输入校验。
 
 ## 注意
 
-Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
-
-调用方须先为该候选完成一次 [`calculate_switch_cost`](calculate_switch_cost.md)。本操作可反复调用，只读取已计算结果，不触发费用响应。
-
-报价其他候选可能使之前取得的费用引用失效；下一次推进或重建现场也会使引用失效。需要再次读取时，通过本 view 重新取得引用。报价失败的候选不能读取、检查或采用。
+本操作不重新报价。后续报价可能扩容并使引用失效，需要时通过同一标识重新取得。原报价在复制时随行动窗口复制，已有标识可用于该副本；窗口结束后失效。

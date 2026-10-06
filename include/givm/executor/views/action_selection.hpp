@@ -3,9 +3,12 @@
 
 #include <algorithm>
 #include <array>
+#ifndef NDEBUG
+#include <atomic>
+#endif
 #include <cstddef>
-#include <cstring>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
@@ -22,35 +25,51 @@
 
 namespace givm
 {
+    template<class TCost>
+    class action_cost_id
+    {
+    public:
+        friend bool operator==(action_cost_id, action_cost_id) = default;
+
+    private:
+        friend class execution_view<execution_state::action_selection>;
+        explicit action_cost_id(std::size_t offset
+#ifndef NDEBUG
+            , std::size_t window, std::size_t quote
+#endif
+        ) noexcept : offset_{ offset }
+#ifndef NDEBUG
+            , window_{ window }, quote_{ quote }
+#endif
+        {}
+
+        std::size_t offset_;
+#ifndef NDEBUG
+        std::size_t window_;
+        std::size_t quote_;
+#endif
+    };
+
+    using switch_cost_id = action_cost_id<cost_of_switch>;
+    using card_cost_id = action_cost_id<cost_of_card>;
+    using skill_cost_id = action_cost_id<cost_of_skill>;
+    using technique_cost_id = action_cost_id<cost_of_technique>;
+
     namespace detail
     {
-        struct switch_selection
+        template<class TCost>
+        struct paid_action_selection
         {
-            stack_count_t switch_cost_index = 0;
+            std::size_t cost_offset;
             dice_counts paid_dice;
+            character_id energy_payer;
         };
 
+        using switch_selection = paid_action_selection<cost_of_switch>;
+        using card_selection = paid_action_selection<cost_of_card>;
+        using skill_selection = paid_action_selection<cost_of_skill>;
+        using technique_selection = paid_action_selection<cost_of_technique>;
         struct round_end_selection {};
-
-        struct card_selection
-        {
-            stack_count_t card_cost_index = 0;
-            std::array<card_target_id, 2> targets;
-            dice_counts paid_dice;
-        };
-
-        struct skill_selection
-        {
-            stack_count_t skill_cost_index = 0;
-            std::array<skill_target_id, 2> targets;
-            dice_counts paid_dice;
-        };
-
-        struct technique_selection
-        {
-            std::array<technique_target_id, 2> targets;
-            dice_counts paid_dice;
-        };
 
         struct elemental_tuning_selection
         {
@@ -62,7 +81,6 @@ namespace givm
             round_end_selection, switch_selection, card_selection, skill_selection, technique_selection, elemental_tuning_selection
         >;
     }
-
     enum class action_target_kind : std::uint8_t
     {
         none,
@@ -177,215 +195,133 @@ namespace givm::detail
         };
     }
 
-    inline const cost_of_switch& calculate_switch_cost(
-        const definition_library& library,
-        stack_count_t cost_index,
-        const table& card_table,
-        frame_stack& stack
-    )
-    {
-        auto frame = stack.top<
-            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-            stack_count_t, action_selection, substack_t
-        >();
-        GIVM_ASSERT(cost_index < get<1>(frame).size());
-        auto& initial_cost = get<1>(frame)[cost_index];
-        initial_cost.requirement = default_switch_cost(initial_cost.target).requirement;
+    using cost_event_types = type_list<cost_of_switch, cost_of_card, cost_of_skill, cost_of_technique>;
 
-        auto zero_random = []() -> std::uint32_t { return 0; };
-        random_fn random{ zero_random };
-        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
-        const auto row_begin = cost_index * handler_count;
-        for(stack_count_t column = 0; column < handler_count; ++column)
-        {
-            const auto initial_size = stack.size();
-            const auto handler_id = get<0>(frame)[column];
-            const auto entry = std::visit([&](auto handler) -> program_entry
-            {
-                const auto entity = card_table[handler];
-                if(entity)
-                {
-                    auto event = get<1>(frame)[cost_index];
-                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
-                    const auto entry = library[entity.definition_id()].template handle<cost_of_switch>(event, response, 0);
-                    std::memcpy(&get<1>(frame)[cost_index], &event, sizeof(event));
-                    return entry;
-                }
-                return {};
-            }, handler_id);
-            const auto index = row_begin + column;
-            const auto size = stack.size() - initial_size;
-            get<2>(frame)[index] = entry;
-            get<3>(frame)[index] = 0;
-            get<4>(frame)[index] = size;
-            if(size != 0)
-            {
-                const auto cache = get<0>(stack.top<substack_t>());
-                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
-                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
-            }
-        }
-        return get<1>(frame)[cost_index];
+    struct action_skill_candidate
+    {
+        skill_id skill;
+        skill_flags flags;
+    };
+
+    inline constexpr auto action_window_frame = frame<
+        switch_handler_id[], card_cost_handler_id[], skill_cost_handler_id[], technique_cost_handler_id[],
+        character_id[], hand_card_id[], action_skill_candidate[], attachment_id[],
+#ifndef NDEBUG
+        std::size_t, std::size_t,
+#endif
+        stack_count_t, action_selection, substack_t
+    >;
+
+    struct cached_cost_program
+    {
+        program_entry entry;
+        player_id self_player;
+        std::size_t input_offset;
+        std::size_t input_size;
+    };
+
+    struct cached_cost
+    {
+        std::size_t event_offset;
+        std::size_t programs_offset;
+        stack_count_t program_count;
+#ifndef NDEBUG
+        std::size_t previous;
+        std::size_t type;
+        std::size_t identity;
+        bool complete = false;
+#endif
+    };
+
+#ifndef NDEBUG
+    inline std::atomic<std::size_t> next_action_cache_identity{ 1 };
+#endif
+
+    inline const cached_cost& cost_cache(const frame_stack& stack, std::size_t offset) noexcept
+    {
+        return *reinterpret_cast<const cached_cost*>(stack.data() + offset);
     }
 
-    inline const cost_of_card& calculate_card_cost(
-        const definition_library& library,
-        stack_count_t cost_index,
-        const table& card_table,
-        frame_stack& stack
-    )
+    template<class TCost>
+    inline const TCost& cost_event(const frame_stack& stack, std::size_t offset) noexcept
     {
-        auto frame = stack.top<
-            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-            stack_count_t, action_selection, substack_t
-        >();
-        GIVM_ASSERT(cost_index < get<1>(frame).size());
-        auto& initial_cost = get<1>(frame)[cost_index];
-        const auto card = card_table[initial_cost.card];
-        auto zero_random = []() -> std::uint32_t { return 0; };
-        random_fn random{ zero_random };
-        initial_cost.requirement = card.state().cost;
-
-        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
-        const auto row_begin = cost_index * handler_count;
-        for(stack_count_t column = 0; column < handler_count; ++column)
-        {
-            const auto initial_size = stack.size();
-            const auto handler_id = get<0>(frame)[column];
-            const auto entry = std::visit([&](auto handler) -> program_entry
-            {
-                const auto entity = card_table[handler];
-                if(entity)
-                {
-                    auto event = get<1>(frame)[cost_index];
-                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
-                    const auto entry = library[entity.definition_id()].template handle<cost_of_card>(event, response, 0);
-                    std::memcpy(&get<1>(frame)[cost_index], &event, sizeof(event));
-                    return entry;
-                }
-                return {};
-            }, handler_id);
-            const auto index = row_begin + column;
-            const auto size = stack.size() - initial_size;
-            get<2>(frame)[index] = entry;
-            get<3>(frame)[index] = 0;
-            get<4>(frame)[index] = size;
-            if(size != 0)
-            {
-                const auto cache = get<0>(stack.top<substack_t>());
-                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
-                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
-            }
-        }
-        return get<1>(frame)[cost_index];
+        return *reinterpret_cast<const TCost*>(stack.data() + cost_cache(stack, offset).event_offset);
     }
 
-    inline const cost_of_skill& calculate_skill_cost(
-        const definition_library& library,
-        stack_count_t cost_index,
-        const table& card_table,
-        frame_stack& stack
-    )
+    template<class TTarget>
+    constexpr auto select_action_targets(std::span<const TTarget> targets) noexcept
     {
-        auto frame = stack.top<
-            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-            stack_count_t, action_selection, substack_t
-        >();
-        GIVM_ASSERT(cost_index < get<1>(frame).size());
-        auto& initial_cost = get<1>(frame)[cost_index];
-        const auto skill = card_table[initial_cost.skill];
-        auto zero_random = []() -> std::uint32_t { return 0; };
-        random_fn random{ zero_random };
-        initial_cost.requirement = library[skill.definition_id()].query(skill_initial_cost{});
-
-        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
-        const auto row_begin = cost_index * handler_count;
-        for(stack_count_t column = 0; column < handler_count; ++column)
+        std::array<TTarget, 2> result{};
+        for(std::size_t index = 0; index < std::min(targets.size(), result.size()); ++index)
         {
-            const auto initial_size = stack.size();
-            const auto handler_id = get<0>(frame)[column];
-            const auto entry = std::visit([&](auto handler) -> program_entry
-            {
-                const auto entity = card_table[handler];
-                if(entity)
-                {
-                    auto event = get<1>(frame)[cost_index];
-                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
-                    const auto entry = library[entity.definition_id()].template handle<cost_of_skill>(event, response, 0);
-                    std::memcpy(&get<1>(frame)[cost_index], &event, sizeof(event));
-                    return entry;
-                }
-                return {};
-            }, handler_id);
-            const auto index = row_begin + column;
-            const auto size = stack.size() - initial_size;
-            get<2>(frame)[index] = entry;
-            get<3>(frame)[index] = 0;
-            get<4>(frame)[index] = size;
-            if(size != 0)
-            {
-                const auto cache = get<0>(stack.top<substack_t>());
-                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
-                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
-            }
+            if(std::holds_alternative<std::monostate>(targets[index])) break;
+            result[index] = targets[index];
         }
-        return get<1>(frame)[cost_index];
+        return result;
     }
 
-    inline const cost_of_technique& calculate_technique_cost(
-        const definition_library& library,
-        const table& card_table,
-        frame_stack& stack
-    )
+    template<class TTarget>
+    constexpr std::span<const TTarget> action_targets(const std::array<TTarget, 2>& targets) noexcept
     {
-        auto frame = stack.top<
-            technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
-            skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-            card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-            switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-            stack_count_t, action_selection, substack_t
-        >();
-        GIVM_ASSERT(0 < get<1>(frame).size());
-        auto& initial_cost = get<1>(frame)[0];
-        const auto technique = card_table[initial_cost.technique];
+        const std::size_t size = std::holds_alternative<std::monostate>(targets[0]) ? 0
+            : std::holds_alternative<std::monostate>(targets[1]) ? 1 : 2;
+        return std::span<const TTarget>{ targets }.first(size);
+    }
+
+    template<class TCost>
+    inline std::size_t calculate_cost(const definition_library& library, const table& card_table,
+        frame_stack& stack, TCost event)
+    {
+        constexpr auto type = cost_event_types::index_of<TCost>();
+        const auto handler_count = get<type>(get<0>(stack.top<action_window_frame>())).size();
+        auto cache = get<0>(stack.top<substack_t>());
+        auto [programs, stored_event, record] = cache.push(dynamic_array<cached_cost_program>(handler_count), event,
+            cached_cost{});
+        const auto offset = static_cast<std::size_t>(reinterpret_cast<unsigned char*>(&record) - stack.data());
+        record.event_offset = reinterpret_cast<unsigned char*>(&stored_event) - stack.data();
+        record.programs_offset = handler_count == 0 ? 0
+            : reinterpret_cast<unsigned char*>(programs.data()) - stack.data();
+        record.program_count = handler_count;
+#ifndef NDEBUG
+        auto window = get<0>(stack.top<action_window_frame>());
+        record.previous = get<8>(window);
+        record.type = type;
+        record.identity = next_action_cache_identity.fetch_add(1, std::memory_order_relaxed);
+        get<8>(window) = offset;
+#endif
+        const auto programs_offset = record.programs_offset;
+        const auto event_offset = record.event_offset;
         auto zero_random = []() -> std::uint32_t { return 0; };
         random_fn random{ zero_random };
-        initial_cost.requirement = library[technique.definition_id()].query(technique_initial_cost{});
-
-        const auto handler_count = static_cast<stack_count_t>(get<0>(frame).size());
-        for(stack_count_t column = 0; column < handler_count; ++column)
+        for(stack_count_t index = 0; index < handler_count; ++index)
         {
+            const auto handler = get<type>(get<0>(stack.top<action_window_frame>()))[index];
             const auto initial_size = stack.size();
-            const auto handler_id = get<0>(frame)[column];
-            const auto entry = std::visit([&](auto handler) -> program_entry
+            player_id self{};
+            const auto entry = std::visit([&](auto id) -> program_entry
             {
-                const auto entity = card_table[handler];
-                if(entity)
-                {
-                    auto event = get<1>(frame)[0];
-                    auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
-                    const auto entry = library[entity.definition_id()].template handle<cost_of_technique>(event, response, 0);
-                    std::memcpy(&get<1>(frame)[0], &event, sizeof(event));
-                    return entry;
-                }
-                return {};
-            }, handler_id);
-            const auto index = column;
+                const auto entity = card_table[id];
+                self = entity.player().id();
+                if(not entity) return {};
+                auto response = execution_context::make_handle_context<true>(stack, library, entity, random);
+                return library[entity.definition_id()].template handle<TCost>(event, response, 0);
+            }, handler);
             const auto size = stack.size() - initial_size;
-            get<2>(frame)[index] = entry;
-            get<3>(frame)[index] = 0;
-            get<4>(frame)[index] = size;
+            std::size_t input_offset = 0;
             if(size != 0)
             {
-                const auto cache = get<0>(stack.top<substack_t>());
-                const auto& tail = get<0>(cache.top<unsigned char[max_alignment]>());
-                get<3>(frame)[index] = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
+                const auto current_cache = get<0>(stack.top<substack_t>());
+                const auto& tail = get<0>(current_cache.top<unsigned char[max_alignment]>());
+                input_offset = static_cast<std::size_t>(tail + max_alignment - stack.data()) - size;
             }
+            auto* current_programs = reinterpret_cast<cached_cost_program*>(stack.data() + programs_offset);
+            std::construct_at(current_programs + index, cached_cost_program{ entry, self, input_offset, size });
         }
-        return get<1>(frame)[0];
+        reinterpret_cast<TCost*>(stack.data() + event_offset)->requirement = event.requirement;
+#ifndef NDEBUG
+        reinterpret_cast<cached_cost*>(stack.data() + offset)->complete = true;
+#endif
+        return offset;
     }
 
 }
@@ -447,7 +383,7 @@ namespace givm
 
     struct action_cost_cache_error
     {
-        enum class reason : std::uint8_t { not_calculated, already_calculated, incomplete_calculation };
+        enum class reason : std::uint8_t { expired_window, already_calculated, incomplete_calculation };
         std::string action;
         std::size_t index;
         reason cause;
@@ -473,8 +409,8 @@ namespace givm
 
     inline std::string error_string(const action_cost_cache_error& error)
     {
-        const auto description = error.cause == action_cost_cache_error::reason::not_calculated
-            ? "has not been calculated" : error.cause == action_cost_cache_error::reason::already_calculated
+        const auto description = error.cause == action_cost_cache_error::reason::expired_window
+            ? "belongs to another action window" : error.cause == action_cost_cache_error::reason::already_calculated
                 ? "has already been calculated" : "did not finish calculating";
         return error.action + " cost at index " + std::to_string(error.index) + " " + description + ".";
     }
@@ -557,7 +493,13 @@ namespace givm
     template<>
     class execution_view<execution_state::action_selection>
     {
+        constexpr auto window() const noexcept
+        {
+            return get<0>(std::as_const(executor_->context_.stack()).top<detail::action_window_frame>());
+        }
+
     public:
+
         bool is_controlled(const definition_library& library, const table& card_table) const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
@@ -573,64 +515,102 @@ namespace givm
 #ifndef NDEBUG
             validate_view();
 #endif
-
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_switch[],
-                program_entry[], std::size_t[], std::size_t[],
-                stack_count_t,
-                detail::action_selection, substack_t
-            >()).size();
+            return get<4>(window()).size();
         }
 
-        constexpr const cost_of_switch& switch_cost(std::size_t target_index) const noexcept(detail::view_checks_disabled)
+        constexpr character_id switch_target(std::size_t index) const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+            validate_switch_index(index);
+#endif
+            return get<4>(window())[index];
+        }
+
+        constexpr std::size_t card_count() const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+            return get<5>(window()).size();
+        }
+
+        constexpr hand_card_id card_id(std::size_t index) const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+            validate_card_index(index);
+#endif
+            return get<5>(window())[index];
+        }
+
+        constexpr std::size_t skill_count() const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+            return get<6>(window()).size();
+        }
+
+        constexpr givm::skill_id skill_id(std::size_t index) const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+            validate_skill_index(index);
+#endif
+            return get<6>(window())[index].skill;
+        }
+
+        constexpr bool has_technique() const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+            return not get<7>(window()).empty();
+        }
+
+        constexpr givm::attachment_id technique_id() const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+            validate_technique_index(0);
+#endif
+            return get<7>(window())[0];
+        }
+
+        switch_cost_id calculate_switch_cost(const definition_library& library, const table& card_table,
+            std::size_t target_index) const
         {
 #ifndef NDEBUG
             validate_view();
             validate_switch_index(target_index);
-            validate_cost_cache("switch", target_index, switch_cache_offset() + target_index);
 #endif
-            return switch_cost_record(target_index);
+            auto event = detail::default_switch_cost(switch_target(target_index));
+#ifndef NDEBUG
+            begin_cost_calculation("switch", target_index, event);
+#endif
+            const auto offset = detail::calculate_cost(library, card_table, executor_->context_.stack(), event);
+            return switch_cost_id{ offset
+#ifndef NDEBUG
+                , get<9>(window()), detail::cost_cache(executor_->context_.stack(), offset).identity
+#endif
+            };
         }
 
-        constexpr character_id switch_target(std::size_t target_index) const noexcept(detail::view_checks_disabled)
+        const cost_of_switch& switch_cost(switch_cost_id id) const noexcept(detail::view_checks_disabled)
         {
-#ifndef NDEBUG
-            validate_view();
-            validate_switch_index(target_index);
-#endif
-
-            return switch_cost_record(target_index).target;
-        }
-
-        const cost_of_switch& calculate_switch_cost(
-            const definition_library& library, const table& card_table,
-            std::size_t target_index
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_switch_index(target_index);
-            begin_cost_calculation("switch", target_index, switch_cache_offset() + target_index);
-#endif
-
-            const auto& result = detail::calculate_switch_cost(
-                library, target_index, card_table, executor_->context_.stack()
-            );
-#ifndef NDEBUG
-            debug_cost_states()[switch_cache_offset() + target_index] = 2;
-#endif
-            return result;
+            return cached_cost("switch", id);
         }
 
         constexpr switch_payment_validation switch_payment_validate(
-            const table& card_table, std::size_t target_index, const dice_counts& paid_dice
+            const table& card_table, switch_cost_id id, const dice_counts& paid_dice
         ) const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
             validate_view();
 #endif
 
-            const auto& cost = switch_cost(target_index);
+            const auto& cost = switch_cost(id);
             if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
             {
                 return switch_payment_validation::requirement_mismatch;
@@ -654,20 +634,18 @@ namespace givm
         }
 
         template<class TRandom>
-        execution_state switch_active_character_with_cached_cost(
-            const definition_library& library, table& card_table, TRandom& random_source,
-            std::size_t target_index, const dice_counts& paid_dice) const
+        execution_state switch_active_character_with_cached_cost(const definition_library& library, table& card_table,
+            TRandom& random_source, switch_cost_id quote, const dice_counts& paid_dice) const
         {
 #ifndef NDEBUG
             validate_view();
-            const auto payment = switch_payment_validate(card_table, target_index, paid_dice);
+            const auto payment = switch_payment_validate(card_table, quote, paid_dice);
             if(payment != switch_payment_validation::valid)
                 throw view_input_error{ "switch_active_character_with_cached_cost", payment };
 #endif
-
-            // Assign the complete variant through its trivial assignment operator.
+            const auto payer = *card_table[card_table.state().active_player].state().active_character;
             get<0>(executor_->context_.stack().top<detail::action_selection, substack_t>()) = detail::action_selection{
-                detail::switch_selection{ .switch_cost_index = target_index, .paid_dice = paid_dice }
+                detail::switch_selection{ .cost_offset = quote.offset_, .paid_dice = paid_dice, .energy_payer = payer }
             };
             return executor_->advance(library, card_table, random_source);
         }
@@ -681,70 +659,49 @@ namespace givm
 #ifndef NDEBUG
             validate_view();
 #endif
-            calculate_switch_cost(library, card_table, target_index);
-            return switch_active_character_with_cached_cost(library, card_table, random_source, target_index, paid_dice);
+            const auto quote = calculate_switch_cost(library, card_table, target_index);
+            return switch_active_character_with_cached_cost(library, card_table, random_source, quote, paid_dice);
         }
 
-        constexpr std::size_t card_count() const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-                detail::switch_handler_id[],
-                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-                stack_count_t, detail::action_selection, substack_t
-            >()).size();
-        }
-
-        constexpr const cost_of_card& card_cost(std::size_t card_index) const noexcept(detail::view_checks_disabled)
+        card_cost_id calculate_card_cost(const definition_library& library, const table& card_table,
+            std::size_t card_index, std::span<const card_target_id> targets = {}) const
         {
 #ifndef NDEBUG
             validate_view();
             validate_card_index(card_index);
-            validate_cost_cache("card", card_index, card_cache_offset() + card_index);
+            validate_targets("calculate_card_cost", targets, [&](auto prefix)
+            {
+                return card_targets_validate(library, card_table, card_index, prefix);
+            });
 #endif
-            return card_cost_record(card_index);
+            const auto id = card_id(card_index);
+            const cost_of_card event{ .card = id,
+                .targets = detail::select_action_targets(targets), .requirement = card_table[id].state().cost };
+#ifndef NDEBUG
+            begin_cost_calculation("card", card_index, event);
+#endif
+            const auto offset = detail::calculate_cost(library, card_table, executor_->context_.stack(), event);
+            return card_cost_id{ offset
+#ifndef NDEBUG
+                , get<9>(window()), detail::cost_cache(executor_->context_.stack(), offset).identity
+#endif
+            };
         }
 
-        constexpr hand_card_id card_id(std::size_t card_index) const noexcept(detail::view_checks_disabled)
+        const cost_of_card& card_cost(card_cost_id id) const noexcept(detail::view_checks_disabled)
         {
-#ifndef NDEBUG
-            validate_view();
-            validate_card_index(card_index);
-#endif
-
-            return card_cost_record(card_index).card;
-        }
-
-        const cost_of_card& calculate_card_cost(
-            const definition_library& library, const table& card_table, std::size_t card_index
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_card_index(card_index);
-            begin_cost_calculation("card", card_index, card_cache_offset() + card_index);
-#endif
-
-            const auto& result = detail::calculate_card_cost(library, card_index, card_table, executor_->context_.stack());
-#ifndef NDEBUG
-            debug_cost_states()[card_cache_offset() + card_index] = 2;
-#endif
-            return result;
+            return cached_cost("card", id);
         }
 
         constexpr card_payment_validation card_payment_validate(
-            const table& card_table, std::size_t card_index, const dice_counts& paid_dice
+            const table& card_table, card_cost_id id, const dice_counts& paid_dice
         ) const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
             validate_view();
 #endif
 
-            const auto& cost = card_cost(card_index);
+            const auto& cost = card_cost(id);
             if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
             {
                 return card_payment_validation::requirement_mismatch;
@@ -779,7 +736,7 @@ namespace givm
             const auto entity = card_table[id];
             const auto definition = library[entity.definition_id()];
             std::array<card_target_id, 2> selected_targets{};
-            const auto target_count = std::min(targets.size(), selected_targets.size());
+            const auto target_count = detail::action_targets(detail::select_action_targets(targets)).size();
             for(std::size_t index = 0; index < target_count; ++index)
             {
                 selected_targets[index] = targets[index];
@@ -795,32 +752,18 @@ namespace givm
         }
 
         template<class TRandom>
-        execution_state play_card_with_cached_cost(
-            const definition_library& library, table& card_table, TRandom& random_source,
-            std::size_t card_index, const dice_counts& paid_dice, std::span<const card_target_id> targets = {}
-        ) const
+        execution_state play_card_with_cached_cost(const definition_library& library, table& card_table,
+            TRandom& random_source, card_cost_id quote, const dice_counts& paid_dice) const
         {
 #ifndef NDEBUG
             validate_view();
-            const auto payment = card_payment_validate(card_table, card_index, paid_dice);
+            const auto payment = card_payment_validate(card_table, quote, paid_dice);
             if(payment != card_payment_validation::valid)
                 throw view_input_error{ "play_card_with_cached_cost", payment };
-            validate_targets("play_card_with_cached_cost", targets, [&](auto prefix)
-            {
-                return card_targets_validate(library, card_table, card_index, prefix);
-            });
 #endif
-
-            std::array<card_target_id, 2> selected_targets{};
-            const auto target_count = std::min(targets.size(), selected_targets.size());
-            for(std::size_t index = 0; index < target_count; ++index)
-            {
-                selected_targets[index] = targets[index];
-            }
+            const auto payer = *card_table[card_table.state().active_player].state().active_character;
             get<0>(executor_->context_.stack().top<detail::action_selection, substack_t>()) = detail::action_selection{
-                detail::card_selection{
-                    .card_cost_index = card_index, .targets = selected_targets, .paid_dice = paid_dice
-                }
+                detail::card_selection{ .cost_offset = quote.offset_, .paid_dice = paid_dice, .energy_payer = payer }
             };
             return executor_->advance(library, card_table, random_source);
         }
@@ -834,8 +777,248 @@ namespace givm
 #ifndef NDEBUG
             validate_view();
 #endif
-            calculate_card_cost(library, card_table, card_index);
-            return play_card_with_cached_cost(library, card_table, random_source, card_index, paid_dice, targets);
+            const auto quote = calculate_card_cost(library, card_table, card_index, targets);
+            return play_card_with_cached_cost(library, card_table, random_source, quote, paid_dice);
+        }
+
+        skill_cost_id calculate_skill_cost(const definition_library& library, const table& card_table,
+            std::size_t skill_index, std::span<const skill_target_id> targets = {}) const
+        {
+#ifndef NDEBUG
+            validate_view();
+            validate_skill_index(skill_index);
+            validate_targets("calculate_skill_cost", targets, [&](auto prefix)
+            {
+                return skill_targets_validate(library, card_table, skill_index, prefix);
+            });
+#endif
+            const auto id = skill_id(skill_index);
+            const cost_of_skill event{ .skill = id, .flags = get<6>(window())[skill_index].flags,
+                .targets = detail::select_action_targets(targets), .requirement = library[card_table[id].definition_id()].query(skill_initial_cost{}) };
+#ifndef NDEBUG
+            begin_cost_calculation("skill", skill_index, event);
+#endif
+            const auto offset = detail::calculate_cost(library, card_table, executor_->context_.stack(), event);
+            return skill_cost_id{ offset
+#ifndef NDEBUG
+                , get<9>(window()), detail::cost_cache(executor_->context_.stack(), offset).identity
+#endif
+            };
+        }
+
+        const cost_of_skill& skill_cost(skill_cost_id id) const noexcept(detail::view_checks_disabled)
+        {
+            return cached_cost("skill", id);
+        }
+
+        constexpr skill_payment_validation skill_payment_validate(
+            const table& card_table, skill_cost_id id, const dice_counts& paid_dice
+        ) const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+
+            const auto& cost = skill_cost(id);
+            if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
+            {
+                return skill_payment_validation::requirement_mismatch;
+            }
+            if(not card_table[cost.skill.character_id.player_id].state().dice.contains(paid_dice))
+            {
+                return skill_payment_validation::insufficient_dice;
+            }
+            const auto active = *card_table[cost.skill.character_id.player_id].state().active_character;
+            const auto& state = card_table[active].state();
+            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
+            {
+                return skill_payment_validation::energy_tag_mismatch;
+            }
+            if(state.energy < cost.requirement.energy)
+            {
+                return skill_payment_validation::insufficient_energy;
+            }
+            return skill_payment_validation::valid;
+        }
+
+        target_validation skill_targets_validate(
+            const definition_library& library, const table& card_table,
+            std::size_t skill_index, std::span<const skill_target_id> targets = {}
+        ) const
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+
+            const auto id = skill_id(skill_index);
+            const auto entity = card_table[id];
+            const auto definition = library[entity.definition_id()];
+            std::array<skill_target_id, 2> selected_targets{};
+            const auto target_count = detail::action_targets(detail::select_action_targets(targets)).size();
+            for(std::size_t index = 0; index < target_count; ++index)
+            {
+                selected_targets[index] = targets[index];
+            }
+#ifndef NDEBUG
+            for(std::size_t index = 0; index < target_count; ++index)
+                detail::debug_validate_entity(card_table, selected_targets[index], "skill_targets_validate", "targets");
+#endif
+            return definition.query(skill_target_validation{
+                .skill = entity, .table = card_table, .library = library,
+                .targets = selected_targets, .target_count = target_count
+            });
+        }
+
+        template<class TRandom>
+        execution_state use_skill_with_cached_cost(const definition_library& library, table& card_table,
+            TRandom& random_source, skill_cost_id quote, const dice_counts& paid_dice) const
+        {
+#ifndef NDEBUG
+            validate_view();
+            const auto payment = skill_payment_validate(card_table, quote, paid_dice);
+            if(payment != skill_payment_validation::valid)
+                throw view_input_error{ "use_skill_with_cached_cost", payment };
+            if(is_controlled(library, card_table))
+                throw view_input_error{ "use_skill_with_cached_cost", action_unavailable::controlled };
+#endif
+            const auto payer = *card_table[card_table.state().active_player].state().active_character;
+            get<0>(executor_->context_.stack().top<detail::action_selection, substack_t>()) = detail::action_selection{
+                detail::skill_selection{ .cost_offset = quote.offset_, .paid_dice = paid_dice, .energy_payer = payer }
+            };
+            return executor_->advance(library, card_table, random_source);
+        }
+
+        template<class TRandom>
+        execution_state use_skill(
+            const definition_library& library, table& card_table, TRandom& random_source,
+            std::size_t skill_index, const dice_counts& paid_dice, std::span<const skill_target_id> targets = {}
+        ) const
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+            const auto quote = calculate_skill_cost(library, card_table, skill_index, targets);
+            return use_skill_with_cached_cost(library, card_table, random_source, quote, paid_dice);
+        }
+
+        technique_cost_id calculate_technique_cost(const definition_library& library, const table& card_table,
+            std::span<const technique_target_id> targets = {}) const
+        {
+#ifndef NDEBUG
+            validate_view();
+            validate_technique_index(0);
+            validate_targets("calculate_technique_cost", targets, [&](auto prefix)
+            {
+                return technique_targets_validate(library, card_table, prefix);
+            });
+#endif
+            const auto id = technique_id();
+            const cost_of_technique event{ .technique = id,
+                .targets = detail::select_action_targets(targets), .requirement = library[card_table[id].definition_id()].query(technique_initial_cost{}) };
+#ifndef NDEBUG
+            begin_cost_calculation("technique", 0, event);
+#endif
+            const auto offset = detail::calculate_cost(library, card_table, executor_->context_.stack(), event);
+            return technique_cost_id{ offset
+#ifndef NDEBUG
+                , get<9>(window()), detail::cost_cache(executor_->context_.stack(), offset).identity
+#endif
+            };
+        }
+
+        const cost_of_technique& technique_cost(technique_cost_id id) const noexcept(detail::view_checks_disabled)
+        {
+            return cached_cost("technique", id);
+        }
+
+        constexpr technique_payment_validation technique_payment_validate(
+            const table& card_table, technique_cost_id id, const dice_counts& paid_dice
+        ) const noexcept(detail::view_checks_disabled)
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+
+            const auto& cost = technique_cost(id);
+            if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
+            {
+                return technique_payment_validation::requirement_mismatch;
+            }
+            if(not card_table[cost.technique.character_id.player_id].state().dice.contains(paid_dice))
+            {
+                return technique_payment_validation::insufficient_dice;
+            }
+            const auto active = *card_table[cost.technique.character_id.player_id].state().active_character;
+            const auto& state = card_table[active].state();
+            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
+            {
+                return technique_payment_validation::energy_tag_mismatch;
+            }
+            if(state.energy < cost.requirement.energy)
+            {
+                return technique_payment_validation::insufficient_energy;
+            }
+            return technique_payment_validation::valid;
+        }
+
+        target_validation technique_targets_validate(
+            const definition_library& library, const table& card_table,
+            std::span<const technique_target_id> targets = {}
+        ) const
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+
+            const auto id = technique_id();
+            const auto entity = card_table[id];
+            const auto definition = library[entity.definition_id()];
+            std::array<technique_target_id, 2> selected_targets{};
+            const auto target_count = detail::action_targets(detail::select_action_targets(targets)).size();
+            for(std::size_t index = 0; index < target_count; ++index)
+            {
+                selected_targets[index] = targets[index];
+            }
+#ifndef NDEBUG
+            for(std::size_t index = 0; index < target_count; ++index)
+                detail::debug_validate_entity(card_table, selected_targets[index], "technique_targets_validate", "targets");
+#endif
+            return definition.query(technique_target_validation{
+                .technique = entity, .table = card_table, .library = library,
+                .targets = selected_targets, .target_count = target_count
+            });
+        }
+
+        template<class TRandom>
+        execution_state use_technique_with_cached_cost(const definition_library& library, table& card_table,
+            TRandom& random_source, technique_cost_id quote, const dice_counts& paid_dice) const
+        {
+#ifndef NDEBUG
+            validate_view();
+            const auto payment = technique_payment_validate(card_table, quote, paid_dice);
+            if(payment != technique_payment_validation::valid)
+                throw view_input_error{ "use_technique_with_cached_cost", payment };
+            if(is_controlled(library, card_table))
+                throw view_input_error{ "use_technique_with_cached_cost", action_unavailable::controlled };
+#endif
+            const auto payer = *card_table[card_table.state().active_player].state().active_character;
+            get<0>(executor_->context_.stack().top<detail::action_selection, substack_t>()) = detail::action_selection{
+                detail::technique_selection{ .cost_offset = quote.offset_, .paid_dice = paid_dice, .energy_payer = payer }
+            };
+            return executor_->advance(library, card_table, random_source);
+        }
+
+        template<class TRandom>
+        execution_state use_technique(
+            const definition_library& library, table& card_table, TRandom& random_source,
+            const dice_counts& paid_dice, std::span<const technique_target_id> targets = {}
+        ) const
+        {
+#ifndef NDEBUG
+            validate_view();
+#endif
+            const auto quote = calculate_technique_cost(library, card_table, targets);
+            return use_technique_with_cached_cost(library, card_table, random_source, quote, paid_dice);
         }
 
         constexpr bool elemental_tuning_card_validate(const table& card_table, std::size_t card_index) const noexcept(detail::view_checks_disabled)
@@ -901,319 +1084,6 @@ namespace givm
             return executor_->advance(library, card_table, random_source);
         }
 
-        constexpr std::size_t skill_count() const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-                detail::switch_handler_id[],
-                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-                stack_count_t, detail::action_selection, substack_t
-            >()).size();
-        }
-
-        constexpr const cost_of_skill& skill_cost(std::size_t skill_index) const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_skill_index(skill_index);
-            validate_cost_cache("skill", skill_index, skill_cache_offset() + skill_index);
-#endif
-            return skill_cost_record(skill_index);
-        }
-
-        constexpr givm::skill_id skill_id(std::size_t skill_index) const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_skill_index(skill_index);
-#endif
-
-            return skill_cost_record(skill_index).skill;
-        }
-
-        const cost_of_skill& calculate_skill_cost(
-            const definition_library& library, const table& card_table, std::size_t skill_index
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_skill_index(skill_index);
-            begin_cost_calculation("skill", skill_index, skill_cache_offset() + skill_index);
-#endif
-
-            const auto& result = detail::calculate_skill_cost(library, skill_index, card_table, executor_->context_.stack());
-#ifndef NDEBUG
-            debug_cost_states()[skill_cache_offset() + skill_index] = 2;
-#endif
-            return result;
-        }
-
-        constexpr skill_payment_validation skill_payment_validate(
-            const table& card_table, std::size_t skill_index, const dice_counts& paid_dice
-        ) const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-
-            const auto& cost = skill_cost(skill_index);
-            if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
-            {
-                return skill_payment_validation::requirement_mismatch;
-            }
-            if(not card_table[cost.skill.character_id.player_id].state().dice.contains(paid_dice))
-            {
-                return skill_payment_validation::insufficient_dice;
-            }
-            const auto active = *card_table[cost.skill.character_id.player_id].state().active_character;
-            const auto& state = card_table[active].state();
-            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
-            {
-                return skill_payment_validation::energy_tag_mismatch;
-            }
-            if(state.energy < cost.requirement.energy)
-            {
-                return skill_payment_validation::insufficient_energy;
-            }
-            return skill_payment_validation::valid;
-        }
-
-        target_validation skill_targets_validate(
-            const definition_library& library, const table& card_table,
-            std::size_t skill_index, std::span<const skill_target_id> targets = {}
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-
-            const auto id = skill_id(skill_index);
-            const auto entity = card_table[id];
-            const auto definition = library[entity.definition_id()];
-            std::array<skill_target_id, 2> selected_targets{};
-            const auto target_count = std::min(targets.size(), selected_targets.size());
-            for(std::size_t index = 0; index < target_count; ++index)
-            {
-                selected_targets[index] = targets[index];
-            }
-#ifndef NDEBUG
-            for(std::size_t index = 0; index < target_count; ++index)
-                detail::debug_validate_entity(card_table, selected_targets[index], "skill_targets_validate", "targets");
-#endif
-            return definition.query(skill_target_validation{
-                .skill = entity, .table = card_table, .library = library,
-                .targets = selected_targets, .target_count = target_count
-            });
-        }
-
-        template<class TRandom>
-        execution_state use_skill_with_cached_cost(
-            const definition_library& library, table& card_table, TRandom& random_source,
-            std::size_t skill_index, const dice_counts& paid_dice, std::span<const skill_target_id> targets = {}
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-            const auto payment = skill_payment_validate(card_table, skill_index, paid_dice);
-            if(payment != skill_payment_validation::valid)
-                throw view_input_error{ "use_skill_with_cached_cost", payment };
-            if(is_controlled(library, card_table))
-                throw view_input_error{ "use_skill_with_cached_cost", action_unavailable::controlled };
-            validate_targets("use_skill_with_cached_cost", targets, [&](auto prefix)
-            {
-                return skill_targets_validate(library, card_table, skill_index, prefix);
-            });
-#endif
-
-            std::array<skill_target_id, 2> selected_targets{};
-            const auto target_count = std::min(targets.size(), selected_targets.size());
-            for(std::size_t index = 0; index < target_count; ++index)
-            {
-                selected_targets[index] = targets[index];
-            }
-            get<0>(executor_->context_.stack().top<detail::action_selection, substack_t>()) = detail::action_selection{
-                detail::skill_selection{
-                    .skill_cost_index = skill_index, .targets = selected_targets, .paid_dice = paid_dice
-                }
-            };
-            return executor_->advance(library, card_table, random_source);
-        }
-
-        template<class TRandom>
-        execution_state use_skill(
-            const definition_library& library, table& card_table, TRandom& random_source,
-            std::size_t skill_index, const dice_counts& paid_dice, std::span<const skill_target_id> targets = {}
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-            calculate_skill_cost(library, card_table, skill_index);
-            return use_skill_with_cached_cost(library, card_table, random_source, skill_index, paid_dice, targets);
-        }
-
-        constexpr bool has_technique() const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
-                detail::skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-                detail::switch_handler_id[],
-                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-                stack_count_t, detail::action_selection, substack_t
-            >()).size() != 0;
-        }
-
-        constexpr const cost_of_technique& technique_cost() const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_technique_index(0);
-            validate_cost_cache("technique", 0, technique_cache_offset() + 0);
-#endif
-            return technique_cost_record();
-        }
-
-        constexpr givm::attachment_id technique_id() const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_technique_index(0);
-#endif
-
-            return technique_cost_record().technique;
-        }
-
-        const cost_of_technique& calculate_technique_cost(
-            const definition_library& library, const table& card_table
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-            validate_technique_index(0);
-            begin_cost_calculation("technique", 0, technique_cache_offset() + 0);
-#endif
-
-            const auto& result = detail::calculate_technique_cost(library, card_table, executor_->context_.stack());
-#ifndef NDEBUG
-            debug_cost_states()[technique_cache_offset() + 0] = 2;
-#endif
-            return result;
-        }
-
-        constexpr technique_payment_validation technique_payment_validate(
-            const table& card_table, const dice_counts& paid_dice
-        ) const noexcept(detail::view_checks_disabled)
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-
-            const auto& cost = technique_cost();
-            if(not payment_matches(cost.requirement.dice_requirement, paid_dice))
-            {
-                return technique_payment_validation::requirement_mismatch;
-            }
-            if(not card_table[cost.technique.character_id.player_id].state().dice.contains(paid_dice))
-            {
-                return technique_payment_validation::insufficient_dice;
-            }
-            const auto active = *card_table[cost.technique.character_id.player_id].state().active_character;
-            const auto& state = card_table[active].state();
-            if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
-            {
-                return technique_payment_validation::energy_tag_mismatch;
-            }
-            if(state.energy < cost.requirement.energy)
-            {
-                return technique_payment_validation::insufficient_energy;
-            }
-            return technique_payment_validation::valid;
-        }
-
-        target_validation technique_targets_validate(
-            const definition_library& library, const table& card_table,
-            std::span<const technique_target_id> targets = {}
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-
-            const auto id = technique_id();
-            const auto entity = card_table[id];
-            const auto definition = library[entity.definition_id()];
-            std::array<technique_target_id, 2> selected_targets{};
-            const auto target_count = std::min(targets.size(), selected_targets.size());
-            for(std::size_t index = 0; index < target_count; ++index)
-            {
-                selected_targets[index] = targets[index];
-            }
-#ifndef NDEBUG
-            for(std::size_t index = 0; index < target_count; ++index)
-                detail::debug_validate_entity(card_table, selected_targets[index], "technique_targets_validate", "targets");
-#endif
-            return definition.query(technique_target_validation{
-                .technique = entity, .table = card_table, .library = library,
-                .targets = selected_targets, .target_count = target_count
-            });
-        }
-
-        template<class TRandom>
-        execution_state use_technique_with_cached_cost(
-            const definition_library& library, table& card_table, TRandom& random_source,
-            const dice_counts& paid_dice, std::span<const technique_target_id> targets = {}
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-            const auto payment = technique_payment_validate(card_table, paid_dice);
-            if(payment != technique_payment_validation::valid)
-                throw view_input_error{ "use_technique_with_cached_cost", payment };
-            if(is_controlled(library, card_table))
-                throw view_input_error{ "use_technique_with_cached_cost", action_unavailable::controlled };
-            validate_targets("use_technique_with_cached_cost", targets, [&](auto prefix)
-            {
-                return technique_targets_validate(library, card_table, prefix);
-            });
-#endif
-
-            std::array<technique_target_id, 2> selected_targets{};
-            const auto target_count = std::min(targets.size(), selected_targets.size());
-            for(std::size_t index = 0; index < target_count; ++index)
-            {
-                selected_targets[index] = targets[index];
-            }
-            get<0>(executor_->context_.stack().top<detail::action_selection, substack_t>()) = detail::action_selection{
-                detail::technique_selection{
-                    .targets = selected_targets, .paid_dice = paid_dice
-                }
-            };
-            return executor_->advance(library, card_table, random_source);
-        }
-
-        template<class TRandom>
-        execution_state use_technique(
-            const definition_library& library, table& card_table, TRandom& random_source,
-            const dice_counts& paid_dice, std::span<const technique_target_id> targets = {}
-        ) const
-        {
-#ifndef NDEBUG
-            validate_view();
-#endif
-            calculate_technique_cost(library, card_table);
-            return use_technique_with_cached_cost(library, card_table, random_source, paid_dice, targets);
-        }
-
         template<class TRandom>
         execution_state declare_round_end(
             const definition_library& library, table& card_table, TRandom& random_source
@@ -1243,48 +1113,28 @@ namespace givm
         std::size_t version_;
 #endif
 
-
-        constexpr const cost_of_switch& switch_cost_record(std::size_t target_index) const noexcept
+        template<class TCost>
+        const TCost& cached_cost(std::string_view action, action_cost_id<TCost> id) const noexcept(detail::view_checks_disabled)
         {
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_switch[],
-                program_entry[], std::size_t[], std::size_t[],
-                stack_count_t,
-                detail::action_selection, substack_t
-            >())[target_index];
-        }
-
-        constexpr const cost_of_card& card_cost_record(std::size_t card_index) const noexcept
-        {
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-                detail::switch_handler_id[],
-                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-                stack_count_t, detail::action_selection, substack_t
-            >())[card_index];
-        }
-
-        constexpr const cost_of_skill& skill_cost_record(std::size_t skill_index) const noexcept
-        {
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-                detail::switch_handler_id[],
-                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-                stack_count_t, detail::action_selection, substack_t
-            >())[skill_index];
-        }
-
-        constexpr const cost_of_technique& technique_cost_record() const noexcept
-        {
-            return get<0>(std::as_const(executor_->context_.stack()).top<
-                cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
-                detail::skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-                detail::switch_handler_id[],
-                cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-                stack_count_t, detail::action_selection, substack_t
-            >())[0];
+#ifndef NDEBUG
+            validate_view();
+            const auto& stack = executor_->context_.stack();
+            const auto cache_end = stack.size() - detail::substack_tail_size;
+            const auto cache_begin = cache_end - get<0>(stack.top<substack_t>()).size();
+            if(id.window_ != get<9>(window()) || id.offset_ < cache_begin
+                || id.offset_ > cache_end || cache_end - id.offset_ < sizeof(detail::cached_cost))
+                throw view_input_error{ "cached_cost", action_cost_cache_error{
+                    std::string{ action }, id.offset_, action_cost_cache_error::reason::expired_window } };
+            // Copies retain existing quotes, while later appends may reuse the same offset in different branches.
+            const auto& record = detail::cost_cache(executor_->context_.stack(), id.offset_);
+            if(id.quote_ != record.identity)
+                throw view_input_error{ "cached_cost", action_cost_cache_error{
+                    std::string{ action }, id.offset_, action_cost_cache_error::reason::expired_window } };
+            if(not record.complete)
+                throw view_input_error{ "cached_cost", action_cost_cache_error{
+                    std::string{ action }, id.offset_, action_cost_cache_error::reason::incomplete_calculation } };
+#endif
+            return detail::cost_event<TCost>(executor_->context_.stack(), id.offset_);
         }
 
 #ifndef NDEBUG
@@ -1293,22 +1143,6 @@ namespace givm
             executor_->template validate_view<execution_state::action_selection>(version_);
         }
 
-        std::span<std::uint8_t> debug_cost_states() const
-        {
-            return get<0>(executor_->context_.stack().top<
-                std::uint8_t[],
-                detail::technique_cost_handler_id[], cost_of_technique[], program_entry[], std::size_t[], std::size_t[],
-                detail::skill_cost_handler_id[], cost_of_skill[], program_entry[], std::size_t[], std::size_t[],
-                detail::card_cost_handler_id[], cost_of_card[], program_entry[], std::size_t[], std::size_t[],
-                detail::switch_handler_id[], cost_of_switch[], program_entry[], std::size_t[], std::size_t[],
-                stack_count_t, detail::action_selection, substack_t
-            >());
-        }
-
-        std::size_t switch_cache_offset() const { return 0; }
-        std::size_t card_cache_offset() const { return switch_target_count(); }
-        std::size_t skill_cache_offset() const { return card_cache_offset() + card_count(); }
-        std::size_t technique_cache_offset() const { return skill_cache_offset() + skill_count(); }
 
         void validate_switch_index(std::size_t index) const
         {
@@ -1333,29 +1167,40 @@ namespace givm
             if(not has_technique()) throw view_input_error{ "technique_id", action_unavailable::missing_technique };
         }
 
-        void validate_cost_cache(std::string_view action, std::size_t index, std::size_t offset) const
+        template<class TCost>
+        void begin_cost_calculation(std::string_view action, std::size_t index, const TCost& event) const
         {
-            const auto state = debug_cost_states()[offset];
-            if(state != 2)
-                throw view_input_error{ "cached_cost", action_cost_cache_error{
-                    std::string{ action }, index, state == 0 ? action_cost_cache_error::reason::not_calculated
-                        : action_cost_cache_error::reason::incomplete_calculation } };
+            auto offset = get<8>(window());
+            const auto& stack = executor_->context_.stack();
+            while(offset != SIZE_MAX)
+            {
+                const auto& record = detail::cost_cache(stack, offset);
+                if(record.type == detail::cost_event_types::index_of<TCost>())
+                {
+                    const auto& previous = detail::cost_event<TCost>(stack, offset);
+                    const bool same = [&]
+                    {
+                        if constexpr(std::is_same_v<TCost, cost_of_switch>) return previous.target == event.target;
+                        else if constexpr(std::is_same_v<TCost, cost_of_card>) return previous.card == event.card && previous.targets == event.targets;
+                        else if constexpr(std::is_same_v<TCost, cost_of_skill>) return previous.skill == event.skill && previous.targets == event.targets;
+                        else return previous.technique == event.technique && previous.targets == event.targets;
+                    }();
+                    if(same)
+                        throw view_input_error{ "calculate_cost", action_cost_cache_error{
+                            std::string{ action }, index, record.complete ? action_cost_cache_error::reason::already_calculated
+                                : action_cost_cache_error::reason::incomplete_calculation } };
+                }
+                offset = record.previous;
+            }
         }
 
-        void begin_cost_calculation(std::string_view action, std::size_t index, std::size_t offset) const
-        {
-            auto& state = debug_cost_states()[offset];
-            if(state != 0)
-                throw view_input_error{ "calculate_cost", action_cost_cache_error{
-                    std::string{ action }, index, state == 2 ? action_cost_cache_error::reason::already_calculated
-                        : action_cost_cache_error::reason::incomplete_calculation } };
-            state = 1;
-        }
 
         template<class TTarget, class TValidate>
         static void validate_targets(std::string_view operation, std::span<const TTarget> targets, TValidate&& validate)
         {
-            const auto count = std::min(targets.size(), 2uz);
+            const auto selected_targets = detail::select_action_targets(targets);
+            targets = detail::action_targets(selected_targets);
+            const auto count = targets.size();
             for(std::size_t selected = count == 0 ? 0 : 1; selected <= count; ++selected)
             {
                 const auto result = validate(targets.first(selected));
@@ -1406,6 +1251,7 @@ namespace givm
             return omni >= required_omni
                 && largest_remaining_group + (omni - required_omni) >= requirement.same;
         }
+
     };
 }
 

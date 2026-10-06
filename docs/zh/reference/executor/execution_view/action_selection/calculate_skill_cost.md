@@ -5,13 +5,11 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-const cost_of_skill& calculate_skill_cost(
-    const definition_library& library, const table& card_table, std::size_t skill_index
-) const;
+skill_cost_id calculate_skill_cost(const definition_library& library, const table& card_table,
+    std::size_t skill_index, std::span<const skill_target_id> targets = {}) const;
 ```
-[`cost_of_skill`](../../../definition/events/cost_of_skill.md)
 
-计算使用指定技能的费用，并立即返回结果。
+对具体的使用技能选择同步报价，并返回保存该报价的标识。
 
 ## 参数
 
@@ -19,24 +17,21 @@ const cost_of_skill& calculate_skill_cost(
 | --- | --- |
 | `library` | 与当前现场及牌桌配套的定义库。 |
 | `card_table` | 当前行动发生的牌桌。 |
-| `skill_index` | 从零开始的技能候选索引，须小于 [`skill_count()`](skill_count.md)。 |
+| `skill_index` | 从零开始的当前行动候选索引。 |
+| `targets` | 完整的目标选择；省略表示两个空槽。 |
 
 ## 返回值
 
-借用当前现场的只读费用引用，与 [`skill_cost(skill_index)`](skill_cost.md) 读取的费用相同。
+当前行动窗口内有效的 [`skill_cost_id`](../../skill_cost_id.md)。可用 `skill_cost(id)` 读取完整报价。
 
 ## 异常
 
-费用响应抛出的异常会传递给调用方。失败后该候选可能只留下部分结果，不能读取、检查或采用，也不能在当前行动窗口重新计算。
+Debug 检查现场、候选或报价标识的有效性，并以结构化异常报告误用。费用响应抛出的异常直接传递；失败报价不能采用或在当前窗口重算。Release 不执行这些输入校验。
 
 ## 注意
 
-同一行动窗口内，每个候选只允许计算一次；Debug 检查报价状态，Release 由调用方保证，重复计算属于未定义行为。计算完成后可反复调用 `skill_cost` 读取缓存结果。
+同一窗口内，同一操作和完整目标组合只报价一次。调用方保存返回的标识，之后可反复读取；Debug 检查重复报价，Release 不搜索去重。响应只处理编号 0，可修改费用和准备程序输入，但不执行程序、不修改牌桌、不使用随机数。
 
-报价先读取该技能定义已保存的 [`skill_initial_cost`](../../../definition/queries/skill_initial_cost.md) 结果作为基础费用，再处理 [`cost_of_skill`](../../../definition/events/cost_of_skill.md) 费用响应。未提供初始费用查询时，默认需求为零骰子、零充能的战斗行动。
+目标最多两个，超过两项的内容忽略。`std::monostate` 表示空槽，遇到首个空槽即结束目标序列；报价无需额外保存目标数量。完整目标必须合法，分步检查仍由相应的 `*_targets_validate` 提供。
 
-报价无需先选择目标，目标及其他技能使用条件通过 [`skill_targets_validate`](skill_targets_validate.md) 独立检查。候选技能均支持主动效果响应。
-
-费用响应不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不提交技能行动、不执行费用响应提交的后续效果，也不修改牌桌或推进执行器。
-
-报价其他候选可能使之前取得的费用引用失效，下一次推进或重建现场也会使引用失效。需要再次读取时，通过本 view 的费用读取接口重新取得引用。完整报价后可独立检查 [支付](skill_payment_validate.md) 与 [目标及技能使用条件](skill_targets_validate.md)，再通过 [`use_skill_with_cached_cost`](use_skill_with_cached_cost.md) 提交技能行动。
+报价追加缓存但不推进行动。其他报价可能使借用的费用引用失效，标识仍能重新取得该结果。

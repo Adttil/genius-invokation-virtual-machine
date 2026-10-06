@@ -1,3 +1,4 @@
+#include <optional>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -137,8 +138,9 @@ TEST_CASE("payment previews cache nested deferred inputs once and settle each re
     REQUIRE(random.calls == 0);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.switch_target_count() == 1);
-    CHECK(action.calculate_switch_cost(library, table, 0).requirement.dice_requirement.any == 0);
-    CHECK(action.switch_cost(0).requirement.dice_requirement.any == 0);
+    const auto quote_1 = action.calculate_switch_cost(library, table, 0);
+    CHECK(action.switch_cost(quote_1).requirement.dice_requirement.any == 0);
+    CHECK(action.switch_cost(quote_1).requirement.dice_requirement.any == 0);
     CHECK(log.quote_indices == std::vector<std::uint32_t>{ 0, 0 });
     CHECK(log.active.empty());
     CHECK(log.energy.empty());
@@ -148,7 +150,7 @@ TEST_CASE("payment previews cache nested deferred inputs once and settle each re
     CHECK(table[givm::player_id{ 0 }].state().active_character == first);
 
     REQUIRE(finish_observation(execution, library, table, random,
-        action.switch_active_character_with_cached_cost(library, table, random, 0, {}))
+        action.switch_active_character_with_cached_cost(library, table, random, quote_1, {}))
         == givm::execution_state::card_selection);
     CHECK(log.active.empty());
     CHECK(random.calls == 0);
@@ -190,6 +192,7 @@ TEST_CASE("payment previews cache nested deferred inputs once and settle each re
 #ifndef NDEBUG
 TEST_CASE("payment input validation rejects a dynamic return marker and a nested deferred type mismatch", "[settlement][onpay][debug]")
 {
+    std::optional<givm::switch_cost_id> quote_1;
     const auto error = GENERATE(input_error::response_index, input_error::nested_type);
     payment_log log;
     const auto source = givm::test::with_passive_skill(payment_source{ &log, error });
@@ -202,7 +205,7 @@ TEST_CASE("payment input validation rejects a dynamic return marker and a nested
     REQUIRE(execution.start(library, table).resume(library, table, random) == givm::execution_state::action_selection);
     try
     {
-        execution.view_in<givm::execution_state::action_selection>().calculate_switch_cost(library, table, 0);
+        quote_1 = execution.view_in<givm::execution_state::action_selection>().calculate_switch_cost(library, table, 0);
         FAIL("invalid cached inputs must be rejected during quotation");
     }
     catch(const givm::program_input_error& exception)

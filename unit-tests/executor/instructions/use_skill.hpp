@@ -1,3 +1,4 @@
+#include <optional>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -413,7 +414,8 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     CHECK(action.skill_id(0) == skills[1]);
     CHECK(action.skill_id(1) == skills[3]);
     CHECK(log.cost_queries == 0);
-    const auto& cost = action.calculate_skill_cost(library, table, 1);
+    const auto quote_1 = action.calculate_skill_cost(library, table, 1);
+    const auto& cost = action.skill_cost(quote_1);
     CHECK(cost.requirement.dice_requirement.fixed.total() == 0);
     CHECK(cost.requirement.dice_requirement.same == 0);
     CHECK(cost.requirement.dice_requirement.any == 0);
@@ -422,7 +424,7 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     CHECK(action.skill_targets_validate(library, table, 1) == givm::target_validation::valid_complete);
     const std::array<givm::skill_target_id, 1> invalid_targets{ character.id() };
     CHECK(action.skill_targets_validate(library, table, 1, invalid_targets) == givm::target_validation::invalid);
-    target.submitted(action.use_skill_with_cached_cost(library, table, random, 1, {}));
+    target.submitted(action.use_skill_with_cached_cost(library, table, random, quote_1, {}));
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(log.effects == std::vector{ skills[3] });
     CHECK(log.effect_targets == std::vector{ skill_targets{} });
@@ -435,6 +437,7 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
 
 TEST_CASE("skill targets validate incrementally and submission ignores targets beyond two", "[use_skill][targets][compile-mode]")
 {
+    std::optional<givm::skill_cost_id> quote_1;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const bool fast = GENERATE(false, true);
     skill_log log;
@@ -489,7 +492,7 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
     if(fast)
     {
         CHECK(next_action.skill_id(0) == skill);
-        next_action.calculate_skill_cost(library, table, 0);
+        quote_1 = next_action.calculate_skill_cost(library, table, 0);
         CHECK(log.cost_queries == 2);
         CHECK(log.initial_cost_queries == 1);
     }
@@ -521,20 +524,22 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     auto unaffordable = target;
     const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection>();
     log.extra_energy = 2;
-    CHECK(unaffordable_action.calculate_skill_cost(library, table, 0).requirement.energy == 4);
-    CHECK(unaffordable_action.skill_cost(0).requirement.energy_tag == ids.get_tag_id("Resolve"));
-    CHECK(unaffordable_action.skill_payment_validate(table, 0, pay(dice + 1)) == givm::skill_payment_validation::requirement_mismatch);
+    const auto quote_1 = unaffordable_action.calculate_skill_cost(library, table, 0);
+    CHECK(unaffordable_action.skill_cost(quote_1).requirement.energy == 4);
+    CHECK(unaffordable_action.skill_cost(quote_1).requirement.energy_tag == ids.get_tag_id("Resolve"));
+    CHECK(unaffordable_action.skill_payment_validate(table, quote_1, pay(dice + 1)) == givm::skill_payment_validation::requirement_mismatch);
     if(dice != 0)
-        CHECK(unaffordable_action.skill_payment_validate(table, 0, pay(dice, givm::elemental_dice::dendro))
+        CHECK(unaffordable_action.skill_payment_validate(table, quote_1, pay(dice, givm::elemental_dice::dendro))
             == givm::skill_payment_validation::insufficient_dice);
-    CHECK(unaffordable_action.skill_payment_validate(table, 0, pay(dice)) == givm::skill_payment_validation::insufficient_energy);
+    CHECK(unaffordable_action.skill_payment_validate(table, quote_1, pay(dice)) == givm::skill_payment_validation::insufficient_energy);
     log.extra_energy = 0;
-    CHECK(action.calculate_skill_cost(library, table, 0).requirement.energy == 2);
-    CHECK(action.skill_cost(0).requirement.energy == 2);
-    CHECK(action.skill_payment_validate(table, 0, pay(dice)) == givm::skill_payment_validation::valid);
+    const auto quote_2 = action.calculate_skill_cost(library, table, 0);
+    CHECK(action.skill_cost(quote_2).requirement.energy == 2);
+    CHECK(action.skill_cost(quote_2).requirement.energy == 2);
+    CHECK(action.skill_payment_validate(table, quote_2, pay(dice)) == givm::skill_payment_validation::valid);
     CHECK(random.calls == calls);
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4, 3 });
-    target.submitted(action.use_skill_with_cached_cost(library, table, random, 0, pay(dice)));
+    target.submitted(action.use_skill_with_cached_cost(library, table, random, quote_2, pay(dice)));
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4u - dice, 1 });
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().energy_tag == ids.get_tag_id("Resolve"));
@@ -545,7 +550,7 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
         CHECK(snapshot == std::array<std::uint32_t, 2>{ 4u - dice, 1 });
     CHECK(log.cost_queries == 2);
 #ifndef NDEBUG
-    CHECK(log.target_counts == std::vector<std::size_t>{ 0 });
+    CHECK(log.target_counts == std::vector<std::size_t>{ 0, 0 });
 #else
     CHECK(log.target_counts.empty());
 #endif
@@ -615,6 +620,9 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
 
 TEST_CASE("cards and switches share energy requirements and charge the outgoing active character", "[action][payment][energy][compile-mode]")
 {
+    std::optional<givm::switch_cost_id> quote_1;
+    std::optional<givm::switch_cost_id> quote_2;
+    std::optional<givm::card_cost_id> quote_3;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const bool switching = GENERATE(false, true);
     const std::uint8_t dice = GENERATE(std::uint8_t{ 0 }, std::uint8_t{ 1 });
@@ -646,20 +654,23 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
         auto unaffordable = target;
         const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection>();
         log.extra_energy = 4;
-        CHECK(unaffordable_action.calculate_switch_cost(library, table, 0).requirement.energy == 4);
-        CHECK(unaffordable_action.switch_payment_validate(table, 0, pay(dice)) == givm::switch_payment_validation::insufficient_energy);
+        quote_1 = unaffordable_action.calculate_switch_cost(library, table, 0);
+        CHECK(unaffordable_action.switch_cost(*quote_1).requirement.energy == 4);
+        CHECK(unaffordable_action.switch_payment_validate(table, *quote_1, pay(dice)) == givm::switch_payment_validation::insufficient_energy);
         log.extra_energy = 2;
-        CHECK(action.calculate_switch_cost(library, table, 0).requirement.energy == 2);
-        CHECK(action.switch_cost(0).requirement.energy_tag == log.switch_energy_tag);
-        CHECK(action.switch_payment_validate(table, 0, pay(dice)) == givm::switch_payment_validation::valid);
-        target.submitted(action.switch_active_character_with_cached_cost(library, table, random, 0, pay(dice)));
+        quote_2 = action.calculate_switch_cost(library, table, 0);
+        CHECK(action.switch_cost(*quote_2).requirement.energy == 2);
+        CHECK(action.switch_cost(*quote_2).requirement.energy_tag == log.switch_energy_tag);
+        CHECK(action.switch_payment_validate(table, *quote_2, pay(dice)) == givm::switch_payment_validation::valid);
+        target.submitted(action.switch_active_character_with_cached_cost(library, table, random, *quote_2, pay(dice)));
     }
     else
     {
-        CHECK(action.calculate_card_cost(library, table, 0).requirement.energy == 2);
-        CHECK(action.card_cost(0).requirement.energy_tag == log.switch_energy_tag);
-        CHECK(action.card_payment_validate(table, 0, pay(dice)) == givm::card_payment_validation::valid);
-        target.submitted(action.play_card_with_cached_cost(library, table, random, 0, pay(dice)));
+        quote_3 = action.calculate_card_cost(library, table, 0);
+        CHECK(action.card_cost(*quote_3).requirement.energy == 2);
+        CHECK(action.card_cost(*quote_3).requirement.energy_tag == log.switch_energy_tag);
+        CHECK(action.card_payment_validate(table, *quote_3, pay(dice)) == givm::card_payment_validation::valid);
+        target.submitted(action.play_card_with_cached_cost(library, table, random, *quote_3, pay(dice)));
     }
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().energy == 1);
@@ -722,21 +733,21 @@ TEST_CASE("action payments distinguish energy tags without consuming resources",
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto calls = random.calls;
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    action.calculate_switch_cost(library, table, 0);
+    const auto quote_1 = action.calculate_switch_cost(library, table, 0);
     log.extra_energy = 0;
     log.extra_dice = 0;
-    action.calculate_skill_cost(library, table, 0);
-    action.calculate_card_cost(library, table, 0);
-    CHECK(action.skill_payment_validate(table, 0, {}) == givm::skill_payment_validation::requirement_mismatch);
-    CHECK(action.card_payment_validate(table, 0, {}) == givm::card_payment_validation::requirement_mismatch);
-    CHECK(action.switch_payment_validate(table, 0, {}) == givm::switch_payment_validation::requirement_mismatch);
+    const auto quote_2 = action.calculate_skill_cost(library, table, 0);
+    const auto quote_3 = action.calculate_card_cost(library, table, 0);
+    CHECK(action.skill_payment_validate(table, quote_2, {}) == givm::skill_payment_validation::requirement_mismatch);
+    CHECK(action.card_payment_validate(table, quote_3, {}) == givm::card_payment_validation::requirement_mismatch);
+    CHECK(action.switch_payment_validate(table, quote_1, {}) == givm::switch_payment_validation::requirement_mismatch);
     const auto unavailable = pay(1, givm::elemental_dice::dendro);
-    CHECK(action.skill_payment_validate(table, 0, unavailable) == givm::skill_payment_validation::insufficient_dice);
-    CHECK(action.card_payment_validate(table, 0, unavailable) == givm::card_payment_validation::insufficient_dice);
-    CHECK(action.switch_payment_validate(table, 0, unavailable) == givm::switch_payment_validation::insufficient_dice);
-    CHECK(action.skill_payment_validate(table, 0, pay(1)) == skill_result);
-    CHECK(action.card_payment_validate(table, 0, pay(1)) == card_result);
-    CHECK(action.switch_payment_validate(table, 0, pay(1)) == switch_result);
+    CHECK(action.skill_payment_validate(table, quote_2, unavailable) == givm::skill_payment_validation::insufficient_dice);
+    CHECK(action.card_payment_validate(table, quote_3, unavailable) == givm::card_payment_validation::insufficient_dice);
+    CHECK(action.switch_payment_validate(table, quote_1, unavailable) == givm::switch_payment_validation::insufficient_dice);
+    CHECK(action.skill_payment_validate(table, quote_2, pay(1)) == skill_result);
+    CHECK(action.card_payment_validate(table, quote_3, pay(1)) == card_result);
+    CHECK(action.switch_payment_validate(table, quote_1, pay(1)) == switch_result);
     CHECK(random.calls == calls);
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4, 3 });
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().energy_tag
@@ -800,11 +811,12 @@ TEST_CASE("card energy validation follows dice requirement and ownership checks"
     counting_random random;
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
-    CHECK(action.calculate_card_cost(library, table, 0).requirement.energy == 1);
-    CHECK(action.card_payment_validate(table, 0, {}) == givm::card_payment_validation::requirement_mismatch);
-    CHECK(action.card_payment_validate(table, 0, pay(1, givm::elemental_dice::dendro))
+    const auto quote_1 = action.calculate_card_cost(library, table, 0);
+    CHECK(action.card_cost(quote_1).requirement.energy == 1);
+    CHECK(action.card_payment_validate(table, quote_1, {}) == givm::card_payment_validation::requirement_mismatch);
+    CHECK(action.card_payment_validate(table, quote_1, pay(1, givm::elemental_dice::dendro))
         == givm::card_payment_validation::insufficient_dice);
-    CHECK(action.card_payment_validate(table, 0, pay(1)) == givm::card_payment_validation::insufficient_energy);
+    CHECK(action.card_payment_validate(table, quote_1, pay(1)) == givm::card_payment_validation::insufficient_energy);
     CHECK(log.card_effects == 0);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 1);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);

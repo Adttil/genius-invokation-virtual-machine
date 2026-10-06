@@ -45,7 +45,7 @@ target_validation card_targets_validate(
 
 ## 注意
 
-查询参数仍含两个固定目标位置，未提供的位置补为 `std::monostate`，`target_count` 为采用的元素数量：`0` 检查空选择，`1` 检查第一目标，`2` 检查第二目标。省略 `targets` 即可询问是否允许不选目标、是否必须或可以继续选择。达到两个目标的上限后，查询应返回 `invalid` 或 `valid_complete`。
+查询参数仍含两个固定目标位置，未提供的位置补为 `std::monostate`，首个 `std::monostate` 终止目标序列，`target_count` 为此前有效槽位的数量：`0` 检查空选择，`1` 检查第一目标，`2` 检查第二目标。省略 `targets` 即可询问是否允许不选目标、是否必须或可以继续选择。达到两个目标的上限后，查询应返回 `invalid` 或 `valid_complete`。
 
 检查第二目标时，由调用方保证第一目标合法，查询可直接据此检查第二目标。检查不要求调用方曾经调用前一步，执行器不会补做前一步检查；修改第一目标或相关对局条件后，不能继续沿用原有的合法性结论。牌定义仍可拒绝不允许的目标数量。
 
@@ -54,3 +54,5 @@ target_validation card_targets_validate(
 无需目标的牌也可以通过空选择查询其他用牌条件，例如由牌定义调用 `library.is_controlled(character)` 检查控制状态。是否检查由该牌的 [`card_target_validation`](../../../definition/queries/card_target_validation.md) 决定。
 
 本操作与 [`card_payment_validate`](card_payment_validate.md) 独立，且不要求先报价。调用方仍须保证传入当前现场内有效的候选索引，并在选择出牌时保证目标与用牌条件成立；[`play_card`](play_card.md) 在 Debug 提交时自动检查，Release 不检查。
+
+目标 span 中的 `std::monostate` 表示未选择：首个空槽后的内容忽略，未提供的槽位补为空槽。报价使用相同的目标解释规则。

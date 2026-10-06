@@ -6,43 +6,28 @@
 
 ```cpp
 constexpr switch_payment_validation switch_payment_validate(
-    const table& card_table,
-    std::size_t target_index,
-    const dice_counts& paid_dice
+    const table& card_table, switch_cost_id id, const dice_counts& paid_dice
 ) const noexcept(/* Release 为 true，Debug 为 false */);
 ```
-[`switch_payment_validation`](../../switch_payment_validation.md)
-[`table`](../../../table/table.md)
-[`dice_counts`](../../../enums/dice_counts.md)
 
-检查所选骰子与出战角色充能能否支付切换至指定角色的费用。
+检查选中骰子是否匹配已报价费用、是否持有这些骰子，以及当前出战角色的充能类型和数量。
 
 ## 参数
 
 | | |
 | --- | --- |
 | `card_table` | 当前行动发生的牌桌。 |
-| `target_index` | 从零开始的切换候选索引，须小于 [`switch_target_count()`](switch_target_count.md)，且该候选已经完整报价。 |
-| `paid_dice` | 准备支付的各类骰子数量。 |
+| `id` | 本窗口的对应报价标识。 |
+| `paid_dice` | 按颜色和数量选择的支付骰子。 |
 
 ## 返回值
 
-依次检查支付骰子的种类和总数、当前行动玩家是否持有所选骰子、非零充能费用的类型是否匹配以及充能数量是否足够；遇到第一个失败立即返回。充能检查采用切换前的出战角色，零充能费用忽略 `energy_tag`：
+`switch_payment_validation` 检查结果。
 
-| | |
-| --- | --- |
-| `switch_payment_validation::requirement_mismatch` | 所选骰子不符合费用要求。 |
-| `switch_payment_validation::insufficient_dice` | 所选骰子符合费用要求，但持有数量不足。 |
-| `switch_payment_validation::energy_tag_mismatch` | 骰子检查通过，充能费用非零，但切换前的出战角色与费用的 `energy_tag` 不同。 |
-| `switch_payment_validation::insufficient_energy` | 骰子与充能类型检查通过，但切换前的出战角色充能不足。 |
-| `switch_payment_validation::valid` | 所选骰子符合费用要求且持有数量足够，非零充能费用的类型匹配且数量足够。 |
+## 异常
+
+Debug 检查现场、候选或报价标识的有效性，并以结构化异常报告误用。费用响应抛出的异常直接传递；失败报价不能采用或在当前窗口重算。Release 不执行这些输入校验。
 
 ## 注意
 
-Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
-
-先通过 [`calculate_switch_cost`](calculate_switch_cost.md) 完整计算该角色的切换费用，由调用方保证报价可用。本操作只读取已计算费用和牌桌，不计算费用、提交行动、执行费用响应的后续效果或修改牌桌；Debug 提交接口会自动调用它，Release 不重复调用。
-
-所选骰子须恰好支付 [`elemental_dice_requirement`](../../../enums/elemental_dice_requirement.md) 的 `fixed`、`same` 和 `any` 三部分，具体匹配规则见该类型。
-
-支付检查涉及费用、所选骰子和出战角色充能；传入当前现场内有效的候选索引仍是调用前提。
+本操作只读取报价和牌桌，不执行费用效果或推进。Debug 提交自动执行支付检查，Release 由调用方保证输入有效。确认时付得起不表示费用效果结束后资源仍足够，实际付款采用逐色及充能饱和扣除。

@@ -208,9 +208,14 @@ TEST_CASE("equipment target queries discount only the uniquely applicable talent
     CHECK(log.ordinary_queries == 6);
     const auto action = executor.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.card_count() == 3);
-    CHECK(action.calculate_card_cost(library, table, 0).requirement.dice_requirement.any == 1);
-    CHECK(action.calculate_card_cost(library, table, 1).requirement.dice_requirement.any == 2);
-    CHECK(action.calculate_card_cost(library, table, 2).requirement.dice_requirement.any == 0);
+    const givm::character_id target{ givm::player_id{ 0 }, active_only ? 0u : 1u };
+    const std::array<givm::card_target_id, 1> targets{ target };
+    const auto quote_1 = action.calculate_card_cost(library, table, 0, targets);
+    CHECK(action.card_cost(quote_1).requirement.dice_requirement.any == 1);
+    CHECK(action.card_targets_validate(library, table, 1, targets) == givm::target_validation::invalid);
+    CHECK(table[action.card_id(1)].state().cost.dice_requirement.any == 2);
+    const auto quote_3 = action.calculate_card_cost(library, table, 2);
+    CHECK(action.card_cost(quote_3).requirement.dice_requirement.any == 0);
     CHECK(log.discounts == 1);
     const auto default_card = table[action.card_id(2)];
     const auto first_character = *table[givm::player_id{ 0 }].characters().begin();
@@ -218,11 +223,9 @@ TEST_CASE("equipment target queries discount only the uniquely applicable talent
     for(const auto target : table[givm::player_id{ 0 }].characters())
         CHECK(target.get(givm::equipment_type::artifact).state().round_usages == 1);
 
-    const givm::character_id target{ givm::player_id{ 0 }, active_only ? 0u : 1u };
-    const std::array<givm::card_target_id, 1> targets{ target };
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 1;
-    executor.submitted(action.play_card_with_cached_cost(library, table, omni_random, 0, payment, targets));
+    executor.submitted(action.play_card_with_cached_cost(library, table, omni_random, quote_1, payment));
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(log.discounts == 1);
     CHECK(log.card_effects == 1);

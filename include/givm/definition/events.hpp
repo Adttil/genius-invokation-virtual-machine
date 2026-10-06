@@ -116,25 +116,10 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(energy_changed);
     };
 
-    // Payment events. The mutable payment data lives in table slots.
-    struct calculating_card_payment
-    {
-        const hand_card_id card;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(calculating_card_payment);
-    };
-
-    struct calculating_skill_payment
-    {
-        const skill_id skill;
-        const skill_flags flags{};
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(calculating_skill_payment);
-    };
-
-    struct calculating_switch_payment
-    {
-        const character_id target;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(calculating_switch_payment);
-    };
+    // Action quotes. Empty target slots hold std::monostate.
+    using card_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
+    using skill_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
+    using technique_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
 
     struct cost_of_switch
     {
@@ -146,6 +131,7 @@ namespace givm
     struct cost_of_card
     {
         const hand_card_id card;
+        const std::array<card_target_id, 2> targets{};
         action_cost_requirement requirement;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_card);
     };
@@ -154,6 +140,7 @@ namespace givm
     {
         const skill_id skill;
         const skill_flags flags{};
+        const std::array<skill_target_id, 2> targets{};
         action_cost_requirement requirement;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_skill);
     };
@@ -161,6 +148,7 @@ namespace givm
     struct cost_of_technique
     {
         const attachment_id technique;
+        const std::array<technique_target_id, 2> targets{};
         action_cost_requirement requirement;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(cost_of_technique);
     };
@@ -225,7 +213,6 @@ namespace givm
     };
 
     // Playing-card events.
-    using card_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
 
     struct card_effect
     {
@@ -260,7 +247,6 @@ namespace givm
     };
 
     // Skill events.
-    using skill_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
 
     struct skill_effect
     {
@@ -291,7 +277,6 @@ namespace givm
     };
 
     // Technique events.
-    using technique_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
 
     struct technique_effect
     {

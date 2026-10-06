@@ -5,15 +5,11 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-const cost_of_card& calculate_card_cost(
-    const definition_library& library,
-    const table& card_table,
-    std::size_t card_index
-) const;
+card_cost_id calculate_card_cost(const definition_library& library, const table& card_table,
+    std::size_t card_index, std::span<const card_target_id> targets = {}) const;
 ```
-[`cost_of_card`](../../../definition/events/cost_of_card.md)
 
-计算打出指定手牌的费用，并立即返回结果。
+对具体的出牌选择同步报价，并返回保存该报价的标识。
 
 ## 参数
 
@@ -21,24 +17,21 @@ const cost_of_card& calculate_card_cost(
 | --- | --- |
 | `library` | 与当前现场及牌桌配套的定义库。 |
 | `card_table` | 当前行动发生的牌桌。 |
-| `card_index` | 从零开始的出牌候选索引，须小于 [`card_count()`](card_count.md)。 |
+| `card_index` | 从零开始的当前行动候选索引。 |
+| `targets` | 完整的目标选择；省略表示两个空槽。 |
 
 ## 返回值
 
-借用当前现场的只读费用引用，与 [`card_cost(card_index)`](card_cost.md) 读取的费用相同。
+当前行动窗口内有效的 [`card_cost_id`](../../card_cost_id.md)。可用 `card_cost(id)` 读取完整报价。
 
 ## 异常
 
-费用响应抛出的异常会传递给调用方。失败后该候选可能只留下部分结果，不能读取、检查或采用，也不能在当前行动窗口重新计算。
+Debug 检查现场、候选或报价标识的有效性，并以结构化异常报告误用。费用响应抛出的异常直接传递；失败报价不能采用或在当前窗口重算。Release 不执行这些输入校验。
 
 ## 注意
 
-同一行动窗口内，每个候选只允许计算一次；Debug 检查报价状态，Release 由调用方保证，重复计算属于未定义行为。计算完成后可反复调用 `card_cost` 读取缓存结果。
+同一窗口内，同一操作和完整目标组合只报价一次。调用方保存返回的标识，之后可反复读取；Debug 检查重复报价，Release 不搜索去重。响应只处理编号 0，可修改费用和准备程序输入，但不执行程序、不修改牌桌、不使用随机数。
 
-报价先复制该牌当前 [`card_state::cost`](../../../table/card_state.md) 作为基础费用，再处理 [`cost_of_card`](../../../definition/events/cost_of_card.md) 费用响应。报价不会写回卡牌自身的费用；卡牌初始费用默认是零骰子、零充能的快速行动。
+目标最多两个，超过两项的内容忽略。`std::monostate` 表示空槽，遇到首个空槽即结束目标序列；报价无需额外保存目标数量。完整目标必须合法，分步检查仍由相应的 `*_targets_validate` 提供。
 
-报价无需先选择目标，定义组合须保证费用和支付时执行的效果均不依赖尚未确定的目标，具体兼容边界见 [`cost_of_card`](../../../definition/events/cost_of_card.md)。目标及其他用牌条件通过 [`card_targets_validate`](card_targets_validate.md) 独立检查。可打出的牌提供原效果响应。
-
-费用响应不得使用随机数，调用随机函数属于未定义行为。本操作无需随机源，同步完成，不选择出牌、不执行费用响应提交的后续效果，也不修改牌桌或推进执行器。
-
-报价其他候选可能使之前取得的费用引用失效，下一次推进或重建现场也会使引用失效。需要再次读取时，通过本 view 的费用读取接口重新取得引用。完整报价后可独立检查 [支付](card_payment_validate.md) 与 [目标及用牌条件](card_targets_validate.md)，再通过 [`play_card_with_cached_cost`](play_card_with_cached_cost.md) 提交出牌。
+报价追加缓存但不推进行动。其他报价可能使借用的费用引用失效，标识仍能重新取得该结果。

@@ -143,20 +143,21 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
     CHECK_FALSE(action.is_controlled(library, table));
     const auto technique = action.technique_id();
     CHECK(table[technique].character().get(givm::equipment_type::technique).id() == technique);
-    const auto& cost = action.calculate_technique_cost(library, table);
+    const std::array<givm::technique_target_id, 1> targets{ givm::character_id{ givm::player_id{ 1 }, 0 } };
+    const auto quote_1 = action.calculate_technique_cost(library, table, targets);
+    const auto& cost = action.technique_cost(quote_1);
     CHECK(cost.requirement.dice_requirement.any == 1);
     CHECK(cost.requirement.energy == 1);
-    CHECK(action.technique_cost().technique == technique);
+    CHECK(action.technique_cost(quote_1).technique == technique);
     CHECK(table[technique].state().count == 2);
     CHECK(log.events == std::vector<std::string>{ "quote" });
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 1;
-    CHECK(action.technique_payment_validate(table, {}) == givm::technique_payment_validation::requirement_mismatch);
-    CHECK(action.technique_payment_validate(table, payment) == givm::technique_payment_validation::valid);
+    CHECK(action.technique_payment_validate(table, quote_1, {}) == givm::technique_payment_validation::requirement_mismatch);
+    CHECK(action.technique_payment_validate(table, quote_1, payment) == givm::technique_payment_validation::valid);
     CHECK(action.technique_targets_validate(library, table) == givm::target_validation::valid_incomplete);
-    const std::array<givm::technique_target_id, 1> targets{ givm::character_id{ givm::player_id{ 1 }, 0 } };
     CHECK(action.technique_targets_validate(library, table, targets) == givm::target_validation::valid_complete);
-    executor.submitted(action.use_technique_with_cached_cost(library, table, givm_test::zero_random, payment, targets));
+    executor.submitted(action.use_technique_with_cached_cost(library, table, givm_test::zero_random, quote_1, payment));
     if(not cancelled)
     {
         REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);

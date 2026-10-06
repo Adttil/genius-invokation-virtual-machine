@@ -344,10 +344,9 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
     CHECK(action.card_targets_validate(library, table, 0, opponent) == givm::target_validation::invalid);
     CHECK(action.card_targets_validate(library, table, 0, selected) == (full
         ? givm::target_validation::valid_complete : givm::target_validation::invalid));
-    action.calculate_card_cost(library, table, 0);
-    REQUIRE(action.card_payment_validate(table, 0, {}) == givm::card_payment_validation::valid);
-    if(full) executor.submitted(action.play_card_with_cached_cost(library, table, givm_test::zero_random, 0, {}, selected));
-    else executor.submitted(action.play_card_with_cached_cost(library, table, givm_test::zero_random, 0, {}));
+    const auto quote_1 = action.calculate_card_cost(library, table, 0, full ? std::span<const givm::card_target_id>{ selected } : std::span<const givm::card_target_id>{});
+    REQUIRE(action.card_payment_validate(table, quote_1, {}) == givm::card_payment_validation::valid);
+    executor.submitted(action.play_card_with_cached_cost(library, table, givm_test::zero_random, quote_1, {}));
     const auto check_result = [&](const givm::table& current)
     {
         const auto after = support_ids(current);

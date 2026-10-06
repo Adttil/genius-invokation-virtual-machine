@@ -47,8 +47,6 @@ namespace givm::detail
         || std::is_same_v<TEvent, character_will_be_defeated> || std::is_same_v<TEvent, dice_roll_preparation>
         || std::is_same_v<TEvent, card_will_be_played> || std::is_same_v<TEvent, skill_will_be_used>
         || std::is_same_v<TEvent, changing_energy> || std::is_same_v<TEvent, changing_secret_points>
-        || std::is_same_v<TEvent, calculating_card_payment> || std::is_same_v<TEvent, calculating_skill_payment>
-        || std::is_same_v<TEvent, calculating_switch_payment>
         || std::is_same_v<TEvent, technique_will_be_used> || std::is_same_v<TEvent, elemental_tuning_modification>;
 
     using record_execute_fn = std::optional<execution_state> (*)(

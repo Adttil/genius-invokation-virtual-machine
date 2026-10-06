@@ -46,8 +46,8 @@ struct action_cost_cache_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `action` | `std::string` | 行动类别名称 |
-| `index` | `std::size_t` | 候选索引；特技使用零 |
-| `cause` | `action_cost_cache_error::reason` | `not_calculated` 表示尚未报价，`already_calculated` 表示重复报价，`incomplete_calculation` 表示先前报价未完整完成 |
+| `index` | `std::size_t` | 报价错误中的候选索引，特技使用零；缓存标识错误中的诊断值不能作为候选索引使用 |
+| `cause` | `action_cost_cache_error::reason` | `expired_window` 表示标识不属于当前窗口缓存，`already_calculated` 表示重复报价，`incomplete_calculation` 表示先前报价未完整完成 |
 
 ### givm::action_target_validation_error
 

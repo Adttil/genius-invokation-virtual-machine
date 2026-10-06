@@ -46,15 +46,15 @@ enum class begin_action_error {};
 
 通过 [`calculate_card_cost`](../../executor/execution_view/action_selection/calculate_card_cost.md) 同步计算出牌费用，通过 [`card_payment_validate`](../../executor/execution_view/action_selection/card_payment_validate.md) 与 [`card_targets_validate`](../../executor/execution_view/action_selection/card_targets_validate.md) 分别检查支付及用牌条件。目标检查按 span 中的目标数量分步进行，允许检查空选择，告知当前选择是否有效、能否完成或继续；检查第二目标时可假设第一目标合法。两项检查相互独立，由调用方按需使用。目标检查通过 [`card_target_validation`](../queries/card_target_validation.md) 返回结果，不接收随机源。费用响应不得使用随机数，调用随机函数属于未定义行为。
 
-[`play_card`](../../executor/execution_view/action_selection/play_card.md) 同步报价并提交，`play_card_with_cached_cost` 使用已有报价；Debug 自动检查支付与目标，Release 不检查。提交立即推进，先让牌离手，再执行已确认的费用效果、扣除骰子与充能，再依次处理骰子移除和充能变化通知，随后广播 [`card_will_be_played`](../events/card_will_be_played.md)。未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，之后均广播 [`card_played`](../events/card_played.md)。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
+[`play_card`](../../executor/execution_view/action_selection/play_card.md) 同步报价并提交，`play_card_with_cached_cost` 使用已有报价；Debug 报价时检查完整目标，提交时检查支付，Release 不检查。提交立即推进，先让牌离手，再逐个执行并完整结算已确认的费用效果，随后饱和扣除骰子与原付费角色的充能，并将实际变化通知登记到行动段。之后广播 [`card_will_be_played`](../events/card_will_be_played.md)，未被反制时执行本牌的 [`card_effect`](../events/card_effect.md)，并登记 [`card_played`](../events/card_played.md)。付款通知和行动通知按所属段结算。反制只取消原效果，不退还费用或撤销离手。最后按报价确定的行动速度保留或交接行动权。
 
 通过 [`calculate_switch_cost`](../../executor/execution_view/action_selection/calculate_switch_cost.md) 可以同步预览切换至指定角色的费用，无需推进执行器或传入随机源。费用响应不得使用随机数，调用随机函数属于未定义行为；目标为只读。完整报价后可调用 [`switch_payment_validate`](../../executor/execution_view/action_selection/switch_payment_validate.md)，依次检查骰子是否匹配费用、持有数量是否足够、非零充能费用的类型是否匹配及出战角色充能是否足够。
 
-通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 同步报价并提交切换，或通过 [`switch_active_character_with_cached_cost`](../../executor/execution_view/action_selection/switch_active_character_with_cached_cost.md) 使用已有报价。两者均立即推进，执行已确认的费用效果、支付及切换。Debug 提交检查支付与报价状态，Release 由调用方保证合法。同一行动窗口内每个候选只允许报价一次，可以反复读取结果。
+通过 [`switch_active_character`](../../executor/execution_view/action_selection/switch_active_character.md) 同步报价并提交切换，或通过 [`switch_active_character_with_cached_cost`](../../executor/execution_view/action_selection/switch_active_character_with_cached_cost.md) 使用已有报价标识。两者均立即推进，执行已确认的费用效果、支付及切换。Debug 提交检查支付与报价状态，Release 由调用方保证合法。同一行动窗口内每个切换目标只允许报价一次，可以通过标识反复读取结果。
 
 成功切换时，原出战角色上的所有准备技能附属一起标记为离场，按顺序逐个完成 [`attachment_removed`](../events/attachment_removed.md) 通知后，才处理正常的切换通知。
 
-在 [`compile_mode::observed`](../../executor/compile_mode.md) 模式下推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)给出目标，牌桌仍可读取原出战角色及其准备技能附属；随后推进才实际切换、清除这些附属并处理通知。到达此现场前，已确认的费用响应、骰子与充能支付及相应变化响应均已完成。
+在 [`compile_mode::observed`](../../executor/compile_mode.md) 模式下推进主动切人时，在写入新出战角色之前返回 `execution_state::active_character_changed`。相应[视图](../../executor/execution_view/active_character_changed.md)给出目标，牌桌仍可读取切换前的出战角色及其准备技能附属；随后推进才实际切换、清除这些附属并处理通知。到达此现场前，费用效果及其派生结算已经完成，骰子与充能已经实际扣除；付款通知仍归入行动段，随后与切换通知一起结算。
 
 以 [`compile_mode::observed`](../../executor/compile_mode.md) 编译时，每次新的行动机会先返回 `execution_state::action_started`，随后才处理 `before_action`。快速行动不结束当前机会；战斗行动结束后，即使另一方已经宣布结束、仍由当前玩家行动，也会报告新的行动机会。宣布结束时先返回 `execution_state::round_end_declared`，此时牌桌上的 `active_player` 仍是宣布结束的一方，随后推进才处理其结束响应。
 
@@ -162,3 +162,5 @@ int main()
 | [`prepared_skill_effect`](../events/prepared_skill_effect.md) | 代替选择而自动执行的准备技能 |
 | [`cost_of_switch`](../events/cost_of_switch.md) | 主动切换出战角色的费用计算事件 |
 | [`round_end_declared`](../events/round_end_declared.md) | 玩家宣布本回合结束的通知 |
+
+费用报价接收完整目标并返回对应的强类型标识；采用缓存只接收标识与支付骰子，不重新指定来源或目标。费用效果及全部连锁逐个完成后，按原选各色数量饱和付款，其他骰色或万能骰不补足。充能锁定确认时的原付费角色，费用效果切人不改变付款对象。付款通知报告实际变化并归入实际行动段；费用效果终局后停止后续付款和行动。

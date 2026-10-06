@@ -297,9 +297,9 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
         ? givm::target_validation::invalid : givm::target_validation::valid_complete));
     REQUIRE(view.switch_target_count() == 1);
     const auto selected = view.switch_target(0);
-    view.calculate_switch_cost(library, table, 0);
-    REQUIRE(view.switch_payment_validate(table, 0, {}) == givm::switch_payment_validation::valid);
-    executor.submitted(view.switch_active_character_with_cached_cost(library, table, random, 0, {}));
+    const auto quote_1 = view.calculate_switch_cost(library, table, 0);
+    REQUIRE(view.switch_payment_validate(table, quote_1, {}) == givm::switch_payment_validation::valid);
+    executor.submitted(view.switch_active_character_with_cached_cost(library, table, random, quote_1, {}));
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
     CHECK(table[givm::player_id{ 0 }].state().active_character == selected);
     CHECK(log.switches.back() == selected);

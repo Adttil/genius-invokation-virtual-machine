@@ -9,3 +9,5 @@ target_validation technique_targets_validate(const definition_library& library, 
 ```
 
 向特技附件查询 `technique_target_validation`。只使用 span 前两个目标；支持从空选择开始逐步检查。定义可假定前面的选择已经合法；未提供查询时仅空目标返回 `valid_complete`。检查受控可单独调用 `is_controlled`。
+
+目标 span 中的 `std::monostate` 表示未选择：首个空槽后的内容忽略，未提供的槽位补为空槽。报价使用相同的目标解释规则。
