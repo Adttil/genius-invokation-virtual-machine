@@ -20,7 +20,7 @@ namespace
 {
     void check_removed_card(
         const givm::table& table,
-        givm::deck_card_id card_id,
+        givm::hand_card_id card_id,
         givm::definition_id<givm::card_definition> definition
     )
     {
@@ -38,7 +38,7 @@ namespace
     struct overflow_log
     {
         std::vector<givm::deck_card_id> handlers;
-        givm::deck_card_id removed;
+        givm::hand_card_id removed;
         givm::definition_id<givm::card_definition> removed_definition;
     };
 
@@ -62,7 +62,7 @@ namespace
             return {
                 log,
                 draws
-                    ? context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } })
+                    ? context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } })
                     : givm::program_entry::null()
             };
         }
@@ -78,6 +78,13 @@ namespace
                 return context.invoke(data.draw_entry);
 
             check_removed_card(context.table(), data.log->removed, data.log->removed_definition);
+            return {};
+        }
+
+        static givm::program_entry handle(const definition_type& data,
+            givm::card_drawn& event, givm::handle_context<givm::deck_card_view>&, std::uint32_t = 0)
+        {
+            if(event.overflow) data.log->removed = event.card;
             return {};
         }
     };
@@ -102,10 +109,10 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
-            givm::draw_cards{ .positions = draw_positions_1 },
-            givm::start_round{},
-            givm::start_round{},
-            givm::end_game{ givm::game_result::both_loss }
+            givm::draw_cards{ .position = 0, .count = 1 },
+            givm::start_round{}, givm::settle{},
+            givm::start_round{}, givm::settle{},
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, first, second, discarded, drawn
     );
     const auto first_definition = ids.get_id<givm::card_definition>(first.name());
@@ -121,7 +128,6 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
     for(const auto card : table[player].deck_cards())
         original_cards.push_back(card.id());
     REQUIRE(original_cards.size() == 4);
-    log.removed = original_cards[2];
     log.removed_definition = discarded_definition;
 
     std::uint32_t random_calls = 0;
@@ -130,7 +136,8 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
     execution.start(library, table);
     REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
 
-    // The first response burns a later recipient; both this broadcast and the next skip it.
+    // The first response moves a later recipient into an invalid hand slot;
+    // both this broadcast and the next skip its former deck ID.
     CHECK(log.handlers == std::vector{
         original_cards[0], original_cards[1], original_cards[0], original_cards[1]
     });

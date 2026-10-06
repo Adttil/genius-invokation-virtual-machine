@@ -23,54 +23,19 @@ namespace givm::detail
         return { std::min(state.count, limit.count), std::min(state.round_usages, limit.round_usages) };
     }
 
-    inline std::optional<execution_state> continue_attachment_replacement(
-        const definition_library&, unrestricted_table&, execution_context&, random_fn&);
-
-    inline std::optional<execution_state> prepare_attachment_addition(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random, add_attachment_input input, execution_position resume)
+    inline void apply_attachment_addition(const definition_library& library, unrestricted_table& table,
+        execution_context& context, add_attachment_input input)
     {
         const auto character = table[input.target];
         const auto type = library.equipment_type(input.definition);
-        if(type == equipment_type::none)
-            character.add(input.definition, input.state);
-        else
+        if(type != equipment_type::none && character.has(type))
         {
-            if(character.has(type))
-            {
-                const auto old = character.get(type).id();
-                table[old].erase();
-                context.stack().push(input);
-                prepare_broadcast(library, attachment_removed{ old }, table, context.stack(), resume);
-                return continue_attachment_replacement(library, table, context, random);
-            }
-            character.add(input.definition, input.state, type);
+            const auto old = character.get(type).id();
+            table[old].erase();
+            append_removal_record<attachment_removal_effect>(context, old, attachment_removed{ old });
         }
-        return std::nullopt;
-    }
-
-    inline std::optional<execution_state> continue_attachment_replacement(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<attachment_removed>(library, table, context, random))
-            return continue_execution;
-        const auto resume = get<1>(context.stack().top<attachment_removed, response_return>()).position;
-        pop_broadcast<attachment_removed>(context);
-        const auto input = get<0>(context.stack().top<add_attachment_input>());
-        context.stack().pop<add_attachment_input>();
-        // Removal responses can add immunity or install another equipment.
-        if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))
-            return std::nullopt;
-        return prepare_attachment_addition(library, table, context, random, input, resume);
-    }
-
-    inline execution_state finish_replaced_attachment_removal(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(const auto state = continue_attachment_replacement(library, table, context, random)) return *state;
-        return context.advance(response_extent<attachment_removed>);
+        if(type == equipment_type::none) character.add(input.definition, input.state);
+        else character.add(input.definition, input.state, type);
     }
 
     template<bool Fixed>
@@ -104,11 +69,10 @@ namespace givm::detail
         debug_validate_definition(library, input.definition, "add_attachment", "definition");
 #endif
         if(library.is_control(input.definition) && library.is_control_immune(std::as_const(table)[input.target]))
-            return context.advance(response_extent<attachment_removed>);
+            return continue_execution;
         input.state = clamp_attachment_state(input.state, library[input.definition].query(attachment_state_limit{}));
-        if(const auto state = prepare_attachment_addition(library, table, context, random, input, context.position()))
-            return *state;
-        return context.advance(response_extent<attachment_removed>);
+        apply_attachment_addition(library, table, context, input);
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const givm::add_attachment& command, compile_mode)
@@ -120,7 +84,6 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_attachment_addition<false> });
-        compile_broadcast<attachment_removed>(writer, finish_replaced_attachment_removal);
     }
 }
 

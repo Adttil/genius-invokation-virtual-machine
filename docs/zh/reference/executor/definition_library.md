@@ -39,11 +39,8 @@ class definition_library;
 | [`handle`](definition_library/handle.md) | 请求定义响应事件 |
 | [`query`](definition_library/query.md) | 取得定义的规则信息或检查结果 |
 | [`history_field<T>(summary_id, name)`](../definition/history_summary.md#更新与读取) | 取得牌桌历史字段的读取键 |
-| [`dendro_core_id`](definition_library/dendro_core_id.md) | 取得默认草原核定义 ID |
-| [`catalyzing_field_id`](definition_library/catalyzing_field_id.md) | 取得默认激化领域定义 ID |
-| [`burning_flame_id`](definition_library/burning_flame_id.md) | 取得默认燃烧烈焰定义 ID |
-| [`frozen_id`](definition_library/frozen_id.md) | 取得默认冻结定义 ID |
-| [`shield_id`](definition_library/shield_id.md) | 取得默认护盾定义 ID |
+
+| [`default_reaction_id`](definition_library/default_reaction_id.md) | 取得一个槽位的默认反应定义 ID |
 
 ## 注意
 
@@ -74,18 +71,13 @@ struct card_source
 int main()
 {
     const card_source source{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(source)) return 1;
     auto library_result = compile(
         sources, basics,
-        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
+        std::tuple{}, std::tuple{ givm::start_round{}, givm::settle{} }, givm::compile_mode::normal
     );
     if(not library_result)
     {

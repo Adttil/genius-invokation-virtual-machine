@@ -50,10 +50,10 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
-            givm::draw_cards{ .positions = draw_positions_2 },
-            givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_2 },
+            givm::draw_cards{ .position = 0, .count = 2 },
+            givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 2 },
             givm::replace_cards_both{},
-            givm::end_game{ givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         },
         std::tuple{}, alpha, beta, gamma
     );
@@ -119,9 +119,9 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
-            givm::draw_cards{ .positions = positions },
+            givm::draw_cards{ .position = 0, .count = positions.size() },
             givm::replace_cards{ .player = givm::player_id{ 0 } },
-            givm::end_game{ givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, alpha, beta
     );
     const auto a = ids.get_id<givm::card_definition>(alpha.name());
@@ -158,7 +158,7 @@ TEST_CASE("initial character checks validate ownership and existence without req
     const givm::test::named_definition_source<givm::character_view> character{ "Character" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
-        std::tuple{ givm::select_active_character_both{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::select_active_character_both{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, character
     );
     const auto definition = ids.get_id<givm::character_view>(character.name());
@@ -229,7 +229,7 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{
             givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 1, 2 } },
-            givm::end_game{ givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, mode
     ));
     givm::table table{ { .self_player = givm::player_id{ 0 } } };

@@ -14,6 +14,7 @@ class player_view;
 
 |  |  |
 | --- | --- |
+| [`reaction`](player_view/reaction.md) | 按槽位取得本局反应定义 ID |
 | [`table`](player_view/table.md) | 取得所属牌桌 |
 | [`id`](player_view/id.md) | 取得实体 ID |
 | [`state`](player_view/state.md) | 访问实体状态 |

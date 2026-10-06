@@ -25,25 +25,28 @@ namespace givm
 {
     class issued_id_map;
 
-    namespace detail
+    class reaction_definition_names
     {
-        struct basic_definition_names
-        {
-            std::string_view dendro_core;
-            std::string_view catalyzing_field;
-            std::string_view burning_flame;
-            std::string_view frozen;
-            std::string_view shield;
-        };
-    }
+    public:
+        constexpr reaction_definition_names() noexcept = default;
 
-    struct basic_definition_sources
-    {
-        definition_source_view<combat_status_view> dendro_core;
-        definition_source_view<combat_status_view> catalyzing_field;
-        definition_source_view<summon_view> burning_flame;
-        definition_source_view<attachment_view> frozen;
-        definition_source_view<combat_status_view> shield;
+        constexpr explicit reaction_definition_names(std::string_view name) noexcept
+        {
+            names_.fill(name);
+        }
+
+        constexpr std::string_view& operator[](elemental_reaction slot) noexcept
+        {
+            return names_[static_cast<std::size_t>(slot) - 1];
+        }
+
+        constexpr const std::string_view& operator[](elemental_reaction slot) const noexcept
+        {
+            return names_[static_cast<std::size_t>(slot) - 1];
+        }
+
+    private:
+        std::array<std::string_view, elemental_reaction_count> names_{};
     };
 
     class definition_source_library
@@ -206,15 +209,12 @@ namespace givm
 
         void commit_pending(pending_tuple& pending);
 
-        std::pair<definition_source_library, detail::basic_definition_names> with_basic_definitions(
-            const basic_definition_sources& basics, std::vector<source_preparation_error>& errors) const;
-
         selection_mask make_empty_selection() const;
 
         selection_mask make_full_selection() const;
 
         selection_mask resolve_selection(const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
-            const detail::basic_definition_names& basics, std::vector<source_preparation_error>& errors) const;
+            const reaction_definition_names& basics, std::vector<source_preparation_error>& errors) const;
 
         template<size_t I>
         void enqueue(size_t source_index, selection_mask& selected, std::vector<queue_item>& queue) const;

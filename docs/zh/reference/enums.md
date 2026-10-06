@@ -31,6 +31,8 @@
 | [`skill_flags`](enums/skill_flags.md) | 一次技能使用的性质组合 |
 | [`skill_flag_bits`](enums/skill_flag_bits.md) | 技能使用的独立性质 |
 | [`damage_flags`](enums/damage_flags.md) | 一次伤害的性质组合 |
+| [`damage_type_mask`](enums/damage_type_mask.md) | 一段内出现的伤害类型集合 |
+| [`elemental_reaction_mask`](enums/elemental_reaction_mask.md) | 一段内触发的反应槽位集合 |
 | [`weapon_type_mask`](enums/weapon_type_mask.md) | 允许装备的武器类别集合 |
 
 ## 函数

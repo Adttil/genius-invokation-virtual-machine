@@ -35,7 +35,7 @@ int main()
         .target = { { 1 }, 0 },
         .incoming_element = givm::element::pyro,
         .reacted_aura = givm::element_aura::cryo,
-        .reaction = givm::elemental_reaction::melt,
+        .reaction = { givm::player_id{ 0 }, givm::elemental_reaction::melt },
         .cause = givm::element_application_cause::damage
     };
     std::println("本次反应的元素来源: {}",

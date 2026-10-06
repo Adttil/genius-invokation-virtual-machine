@@ -148,7 +148,7 @@ TEST_CASE("single-player rerolls preserve partial choices and prefetched randomn
     const givm::test::initialization_character_source character;
     REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_battle{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, mode));
     givm::table table{ { .round_number = 1, .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = initial_dice() }, { .dice = initial_dice() } };
@@ -221,7 +221,7 @@ TEST_CASE("single-player rerolls skip empty pools and zero counts and can stop w
     const givm::test::initialization_character_source character;
     REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_battle{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, mode));
     const auto initial = scenario == 1 ? givm::dice_counts{} : initial_dice();
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 1 } }, { .dice = initial_dice() }, { .dice = initial } };
@@ -267,7 +267,7 @@ TEST_CASE("a played card finishes both rerolls before the card-played notificati
     const givm::test::initialization_character_source driver;
     REQUIRE(sources.add(initialization, driver));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_battle{}, givm::begin_action{} }, std::tuple{}, mode));
+        std::tuple{ givm::start_battle{}, givm::settle{}, givm::begin_action{} }, std::tuple{}, mode));
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .dice = initial_dice(), .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .dice = initial_dice(), .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };

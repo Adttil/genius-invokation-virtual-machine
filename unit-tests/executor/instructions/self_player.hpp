@@ -48,24 +48,24 @@ namespace
         std::string_view name() const { return source_name; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const std::array outer_damage{ givm::fixed_damage{
+            const std::array outer_damage{ givm::deal_damage{
                 .source = { givm::relative_player::self },
                 .target = { givm::relative_player::opponent },
                 .value = 4, .type = givm::damage_type::physical } };
-            const std::array nested_damage{ givm::fixed_damage{
+            const std::array nested_damage{ givm::deal_damage{
                 .source = { givm::relative_player::self },
                 .target = { givm::relative_player::opponent },
                 .value = 2, .type = givm::damage_type::physical } };
             return { log, context.add_program(std::tuple{
-                givm::draw_cards{ .positions = draw_positions_1 },
+                givm::draw_cards{ .position = 0, .count = 1 },
                 givm::heal{ .source = { givm::relative_player::self },
                     .target = { givm::relative_player::self }, .value = 3 },
-                givm::deal_damage{ .damages = outer_damage },
-                givm::draw_cards{ .positions = draw_positions_1 }
+                outer_damage[0],
+                givm::draw_cards{ .position = 0, .count = 1 }
             }), context.add_program(std::tuple{
-                givm::deal_damage{ .damages = nested_damage },
-                givm::deal_damage{},
-                givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 }
+                nested_damage[0],
+                givm::deal_damage{}, givm::deal_damage{},
+                givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 }
             }), health };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
@@ -94,8 +94,8 @@ namespace
             return context.invoke(data.nested,
                 givm::deal_damage_input{ std::array{ givm::damage{ .source = first_character,
                     .target = givm::relative_character_target{ givm::relative_player::self },
-                    .value = 1, .type = givm::damage_type::physical },
-                givm::damage{ .source = first_character, .target = second_character,
+                    .value = 1, .type = givm::damage_type::physical } } },
+                givm::deal_damage_input{ std::array{ givm::damage{ .source = first_character, .target = second_character,
                     .value = 1, .type = givm::damage_type::physical } } });
         }
         static givm::program_entry handle(const definition_type&,
@@ -161,7 +161,7 @@ namespace
         std::string_view name() const { return "OtherPlayerPayment"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
+            return { log, context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -200,7 +200,7 @@ TEST_CASE("response programs resolve relative players and restore their caller a
     const givm::test::named_definition_source<givm::card_definition> card{ "ResponseDraw" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, first_source, second_source, card);
     givm::table table{ {}, { .active_character = first_character }, { .active_character = second_character } };
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
@@ -216,15 +216,16 @@ TEST_CASE("response programs resolve relative players and restore their caller a
     {
         auto random = [] { return std::uint32_t{ 0 }; };
         REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
-        CHECK(table.state().self_player == first);
-        CHECK(table[second_character].state().health == 8);
+        CHECK(table.state().self_player == second);
+        CHECK(table[first_character].state().health == 16);
         auto copied_executor = executor;
         auto copied_table = table;
         finish_responses(executor, library, table, true);
         CHECK(log.draws == std::vector{ second, first, second });
         log.draws.clear();
+        log.nested = false;
         finish_responses(copied_executor, library, copied_table, true);
-        CHECK(log.draws == std::vector{ first, second });
+        CHECK(log.draws == std::vector{ second, first, second });
     }
     else
     {

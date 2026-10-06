@@ -67,7 +67,7 @@ namespace
         {
             if(terminal)
                 return { handlers, context.add_program(std::tuple{
-                    givm::end_game{ .result = givm::game_result::player_1_win }
+                    givm::settle{}, givm::end_game{ .result = givm::game_result::player_1_win }
                 }), true };
             return { handlers, context.add_program(std::tuple{
                 givm::apply_element{}
@@ -102,7 +102,7 @@ namespace
         {
             return {
                 drawn,
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_2 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 2 } }),
                 context.add_program(std::tuple{
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
                     givm::replace_cards{ .player = givm::player_id{ 0 } }
@@ -138,7 +138,7 @@ namespace
         std::string_view name() const noexcept { return "HandleContext"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { samples, context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
+            return { samples, context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::program_entry handle(const definition_type& data,
                            givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
@@ -171,7 +171,7 @@ namespace
             return { handlers, nested_responses,
                 context.add_program(std::tuple{}),
                 context.add_program(std::tuple{ givm::set_active_character{} }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::program_entry handle(const definition_type& data,
                                           givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
@@ -286,7 +286,7 @@ TEST_CASE("handle context exposes the current table random source and invocation
     const character_source character{ "ContextCharacter", source.name() };
     const givm::test::named_definition_source<givm::card_definition> card{ "ContextCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, {
         .cards = { ids.get_id<givm::card_definition>(card.name()) },
@@ -318,7 +318,7 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(first, second, first_character, second_character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = {
@@ -351,9 +351,9 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
     auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
-            givm::start_round{},
-            givm::draw_cards{ .positions = draw_positions_1 },
-            givm::end_game{ givm::game_result::both_loss }
+            givm::start_round{}, givm::settle{},
+            givm::draw_cards{ .position = 0, .count = 1 },
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, source, character, card
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -422,8 +422,8 @@ TEST_CASE("consecutive broadcasts mix missing empty and parameterized response p
     const character_source character{ "MixedCharacter", source.name() };
     const givm::test::named_definition_source<givm::card_definition> card{ "MixedResponseCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::start_round{}, givm::draw_cards{ .positions = draw_positions_1 },
-                    givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::draw_cards{ .position = 0, .count = 1 },
+                    givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -467,9 +467,9 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     const order_source<givm::combat_status_view> status{ &log, "CombatStatus" };
     const order_source<givm::summon_view> summon{ &log, "Summon" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::draw_cards{ .positions = draw_positions_1 },
-            givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 },
-            givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::draw_cards{ .position = 0, .count = 1 },
+            givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 },
+            givm::begin_action{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         skill, character, card, ordinary_a, ordinary_b, weapon, artifact, talent, technique, status, summon);
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     const auto card_id = ids.get_id<givm::card_definition>(card.name());

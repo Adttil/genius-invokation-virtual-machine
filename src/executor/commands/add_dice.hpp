@@ -15,16 +15,6 @@
 
 namespace givm::detail
 {
-    inline execution_state broadcast_added_dice(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<dice_added>(library, table, context, random))
-            return continue_execution;
-        pop_broadcast<dice_added>(context);
-        return context.advance(response_extent<dice_added>);
-    }
-
     template<bool Fixed>
     inline execution_state add_dice_execute(
         const definition_library& library, unrestricted_table& table,
@@ -71,12 +61,12 @@ namespace givm::detail
             context.stack().pop<add_dice_input>();
             context.enter_next();
             if(dice.total() == 0)
-                return context.advance(response_extent<dice_added>);
+                return continue_execution;
         }
 
         table[player].state().dice += dice;
-        prepare_broadcast(library, dice_added{ player, dice }, table, context.stack(), context.position());
-        return broadcast_added_dice(library, table, context, random);
+        append_event_record(context, dice_added{ player, dice });
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const add_dice& command, compile_mode)
@@ -91,7 +81,6 @@ namespace givm::detail
             writer.write(execute_fn{ add_dice_execute<true> });
             writer.write(command);
         }
-        compile_broadcast<dice_added>(writer, broadcast_added_dice);
     }
 }
 

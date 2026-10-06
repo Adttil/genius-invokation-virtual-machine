@@ -8,7 +8,7 @@
 struct healed;
 ```
 
-角色治疗完成后的通知。广播时牌桌已更新生命值；`value` 是经生命上限截断后的实际恢复量。满血等情况仍产生通知，此时值为 `0`。范围治疗会先完成全部目标的治疗调整和加血，再按目标顺序逐个广播本事件。
+角色治疗完成后的通知。广播时牌桌已更新生命值；`value` 是经生命上限截断后的实际恢复量。满血等情况仍产生通知，此时值为 `0`。通知进入当前段，在结算点按记录顺序处理。`kind` 区分普通治疗、免于击倒恢复和复苏；三者都可产生治疗通知。
 
 [`increase_max_health`](../commands/increase_max_health.md) 也使用此通知：它先增加生命上限并恢复相同数量生命，再通知实际增加量，不进行治疗量修饰。
 
@@ -19,6 +19,7 @@ struct healed;
 | `source` | `const effect_source_id` | 本次治疗的来源；只读 |
 | `target` | `const character_id` | 已接受治疗的角色；只读 |
 | `value` | `const std::uint32_t` | 本次实际恢复的生命值；只读 |
+| `kind` | `const healing_kind` | `normal`、`prevent_defeat` 或 `revive`；只读 |
 
 ## 示例
 

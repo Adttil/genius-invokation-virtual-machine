@@ -71,13 +71,13 @@ static void handle(const D& definition, givm::history_summary_state state, const
 
 `Event` 须属于 `subscribed_events<history_summary_definition>`。其中 [`history_summary_initialization`](events/history_summary_initialization.md) 仅供摘要初始化：[`executor::start`](../executor/executor/start.md) 准备好状态空间后同步发送一次，返回前完成全部初始化响应。通常先完成双方 [`load_deck`](../executor/load_deck.md)，让该响应可以读取完整初始牌桌。字段不保证清零，源须在读取前写入有效值；可接受后续首次写入的字段不必在此初始化。摘要之间不得依赖初始化先后；需要共同初始化的数据应放在同一摘要中。
 
-其余可订阅事件均为通知类事件，例如 [`round_started`](events/round_started.md)、[`character_defeated`](events/character_defeated.md)、[`skill_used`](events/skill_used.md)、[`card_played`](events/card_played.md)。报价、参数检查、伤害计算与濒死等可修改或尚未确认结果的时机不用于摘要更新。摘要不提供普通查询。
+其余可订阅事件均为通知类事件，例如 [`round_started`](events/round_started.md)、[`after_damage`](events/after_damage.md)、[`skill_used`](events/skill_used.md)、[`card_played`](events/card_played.md)。报价、参数检查、伤害计算与濒死等可修改或尚未确认结果的时机不用于摘要更新。摘要不提供普通查询。
 
 静态摘要源通过是否存在相应 `handle` 决定订阅。动态源声明 `static constexpr bool is_dynamic = true;`，并以 `template<class Event> bool can_handle() const` 选择实际提供的响应；此处没有实体 view 模板参数。动态摘要须为全部可订阅事件提供 `can_handle` 和签名正确的静态 `handle`，包括返回 `false` 的事件；构造 `definition_source_view` 时检查完整性，缺少接口或返回类型错误属于 C++ 编译错误。返回 `false` 时不会调用该响应；定义源若自行直接调用该不支持的分支，属于未定义行为。适配器需要的脚本状态可以保存在 `D` 中。
 
 ## 更新与读取
 
-普通实体对该通知的全部响应及其效果完成后，最后更新订阅该通知的摘要。因此普通响应读取的摘要尚未包含当前通知；若其效果触发并完成了嵌套通知，则可以读到嵌套通知的记录。因输入请求而暂停时，本通知的摘要尚未更新；恢复后完成全部响应才更新一次。只有实际发生并完成普通响应的通知才更新摘要；例如角色成功复活或击倒导致立即终局时，不发送 `character_defeated`，因此不增加其计数。
+通知处理开始时先更新订阅它的摘要，再调用普通响应，因此普通响应读取的历史包含当前通知。通知暂停和继续不会重复记录。离场通知先完成自身效果，再更新普通离场历史；伤害后摘要只记录实际发布的段事件，使用 `defeated` 判断实际击倒。
 
 不同摘要不应依赖彼此对同一事件的更新先后；需要联合更新的数据应放在同一摘要中。
 
@@ -138,24 +138,19 @@ struct defeats_source
     }
 
     static void handle(const givm::history_field_key<std::uint32_t[]>& counts,
-        givm::history_summary_state state, const givm::character_defeated& event,
+        givm::history_summary_state state, const givm::after_damage& event,
         const givm::table&, const givm::definition_library&)
     {
-        ++state[counts][event.target.player_id.index];
+        if(event.defeated) ++state[counts][event.target.player_id.index];
     }
 };
 
 int main()
 {
     const defeats_source summary{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(summary)) return 1;
     auto library_result = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     if(not library_result)

@@ -124,7 +124,7 @@ namespace
                 const auto set = log->dynamic ? givm::set_attachment_state{} : givm::set_attachment_state{ target, { 10, 2 } };
                 const auto modify = log->dynamic ? givm::modify_attachment_state{} : givm::modify_attachment_state{ target, -2, -1 };
                 const auto remove = log->dynamic ? givm::remove_attachment{} : givm::remove_attachment{ target };
-                transfer = context.add_program(std::tuple{ command, set, givm::add_attachment{}, modify,
+                transfer = context.add_program(std::tuple{ command, givm::settle{}, set, givm::settle{}, givm::add_attachment{}, modify, givm::settle{},
                     givm::replace_cards{ givm::player_id{ 0 } }, remove, givm::set_support_state{} });
             }
             else transfer = context.add_program(std::tuple{ givm::set_support_state{}, command, givm::set_support_state{} });
@@ -133,7 +133,7 @@ namespace
                 log->occupied ? context.add_program(std::tuple{ givm::add_attachment{}, givm::add_attachment{} })
                     : context.add_program(std::tuple{ givm::add_attachment{} }),
                 transfer,
-                context.add_program(std::tuple{ givm::set_attachment_state{}, givm::replace_cards{ givm::player_id{ 0 } } }),
+                context.add_program(std::tuple{ givm::set_attachment_state{}, givm::settle{}, givm::replace_cards{ givm::player_id{ 0 } } }),
                 context.add_program(std::tuple{ givm::remove_attachment{} }),
                 context.add_program(std::tuple{ givm::add_attachment{} }) };
         }
@@ -225,7 +225,7 @@ namespace
         const givm::test::initialization_character_source driver;
         REQUIRE(sources.add(initialization, driver));
         return givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
-            givm::start_battle{}, givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
+            givm::start_battle{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, mode));
     }
 
@@ -473,7 +473,7 @@ TEST_CASE("fixed attachment state and removal commands retain a zero-health char
     const givm::test::initialization_character_source driver;
     REQUIRE(sources.add(initialization, driver));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{
-        givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
+        givm::start_battle{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, mode));
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } }, {} };

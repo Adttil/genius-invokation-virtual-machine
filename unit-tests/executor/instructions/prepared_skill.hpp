@@ -141,11 +141,18 @@ namespace
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
-            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(not event.flags.contains(givm::damage_flag_bits::prepared_skill)) return {};
             REQUIRE(std::holds_alternative<givm::attachment_id>(event.source));
-            const auto source = std::get<givm::attachment_id>(event.source);
+            CHECK(std::get<givm::attachment_id>(event.source) == data.log->effects.back());
+            return {};
+        }
+        static givm::program_entry handle(const definition_type& data,
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+        {
+            if(not event.flags.contains(givm::damage_flag_bits::prepared_skill)) return {};
+            const auto source = data.log->effects.back();
             CHECK_FALSE(context.table()[source].is_valid());
             CHECK_FALSE(event.flags.contains(givm::damage_flag_bits::skill_damage));
             CHECK_FALSE(event.flags.contains(givm::damage_flag_bits::charged_attack));
@@ -236,13 +243,12 @@ namespace
         const preparation_source later{ &log, "LaterPreparation" };
         const tagged_attachment immunity{ "Immunity", "control_immunity" };
         const tagged_attachment plain{ "PlainAttachment", "ordinary" };
-        const givm::basic_definition_sources basics{
-            givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-            givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
+        const auto basics = givm::genshin_impact::reaction_names_3_3_0;
         givm::definition_source_library sources;
+        sources.add(givm::genshin_impact::reaction_sources_3_3_0());
         REQUIRE(sources.add(observer, character, ordinary, fast, combat, later, immunity, plain,
             givm::genshin_impact::frozen_3_3_0));
-        return givm_test::require_success(compile(sources, basics, std::tuple{ givm::start_battle{} }, round,
+        return givm_test::require_success(compile(sources, basics, std::tuple{ givm::start_battle{}, givm::settle{} }, round,
             observed ? givm::compile_mode::observed : givm::compile_mode::normal));
     }
 
@@ -299,7 +305,7 @@ TEST_CASE("prepared attachments consume consecutive action opportunities in orde
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
         return std::tuple{ add(context, "FastPreparation", 1), add(context, "CombatPreparation", 2),
-            add(context, "LaterPreparation", 3), givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } };
+            add(context, "LaterPreparation", 3), givm::begin_action{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
     givm_test::executor_driver executor;
@@ -327,12 +333,12 @@ TEST_CASE("control preserves a prepared attachment through declarations until th
 {
     const bool observed = GENERATE(false, true);
     prepared_log log;
-    const std::array<givm::any_command, 3> round{ givm::start_round{}, givm::begin_action{},
-        givm::end_game{ givm::game_result::both_loss } };
+    const std::array<givm::any_command, 5> round{ givm::start_round{}, givm::settle{}, givm::begin_action{},
+        givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
         return std::tuple{ add(context, "CombatPreparation", 2), add(context, "frozen-3.3.0-genshin_impact"),
-            givm::begin_action{}, givm::end_round{} };
+            givm::begin_action{}, givm::end_round{}, givm::settle{} };
     }, round);
     auto table = make_table(log, library, ids);
     givm_test::executor_driver executor;
@@ -363,7 +369,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
     const auto choice = GENERATE(scenario::unchanged, scenario::forced, scenario::immune, scenario::voluntary, scenario::overloaded);
     const bool cancelled = choice == scenario::forced || choice == scenario::voluntary || choice == scenario::overloaded;
     prepared_log log;
-    const std::array damage{ givm::fixed_damage{
+    const std::array damage{ givm::deal_damage{
         .source = { givm::relative_player::opponent, 0 }, .target = { givm::relative_player::self, 0 },
         .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
@@ -379,7 +385,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
         {
             commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{},
                 .target = givm::relative_character_target{}, .element = givm::element::electro });
-            commands.emplace_back(givm::deal_damage{ .damages = damage });
+            for(const auto& item : damage) commands.emplace_back(item);
         }
         else
         {
@@ -387,7 +393,8 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
             commands.emplace_back(givm::set_active_character{
                 givm::relative_character_target{ givm::relative_player::self, choice == scenario::unchanged ? 0 : 1 } });
         }
-        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        commands.emplace_back(givm::settle{});
+    commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return commands;
     });
     auto table = make_table(log, library, ids);
@@ -422,7 +429,7 @@ TEST_CASE("prepared effects resume after a removal response and copying the susp
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
         return std::tuple{ add(context, "CombatPreparation", 2), givm::begin_action{},
-            givm::end_game{ givm::game_result::both_loss } };
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
     givm_test::executor_driver executor;
@@ -458,7 +465,7 @@ TEST_CASE("switch cancellation resumes remaining removal notifications independe
         return std::tuple{ add(context, "CombatPreparation"), add(context, "LaterPreparation"),
             add(context, "PlainAttachment"),
             givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
-            givm::end_game{ givm::game_result::both_loss } };
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     });
     auto table = make_table(log, library, ids);
     givm_test::executor_driver executor;

@@ -13,17 +13,22 @@ enum class elemental_reaction : std::uint8_t
     overloaded,
     superconduct,
     electro_charged,
-    lunar_charged,
     frozen,
-    swirl,
-    crystallize,
     burning,
     bloom,
-    quicken
+    quicken,
+    swirl_cryo,
+    swirl_hydro,
+    swirl_pyro,
+    swirl_electro,
+    crystallize_cryo,
+    crystallize_hydro,
+    crystallize_pyro,
+    crystallize_electro
 };
 ```
 
-元素相遇时产生的反应种类。反应的伤害和后续效果由相应的结算决定。扩散和结晶分别要求风和岩为新施加的元素，二者本身不会留下元素附着。
+元素组合触发的固定反应槽位，共 17 个；不是本局采用的具体反应定义。普通感电和月感电共用 `electro_charged` 槽位，实际效果由玩家的反应定义表决定。扩散和结晶按元素分别占用槽位，允许只替换其中一种。扩散和结晶分别要求风和岩为新施加的元素，二者本身不会留下元素附着。
 
 ## 枚举值
 
@@ -35,10 +40,9 @@ enum class elemental_reaction : std::uint8_t
 | `overloaded` | 超载 |
 | `superconduct` | 超导 |
 | `electro_charged` | 感电 |
-| `lunar_charged` | 月感电 |
 | `frozen` | 冻结 |
-| `swirl` | 扩散 |
-| `crystallize` | 结晶 |
+| `swirl_cryo/hydro/pyro/electro` | 对应元素的扩散槽位 |
+| `crystallize_cryo/hydro/pyro/electro` | 对应元素的结晶槽位 |
 | `burning` | 燃烧 |
 | `bloom` | 绽放 |
 | `quicken` | 激化 |

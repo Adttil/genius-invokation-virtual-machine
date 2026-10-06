@@ -15,16 +15,11 @@ namespace givm_test::interface_layers
     // unit verifies compilation through compile.hpp without the runtime interface.
     givm::definition_library make_layered_library(givm::linked_deck& deck, bool observed)
     {
-        const auto sources = make_layered_sources();
-        const givm::basic_definition_sources basics{
-            givm::genshin_impact::dendro_core_3_3_0,
-            givm::genshin_impact::catalyzing_field_3_3_0,
-            givm::genshin_impact::burning_flame_3_3_0,
-            givm::genshin_impact::frozen_3_3_0,
-            givm::genshin_impact::shield_3_3_0
-        };
-        const std::array<givm::any_command, 2> round{
-            givm::start_round{}, givm::end_game{ givm::game_result::player_0_win } };
+        auto sources = make_layered_sources();
+        sources.add(givm::genshin_impact::reaction_sources_3_3_0());
+        const auto basics = givm::genshin_impact::reaction_names_3_3_0;
+        const std::array<givm::any_command, 3> round{
+            givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::player_0_win } };
         auto compiled = givm::compile(sources, basics, std::span<const givm::any_command>{}, round,
             observed ? givm::compile_mode::observed : givm::compile_mode::normal);
         if(not compiled) throw std::logic_error{ givm::error_string(compiled.error()) };

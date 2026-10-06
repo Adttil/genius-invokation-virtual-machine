@@ -142,7 +142,7 @@ TEST_CASE("single response retains its original event and settles before continu
     call_log log;
     log.remove = GENERATE(false, true);
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         givm::test::with_passive_skill(driver_source{ &log }), summon_source{ &log }, prepared_source{ &log },
         givm::test::initialized_character_source{ "SingleSettlementOpponent" });
     auto table = make_table(library, ids);
@@ -164,7 +164,7 @@ TEST_CASE("consumed prepared effect continues and preserves its selected speed",
 {
     call_log log{ .prepared = true };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::begin_action{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         givm::test::with_passive_skill(driver_source{ &log }), summon_source{ &log }, prepared_source{ &log },
         givm::test::initialized_character_source{ "SingleSettlementOpponent" });
     auto table = make_table(library, ids);
@@ -180,7 +180,7 @@ TEST_CASE("prepared combat effect keeps plunge eligibility gained by its charact
 {
     call_log log{ .prepared = true, .switch_during_effect = true };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::begin_action{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::begin_action{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         givm::test::with_passive_skill(driver_source{ &log }), summon_source{ &log }, prepared_source{ &log },
         givm::test::initialized_character_source{ "SingleSettlementOpponent" });
     givm::table table{ { .self_player = owner },

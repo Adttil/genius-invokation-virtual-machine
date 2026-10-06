@@ -17,8 +17,7 @@ namespace givm::detail
 {
     inline std::optional<execution_state> prepare_attachment_application(
         const definition_library& library, unrestricted_table& table, execution_context& context,
-        random_fn& random, attach_input input, execution_position reapplication_resume,
-        execution_position replacement_resume)
+        random_fn& random, attach_input input, execution_position reapplication_resume)
     {
 #ifndef NDEBUG
         debug_validate_entity(table, input.target, "attach", "target");
@@ -38,8 +37,8 @@ namespace givm::detail
             pop_single_response<attachment_reapplication, attachment_id>(context);
             return std::nullopt;
         }
-        return prepare_attachment_addition(library, table, context, random,
-            { input.target, input.definition, input.state }, replacement_resume);
+        apply_attachment_addition(library, table, context, { input.target, input.definition, input.state });
+        return std::nullopt;
     }
 
     inline execution_state finish_attachment_reapplication(
@@ -47,7 +46,7 @@ namespace givm::detail
     {
         if(not continue_single_response<attachment_reapplication, attachment_id>(library, table, context, random)) return continue_execution;
         pop_single_response<attachment_reapplication, attachment_id>(context);
-        return context.advance(response_extent<attachment_reapplication> + response_extent<attachment_removed>);
+        return context.advance(response_extent<attachment_reapplication>);
     }
 
     template<bool Fixed>
@@ -74,8 +73,8 @@ namespace givm::detail
             context.enter_next();
         }
         if(const auto state = prepare_attachment_application(library, table, context, random, input,
-            context.position(), context.position() + response_extent<attachment_reapplication>)) return *state;
-        return context.advance(response_extent<attachment_reapplication> + response_extent<attachment_removed>);
+            context.position())) return *state;
+        return context.advance(response_extent<attachment_reapplication>);
     }
 
     inline void compile(program_writer& writer, const givm::attach& command, compile_mode)
@@ -88,7 +87,6 @@ namespace givm::detail
         else
             writer.write(execute_fn{ execute_attachment_application<false> });
         compile_single_response<attachment_reapplication, attachment_id>(writer, finish_attachment_reapplication);
-        compile_broadcast<attachment_removed>(writer, finish_replaced_attachment_removal);
     }
 }
 

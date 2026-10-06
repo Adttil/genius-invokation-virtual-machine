@@ -36,7 +36,7 @@ namespace givm
         struct after_damage,
         struct healed,
         struct after_elemental_reaction,
-        struct character_defeated,
+        struct character_revived,
         struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
@@ -190,11 +190,12 @@ namespace givm
         struct elemental_reaction_will_occur,
         struct after_elemental_reaction,
         struct character_will_be_defeated,
-        struct character_defeated,
+        struct character_revived,
         struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
+        struct support_removal_effect,
         struct support_state_changed
     >{};
 
@@ -244,11 +245,12 @@ namespace givm
         struct elemental_reaction_will_occur,
         struct after_elemental_reaction,
         struct character_will_be_defeated,
-        struct character_defeated,
+        struct character_revived,
         struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
+        struct summon_removal_effect,
         struct resummoning
     >{};
 
@@ -298,13 +300,20 @@ namespace givm
         struct elemental_reaction_will_occur,
         struct after_elemental_reaction,
         struct character_will_be_defeated,
-        struct character_defeated,
+        struct character_revived,
         struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
+        struct combat_status_removal_effect,
         struct combat_status_regeneration,
         struct combat_status_state_changed
+    >{};
+
+    template<>
+    struct subscribed_events<reaction_view> : type_list<
+        struct damage_calculation,
+        struct elemental_reaction_will_occur
     >{};
 
     template<>
@@ -356,7 +365,7 @@ namespace givm
         struct elemental_reaction_will_occur,
         struct after_elemental_reaction,
         struct character_will_be_defeated,
-        struct character_defeated,
+        struct character_revived,
         struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
@@ -410,11 +419,12 @@ namespace givm
         struct elemental_reaction_will_occur,
         struct after_elemental_reaction,
         struct character_will_be_defeated,
-        struct character_defeated,
+        struct character_revived,
         struct support_removed,
         struct summon_removed,
         struct combat_status_removed,
         struct attachment_removed,
+        struct attachment_removal_effect,
         struct attachment_reapplication,
         struct attachment_state_changed,
         struct technique_effect,

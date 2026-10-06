@@ -4,19 +4,16 @@
 
 定义于头文件 `<givm/definition.hpp>`。
 
-`heal{}` 的动态输入。它描述来源、目标和初始治疗量；目标可以是精确的 `character_id`，也可以是带 `selection` 范围的 [`relative_character_target`](../events/relative_character_target.md)。精确角色目标只治疗该角色。
+`heal{}` 的动态治疗序列。每个元素独立描述来源、目标、初始治疗量和治疗种类；一次响应可以决定本次需要多少次治疗。
 
 ```cpp
-using healing_target = std::variant<character_id, relative_character_target>;
-
 struct heal_input
 {
-    effect_source_id source;
-    healing_target target;
-    std::uint32_t value;
+    struct item;
+    std::span<const item> healings;
 };
 ```
 
-动态输入在命令开始时解析目标位置。相对目标的 `character`、`others` 和 `all` 分别表示定位角色、除定位角色之外的其他角色和两者全部。精确角色目标和 `character` 允许生命值为 `0`；`others` 和 `all` 只选择存活角色。
+`healings` 按顺序执行，允许为空或重复目标。元素类型及治疗资格见 [`item`](heal_input/item.md)。每个元素开始时确定自己的目标集合，后续元素读取已经更新的局面；同一范围不会因中途复活或新增角色而扩充。
 
-范围治疗从定位角色开始按循环顺序处理，`others` 跳过定位角色，轮到每个角色时判断其是否存活。每个目标先完成 [`healing`](../events/healing.md) 广播和实际加血，全部目标完成后再按相同顺序广播 [`healed`](../events/healed.md)。本输入本身不广播。
+数组内容在 `invoke` 或 `pack_inputs` 时复制。本输入不自动分段或结算，每次治疗的通知记录归入当前段。

@@ -79,29 +79,17 @@ namespace givm::detail
         }
     }
 
-    inline execution_state broadcast_round_start(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<round_started>(library, table, context, random))
-            return continue_execution;
-        pop_broadcast<round_started>(context);
-        return context.advance(response_extent<round_started>);
-    }
-
     inline execution_state prepare_round_start(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
     {
-        prepare_broadcast(library, round_started{}, table, context.stack(), context.position() + sizeof(execute_fn));
-        context.enter_next();
-        return broadcast_round_start(library, table, context, random);
+        append_event_record(context, round_started{});
+        return context.enter_next();
     }
 
     inline void compile(program_writer& writer, const start_round&, compile_mode)
     {
         writer.write(execute_fn{ prepare_round_start });
-        compile_broadcast<round_started>(writer, broadcast_round_start);
     }
 }
 

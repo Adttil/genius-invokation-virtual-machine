@@ -208,13 +208,14 @@ namespace
         const auto driver = givm::test::with_passive_skill(support_driver{ &log });
         const support_source a{ "SupportA", &log }, b{ "SupportB", &log };
         std::vector<givm::any_command> commands;
-        for(std::size_t index = 0; index < log.actions.size(); ++index) commands.emplace_back(givm::start_round{});
+        for(std::size_t index = 0; index < log.actions.size(); ++index) { commands.emplace_back(givm::start_round{}); commands.emplace_back(givm::settle{}); }
         if(play_card)
         {
-            commands.emplace_back(givm::draw_cards{ .positions = draw_positions_1 });
+            commands.emplace_back(givm::draw_cards{ .position = 0, .count = 1 });
             commands.emplace_back(givm::begin_action{});
         }
-        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        commands.emplace_back(givm::settle{});
+    commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return givm::test::compile_definitions_with_program(mode, commands, std::tuple{}, driver, a, b, support_card{});
     }
 
@@ -352,14 +353,14 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
         const auto after = support_ids(current);
         REQUIRE(after.size() == 4);
         CHECK(current[after.back()].definition_id() == ids.get_id<givm::support_view>("SupportB"));
-        CHECK(current[after.back()].state().count == (full && refill ? 99 : 17));
+        CHECK(current[after.back()].state().count == 17);
         CHECK(current[before[1]].is_valid() == not full);
         CHECK(current[givm::player_id{ 0 }].hand_card_count() == 0);
     };
     if(full && refill)
     {
         REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
-        CHECK(support_ids(table).size() == 3);
+        CHECK(support_ids(table).size() == 4);
         CHECK_FALSE(table[before[1]].is_valid());
         CHECK(log.removed == std::vector{ before[1] });
         auto copied_executor = executor;
@@ -370,14 +371,14 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
             REQUIRE(advance(*running, library, *current) == givm::execution_state::action_selection);
             check_result(*current);
         }
-        CHECK(log.remaining_on_removal == std::vector<std::size_t>{ 3, 4, 4 });
+        CHECK(log.remaining_on_removal == std::vector<std::size_t>{ 4, 4, 4 });
     }
     else
     {
         REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
         check_result(table);
         CHECK(log.removed.size() == (full ? 2 : 0));
-        if(full) CHECK(log.remaining_on_removal == std::vector<std::size_t>{ 3, 3 });
+        if(full) CHECK(log.remaining_on_removal == std::vector<std::size_t>{ 4, 4 });
     }
 }
 

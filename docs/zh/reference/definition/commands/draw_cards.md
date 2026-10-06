@@ -14,7 +14,8 @@ struct draw_cards
     using input_type = draw_cards_input;
 
     relative_player player = relative_player::self;
-    std::span<const std::size_t> positions{};
+    std::size_t position = std::numeric_limits<std::size_t>::max();
+    std::size_t count = 1;
 };
 ```
 
@@ -32,7 +33,8 @@ struct draw_cards
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`relative_player`](relative_player.md) | 固定模式下相对于当前效果本方的抽牌方，初始为 `self` |
-| `positions` | `std::span<const std::size_t>` | 固定模式下按抽取顺序排列的牌堆顶相对位置，初始为空 |
+| `position` | `std::size_t` | 相对于当前牌堆顶的位置；默认最大值表示动态模式 |
+| `count` | `std::size_t` | 固定模式的抽取次数，默认 1；每次取当前相同位置的牌 |
 
 ## 编译检查
 
@@ -48,30 +50,27 @@ struct draw_cards_error;
 | --- | --- |
 | `dynamic_input_in_root` | 初始化或回合根流程使用了动态输入模式；该模式只允许出现在响应程序中 |
 | `invalid_player` | `player` 不是 `relative_player::self` 或 `relative_player::opponent` |
-| `duplicate_position` | `positions[index]` 与之前的位置重复；本次抽取的固定位置不得重复 |
 
 ### `draw_cards_error` 的成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | `invalid_player` 时为玩家枚举的数值；`duplicate_position` 时为重复的牌堆位置 |
-| `index` | `std::size_t` | `duplicate_position` 中重复元素在 `positions` 内从零开始的索引 |
-| `first_index` | `std::size_t` | `duplicate_position` 中相同位置首次出现在 `positions` 内的索引 |
+| `value` | `std::size_t` | `invalid_player` 时为玩家枚举的数值 |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
 
 ## 注意
 
-`positions` 非空时采用固定模式。所有位置都相对于本命令开始执行时的牌堆顶，`0` 表示顶牌；取走前面的目标不会改变后续位置的含义。例如 `{ 3, 1 }` 依次抽取原来的第四张、第二张牌。超出牌堆范围的位置跳过，位置不得重复。位置数组须在编译命令期间保持有效，编译完成后不再借用原数组。
+`position` 不是最大值时采用固定模式，`0` 表示当前顶牌。例如 `.position = 0, .count = 2` 连续抽取两张顶牌；`.position = 1` 抽取当前第二张牌。位置超出范围时停止本条命令。固定模式不接收位置数组，要抽取多个不同位置可使用多条固定命令；后面的命令按已经变化的牌堆定位。
 
 默认构造 `draw_cards{}` 时，消费响应通过 [`invoke`](../../executor/handle_context/invoke.md) 提交的一个 [`draw_cards_input`](../command_inputs/draw_cards_input.md)。其中 `cards` 按抽取顺序指定有效的牌堆卡牌，允许为空，目标不得重复。每张牌进入其所属玩家的手牌，允许同一批指定双方的牌；动态模式不读取命令的 `player`。
 
 固定模式下，响应程序中的本方是响应实体所属玩家。根流程使用固定模式时，须显式设置 [`table_state::self_player`](../../table/table_state.md)；下例设为玩家 0。
 
-按指定顺序依次加入手牌，保留未抽取牌的相对顺序。达到所属玩家的手牌上限后，仍继续从牌堆移走本次应抽的牌，但这些牌不进入手牌，其附属状态也会移除。这种移除不属于舍弃，不触发舍弃效果或舍弃通知。
+按指定顺序依次加入手牌，保留未抽取牌的相对顺序。超过所属玩家的手牌上限时，仍建立手牌 ID 后立即标记无效，并保存 overflow 入手事实。这不属于舍弃，不触发舍弃效果或舍弃通知。
 
-先完成本次所有抽牌，再按输入顺序逐张发出 [`card_drawn`](../events/card_drawn.md)，只通知实际进入手牌的牌。每张牌的通知及其响应程序全部结束后，才开始下一张牌的通知。
+本命令完成所有抽牌并登记入手记录，不自动分段或结算。段收尾保留 overflow 或仍在接收方手中的记录；结算点按保留顺序逐张处理 [`card_drawn`](../events/card_drawn.md)。每张牌的通知及其响应程序全部结束后，才开始下一张。
 
 抽牌不额外广播 [`hand_card_added`](../events/hand_card_added.md)。响应任意方式加入手牌的定义，通过响应 `card_drawn` 参与同一次抽牌通知，与仅响应抽牌的定义按广播顺序共同结算。
 
@@ -101,19 +100,13 @@ int main()
 {
     card_source first{ "first" };
     card_source second{ "second" };
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(first, second)) return 1;
-    constexpr std::array<std::size_t, 2> draw_positions{ 0, 1 };
     auto library_result = compile(
         sources, basics,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions } },
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 2 } },
         std::tuple{}, givm::compile_mode::normal);
     if(not library_result)
     {

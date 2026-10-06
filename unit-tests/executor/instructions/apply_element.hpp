@@ -69,11 +69,11 @@ namespace
             data.log->order.push_back(1);
             data.log->incoming = event.incoming_element;
             data.log->reacted_aura = event.reacted_aura;
-            data.log->reaction = event.reaction;
+            data.log->reaction = event.reaction.slot;
             data.log->cause = event.cause;
             if(data.log->take_over)
             {
-                event.replacement_reaction = data.replacement;
+                event.cancel_default_effects = true;
                 return context.invoke(data.replacement_entry);
             }
             return {};
@@ -135,7 +135,7 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
             givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = incoming },
-            givm::end_game{ .result = givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, observer, victim
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } },

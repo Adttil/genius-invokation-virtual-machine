@@ -137,29 +137,9 @@ namespace givm
             return (*this)[id_map_.get_id<TCategory>(name)];
         }
 
-        definition_id<combat_status_view> dendro_core_id() const noexcept
+        definition_id<reaction_view> default_reaction_id(elemental_reaction slot) const noexcept
         {
-            return basic_ids_.dendro_core;
-        }
-
-        definition_id<combat_status_view> catalyzing_field_id() const noexcept
-        {
-            return basic_ids_.catalyzing_field;
-        }
-
-        definition_id<summon_view> burning_flame_id() const noexcept
-        {
-            return basic_ids_.burning_flame;
-        }
-
-        definition_id<attachment_view> frozen_id() const noexcept
-        {
-            return basic_ids_.frozen;
-        }
-
-        definition_id<combat_status_view> shield_id() const noexcept
-        {
-            return basic_ids_.shield;
+            return default_reactions_[static_cast<std::size_t>(slot) - 1];
         }
 
         template<class TCategory>
@@ -308,7 +288,7 @@ namespace givm
         definition_compile_context(
             const issued_id_map& id_map,
             const detail::compile_definitions& definitions,
-            const detail::basic_definition_ids& basic_ids,
+            const detail::default_reaction_ids& default_reactions,
             detail::program_bytes& program,
             const detail::definition_source_declarations& declarations,
             compile_mode mode,
@@ -322,7 +302,7 @@ namespace givm
             , std::vector<detail::debug_input_requirement>& input_markers, std::vector<detail::debug_program_info>& debug_programs, std::size_t library_identity
 #endif
         )
-        : id_map_{ id_map }, definitions_{ definitions }, basic_ids_{ basic_ids }, program_{ program }, declarations_{ declarations }, mode_{ mode },
+        : id_map_{ id_map }, definitions_{ definitions }, default_reactions_{ default_reactions }, program_{ program }, declarations_{ declarations }, mode_{ mode },
           history_layouts_{ history_layouts }, own_history_{ own_history }, history_layouts_ready_{ history_layouts_ready }, errors_{ errors }, stage_{ stage }, source_{ std::move(source) }
 #ifndef NDEBUG
         , input_markers_{ input_markers }, debug_programs_{ debug_programs }, library_identity_{ library_identity }
@@ -336,7 +316,7 @@ namespace givm
 
         const issued_id_map& id_map_;
         const detail::compile_definitions& definitions_;
-        const detail::basic_definition_ids& basic_ids_;
+        const detail::default_reaction_ids& default_reactions_;
         detail::program_bytes& program_;
         const detail::definition_source_declarations& declarations_;
 

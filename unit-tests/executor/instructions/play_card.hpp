@@ -83,7 +83,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, cost, speed, single_target, optional_targets,
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::card_state query(const definition_type& data, const givm::card_initial_state&)
         {
@@ -164,11 +164,11 @@ namespace
             return {
                 log,
                 context.add_program(
-                    std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                    std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
                 context.add_program(
-                    std::tuple{ givm::draw_cards{ .positions = draw_positions_2 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                    std::tuple{ givm::draw_cards{ .position = 0, .count = 2 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
                 context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } })
             };
         }
@@ -265,7 +265,7 @@ namespace
     auto setup(std::span<const std::size_t> positions)
     {
         return std::tuple{
-            givm::draw_cards{ .positions = positions },
+            givm::draw_cards{ .position = 0, .count = positions.size() },
             givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
             givm::begin_action{}
         };
@@ -600,15 +600,15 @@ TEST_CASE("card payment and broadcasts resume in order after removal even when i
         for(std::uint32_t index = 0; index < draws; ++index)
         {
             CHECK(execution.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 0 });
-            CHECK(current_table[givm::player_id{ 0 }].hand_card_count() == index + 1);
+            CHECK(current_table[givm::player_id{ 0 }].hand_card_count() == (countered ? std::array<std::uint32_t, 4>{ 1, 3, 3, 3 }[index] : std::array<std::uint32_t, 4>{ 1, 3, 4, 4 }[index]));
             check_removed_card(current_table, card, card_definition);
             execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, current_table, random, {}));
             REQUIRE(advance(execution, library, current_table, random)
                 == (index + 1 == draws ? givm::execution_state::action_selection : givm::execution_state::card_selection));
         }
         CHECK(log.events == (countered
-            ? std::vector<std::string>{ "draw", "dice", "will", "draw", "played", "draw" }
-            : std::vector<std::string>{ "draw", "dice", "will", "draw", "effect", "draw", "played", "draw" }));
+            ? std::vector<std::string>{ "draw", "will", "dice", "played", "draw", "draw" }
+            : std::vector<std::string>{ "draw", "will", "effect", "draw", "dice", "played", "draw", "draw" }));
         CHECK(log.dice_at_draw == (countered ? std::vector<std::uint32_t>{ 4, 3, 3 } : std::vector<std::uint32_t>{ 4, 3, 3, 3 }));
         CHECK(log.effects.size() == (countered ? 0 : 1));
         CHECK(log.effect_targets == (countered ? std::vector<card_targets>{} : std::vector{ targets }));
@@ -635,7 +635,7 @@ TEST_CASE("action submissions validate the first target before trusting a second
     const playable_card_source card{ &log, "ValidationCard", 0 };
     const givm::test::initialized_character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::begin_action{} },
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::begin_action{} },
         std::tuple{}, card, character);
     const auto character_id = ids.get_id<givm::character_view>(character.name());
     const givm::character_id own{ givm::player_id{ 0 }, 0 };

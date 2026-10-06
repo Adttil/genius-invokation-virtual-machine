@@ -29,6 +29,7 @@ namespace givm
         weapon_type_mask allowed_weapon_types;
         tag_id energy_tag{};
         givm::element element = givm::element::none;
+        bool alive = true;
     };
 }
 

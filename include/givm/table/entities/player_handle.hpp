@@ -20,6 +20,7 @@
 #include "support_handle.hpp"
 #include "combat_status_handle.hpp"
 #include "character_handle.hpp"
+#include "reaction_handle.hpp"
 
 #include "../../macro_define.hpp"
 
@@ -61,6 +62,13 @@ namespace givm::detail
         constexpr auto& state() const
         {
             return storage_.data->state;
+        }
+
+        constexpr reaction_view reaction(elemental_reaction slot) const
+        {
+            auto result = detail::table_accessor::make_uninitialized<reaction_view>();
+            detail::table_accessor::storage_of(result) = { storage_.table, storage_.data, slot };
+            return result;
         }
 
         template<bool SkipErased = true>
@@ -517,6 +525,7 @@ namespace givm
         using base_type::table;
         using base_type::id;
         using base_type::state;
+        using base_type::reaction;
         using base_type::hand_cards;
         using base_type::deck_cards;
         using base_type::supports;

@@ -201,7 +201,7 @@ namespace
         {
             const auto hits = context.table()[data.hits];
             data.observed->push_back(hits);
-            return hits == 0 ? context.invoke(data.pause) : givm::program_entry{};
+            return hits == 1 ? context.invoke(data.pause) : givm::program_entry{};
         }
     };
 
@@ -410,9 +410,9 @@ namespace
             for(auto& value : state[data.counts]) value = 0;
         }
         static void handle(const definition_type& data, givm::history_summary_state state,
-            const givm::character_defeated& event, const givm::table&, const givm::definition_library&)
+            const givm::after_damage& event, const givm::table&, const givm::definition_library&)
         {
-            ++state[data.counts][event.target.player_id.index];
+            if(event.defeated) ++state[data.counts][event.target.player_id.index];
         }
     };
 
@@ -446,12 +446,12 @@ namespace
             const auto self = context.entity().character();
             CHECK(context.table()[data.counts][event.target.player_id.index] == 0);
             if(not data.should_revive) return {};
-            return context.invoke(data.revive, givm::heal_input{ .source = self.id(), .target = event.target, .value = 2 });
+            return context.invoke(data.revive, givm::heal_input{ std::array{ givm::heal_input::item{ .source = self.id(), .target = event.target, .value = 2 , .kind = givm::healing_kind::prevent_defeat} } });
         }
         static givm::program_entry handle(const definition_type& data,
-            givm::character_defeated& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            data.observed->push_back(context.table()[data.counts][event.target.player_id.index]);
+            if(event.defeated) data.observed->push_back(context.table()[data.counts][event.target.player_id.index]);
             return {};
         }
     };
@@ -465,7 +465,7 @@ TEST_CASE("starting initializes history after both decks and copies preserve ini
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(summary, first, second));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal));
     const auto id = ids.get_id<givm::history_summary_definition>(mixed_name);
     const auto small = library.history_field<std::uint8_t>(id, "small");
@@ -524,7 +524,7 @@ TEST_CASE("history without initialization writes fields before reading them", "[
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(summary));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal));
     givm::table table;
     load_deck(table, library, {}, {});
@@ -549,7 +549,7 @@ TEST_CASE("history dependencies select only needed summaries and validate field 
     const std::array roots{ consumer.name() };
     givm::definition_selection selection{};
     selection[givm::definition_types::index_of<givm::card_definition>()] = roots;
-    const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
+    const auto program = std::tuple{ givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, selection, program, std::tuple{}, givm::compile_mode::normal));
     CHECK(ids.has<givm::history_summary_definition>(mixed_name));
     CHECK_FALSE(ids.has<givm::history_summary_definition>(unused.name()));
@@ -611,7 +611,7 @@ TEST_CASE("dynamic history adapters update once after resumable ordinary respons
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(observer, enabled, disabled));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, mode));
     REQUIRE(capability_checks != 0);
     const auto compiled_checks = capability_checks;
@@ -626,15 +626,15 @@ TEST_CASE("dynamic history adapters update once after resumable ordinary respons
     CHECK(table[library.history_field<std::uint64_t[]>(enabled_id, "payload")].size() == 3);
     CHECK(table[library.history_field<std::uint64_t[]>(disabled_id, "payload")].size() == 17);
     REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
-    CHECK(table[hits] == 0);
-    CHECK(observed == std::vector<std::uint32_t>{ 0 });
+    CHECK(table[hits] == 1);
+    CHECK(observed == std::vector<std::uint32_t>{ 1 });
     auto branch = table;
     auto branch_executor = executor;
     branch_executor.submitted(branch_executor.view_in<givm::execution_state::card_selection>().select(library, branch, givm_test::zero_random, {}));
     REQUIRE(advance(branch_executor, library, branch) == givm::execution_state::finished);
     CHECK(branch[hits] == 2);
-    CHECK(table[hits] == 0);
-    CHECK(observed == std::vector<std::uint32_t>{ 0, 1 });
+    CHECK(table[hits] == 1);
+    CHECK(observed == std::vector<std::uint32_t>{ 1, 2 });
     CHECK(branch[library.history_field<std::uint32_t>(disabled_id, "hits")] == 0);
     CHECK(capability_checks == compiled_checks);
 }
@@ -648,7 +648,7 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
         auto sources = givm_test::make_source_library();
         REQUIRE(sources.add(summary));
         return givm_test::require_success(compile(sources, givm_test::basic_sources,
-            std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
             std::tuple{}, givm::compile_mode::normal));
     };
     const auto [small_library, small_ids] = make_library(1);
@@ -697,7 +697,7 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
     {
         auto sources = givm_test::make_source_library();
         REQUIRE(sources.add(scalar_summary_source<T>{ value }));
-        return givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{ givm::end_game{ givm::game_result::both_loss } },
+        return givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{ givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
             std::tuple{}, givm::compile_mode::normal));
     };
     const auto [double_library, double_ids] = make_scalar_library(1.25);
@@ -731,7 +731,7 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(driver, future, summary, initial, first, second, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::begin_action{} }, std::tuple{}, mode));
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::start_round{}, givm::settle{}, givm::begin_action{} }, std::tuple{}, mode));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -769,7 +769,7 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
         CHECK(table[counts][0] == expected.second);
         CHECK(table[counts][1] == 0);
     }
-    CHECK(observed == std::vector<std::uint32_t>{ 0, 0, 1, 1 });
+    CHECK(observed == std::vector<std::uint32_t>{ 0, 1, 1, 2 });
     const auto action = executor.view_in<givm::execution_state::action_selection>();
     std::size_t future_index = 0;
     while(future_index < action.card_count() && table[action.card_id(future_index)].definition_id() != future_id) ++future_index;
@@ -777,7 +777,7 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
     CHECK(action.card_targets_validate(library, table, future_index) == givm::target_validation::valid_complete);
 }
 
-TEST_CASE("defeat history records only confirmed nonterminal defeats after ordinary responses", "[history_summary][dying]")
+TEST_CASE("defeat history records confirmed nonterminal defeats before ordinary responses", "[history_summary][dying]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     enum class outcome { defeated, revived, terminal };
@@ -788,11 +788,11 @@ TEST_CASE("defeat history records only confirmed nonterminal defeats after ordin
     const givm::test::initialized_character_source victim{ "HistoryVictim", { .max_health = 10, .health = 1 } };
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(summary, observer, observer.passive, victim));
-    const std::array damages{ givm::fixed_damage{
+    const std::array damages{ givm::deal_damage{
         .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, mode));
     const auto victim_id = ids.get_id<givm::character_view>(victim.name());
     givm::linked_deck defenders{ .characters = { victim_id } };
@@ -805,10 +805,16 @@ TEST_CASE("defeat history records only confirmed nonterminal defeats after ordin
         ids.get_id<givm::history_summary_definition>(summary.name()), "counts");
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
+    auto state = givm_test::advance_selecting_first_alive(executor, library, table, givm_test::zero_random);
+    if(mode == givm::compile_mode::observed)
+    {
+        REQUIRE(state == givm::execution_state::health_reduced);
+        state = givm_test::advance_selecting_first_alive(executor, library, table, givm_test::zero_random);
+    }
+    REQUIRE(state == givm::execution_state::finished);
     CHECK(table[counts][0] == 0);
     CHECK(table[counts][1] == (expected == outcome::defeated ? 1 : 0));
-    CHECK(observed == (expected == outcome::defeated ? std::vector<std::uint32_t>{ 0 } : std::vector<std::uint32_t>{}));
+    CHECK(observed == (expected == outcome::defeated ? std::vector<std::uint32_t>{ 1 } : std::vector<std::uint32_t>{}));
     CHECK(table[target].state().health == (expected == outcome::revived ? 2 : 0));
     CHECK(executor.view_in<givm::execution_state::finished>().result()
         == (expected == outcome::terminal ? givm::game_result::player_0_win : givm::game_result::both_loss));

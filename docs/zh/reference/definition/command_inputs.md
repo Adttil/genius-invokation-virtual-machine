@@ -31,6 +31,7 @@
 | [`attach_input`](command_inputs/attach_input.md) | [`attach`](commands/attach.md) 的动态输入 |
 | [`create_hand_card_input`](command_inputs/create_hand_card_input.md) | [`create_hand_card`](commands/create_hand_card.md) 的动态输入 |
 | [`deal_damage_input`](command_inputs/deal_damage_input.md) | [`deal_damage`](commands/deal_damage.md) 的动态输入 |
+| [`damage`](command_inputs/damage.md) | 动态伤害数组中的一次伤害参数 |
 | [`discard_deck_cards_input`](command_inputs/discard_deck_cards_input.md) | [`discard_deck_cards`](commands/discard_deck_cards.md) 的动态输入 |
 | [`generate_combat_status_input`](command_inputs/generate_combat_status_input.md) | [`generate_combat_status`](commands/generate_combat_status.md) 的动态输入 |
 | [`heal_input`](command_inputs/heal_input.md) | [`heal`](commands/heal.md) 的动态输入 |
@@ -50,7 +51,6 @@
 | [`set_summon_state_input`](command_inputs/set_summon_state_input.md) | [`set_summon_state`](commands/set_summon_state.md) 的动态输入 |
 | [`set_support_state_input`](command_inputs/set_support_state_input.md) | [`set_support_state`](commands/set_support_state.md) 的动态输入 |
 | [`summon_input`](command_inputs/summon_input.md) | [`summon`](commands/summon.md) 的动态输入 |
-| [`damage`](command_inputs/damage.md) | 动态伤害组中的单段初始描述 |
 
 ## 类型别名
 

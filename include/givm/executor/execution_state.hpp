@@ -12,6 +12,7 @@ namespace givm
         initial_card_selection,
         initial_active_character_selection,
         remaining_active_character_selection,
+        active_character_selection,
         dice_selection,
         action_selection,
         health_reduced,

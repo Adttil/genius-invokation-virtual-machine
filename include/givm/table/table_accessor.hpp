@@ -39,6 +39,8 @@ namespace givm::detail
         friend class basic_skill_handle;
         template<class>
         friend class basic_attachment_handle;
+        template<class>
+        friend class basic_reaction_handle;
         template<class, class, class>
         friend class card_status_range;
 

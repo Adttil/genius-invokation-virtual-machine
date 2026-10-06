@@ -18,6 +18,7 @@
 
 namespace givm::detail
 {
+    template<bool ActionSelection>
     inline execution_state finish_skill_effect(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random)
@@ -26,7 +27,8 @@ namespace givm::detail
         pop_single_response<skill_effect, skill_id>(context);
         const auto event = get<0>(context.stack().top<skill_used>());
         context.stack().pop<skill_used>();
-        prepare_broadcast(library, event, table, context.stack(), context.position() + response_extent<skill_effect>);
+        append_event_record(context, event);
+        if constexpr(ActionSelection) context.stack().push(event.speed);
         return context.advance(response_extent<skill_effect>);
     }
 
@@ -54,17 +56,7 @@ namespace givm::detail
         });
         prepare_single_response(skill_effect{ .skill = event.skill, .flags = event.flags, .targets = event.targets },
             event.skill, table, context, context.position(), false, not event.effect_cancelled);
-        return finish_skill_effect(library, table, context, random);
-    }
-
-    inline execution_state finish_skill_use(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<skill_used>(library, table, context, random))
-            return continue_execution;
-        pop_broadcast<skill_used>(context);
-        return context.advance(response_extent<skill_used>);
+        return finish_skill_effect<ActionSelection>(library, table, context, random);
     }
 
     template<bool Fixed>
@@ -83,7 +75,7 @@ namespace givm::detail
             context.advance(instruction_extent<1, use_skill>);
             const auto character = table[player].state().active_character;
             if(not character) return context.advance(response_extent<skill_will_be_used>
-                + response_extent<skill_effect> + response_extent<skill_used>);
+                + response_extent<skill_effect>);
 #ifndef NDEBUG
             debug_validate_entity(table, *character, "use_skill", "active_character");
 #endif
@@ -91,7 +83,7 @@ namespace givm::detail
             const auto found = std::ranges::find_if(skills,
                 [&](const auto skill) { return skill.definition_id() == command.definition; });
             if(found == skills.end()) return context.advance(response_extent<skill_will_be_used>
-                + response_extent<skill_effect> + response_extent<skill_used>);
+                + response_extent<skill_effect>);
             prepare_broadcast(library, skill_will_be_used{
                 .skill = (*found).id(), .flags = library.skill_flags(command.definition),
                 .targets = {}, .speed = action_speed::fast
@@ -125,8 +117,7 @@ namespace givm::detail
         else
             writer.write(execute_fn{ prepare_skill_command<false> });
         compile_broadcast<skill_will_be_used>(writer, broadcast_skill_will_be_used<false>);
-        compile_single_response<skill_effect, skill_id>(writer, finish_skill_effect);
-        compile_broadcast<skill_used>(writer, finish_skill_use);
+        compile_single_response<skill_effect, skill_id>(writer, finish_skill_effect<false>);
     }
 }
 

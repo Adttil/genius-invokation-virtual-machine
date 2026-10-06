@@ -94,7 +94,7 @@ TEST_CASE("definition sources can be registered and enumerated by category", "[d
     const named_source<givm::skill_view> skill{ "Skill" };
     const named_source<givm::attachment_view> attachment{ "Attachment" };
 
-    auto sources = givm_test::make_source_library();
+    givm::definition_source_library sources;
     check_sources<givm::card_definition>(sources, {});
     REQUIRE(sources.add(card, status, support, summon, combat_status, character, skill, attachment));
     REQUIRE(sources.add(another_card));
@@ -109,24 +109,15 @@ TEST_CASE("definition sources can be registered and enumerated by category", "[d
     check_sources<givm::attachment_view>(sources, { "Attachment" });
 }
 
-TEST_CASE("reaction definitions can be selected without changing the source collection", "[definition][source_library]")
+TEST_CASE("reaction selection reads a prepopulated collection", "[definition][source_library]")
 {
-    const named_source<givm::combat_status_view> core{ "Custom core" };
-    const named_source<givm::combat_status_view> field{ "Custom field" };
-    const named_source<givm::summon_view> flame{ "Custom flame" };
-    const givm::basic_definition_sources basics{
-        core, field,
-        flame, givm_test::frozen, givm_test::shield };
-    const givm::definition_source_library sources{};
-
-    check_sources<givm::combat_status_view>(sources, {});
-    check_sources<givm::summon_view>(sources, {});
-    const auto [library, ids] = givm_test::require_success(compile(sources, basics, givm::definition_selection{},
+    const named_source<givm::reaction_view> reaction{ "Custom reaction" };
+    givm::definition_source_library sources;
+    REQUIRE(sources.add(reaction));
+    givm::reaction_definition_names names{ reaction.name() };
+    const auto [library, ids] = givm_test::require_success(compile(sources, names, givm::definition_selection{},
         std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    CHECK(ids.has<givm::combat_status_view>(core.name()));
-    CHECK(ids.has<givm::combat_status_view>(field.name()));
-    CHECK(ids.has<givm::summon_view>(flame.name()));
-    check_sources<givm::combat_status_view>(sources, {});
-    check_sources<givm::summon_view>(sources, {});
+    CHECK(ids.has<givm::reaction_view>(reaction.name()));
+    check_sources<givm::reaction_view>(sources, { reaction.name() });
 }
 }

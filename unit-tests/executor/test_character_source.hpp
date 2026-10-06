@@ -36,11 +36,13 @@ namespace givm::test
         std::span<const std::string_view> cards{};
         std::span<const std::string_view> supports{};
         std::span<const std::string_view> attachments{};
+        std::span<const std::string_view> combat_statuses{};
 
         std::string_view name() const { return "TestInitialization"; }
         auto card_dependencies() const { return cards; }
         auto support_dependencies() const { return supports; }
         auto attachment_dependencies() const { return attachments; }
+        auto combat_status_dependencies() const { return combat_statuses; }
         definition_type compile(definition_compile_context& context) const
         {
             return { context.add_program(program(context)) };

@@ -139,20 +139,16 @@ namespace givm::detail
         context.stack().pop<player_id, std::bitset<selection_capacity>>();
         if(selected.none())
         {
-            return context.advance(sizeof(execute_fn) + response_extent<card_drawn>);
+            return context.enter_next();
         }
 
         auto next_random = [&random]{ return random(); };
-        auto drawn_cards = get<0>(context.stack().push(
-            dynamic_array<hand_card_id>(selected.count()), stack_count_t{ 1 }));
-        size_t drawn_count = 0;
         auto on_drawn = [&](hand_card_id card)
         {
-            std::construct_at(&drawn_cards[drawn_count++], card);
+            record_hand_entry(context, card, hand_entry_kind::drawn, false);
         };
         detail::replace_cards(table, player, selected, next_random, on_drawn);
 
-        prepare_drawn_cards(library, table, context, context.position() + sizeof(execute_fn));
         return context.enter_next();
     }
 
@@ -161,7 +157,6 @@ namespace givm::detail
         writer.write(execute_fn{ &prepare_card_selection });
         writer.write(command);
         writer.write(execute_fn{ &apply_card_selection });
-        compile_broadcast<card_drawn>(writer, broadcast_drawn_card<false>);
     }
 }
 

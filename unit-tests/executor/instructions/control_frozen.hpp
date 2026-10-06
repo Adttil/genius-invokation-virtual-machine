@@ -157,7 +157,7 @@ namespace
         static givm::program_entry handle(const definition_type& data,
             givm::attachment_removed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            if(context.table()[event.attachment].definition_id() == data.log->library->frozen_id())
+            if(data.log->library->name(context.table()[event.attachment].definition_id()) == givm::genshin_impact::frozen_3_3_0.name())
                 ++data.log->frozen_removed;
             return {};
         }
@@ -209,13 +209,12 @@ namespace
         const tagged_attachment immunity{ "Immunity", "control_immunity", &log };
         const tagged_attachment ordinary_attachment{ "Ordinary", "ordinary", &log };
         const talent_card card;
-        const givm::basic_definition_sources basics{
-            givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-            givm::genshin_impact::burning_flame_3_3_0, givm::genshin_impact::frozen_3_3_0, givm::genshin_impact::shield_3_3_0 };
+        const auto basics = givm::genshin_impact::reaction_names_3_3_0;
         givm::definition_source_library sources;
+        sources.add(givm::genshin_impact::reaction_sources_3_3_0());
         REQUIRE(sources.add(character, driver, ordinary, control, immunity, ordinary_attachment, card,
             givm::genshin_impact::frozen_3_3_0));
-        return givm_test::require_success(compile(sources, basics, std::tuple{ givm::start_battle{} }, round,
+        return givm_test::require_success(compile(sources, basics, std::tuple{ givm::start_battle{}, givm::settle{} }, round,
             observed ? givm::compile_mode::observed : givm::compile_mode::normal));
     }
 
@@ -235,7 +234,7 @@ namespace
     {
         for(;;)
         {
-            const auto state = executor.advance(library, table, random);
+            const auto state = givm_test::advance_selecting_first_alive(executor, library, table, random);
             if(state != givm::execution_state::active_character_changed && state != givm::execution_state::action_started)
                 return state;
         }
@@ -257,16 +256,18 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
         if(preexisting) commands.emplace_back(givm::add_attachment{ .definition = control, .state = { 1 } });
         if(immune) commands.emplace_back(givm::add_attachment{ .definition = context.resolve_id<givm::attachment_view>("Immunity") });
         commands.emplace_back(givm::add_attachment{ .definition = context.resolve_id<givm::attachment_view>("Ordinary") });
-        if(dynamic) commands.emplace_back(givm::start_battle{});
+        if(dynamic) { commands.emplace_back(givm::start_battle{}); commands.emplace_back(givm::settle{}); }
         else
         {
             commands.emplace_back(givm::attach{ .definition = control, .state = { 1 } });
             commands.emplace_back(givm::add_attachment{ .definition = control, .state = { 1 } });
             commands.emplace_back(givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } });
         }
-        commands.emplace_back(givm::draw_cards{ .positions = draw_positions_1 });
+        commands.emplace_back(givm::draw_cards{ .position = 0, .count = 1 });
+        commands.emplace_back(givm::settle{});
         commands.emplace_back(givm::begin_action{});
-        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        commands.emplace_back(givm::settle{});
+    commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return commands;
     }, dynamic);
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
@@ -279,7 +280,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     zero_random random;
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
     CHECK(library.is_control(ids.get_id<givm::attachment_view>("Control")));
-    CHECK(library.is_control(library.frozen_id()));
+    CHECK(library.is_control(ids.get_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name())));
     CHECK_FALSE(library.is_control(ids.get_id<givm::attachment_view>("Immunity")));
     CHECK(library.is_controlled(table[actor]) == (preexisting || not immune));
     CHECK(library.is_control_immune(table[actor]) == immune);
@@ -309,15 +310,16 @@ TEST_CASE("control immunity prevents overload switching without suppressing its 
     const bool observed = GENERATE(false, true);
     const bool immune = GENERATE(false, true);
     control_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
         std::vector<givm::any_command> commands;
         if(immune) commands.emplace_back(givm::attach{ .player = givm::relative_player::opponent,
             .definition = context.resolve_id<givm::attachment_view>("Immunity") });
         commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::electro });
-        commands.emplace_back(givm::deal_damage{ .damages = damages });
-        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        for(const auto& item : damages) commands.emplace_back(item);
+        commands.emplace_back(givm::settle{});
+    commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return commands;
     });
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
@@ -349,8 +351,8 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
     const auto shatter_type = GENERATE(givm::damage_type::physical, givm::damage_type::pyro);
     control_log log{ .shield = true };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = shatter_type }
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = shatter_type }
     };
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
@@ -358,8 +360,9 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
         if(immune) commands.emplace_back(givm::attach{ .player = givm::relative_player::opponent,
             .definition = context.resolve_id<givm::attachment_view>("Immunity") });
         commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro });
-        commands.emplace_back(givm::deal_damage{ .damages = damages });
-        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        for(const auto& item : damages) commands.emplace_back(item);
+        commands.emplace_back(givm::settle{});
+    commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return commands;
     });
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
@@ -378,13 +381,13 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
         REQUIRE(observed);
         REQUIRE(state == givm::execution_state::health_reduced);
         const auto damage = executor.view_in<givm::execution_state::health_reduced>();
-        CHECK(damage.reaction() == (observations == 0 ? givm::elemental_reaction::frozen : givm::elemental_reaction::none));
+        CHECK(damage.reaction().slot == (observations == 0 ? givm::elemental_reaction::frozen : givm::elemental_reaction::none));
         ++observations;
     }
     CHECK(table[target].state().health == 18);
     CHECK(log.values_before_shield == std::vector<std::uint32_t>{ 2, immune ? 1u : 3u });
     CHECK(log.controlled_before_shield == std::vector<bool>{ false, false });
-    CHECK(log.final_values == std::vector<std::uint32_t>{ 2, 0 });
+    CHECK(log.final_values == std::vector<std::uint32_t>{ 2 });
     CHECK_FALSE(library.is_controlled(table[target]));
     CHECK(library.is_control_immune(table[target]) == immune);
     CHECK(log.frozen_removed == (immune ? 0 : 1));
@@ -396,19 +399,20 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
     const bool observed = GENERATE(false, true);
     const bool preexisting = GENERATE(false, true);
     control_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1,
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1,
         .type = preexisting ? givm::damage_type::pyro : givm::damage_type::cryo } };
-    const std::array<givm::any_command, 1> end_phase{ givm::deal_damage{ .damages = damages } };
-    const std::array<givm::any_command, 3> round{
-        givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } }, givm::start_round{},
-        givm::end_game{ givm::game_result::both_loss } };
+    const std::array<givm::any_command, 1> end_phase{ damages[0] };
+    const std::array<givm::any_command, 4> round{
+        givm::start_dice_roll_phase{ .count = 0, .reroll_count = { 0, 0 } }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context&)
     {
         std::vector<givm::any_command> commands;
         commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro });
         if(preexisting) commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::cryo });
         commands.emplace_back(givm::end_round{});
+    commands.emplace_back(givm::settle{});
         commands.emplace_back(givm::start_battle{});
+    commands.emplace_back(givm::settle{});
         return commands;
     }, false, end_phase, false, round);
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
@@ -462,13 +466,14 @@ TEST_CASE("frozen remains through the end phase and is removed by the next round
 TEST_CASE("a lethal frozen reaction does not attach control to the defeated character", "[control][frozen][defeat]")
 {
     control_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 20, .type = givm::damage_type::cryo } };
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 20, .type = givm::damage_type::cryo } };
     const auto [library, ids] = compile_scenario(log, false, [&](givm::definition_compile_context&)
     {
         std::vector<givm::any_command> commands;
         commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro });
-        commands.emplace_back(givm::deal_damage{ .damages = damages });
-        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        for(const auto& item : damages) commands.emplace_back(item);
+        commands.emplace_back(givm::settle{});
+    commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
         return commands;
     });
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
@@ -479,7 +484,7 @@ TEST_CASE("a lethal frozen reaction does not attach control to the defeated char
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
+    REQUIRE(givm_test::advance_selecting_first_alive(executor, library, table, random) == givm::execution_state::finished);
     CHECK(table[target].state().health == 0);
     CHECK(table[reserve].state().health == 20);
     CHECK_FALSE(library.is_controlled(table[target]));
@@ -491,9 +496,8 @@ TEST_CASE("round start responses wait for both rerolls and resume independently 
 {
     const bool observed = GENERATE(false, true);
     control_log log;
-    const std::array<givm::any_command, 3> round{
-        givm::start_dice_roll_phase{ .count = 2, .reroll_count = { 1, 1 } }, givm::start_round{},
-        givm::end_game{ givm::game_result::both_loss } };
+    const std::array<givm::any_command, 4> round{
+        givm::start_dice_roll_phase{ .count = 2, .reroll_count = { 1, 1 } }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
         std::vector<givm::any_command> commands;
@@ -552,8 +556,8 @@ TEST_CASE("exceeding the round limit prevents rolling and round start responses"
 {
     const bool observed = GENERATE(false, true);
     control_log log;
-    const std::array<givm::any_command, 3> round{
-        givm::start_dice_roll_phase{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const std::array<givm::any_command, 4> round{
+        givm::start_dice_roll_phase{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
         std::vector<givm::any_command> commands;

@@ -55,11 +55,11 @@ namespace
             givm::program_entry payment;
             if(terminal_payment)
                 payment = context.add_program(std::tuple{
-                    givm::end_game{ .result = givm::game_result::player_1_win }
+                    givm::settle{}, givm::end_game{ .result = givm::game_result::player_1_win }
                 });
             else if(draw_payment)
                 payment = context.add_program(std::tuple{
-                    givm::draw_cards{ .positions = draw_positions_1 }
+                    givm::draw_cards{ .position = 0, .count = 1 }
                 });
             return { log, speed, payment, free_switch };
         }
@@ -139,10 +139,10 @@ namespace
                 control,
                 initial_dice,
                 context.add_program(std::tuple{
-                    givm::draw_cards{ .positions = draw_positions_1 }
+                    givm::draw_cards{ .position = 0, .count = 1 }
                 }),
                 context.add_program(std::tuple{
-                    givm::draw_cards{ .positions = draw_positions_2 }
+                    givm::draw_cards{ .position = 0, .count = 2 }
                 })
             };
         }
@@ -222,7 +222,7 @@ TEST_CASE("action and round observations precede their handlers and ended player
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
         std::tuple_cat(action_setup(), std::tuple{
-            givm::begin_action{}, givm::end_round{}, givm::end_game{ .result = givm::game_result::both_loss }
+            givm::begin_action{}, givm::end_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss }
         }), std::tuple{}, observer, character
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -396,7 +396,7 @@ TEST_CASE("automatic round advancement is observed before its limit check and di
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
             givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } }
-        }, std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } }
+        }, std::tuple{ givm::settle{}, givm::end_game{ .result = givm::game_result::player_0_win } }
     );
     givm::table table{ givm::table_state{ .max_rounds = exceeds_limit ? 0u : 1u } };
     givm_test::executor_driver target;

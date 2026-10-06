@@ -182,12 +182,11 @@ TEST_CASE("equipment target queries discount only the uniquely applicable talent
     const talent_source talent{ "ApplicableTalent", character.name(), active_only, &log };
     const talent_source wrong{ "DifferentTalent", absent.name(), false, &log };
     const givm::test::named_definition_source<givm::card_definition> plain{ "OrdinaryCard" };
-    constexpr std::array<std::size_t, 3> positions{ 0, 1, 2 };
     // Destroy the original library before executing: every context must use its supplied copy.
     auto [library, ids] = [&]
     {
         const auto [original, map] = givm::test::compile_definitions_with_program(mode,
-            std::tuple{ givm::start_battle{}, givm::draw_cards{ .positions = positions },
+            std::tuple{ givm::start_battle{}, givm::settle{}, givm::draw_cards{ .position = 0, .count = 3 }, givm::settle{},
                 givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } }, givm::begin_action{} },
             std::tuple{}, character, other, absent, talent, wrong, plain, artifact_source{ &log }, setup_skill_source{ &log });
         return std::pair{ original, map };

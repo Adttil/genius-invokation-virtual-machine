@@ -72,7 +72,7 @@ namespace
             } } });
         }
         static givm::program_entry handle(const definition_type& data,
-                                         givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+                                         givm::damage_effect& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
             if(const auto* id = std::get_if<givm::skill_id>(&event.source); id && *id == self.id())
@@ -136,7 +136,7 @@ namespace
         return givm::test::compile_definitions_with_program(mode, std::tuple{
             givm::select_active_character_both{},
             givm::start_dice_roll_phase{ .count = dice, .reroll_count = { 0, 0 } },
-            givm::draw_cards{ .positions = draw_positions_1 }, givm::begin_action{}
+            givm::draw_cards{ .position = 0, .count = 1 }, givm::begin_action{}
         }, std::tuple{}, attack_source{ &log, true }, attack_source{ &log, false }, attack_character{}, card);
     }
 

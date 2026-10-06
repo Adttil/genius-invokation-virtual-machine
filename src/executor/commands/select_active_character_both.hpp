@@ -45,10 +45,8 @@ namespace givm::detail
         const auto player1 = first.player_id == player_id{ 0 } ? second : first;
         context.stack().pop<std::size_t, character_id>();
 
-        prepare_broadcast(library, active_character_changed{ .current = player1 }, table,
-            context.stack(), context.position() + sizeof(execute_fn) + response_extent<active_character_changed>);
-        prepare_broadcast(library, active_character_changed{ .current = player0 }, table,
-            context.stack(), context.position() + sizeof(execute_fn));
+        append_event_record(context, active_character_changed{ player0 });
+        append_event_record(context, active_character_changed{ player1 });
         return context.enter_next();
     }
 
@@ -80,20 +78,6 @@ namespace givm::detail
         }
     }
 
-    inline execution_state broadcast_initial_active_character(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<active_character_changed>(library, table, context, random))
-        {
-            return continue_execution;
-        }
-
-        pop_broadcast<active_character_changed>(context);
-        return context.advance(response_extent<active_character_changed>);
-    }
-
     inline void compile(program_writer& writer, const givm::select_active_character_both&, compile_mode mode)
     {
         writer.write(execute_fn{ &prepare_initial_character_selection });
@@ -107,8 +91,6 @@ namespace givm::detail
         {
             writer.write(execute_fn{ &apply_initial_character_selections<false> });
         }
-        compile_broadcast<active_character_changed>(writer, broadcast_initial_active_character);
-        compile_broadcast<active_character_changed>(writer, broadcast_initial_active_character);
     }
 }
 

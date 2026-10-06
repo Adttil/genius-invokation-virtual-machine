@@ -25,14 +25,6 @@ namespace givm::detail
         attachment_state state;
     };
 
-    inline execution_state finish_attachment_state_change(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(not continue_single_response<attachment_state_changed, attachment_id>(library, table, context, random)) return continue_execution;
-        pop_single_response<attachment_state_changed, attachment_id>(context);
-        return context.advance(response_extent<attachment_state_changed>);
-    }
-
     inline execution_state change_attachment_state(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random, attachment_id id, attachment_state state)
@@ -42,9 +34,9 @@ namespace givm::detail
         attachment.state() = state;
         const auto definition = library[attachment.definition_id()];
         if(not definition.can_handle<attachment_state_changed, attachment_view>())
-            return context.advance(response_extent<attachment_state_changed>);
-        prepare_single_response(event, id, table, context, context.position());
-        return finish_attachment_state_change(library, table, context, random);
+            return continue_execution;
+        append_single_event_record(context, id, event);
+        return continue_execution;
     }
 
     template<bool IgnoreLimit, class Selector = void>
@@ -114,7 +106,6 @@ namespace givm::detail
             writer.write(attachment_state_change_data<selector_type>{
                 { command.target.character, selector }, command.state });
         }, command.target.selector);
-        compile_single_response<attachment_state_changed, attachment_id>(writer, finish_attachment_state_change);
     }
 }
 

@@ -88,7 +88,7 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
     log.value = GENERATE(0u, 3u);
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         givm::test::with_passive_skill(increase_source{ &log }));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };

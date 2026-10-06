@@ -38,6 +38,7 @@
 | [`character_view`](table/character_view.md) | 角色的只读视图 |
 | [`skill_view`](table/skill_view.md) | 技能的只读视图 |
 | [`attachment_view`](table/attachment_view.md) | 角色附属实体的只读视图 |
+| [`reaction_view`](table/reaction_view.md) | 玩家反应槽位对应定义的只读视图 |
 
 ### 实体 ID
 
@@ -54,6 +55,7 @@
 | [`character_id`](table/character_id.md) | 角色的身份 |
 | [`skill_id`](table/skill_id.md) | 技能的身份 |
 | [`attachment_id`](table/attachment_id.md) | 角色附属实体的身份 |
+| [`reaction_id`](table/reaction_id.md) | 玩家与基础反应槽位组成的身份 |
 
 ### 状态与参数
 

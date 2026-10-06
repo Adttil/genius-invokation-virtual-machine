@@ -24,7 +24,8 @@ namespace givm
     template<>
     struct supported_queries<character_view> : type_list<
         character_initial_state,
-        character_initial_skill
+        character_initial_skill,
+        character_reaction_override
     >{};
 
     template<>
@@ -32,6 +33,9 @@ namespace givm
         skill_initial_cost,
         skill_target_validation
     >{};
+
+    template<>
+    struct supported_queries<reaction_view> : type_list<reaction_aura>{};
 
     template<>
     struct supported_queries<summon_view> : type_list<summon_state_limit>{};

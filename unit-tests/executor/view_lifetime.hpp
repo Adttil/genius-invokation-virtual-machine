@@ -27,7 +27,7 @@ namespace givm_test::executor::view_lifetime
         return givm_test::require_success(compile(sources, givm_test::basic_sources,
             std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } },
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
-                givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal));
+                givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal));
     }
 
     TEST_CASE("start exposes an initialized pause which can be independently copied", "[execution-view][lifecycle]")

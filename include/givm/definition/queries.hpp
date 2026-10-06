@@ -44,6 +44,20 @@ namespace givm
         std::size_t skill_index;
     };
 
+    struct character_reaction_override
+    {
+        using result_t = definition_id<reaction_view>;
+        elemental_reaction slot;
+    };
+
+    struct reaction_aura
+    {
+        using result_t = element_aura;
+        elemental_reaction slot;
+        element_aura reacted_aura;
+        element incoming_element;
+    };
+
     struct card_initial_state
     {
         using result_t = card_state;
@@ -144,6 +158,16 @@ namespace givm
     constexpr definition_id<skill_view> query_default(const character_initial_skill&) noexcept
     {
         return {};
+    }
+
+    constexpr definition_id<reaction_view> query_default(const character_reaction_override&) noexcept
+    {
+        return {};
+    }
+
+    constexpr element_aura query_default(const reaction_aura& query) noexcept
+    {
+        return aura_after_reaction(query.reacted_aura, query.incoming_element, query.slot);
     }
 
     constexpr card_state query_default(const card_initial_state&) noexcept

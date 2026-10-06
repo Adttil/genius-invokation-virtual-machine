@@ -84,18 +84,13 @@ struct reroll_dice_error;
 
 int main()
 {
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     auto library_result = compile(sources, basics,
         std::tuple{
             givm::reroll_dice{ .player = givm::relative_player::self, .reroll_count = 2 },
-            givm::end_game{ .result = givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss }
         }, std::tuple{}, givm::compile_mode::normal);
     if(not library_result)
     {

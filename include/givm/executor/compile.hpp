@@ -16,11 +16,11 @@ namespace givm
     };
 
     std::expected<definition_compile_result, std::vector<compile_error>> compile(
-        const definition_source_library& sources, const basic_definition_sources& basics,
+        const definition_source_library& sources, const reaction_definition_names& basics,
         std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
 
     std::expected<definition_compile_result, std::vector<compile_error>> compile(
-        const definition_source_library& sources, const basic_definition_sources& basics, const definition_selection& selection,
+        const definition_source_library& sources, const reaction_definition_names& basics, const definition_selection& selection,
         std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
 
     template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
@@ -28,7 +28,7 @@ namespace givm
         || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
     inline auto compile(
         const definition_source_library& sources,
-        const basic_definition_sources& basics,
+        const reaction_definition_names& basics,
         TInitializationSequence&& initialization_program,
         TRoundSequence&& round_program,
         compile_mode mode
@@ -46,7 +46,7 @@ namespace givm
         || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
     inline auto compile(
         const definition_source_library& sources,
-        const basic_definition_sources& basics,
+        const reaction_definition_names& basics,
         const definition_selection& selection,
         TInitializationSequence&& initialization_program,
         TRoundSequence&& round_program,

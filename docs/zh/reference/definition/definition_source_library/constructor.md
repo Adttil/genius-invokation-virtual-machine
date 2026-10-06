@@ -18,7 +18,7 @@ definition_source_library();
 
 ## 注意
 
-构造函数不登记任何定义。元素反应采用的五个基础定义仍由编译时的 [`basic_definition_sources`](../basic_definition_sources.md) 另行指定。
+构造函数不登记任何定义。元素反应采用的五个基础定义仍由编译时的 [`reaction_definition_names`](../reaction_definition_names.md) 另行指定。
 
 ## 示例
 

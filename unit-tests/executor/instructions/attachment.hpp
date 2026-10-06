@@ -60,10 +60,10 @@ namespace
             data.log->cost_responders.emplace_back(data.name);
             return {};
         }
-        static givm::program_entry handle(const definition_type&, givm::attachment_removed& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
+        static givm::program_entry handle(const definition_type&, givm::attachment_removal_effect& event, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
-            CHECK(event.attachment != self.id());
+            CHECK_FALSE(self.is_valid());
             return {};
         }
     };
@@ -221,7 +221,7 @@ namespace
         untagged_state.allowed_weapon_types.set(givm::weapon_type::sword);
         return givm::test::compile_definitions_with_program(mode,
             std::tuple{
-                givm::draw_cards{ .positions = draw_positions_2 }, givm::begin_action{}, givm::end_game{ givm::game_result::both_loss }
+                givm::draw_cards{ .position = 0, .count = 2 }, givm::settle{}, givm::begin_action{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss }
             }, std::tuple{},
             givm::test::with_passive_skill(equipment_character_source{ &log, prepare_equipment }), tagged_character_source{ "Blocked", false },
             tagged_character_source{ "Reserve", true }, givm::test::initialized_character_source{ "Untagged", untagged_state },
@@ -383,7 +383,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
     CHECK(log.events == std::vector<std::string>{ "left:7" });
     CHECK_FALSE(table[old_weapon].is_valid());
-    CHECK_FALSE(table[equipped_character].has(givm::equipment_type::weapon));
+    CHECK(table[equipped_character].has(givm::equipment_type::weapon));
     CHECK(table[old_weapon].state().count == 7);
     const auto paused_log = log;
     auto copied_execution = execution;
@@ -448,12 +448,12 @@ TEST_CASE("equipment replacement handles a nested replacement in the removal bro
     const std::array<givm::card_target_id, 1> targets{ equipped_character };
     execution.submitted(action.play_card(library, table, zero_random, index, {}, targets));
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
-    CHECK(log.events == std::vector<std::string>{ "left:7", "left:11" });
+    CHECK(log.events == std::vector<std::string>{ "left:7", "left:9" });
     REQUIRE(log.removed.size() == 2);
     CHECK_FALSE(table[log.removed[0]].is_valid());
     CHECK_FALSE(table[log.removed[1]].is_valid());
-    CHECK(table[log.removed[1]].definition_id() == ids.get_id<givm::attachment_view>("NestedWeapon"));
-    CHECK(table[equipped_character].get(givm::equipment_type::weapon).definition_id() == ids.get_id<givm::attachment_view>("NewWeapon"));
+    CHECK(table[log.removed[1]].definition_id() == ids.get_id<givm::attachment_view>("NewWeapon"));
+    CHECK(table[equipped_character].get(givm::equipment_type::weapon).definition_id() == ids.get_id<givm::attachment_view>("NestedWeapon"));
     std::size_t weapons = 0;
     for(const auto attachment : table[equipped_character].attachments())
         weapons += library[attachment.definition_id()].has_tag(ids.get_tag_id("weapon"));
@@ -490,7 +490,7 @@ TEST_CASE("a non-card response supplies multiple attachment inputs and removes o
     attachment_log equipment_log;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{
-            givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss }
+            givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, givm::test::with_passive_skill(dynamic_attachment_character_source{ &log }),
         givm::test::initialized_character_source{ "LowerHealth", { .max_health = 10, .health = 3 } },
         givm::test::initialized_character_source{ "HigherHealth", { .max_health = 10, .health = 9 } },

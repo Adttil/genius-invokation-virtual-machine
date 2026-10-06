@@ -1,20 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_HEAL_HPP
 #define GIVM_EXECUTOR_COMMANDS_HEAL_HPP
 
-#include "../program_writer.hpp"
-
-#include <vector>
-
-#include <algorithm>
-#include <limits>
-#include <memory>
-#include <optional>
-
-#include <givm/executor/executor.hpp>
-#include "../character_target.hpp"
 #include "../broadcast.hpp"
-#include <givm/executor/instruction.hpp>
-#include <givm/definition.hpp>
+#include "../character_target.hpp"
 #ifndef NDEBUG
 #include "../debug_validation.hpp"
 #endif
@@ -23,248 +11,198 @@
 
 namespace givm::detail
 {
-    struct healing_target_cursor
+    struct healing_progress
     {
-        player_id player;
-        std::size_t next = 0;
-        std::size_t remaining = 0;
-        std::size_t count = 0;
+        heal_input::item input;
+        execution_position instructions;
     };
 
-    struct healing_group
+    struct healing_batch_progress
     {
-        effect_source_id source;
-        std::uint32_t value = 0;
-        healing_target_cursor targets;
-        std::size_t result_count = 0;
-        std::size_t result_cursor = 0;
+        std::size_t cursor = 0;
+        execution_position instructions;
     };
 
-    inline healing_target_cursor healing_targets(
-        const unrestricted_table& table, character_id anchor, character_selection selection)
+    inline bool can_heal(const character_state& state, healing_kind kind) noexcept
     {
-        const auto count = table[anchor.player_id].template characters<false>().size();
-        auto next = anchor.index;
-        if(selection == character_selection::others && ++next == count) next = 0;
-        return { anchor.player_id, next,
-            selection == character_selection::character ? 1
-                : count - (selection == character_selection::others), count };
-    }
-
-    inline std::optional<character_id> next_healing_target(
-        const unrestricted_table& table, healing_target_cursor& cursor)
-    {
-        while(cursor.remaining != 0)
+        switch(kind)
         {
-            const character_id id{ cursor.player, cursor.next };
-            --cursor.remaining;
-            if(++cursor.next == cursor.count) cursor.next = 0;
-            const auto target = table[id];
-            if(target && target.state().health != 0) return id;
+        case healing_kind::normal: return state.alive && state.health != 0;
+        case healing_kind::prevent_defeat: return state.alive && state.health == 0;
+        case healing_kind::revive: return not state.alive;
         }
-        return std::nullopt;
+        std::unreachable();
     }
 
-    inline execution_state broadcast_healing_completed(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    inline void apply_healing_result(execution_context& context, unrestricted_table& table,
+        const effect_source_id& source, character_id target, std::uint32_t value, healing_kind kind)
     {
-        if(not continue_broadcast<healed>(library, table, context, random)) return continue_execution;
-        pop_broadcast<healed>(context);
-        return context.advance(response_extent<healed>);
-    }
-
-    inline execution_state apply_healing(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<healing>(library, table, context, random)) return continue_execution;
-        const auto event = get<0>(context.stack().top<healing, response_return>());
-#ifndef NDEBUG
-        debug_validate_entity(table, event.target, "heal", "target", true);
-        if(table[event.target].state().health > table[event.target].state().max_health)
-            throw command_input_error{ "heal", invalid_numeric_argument{ "health", table[event.target].state().health, table[event.target].state().max_health } };
-#endif
-        pop_broadcast<healing>(context);
-        auto& state = table[event.target].state();
-        GIVM_ASSERT(state.health <= state.max_health);
-        [[assume(state.health <= state.max_health)]];
-        const auto value = std::min(event.value, state.max_health - state.health);
+        const auto character = table[target];
+        if(not character || not can_heal(character.state(), kind)) return;
+        auto& state = character.state();
+        value = std::min(value, state.max_health - state.health);
         state.health += value;
-        context.advance(response_extent<healing>);
-        prepare_broadcast(library, healed{ event.source, event.target, value }, table, context.stack(), context.position());
-        return broadcast_healing_completed(library, table, context, random);
-    }
-
-    template<bool Dynamic>
-    inline execution_state broadcast_healing_group(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        for(;;)
+        if(kind == healing_kind::revive && value != 0)
         {
-            if(not continue_broadcast<healed>(library, table, context, random)) return continue_execution;
-            pop_broadcast<healed>(context);
-            const auto frame = context.stack().top<healing[], healing_group>();
-            auto& group = get<1>(frame);
-            if(++group.result_cursor == group.result_count)
-            {
-                context.stack().pop<healing[], healing_group>();
-                return context.advance(response_extent<healed>
-                    + (Dynamic ? response_extent<healing> + response_extent<healed> : 0));
-            }
-            const auto current = get<0>(frame)[group.result_cursor];
-            prepare_broadcast(library, healed{ current.source, current.target, current.value },
-                table, context.stack(), context.position());
+            state.alive = true;
+            append_event_record(context, character_revived{ target });
         }
+        append_event_record(context, healed{ source, target, value, kind });
     }
 
-    template<bool Dynamic>
-    inline execution_state apply_healing_group_target(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
+    template<bool Fixed, bool Range>
+    struct healing_driver
     {
-        for(;;)
+        static execution_state finish_input(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random)
+        {
+            const auto instructions = get<0>(context.stack().top<healing_progress>()).instructions;
+            context.stack().pop<healing_progress>();
+            if constexpr(Range) context.stack().pop<character_id[], std::size_t>();
+            if constexpr(not Fixed) return context.jump(instructions - sizeof(execute_fn));
+            else return context.jump(instructions + response_extent<healing>);
+        }
+
+        static execution_state next(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random)
+        {
+            for(;;)
+            {
+                heal_input::item input;
+                execution_position instructions;
+                if constexpr(Range)
+                {
+                    const auto frames = context.stack().top<frame<character_id[], std::size_t>, frame<healing_progress>>();
+                    const auto targets = get<0>(get<0>(frames));
+                    auto& cursor = get<1>(get<0>(frames));
+                    if(cursor == targets.size()) return finish_input(library, table, context, random);
+                    auto& progress = get<0>(get<1>(frames));
+                    progress.input.target = targets[cursor++];
+                    input = progress.input;
+                    instructions = progress.instructions;
+                }
+                else
+                {
+                    const auto progress = get<0>(context.stack().top<healing_progress>());
+                    input = progress.input;
+                    instructions = progress.instructions;
+                }
+                const auto target = std::get<character_id>(input.target);
+                const auto character = table[target];
+                if(character && can_heal(character.state(), input.kind))
+                {
+                    if(input.kind == healing_kind::normal)
+                    {
+                        context.jump(instructions);
+                        prepare_broadcast(library, healing{ input.source, target, input.value },
+                            table, context.stack(), instructions);
+                        return apply(library, table, context, random);
+                    }
+                    apply_healing_result(context, table, input.source, target, input.value, input.kind);
+                }
+                if constexpr(not Range) return finish_input(library, table, context, random);
+            }
+        }
+
+        static execution_state apply(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random)
         {
             if(not continue_broadcast<healing>(library, table, context, random)) return continue_execution;
             const auto event = get<0>(context.stack().top<healing, response_return>());
-#ifndef NDEBUG
-            debug_validate_entity(table, event.target, "heal", "target", true);
-            if(table[event.target].state().health > table[event.target].state().max_health)
-                throw command_input_error{ "heal", invalid_numeric_argument{ "health", table[event.target].state().health, table[event.target].state().max_health } };
-#endif
             pop_broadcast<healing>(context);
-            auto& state = table[event.target].state();
-            GIVM_ASSERT(state.health <= state.max_health);
-            [[assume(state.health <= state.max_health)]];
-            const auto value = std::min(event.value, state.max_health - state.health);
-            state.health += value;
-
-            const auto frame = context.stack().top<healing[], healing_group>();
-            auto& group = get<1>(frame);
-            std::construct_at(get<0>(frame).data() + group.result_count++,
-                healing{ event.source, event.target, value });
-            if(const auto target = next_healing_target(table, group.targets))
-            {
-                const auto next = healing{ group.source, *target, group.value };
-                prepare_broadcast(library, next, table, context.stack(), context.position());
-            }
-            else
-            {
-                const auto first = get<0>(frame)[0];
-                context.advance(response_extent<healing>);
-                prepare_broadcast(library, healed{ first.source, first.target, first.value },
-                    table, context.stack(), context.position());
-                return broadcast_healing_group<Dynamic>(library, table, context, random);
-            }
+            apply_healing_result(context, table, event.source, event.target, event.value, healing_kind::normal);
+            if constexpr(Range) return next(library, table, context, random);
+            else return finish_input(library, table, context, random);
         }
-    }
 
-    template<bool Fixed>
-    inline execution_state prepare_healing_group(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        heal_input input;
-        std::optional<character_id> anchor;
-        character_selection selection;
-        if constexpr(Fixed)
+        static execution_state next_input(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random) requires (not Fixed)
         {
-            const auto& command = context.instruction_data<1, heal>(library);
-            context.advance(instruction_extent<1, heal>);
-            const auto source = resolve_character_target<false>(table, command.source);
-            anchor = resolve_character_target<true>(table, command.target);
-            if(not source || not anchor) return context.advance(response_extent<healing> + response_extent<healed>);
-            input = { .source = *source, .target = command.target, .value = command.value };
-            selection = command.target.selection;
-        }
-        else
-        {
-            input = get<0>(context.stack().top<heal_input>());
+            const auto frames = context.stack().top<frame<heal_input::item[]>, frame<healing_batch_progress>>();
+            const auto inputs = get<0>(get<0>(frames));
+            auto& batch = get<0>(get<1>(frames));
+            while(batch.cursor != inputs.size())
+            {
+                auto input = inputs[batch.cursor++];
 #ifndef NDEBUG
-            debug_validate_entity(table, input.source, "heal", "source", true);
-            if(const auto* id = std::get_if<character_id>(&input.target))
-                debug_validate_entity(table, *id, "heal", "target", true);
-            else
-                debug_validate_relative_character_target(table, std::get<relative_character_target>(input.target), "heal", "target");
+                debug_validate_entity(table, input.source, "heal", "source", true);
+                if(const auto* id = std::get_if<character_id>(&input.target))
+                    debug_validate_entity(table, *id, "heal", "target", true);
+                else
+                {
+                    const auto relative = std::get<relative_character_target>(input.target);
+                    debug_validate_relative_character_target(table, relative, "heal", "target");
+                    if(relative.selection == character_selection::prioritized)
+                        throw command_input_error{ "heal", invalid_enum_argument{ "target.selection", static_cast<std::size_t>(relative.selection) } };
+                }
 #endif
-            context.stack().pop<heal_input>();
-            context.enter_next();
-            if(const auto* id = std::get_if<character_id>(&input.target))
-            {
-                anchor = table[*id] ? std::optional{ *id } : std::nullopt;
-                selection = character_selection::character;
+                std::optional<character_id> anchor;
+                auto selection = character_selection::character;
+                if(const auto* id = std::get_if<character_id>(&input.target)) anchor = *id;
+                else
+                {
+                    const auto relative = std::get<relative_character_target>(input.target);
+                    anchor = resolve_character_target<false>(table, relative);
+                    selection = relative.selection;
+                }
+                if(not anchor) continue;
+                const auto targets = collect_character_targets(table, *anchor, selection, input.kind == healing_kind::revive);
+                if(targets.empty()) continue;
+                const auto instructions = batch.instructions;
+                context.stack().push(dynamic_array<character_id>(targets), std::size_t{});
+                context.stack().push(healing_progress{ input, instructions });
+                return next(library, table, context, random);
             }
-            else
-            {
-                const auto& relative = std::get<relative_character_target>(input.target);
-                selection = relative.selection;
-                anchor = selection == character_selection::character
-                    ? resolve_character_target<false>(table, relative)
-                    : resolve_character_target<true>(table, relative);
-            }
-            if(not anchor) return context.advance(2 * (response_extent<healing> + response_extent<healed>));
-            if(selection == character_selection::character)
-            {
-                // The dynamic command stores group continuations before the single-target pair.
-                context.advance(response_extent<healing> + response_extent<healed>);
-                prepare_broadcast(library, healing{ input.source, *anchor, input.value },
-                    table, context.stack(), context.position());
-                return apply_healing(library, table, context, random);
-            }
+            const auto resume = batch.instructions + response_extent<healing>;
+            context.stack().pop<healing_batch_progress>();
+            context.stack().pop<heal_input::item[]>();
+            return context.jump(resume);
         }
 
-        const auto capacity = table[anchor->player_id].template characters<false>().size();
-        auto targets = healing_targets(table, *anchor, selection);
-        const auto first = next_healing_target(table, targets);
-        if(not first) return context.advance((Fixed ? 1 : 2) * (response_extent<healing> + response_extent<healed>));
-        context.stack().push(dynamic_array<healing>(capacity), healing_group{
-            .source = input.source,
-            .value = input.value,
-            .targets = targets
-        });
-        prepare_broadcast(library, healing{ input.source, *first, input.value },
-            table, context.stack(), context.position());
-        return apply_healing_group_target<not Fixed>(library, table, context, random);
-    }
+        static execution_state prepare(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random)
+        {
+            if constexpr(Fixed)
+            {
+                const auto command = context.instruction_data<1, heal>(library);
+                context.advance(instruction_extent<1, heal>);
+                const auto source = resolve_character_target<false>(table, command.source);
+                const auto anchor = resolve_character_target<false>(table, command.target);
+                if(not source || not anchor) return context.advance(response_extent<healing>);
+                if constexpr(Range)
+                {
+                    const auto targets = collect_character_targets(table, *anchor, command.target.selection, command.kind == healing_kind::revive);
+                    if(targets.empty()) return context.advance(response_extent<healing>);
+                    context.stack().push(dynamic_array<character_id>(targets), std::size_t{});
+                }
+                context.stack().push(healing_progress{ { *source, *anchor, command.value, command.kind }, context.position() });
+                return next(library, table, context, random);
+            }
+            else
+            {
+                context.enter_next();
+                context.stack().push(healing_batch_progress{ 0, context.position() + sizeof(execute_fn) });
+                return next_input(library, table, context, random);
+            }
+        }
+    };
 
-    inline execution_state prepare_healing(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    template<bool Fixed, bool Range>
+    void compile_healing(program_writer& writer, const heal& command)
     {
-        const auto& command = context.instruction_data<1, heal>(library);
-        context.advance(instruction_extent<1, heal>);
-        const auto source = resolve_character_target<false>(table, command.source);
-        const auto target = resolve_character_target<false>(table, command.target);
-        if(not source || not target) return context.advance(response_extent<healing> + response_extent<healed>);
-        prepare_broadcast(library, healing{ *source, *target, command.value },
-            table, context.stack(), context.position());
-        return apply_healing(library, table, context, random);
+        using driver = healing_driver<Fixed, Range>;
+        writer.write(execute_fn{ driver::prepare });
+        if constexpr(Fixed) writer.write(command);
+        else writer.write(execute_fn{ driver::next_input });
+        compile_broadcast<healing>(writer, driver::apply);
     }
 
     inline void compile(program_writer& writer, const givm::heal& command, compile_mode)
     {
-        if(command.target.offset == std::numeric_limits<std::int32_t>::max())
-        {
-            writer.write(execute_fn{ prepare_healing_group<false> });
-            compile_broadcast<healing>(writer, apply_healing_group_target<true>);
-            compile_broadcast<healed>(writer, broadcast_healing_group<true>);
-            compile_broadcast<healing>(writer, apply_healing);
-            compile_broadcast<healed>(writer, broadcast_healing_completed);
-            return;
-        }
-        else if(command.target.selection != character_selection::character)
-        {
-            writer.write(execute_fn{ prepare_healing_group<true> });
-            writer.write(command);
-            compile_broadcast<healing>(writer, apply_healing_group_target<false>);
-            compile_broadcast<healed>(writer, broadcast_healing_group<false>);
-            return;
-        }
-        else
-        {
-            writer.write(execute_fn{ prepare_healing });
-            writer.write(command);
-        }
-        compile_broadcast<healing>(writer, apply_healing);
-        compile_broadcast<healed>(writer, broadcast_healing_completed);
+        if(command.target.offset == std::numeric_limits<std::int32_t>::max()) compile_healing<false, true>(writer, command);
+        else if(command.target.selection == character_selection::others || command.target.selection == character_selection::all)
+            compile_healing<true, true>(writer, command);
+        else compile_healing<true, false>(writer, command);
     }
 }
 

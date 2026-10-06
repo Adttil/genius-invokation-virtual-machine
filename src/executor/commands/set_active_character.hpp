@@ -23,178 +23,90 @@
 
 namespace givm::detail
 {
-    inline std::optional<execution_state> continue_switch_prepared_removal(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        for(;;)
-        {
-            if(not continue_broadcast<attachment_removed>(library, table, context, random)) return continue_execution;
-            pop_broadcast<attachment_removed>(context);
-            const auto frame = context.stack().top<attachment_id[], stack_count_t, active_character_changed, execution_position>();
-            const auto& attachments = get<0>(frame);
-            auto& cursor = get<1>(frame);
-            if(cursor != attachments.size())
-            {
-                const auto event = attachment_removed{ attachments[cursor++] };
-                prepare_broadcast(library, event, table, context.stack(), context.position());
-                continue;
-            }
-            const auto event = get<2>(frame);
-            const auto position = get<3>(frame);
-            context.stack().pop<attachment_id[], stack_count_t, active_character_changed, execution_position>();
-            prepare_broadcast(library, event, table, context.stack(), position);
-            context.jump(position);
-            return std::nullopt;
-        }
-    }
-
-    inline std::optional<execution_state> prepare_active_character_switch(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random,
-        active_character_changed event, execution_position removal_resume, execution_position broadcast_resume)
+    inline void apply_active_character_switch(const definition_library& library,
+        unrestricted_table& table, execution_context& context, active_character_changed event)
     {
         auto& state = table[event.current.player_id].state();
-        std::vector<attachment_id> removed;
-        if(state.active_character != event.current)
+        if(state.active_character)
         {
-            if(state.active_character)
+            for(const auto attachment : table[*state.active_character].attachments())
             {
-                for(const auto attachment : table[*state.active_character].attachments())
+                if(library[attachment.definition_id()].can_handle<prepared_skill_effect, attachment_view>())
                 {
-                    if(library[attachment.definition_id()].template can_handle<prepared_skill_effect, attachment_view>())
-                    {
-                        removed.push_back(attachment.id());
-                        attachment.erase();
-                    }
+                    attachment.erase();
+                    append_removal_record<attachment_removal_effect>(context, attachment.id(),
+                        attachment_removed{ attachment.id() });
                 }
             }
-            state.can_plunge = true;
         }
-        // All original preparations leave before any removal response runs.
+        state.can_plunge = true;
         state.active_character = event.current;
-        if(removed.empty())
+        append_event_record(context, event);
+    }
+
+    inline execution_state apply_active_character_change(const definition_library& library,
+        unrestricted_table& table, execution_context& context, random_fn&)
+    {
+        const auto event = get<0>(context.stack().top<active_character_changed>());
+        context.stack().pop<active_character_changed>();
+        apply_active_character_switch(library, table, context, event);
+        return context.enter_next();
+    }
+
+    template<bool Fixed, bool Observed>
+    inline execution_state prepare_active_character_change(const definition_library& library,
+        unrestricted_table& table, execution_context& context, random_fn&)
+    {
+        std::optional<character_id> target;
+        if constexpr(Fixed)
         {
-            prepare_broadcast(library, event, table, context.stack(), broadcast_resume);
-            context.jump(broadcast_resume);
-            return std::nullopt;
+            const auto command = context.instruction_data<1, givm::set_active_character>(library);
+            target = resolve_character_target<true>(table, command.target);
+            context.advance(instruction_extent<1, givm::set_active_character>);
         }
-        const auto first = removed.front();
-        context.stack().push(dynamic_array<attachment_id>(removed), stack_count_t{ 1 }, event, broadcast_resume);
-        prepare_broadcast(library, attachment_removed{ first }, table, context.stack(), removal_resume);
-        context.jump(removal_resume);
-        return continue_switch_prepared_removal(library, table, context, random);
-    }
-
-    inline execution_state broadcast_active_character_change(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<active_character_changed>(library, table, context, random))
+        else
         {
-            return continue_execution;
+            target = get<0>(context.stack().top<set_active_character_input>()).current;
+#ifndef NDEBUG
+            debug_validate_entity(table, *target, "set_active_character", "current");
+            if(not table[*target].state().alive || table[*target].state().health == 0)
+                throw command_input_error{ "set_active_character", invalid_entity_relation{
+                    "current", invalid_entity_relation::reason::defeated_character } };
+#endif
+            context.stack().pop<set_active_character_input>();
+            context.enter_next();
         }
-        pop_broadcast<active_character_changed>(context);
-        return context.advance(response_extent<active_character_changed>);
-    }
-
-    inline execution_state resume_active_character_prepared_removal(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(const auto state = continue_switch_prepared_removal(library, table, context, random)) return *state;
-        return broadcast_active_character_change(library, table, context, random);
-    }
-
-    inline execution_state apply_active_character_change(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        const auto frame = context.stack().top<active_character_changed, response_return>();
-        const auto event = get<0>(frame);
-        const auto position = get<1>(frame).position;
-        context.stack().pop<active_character_changed, response_return>();
-        if(const auto state = prepare_active_character_switch(library, table, context, random,
-            event, position - response_extent<attachment_removed> - sizeof(execute_fn), position)) return *state;
-        return broadcast_active_character_change(library, table, context, random);
-    }
-
-    template<bool Observed>
-    inline execution_state prepare_active_character_change(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        const auto& command = context.instruction_data<1, givm::set_active_character>(library);
-        const auto removal_resume = context.position() + instruction_extent<1, givm::set_active_character>;
-        const auto broadcast_resume = removal_resume + response_extent<attachment_removed> + Observed * sizeof(execute_fn);
-        const auto target = resolve_character_target<true>(table, command.target);
-        if(not target) return context.jump(broadcast_resume + response_extent<active_character_changed>);
+        if(not target) return context.advance(Observed * sizeof(execute_fn));
         const auto& state = table[target->player_id].state();
-        if(state.active_character == *target)
-            return context.jump(broadcast_resume + response_extent<active_character_changed>);
-        if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
-            return context.jump(broadcast_resume + response_extent<active_character_changed>);
+        if(state.active_character == *target || (state.active_character
+            && library.is_control_immune(std::as_const(table)[*state.active_character])))
+            return context.advance(Observed * sizeof(execute_fn));
         const active_character_changed event{ .current = *target };
         if constexpr(Observed)
         {
-            context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
-            context.jump(removal_resume + response_extent<attachment_removed>);
+            context.stack().push(event);
             return context.yield(execution_state::active_character_changed);
         }
-        if(const auto result = prepare_active_character_switch(library, table, context, random,
-            event, removal_resume, broadcast_resume)) return *result;
-        return broadcast_active_character_change(library, table, context, random);
-    }
-
-    template<bool Observed>
-    inline execution_state prepare_active_character_change_from_input(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        const auto input = get<0>(context.stack().top<set_active_character_input>());
-#ifndef NDEBUG
-        debug_validate_entity(table, input.current, "set_active_character", "current");
-        if(table[input.current].state().health == 0)
-            throw command_input_error{ "set_active_character", invalid_entity_relation{ "current", invalid_entity_relation::reason::defeated_character } };
-#endif
-        context.stack().pop<set_active_character_input>();
-        const active_character_changed event{ input.current };
-        GIVM_ASSERT(static_cast<bool>(table[event.current]));
-        const auto removal_resume = context.position() + sizeof(execute_fn);
-        const auto broadcast_resume = removal_resume + response_extent<attachment_removed> + Observed * sizeof(execute_fn);
-        const auto& state = table[event.current.player_id].state();
-        if(state.active_character == event.current)
-            return context.jump(broadcast_resume + response_extent<active_character_changed>);
-        if(state.active_character && library.is_control_immune(std::as_const(table)[*state.active_character]))
-            return context.jump(broadcast_resume + response_extent<active_character_changed>);
-        if constexpr(Observed)
-        {
-            context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
-            context.jump(removal_resume + response_extent<attachment_removed>);
-            return context.yield(execution_state::active_character_changed);
-        }
-        if(const auto result = prepare_active_character_switch(library, table, context, random,
-            event, removal_resume, broadcast_resume)) return *result;
-        return broadcast_active_character_change(library, table, context, random);
+        apply_active_character_switch(library, table, context, event);
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const givm::set_active_character& command, compile_mode mode)
     {
         if(command.target.offset == std::numeric_limits<std::int32_t>::max())
-        {
             writer.write(mode == compile_mode::observed
-                ? execute_fn{ &prepare_active_character_change_from_input<true> }
-                : execute_fn{ &prepare_active_character_change_from_input<false> });
-        }
+                ? execute_fn{ prepare_active_character_change<false, true> }
+                : execute_fn{ prepare_active_character_change<false, false> });
         else
         {
             writer.write(mode == compile_mode::observed
-                ? execute_fn{ &prepare_active_character_change<true> }
-                : execute_fn{ &prepare_active_character_change<false> });
+                ? execute_fn{ prepare_active_character_change<true, true> }
+                : execute_fn{ prepare_active_character_change<true, false> });
             writer.write(command);
         }
-        compile_broadcast<attachment_removed>(writer, resume_active_character_prepared_removal);
-        if(mode == compile_mode::observed)
-        {
-            writer.write(execute_fn{ &apply_active_character_change });
-        }
-        compile_broadcast<active_character_changed>(writer, broadcast_active_character_change);
+        if(mode == compile_mode::observed) writer.write(execute_fn{ apply_active_character_change });
     }
+
 }
 
 namespace givm::detail

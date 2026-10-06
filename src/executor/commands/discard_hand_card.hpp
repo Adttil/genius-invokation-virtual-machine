@@ -18,78 +18,6 @@
 
 namespace givm::detail
 {
-    struct hand_card_discard_progress
-    {
-        std::size_t current = 0;
-        std::size_t count;
-    };
-
-    inline void prepare_hand_card_discard_notification(
-        const definition_library& library, const unrestricted_table& table,
-        execution_context& context, hand_card_id card)
-    {
-        context.advance(response_extent<hand_card_discard_effect>);
-        prepare_broadcast(library, hand_card_discarded{ card }, table, context.stack(), context.position());
-    }
-
-    inline void finish_hand_card_discard_effect_frame(
-        const definition_library& library, const unrestricted_table& table, execution_context& context)
-    {
-        const auto card = get<0>(context.stack().top<hand_card_discard_effect, response_return>()).card;
-        pop_single_response<hand_card_discard_effect, hand_card_id>(context);
-        prepare_hand_card_discard_notification(library, table, context, card);
-    }
-
-    inline bool enter_hand_card_discard_effect(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        const auto [cards, progress] = context.stack().top<frame<hand_card_id[]>, frame<hand_card_discard_progress>>();
-        const auto card = get<0>(cards)[get<0>(progress).current];
-        const auto self = std::as_const(table)[card];
-        const auto definition = library[self.definition_id()];
-        if(not definition.can_handle<hand_card_discard_effect, hand_card_view>())
-        {
-            prepare_hand_card_discard_notification(library, table, context, card);
-            return false;
-        }
-        prepare_single_response(hand_card_discard_effect{ card }, card, table, context, context.position(), true);
-        if(not continue_single_response<hand_card_discard_effect, hand_card_id>(library, table, context, random)) return true;
-        finish_hand_card_discard_effect_frame(library, table, context);
-        return false;
-    }
-
-    inline execution_state broadcast_hand_card_discard(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        for(;;)
-        {
-            if(not continue_broadcast<hand_card_discarded>(library, table, context, random))
-                return continue_execution;
-            pop_broadcast<hand_card_discarded>(context);
-            auto& progress = get<0>(context.stack().top<hand_card_discard_progress>());
-            if(++progress.current == progress.count)
-            {
-                context.stack().pop<hand_card_discard_progress>();
-                context.stack().pop<hand_card_id[]>();
-                return context.advance(response_extent<hand_card_discarded>);
-            }
-            context.jump(context.position() - response_extent<hand_card_discard_effect>);
-            if(enter_hand_card_discard_effect(library, table, context, random))
-                return continue_execution;
-        }
-    }
-
-    inline execution_state finish_hand_card_discard_effect(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_single_response<hand_card_discard_effect, hand_card_id>(library, table, context, random)) return continue_execution;
-        finish_hand_card_discard_effect_frame(library, table, context);
-        return broadcast_hand_card_discard(library, table, context, random);
-    }
-
     template<bool Fixed>
     inline execution_state prepare_hand_card_discard(
         const definition_library& library, unrestricted_table& table,
@@ -128,21 +56,14 @@ namespace givm::detail
 #endif
             context.enter_next();
         }
-        if(count == 0)
-        {
-            context.stack().pop<hand_card_id[]>();
-            return context.advance(response_extent<hand_card_discard_effect> + response_extent<hand_card_discarded>);
-        }
         const auto cards = get<0>(context.stack().top<hand_card_id[]>());
         for(const auto card : cards.first(count))
         {
-            GIVM_ASSERT(static_cast<bool>(table[card]));
             table[card].erase();
+            append_removal_record<hand_card_discard_effect>(context, card, hand_card_discarded{ card });
         }
-        context.stack().push(hand_card_discard_progress{ .count = count });
-        if(enter_hand_card_discard_effect(library, table, context, random))
-            return continue_execution;
-        return broadcast_hand_card_discard(library, table, context, random);
+        context.stack().pop<hand_card_id[]>();
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const givm::discard_hand_card& command, compile_mode)
@@ -154,8 +75,6 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ prepare_hand_card_discard<false> });
-        compile_single_response<hand_card_discard_effect, hand_card_id>(writer, finish_hand_card_discard_effect);
-        compile_broadcast<hand_card_discarded>(writer, broadcast_hand_card_discard);
     }
 }
 

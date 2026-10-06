@@ -2,33 +2,9 @@
 
 # givm::after_elemental_reaction
 
-定义于头文件 `<givm/definition.hpp>`
+反应事实的只读通知，在当前段混合通知中按创建顺序处理。含 `source`、`target`、`incoming_element`、`reacted_aura`、`reaction_id reaction` 和 `cause`。取消默认后续效果不会删除本事件。
 
-```cpp
-struct after_elemental_reaction;
-```
-
-元素反应处理完成后的通知。它记录引发反应的元素、原有附着和反应来源，也携带本次反应选定的替代标签。
-
-## 成员对象
-
-| 名称 | 类型 | 说明 |
-| --- | --- | --- |
-| `source` | `const element_application_source_id` | 引发这次反应的元素附着来源；只读 |
-| `target` | `const character_id` | 发生元素反应的角色；只读 |
-| `incoming_element` | `const element` | 本次附着的元素；只读 |
-| `reacted_aura` | `const element_aura` | 发生反应前的元素附着；只读 |
-| `reaction` | `const elemental_reaction` | 本次元素反应的种类；只读 |
-| `cause` | `const element_application_cause` | 由伤害还是独立效果引发，初始为 effect；只读 |
-| `replacement_reaction` | `const tag_id` | 本次反应采用的替代标签，空值表示默认反应效果；只读 |
-
-## 时机
-
-由伤害触发时，各段伤害先分别完成扣血、击倒、元素附着及默认反应实体生成；须等待整组结算结束，并完成已登记的超载切人及其通知，才在引发该反应的伤害后通知之前广播本事件。反应派生伤害也在这些完成通知之前结算；反应信息仍记录引发反应时的元素与附着。若此前已判定终局，则不再进行剩余完成通知。
-
-独立 [`apply_element`](../commands/apply_element.md) 不产生反应加伤或派生伤害；在附着、默认实体生成和已登记的超载切人完成后进行本通知。没有发生反应时不广播本事件。
-
-非空 `replacement_reaction` 不取消本通知，`reaction` 仍是原始元素反应。响应者可在此根据标签完成替代效果，例如造成额外伤害；其中的 `deal_damage` 独立结算，不追加进刚完成的伤害组。
+`source_player()` 返回引发玩家，`reaction.slot` 返回元素组合槽位。该槽位的实际定义可以按玩家映射替换；多种扩散和结晶分别保留自己的槽位。
 
 ## 示例
 
@@ -40,8 +16,8 @@ struct after_elemental_reaction;
 
 int main()
 {
-    givm::after_elemental_reaction event{ .source = givm::character_id{}, .target = {}, .incoming_element = givm::element::pyro, .reacted_aura = givm::element_aura::hydro, .reaction = givm::elemental_reaction::vaporize };
-    std::println("发生蒸发: {}", event.reaction == givm::elemental_reaction::vaporize);
+    givm::after_elemental_reaction event{ .source = givm::character_id{}, .target = {}, .incoming_element = givm::element::pyro, .reacted_aura = givm::element_aura::hydro, .reaction = { givm::player_id{ 0 }, givm::elemental_reaction::vaporize } };
+    std::println("发生蒸发: {}", event.reaction.slot == givm::elemental_reaction::vaporize);
     std::println("由独立效果附着: {}", event.cause == givm::element_application_cause::effect);
 }
 ```

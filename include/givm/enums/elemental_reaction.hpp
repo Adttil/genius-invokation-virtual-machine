@@ -1,6 +1,8 @@
 #ifndef GIVM_ENUMS_ELEMENTAL_REACTION_HPP
 #define GIVM_ENUMS_ELEMENTAL_REACTION_HPP
 
+#include <bit>
+#include <cstddef>
 #include <cstdint>
 
 #include "element_aura.hpp"
@@ -15,14 +17,73 @@ namespace givm
         overloaded,
         superconduct,
         electro_charged,
-        lunar_charged,
         frozen,
-        swirl,
-        crystallize,
         burning,
         bloom,
-        quicken
+        quicken,
+        swirl_cryo,
+        swirl_hydro,
+        swirl_pyro,
+        swirl_electro,
+        crystallize_cryo,
+        crystallize_hydro,
+        crystallize_pyro,
+        crystallize_electro
     };
+
+    inline constexpr std::size_t elemental_reaction_count = 17;
+
+    class elemental_reaction_mask
+    {
+    public:
+        constexpr elemental_reaction_mask() noexcept = default;
+        constexpr elemental_reaction_mask(elemental_reaction type) noexcept { set(type); }
+
+        constexpr bool operator[](elemental_reaction type) const noexcept
+        {
+            if(type == elemental_reaction::none) return false;
+            return (bits_ & (std::uint32_t{ 1 } << (static_cast<std::size_t>(type) - 1))) != 0;
+        }
+
+        constexpr bool all() const noexcept { return bits_ == all_bits; }
+        constexpr bool any() const noexcept { return bits_ != 0; }
+        constexpr bool none() const noexcept { return bits_ == 0; }
+        constexpr std::size_t count() const noexcept { return std::popcount(bits_); }
+        constexpr std::size_t size() const noexcept { return elemental_reaction_count; }
+
+        constexpr elemental_reaction_mask& set() noexcept { bits_ = all_bits; return *this; }
+        constexpr elemental_reaction_mask& set(elemental_reaction type, bool value = true) noexcept
+        {
+            if(type == elemental_reaction::none) return *this;
+            const auto bit = std::uint32_t{ 1 } << (static_cast<std::size_t>(type) - 1);
+            if(value) bits_ |= bit;
+            else bits_ &= ~bit;
+            return *this;
+        }
+        constexpr elemental_reaction_mask& reset() noexcept { bits_ = 0; return *this; }
+        constexpr elemental_reaction_mask& reset(elemental_reaction type) noexcept { return set(type, false); }
+        constexpr elemental_reaction_mask& flip() noexcept { bits_ ^= all_bits; return *this; }
+        constexpr elemental_reaction_mask& flip(elemental_reaction type) noexcept
+        {
+            if(type == elemental_reaction::none) return *this;
+            bits_ ^= std::uint32_t{ 1 } << (static_cast<std::size_t>(type) - 1);
+            return *this;
+        }
+        constexpr elemental_reaction_mask& operator|=(const elemental_reaction_mask& other) noexcept { bits_ |= other.bits_; return *this; }
+        constexpr elemental_reaction_mask& operator&=(const elemental_reaction_mask& other) noexcept { bits_ &= other.bits_; return *this; }
+        constexpr elemental_reaction_mask& operator^=(const elemental_reaction_mask& other) noexcept { bits_ ^= other.bits_; return *this; }
+        constexpr bool operator==(const elemental_reaction_mask&) const noexcept = default;
+
+    private:
+        static constexpr std::uint32_t all_bits = (std::uint32_t{ 1 } << elemental_reaction_count) - 1;
+        std::uint32_t bits_ = 0;
+    };
+
+    constexpr elemental_reaction_mask operator|(elemental_reaction_mask lhs, const elemental_reaction_mask& rhs) noexcept { return lhs |= rhs; }
+    constexpr elemental_reaction_mask operator&(elemental_reaction_mask lhs, const elemental_reaction_mask& rhs) noexcept { return lhs &= rhs; }
+    constexpr elemental_reaction_mask operator^(elemental_reaction_mask lhs, const elemental_reaction_mask& rhs) noexcept { return lhs ^= rhs; }
+    constexpr elemental_reaction_mask operator~(elemental_reaction_mask value) noexcept { return value.flip(); }
+    constexpr elemental_reaction_mask operator|(elemental_reaction lhs, elemental_reaction rhs) noexcept { return elemental_reaction_mask(lhs) | rhs; }
 
     namespace detail
     {
@@ -67,11 +128,13 @@ namespace givm
             return elemental_reaction::quicken;
         if(incoming == element::anemo && detail::is_swirl_or_crystallize_target(aura))
         {
-            return elemental_reaction::swirl;
+            return static_cast<elemental_reaction>(static_cast<unsigned>(elemental_reaction::swirl_cryo)
+                + static_cast<unsigned>(aura));
         }
         if(incoming == element::geo && detail::is_swirl_or_crystallize_target(aura))
         {
-            return elemental_reaction::crystallize;
+            return static_cast<elemental_reaction>(static_cast<unsigned>(elemental_reaction::crystallize_cryo)
+                + static_cast<unsigned>(aura));
         }
         return elemental_reaction::none;
     }

@@ -145,9 +145,10 @@ namespace givm_test::executor::runtime_argument_errors
         const auto source = givm::test::with_passive_skill(argument_source{ selected, &observed });
         const givm::test::named_definition_source<givm::summon_view> summon{ "RuntimeArgumentSummon" };
         const givm::test::named_definition_source<givm::card_definition> card{ "RuntimeArgumentCard" };
-        std::vector<givm::any_command> initialization{ givm::start_round{} };
-        if(selected == scenario::removed_summon) initialization.emplace_back(givm::start_round{});
-        initialization.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        std::vector<givm::any_command> initialization{ givm::start_round{}, givm::settle{} };
+        if(selected == scenario::removed_summon) { initialization.emplace_back(givm::start_round{}); initialization.emplace_back(givm::settle{}); }
+        initialization.emplace_back(givm::settle{});
+    initialization.emplace_back(givm::end_game{ givm::game_result::both_loss });
         const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
             initialization, std::tuple{}, source, summon, card);
         givm::table table{ {}, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };

@@ -75,8 +75,8 @@ namespace givm::detail
             const auto changed = modify(summon, command.value, command.usages);
             context.advance(instruction_extent<1, summon_state_modification_data>);
             if(changed.state().usages == 0 && library.remove_at_zero_usages(command.definition))
-                return remove_summon_and_broadcast(library, table, context, random, summon);
-            return context.advance(response_extent<summon_removed>);
+                remove_summon_and_record(table, context, summon);
+            return continue_execution;
         }
         else
         {
@@ -86,25 +86,14 @@ namespace givm::detail
             for(std::size_t index = 0; index != summons.size(); ++index)
                 debug_validate_entity(table, summons[index], "modify_summon_state", "summons[" + std::to_string(index) + "]");
 #endif
-            auto first = summons.size();
-            for(std::size_t index = 0; index != summons.size(); ++index)
+            for(const auto id : summons)
             {
-                const auto changed = modify(summons[index], value, usages);
-                if(first == summons.size() && changed.state().usages == 0
-                    && library.remove_at_zero_usages(changed.definition_id()))
-                    first = index;
+                const auto changed = modify(id, value, usages);
+                if(changed.state().usages == 0 && library.remove_at_zero_usages(changed.definition_id()))
+                    remove_summon_and_record(table, context, id);
             }
-            context.enter_next();
-            if(first == summons.size())
-            {
-                context.stack().pop<summon_id[], std::int64_t, std::int64_t>();
-                return context.advance(response_extent<summon_removed>);
-            }
-            const auto summon = summons[first];
-            context.stack().push(stack_count_t{ first + 1 });
-            table[summon].erase();
-            prepare_broadcast(library, summon_removed{ summon }, table, context.stack(), context.position());
-            return broadcast_summon_removals<true>(library, table, context, random);
+            context.stack().pop<summon_id[], std::int64_t, std::int64_t>();
+            return context.enter_next();
         }
     }
 
@@ -116,14 +105,12 @@ namespace givm::detail
                 ? execute_fn{ execute_summon_state_modification<true, true> }
                 : execute_fn{ execute_summon_state_modification<true, false> });
             writer.write(summon_state_modification_data{ command.player, command.definition, command.value, command.usages });
-            compile_broadcast<summon_removed>(writer, broadcast_summon_removal);
         }
         else
         {
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_summon_state_modification<false, true> }
                 : execute_fn{ execute_summon_state_modification<false, false> });
-            compile_broadcast<summon_removed>(writer, broadcast_summon_removals<true>);
         }
     }
 }

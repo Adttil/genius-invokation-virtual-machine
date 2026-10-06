@@ -4,6 +4,8 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
+响应为一条动态伤害命令提交的伤害序列。数组长度可以在响应时决定，每个元素描述一次单体或范围伤害。
+
 ```cpp
 struct deal_damage_input
 {
@@ -11,14 +13,6 @@ struct deal_damage_input
 };
 ```
 
-一组伤害的动态输入。组内初始描述数量在响应时决定，整个对象对应一条动态伤害命令。 配合 [`deal_damage`](../commands/deal_damage.md) 和 [`handle_context::invoke`](../../executor/handle_context/invoke.md) 使用。
+`damages` 按顺序执行，允许为空或重复目标；元素类型为 [`damage`](damage.md)。每个元素开始时解析自己的目标范围，后续元素可以看到之前操作的变化。同一元素的目标集合在开始时确定，不因中途复活、切换或新增角色重新采样。
 
-## 成员对象
-
-| 名称 | 类型 | 说明 |
-| --- | --- | --- |
-| `damages` | `std::span<const damage>` | 按处理顺序排列的伤害初始描述；允许为空 |
-
-## 注意
-
-`invoke` 复制 [`damage`](damage.md) 数组的内容，返回后不再借用该 span。数组须在复制期间保持有效。空数组不产生伤害；数组中的范围描述仍在命令执行时展开。组内处理顺序与广播时机见 [`deal_damage`](../commands/deal_damage.md)。
+数组内容在 `invoke` 或 `pack_inputs` 时复制，提交完成后不再借用原数组。本输入不自动分段或结算；同段、同目标的伤害与其他伤害命令一起合并通知，数组边界不影响合并。

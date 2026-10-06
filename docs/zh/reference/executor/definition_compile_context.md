@@ -26,19 +26,16 @@ class definition_compile_context;
 | [`operator[]`](definition_compile_context/operator_at.md) | 按 ID 取得定义的元数据视图 |
 | [`find_tag`](definition_compile_context/find_tag.md) | 查找本次集合中的标签 ID |
 | [`find_ids_by_tag`](definition_compile_context/find_ids_by_tag.md) | 筛选本次集合中满足标签条件的定义 |
-| [`dendro_core_id`](definition_compile_context/dendro_core_id.md) | 取得本次编译采用的草原核定义 ID |
-| [`catalyzing_field_id`](definition_compile_context/catalyzing_field_id.md) | 取得本次编译采用的激化领域定义 ID |
-| [`burning_flame_id`](definition_compile_context/burning_flame_id.md) | 取得本次编译采用的燃烧烈焰定义 ID |
-| [`frozen_id`](definition_compile_context/frozen_id.md) | 取得本次编译采用的冻结定义 ID |
-| [`shield_id`](definition_compile_context/shield_id.md) | 取得本次编译采用的护盾定义 ID |
 | [`add_program`](definition_compile_context/add_program.md) | 登记一段效果并取得入口 |
 | [`definition_count<Category>()`](../definition/history_summary.md#定义源协议) | 取得最终编译集合内指定类别的定义数量 |
 | [`history_field<T>(name)`](../definition/history_summary.md#定义源协议) | 取得当前摘要自身字段的访问键 |
 | [`resolve_history_field<T>(summary, name)`](../definition/history_summary.md#定义源协议) | 取得已声明依赖的摘要字段读取键 |
 
+| [`default_reaction_id`](definition_compile_context/default_reaction_id.md) | 取得一个槽位的默认反应定义 ID |
+
 ## 注意
 
-由 [`givm::compile`](compile.md) 在调用定义源的 `compile` 时提供，只在本次编译调用中使用。`resolve_id` 解析的硬依赖须通过[定义源协议](../definition/source_protocol.md)提前声明；遍历、查找和标签筛选不需要声明依赖，也不扩充本次集合。五个基础定义 ID 查询直接使用本次 [`basic_definition_sources`](../definition/basic_definition_sources.md) 配置，无须声明具体名称依赖。
+由 [`givm::compile`](compile.md) 在调用定义源的 `compile` 时提供，只在本次编译调用中使用。`resolve_id` 解析的硬依赖须通过[定义源协议](../definition/source_protocol.md)提前声明；遍历、查找和标签筛选不需要声明依赖，也不扩充本次集合。默认反应 ID 查询直接使用本次 [`reaction_definition_names`](../definition/reaction_definition_names.md) 配置，无须声明具体名称依赖。
 
 本次集合在任何定义的 `compile` 或历史摘要的 `layout` 开始前已经确定。所有定义的名称、标签和能力信息均可查询，无须等待被查询定义完成编译。元数据视图不提供执行响应或查询结果的接口，且只能在本次编译期间使用；可以保存取得的 ID，不能把视图或其借用的范围保存到对局运行期。
 
@@ -81,18 +78,13 @@ int main()
 {
     const card_source card{};
     const support_source support{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(card, support)) return 1;
     auto library_result = compile(
         sources, basics,
-        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
+        std::tuple{}, std::tuple{ givm::start_round{}, givm::settle{} }, givm::compile_mode::normal
     );
     if(not library_result)
     {

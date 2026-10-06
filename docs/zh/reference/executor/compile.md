@@ -7,7 +7,7 @@
 ```cpp
 std::expected<definition_compile_result, std::vector<compile_error>> compile(
     const definition_source_library& sources,
-    const basic_definition_sources& basics,
+    const reaction_definition_names& basics,
     std::span<const any_command> initialization_program,
     std::span<const any_command> round_program,
     compile_mode mode
@@ -15,7 +15,7 @@ std::expected<definition_compile_result, std::vector<compile_error>> compile(
 
 std::expected<definition_compile_result, std::vector<compile_error>> compile(
     const definition_source_library& sources,
-    const basic_definition_sources& basics,
+    const reaction_definition_names& basics,
     const definition_selection& selection,
     std::span<const any_command> initialization_program,
     std::span<const any_command> round_program,
@@ -26,7 +26,7 @@ template<class TInitializationSequence, class TRoundSequence>
     requires /* 两者均为命令序列，且至少一个不能隐式转换为 span<const any_command> */
 auto compile(
     const definition_source_library& sources,
-    const basic_definition_sources& basics,
+    const reaction_definition_names& basics,
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
     compile_mode mode
@@ -36,7 +36,7 @@ template<class TInitializationSequence, class TRoundSequence>
     requires /* 两者均为命令序列，且至少一个不能隐式转换为 span<const any_command> */
 auto compile(
     const definition_source_library& sources,
-    const basic_definition_sources& basics,
+    const reaction_definition_names& basics,
     const definition_selection& selection,
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
@@ -46,7 +46,7 @@ auto compile(
 
 准备一场对局要使用的实体定义和对局流程。初始化部分只进行一次，随后自动推进回合并反复执行回合部分，直到流程主动暂停或结束对局。
 
-(1)、(3) 使用全部已登记定义及 `basics` 中的五个默认反应定义。(2)、(4) 从指定定义和 `basics` 中的五个默认反应定义出发，自动包含直接和间接按名称依赖的定义。其余定义不会编译。所有重载均不修改源库，编译期间的元数据查找和标签筛选也不会扩充这个集合。
+(1)、(3) 使用全部已登记定义；(2)、(4) 从选择的定义及 `basics` 中 17 个默认反应名称出发，包含直接和间接依赖。所有默认反应及其依赖必须提前登记到源库。其余定义不会编译。所有重载均不修改源库，编译期间的元数据查找和标签筛选也不会扩充这个集合。
 
 (1)、(2) 接收 [`any_command`](../definition/any_command.md) 的连续序列。(3)、(4) 接收 tuple-like 对象或范围，并提供相同的编译行为。
 
@@ -64,7 +64,7 @@ auto compile(
 |  |  |
 | --- | --- |
 | `sources` | 已登记本场可用定义的源库 |
-| `basics` | [`basic_definition_sources`](../definition/basic_definition_sources.md)，本场规则采用的五个默认反应源 |
+| `basics` | [`reaction_definition_names`](../definition/reaction_definition_names.md)，本场规则采用的 17 个默认反应定义名称 |
 | `selection` | 各类别首先选择的定义名称 |
 | `initialization_program` | 对局开始时依次执行的命令 |
 | `round_program` | 每回合依次执行的命令 |
@@ -119,14 +119,9 @@ auto compile(
 
 int main()
 {
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     auto library_result = compile(
         sources, basics,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal

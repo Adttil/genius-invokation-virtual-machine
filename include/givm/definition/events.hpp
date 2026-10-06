@@ -169,25 +169,23 @@ namespace givm
     struct hand_card_added
     {
         const hand_card_id card;
+        const bool overflow = false;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(hand_card_added);
     };
 
     struct card_drawn
     {
         const hand_card_id card;
+        const bool overflow = false;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_drawn);
     };
 
     struct hand_card_discard_effect
     {
-        const hand_card_id card;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(hand_card_discard_effect);
     };
 
     struct deck_card_discard_effect
     {
-        const deck_card_id card;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(deck_card_discard_effect);
     };
 
     struct hand_card_discarded
@@ -336,7 +334,8 @@ namespace givm
     {
         character,
         others,
-        all
+        all,
+        prioritized
     };
 
     struct relative_character_target
@@ -369,9 +368,9 @@ namespace givm
         std::uint16_t multiplier_denominator = 1;
         const damage_type type;
         const damage_flags flags;
-        const elemental_reaction reaction = elemental_reaction::none;
+        const reaction_id reaction{};
         const element_aura reacted_aura = element_aura::none;
-        const tag_id replacement_reaction{};
+        bool cancel_reaction_bonus = false;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_calculation);
     };
 
@@ -382,20 +381,18 @@ namespace givm
         std::uint32_t value;
         const damage_type type;
         const damage_flags flags;
-        const elemental_reaction reaction = elemental_reaction::none;
-        const tag_id replacement_reaction{};
+        const reaction_id reaction{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_effect);
     };
 
     struct after_damage
     {
-        const damage_source_id source;
         const character_id target;
         const std::uint32_t value;
-        const damage_type type;
+        const damage_type_mask type;
         const damage_flags flags;
-        const elemental_reaction reaction = elemental_reaction::none;
-        const tag_id replacement_reaction{};
+        const elemental_reaction_mask reaction{};
+        const bool defeated = false;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(after_damage);
     };
 
@@ -405,6 +402,13 @@ namespace givm
                                           attachment_id>;
 
     using healing_target = std::variant<character_id, relative_character_target>;
+
+    enum class healing_kind : std::uint8_t
+    {
+        normal,
+        prevent_defeat,
+        revive
+    };
 
     struct healing
     {
@@ -419,13 +423,24 @@ namespace givm
         const effect_source_id source;
         const character_id target;
         const std::uint32_t value;
+        const healing_kind kind = healing_kind::normal;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(healed);
     };
 
     // Element application events.
     using element_application_source_id =
         std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
-                     combat_status_id, character_id, skill_id, attachment_id>;
+                                          combat_status_id, character_id, skill_id, attachment_id>;
+
+    inline player_id source_player(const element_application_source_id& source) noexcept
+    {
+        return std::visit([](const auto& id)
+        {
+            if constexpr(requires { id.player_id; }) return id.player_id;
+            else if constexpr(requires { id.character_id; }) return id.character_id.player_id;
+            else return id.card_id.player_id;
+        }, source);
+    }
 
     struct elemental_reaction_will_occur
     {
@@ -433,9 +448,11 @@ namespace givm
         const character_id target;
         const element incoming_element;
         const element_aura reacted_aura;
-        const elemental_reaction reaction;
+        const reaction_id reaction;
         const element_application_cause cause = element_application_cause::effect;
-        tag_id replacement_reaction{};
+        element_aura new_aura = element_aura::none;
+        bool cancel_default_effects = false;
+        player_id source_player() const noexcept { return givm::source_player(source); }
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(elemental_reaction_will_occur);
     };
 
@@ -445,13 +462,11 @@ namespace givm
         const character_id target;
         const element incoming_element;
         const element_aura reacted_aura;
-        const elemental_reaction reaction;
+        const reaction_id reaction;
         const element_application_cause cause = element_application_cause::effect;
-        const tag_id replacement_reaction{};
+        player_id source_player() const noexcept { return givm::source_player(source); }
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(after_elemental_reaction);
     };
-
-    static_assert(sizeof(after_elemental_reaction) <= 64);
 
     // Defeat events.
     struct character_will_be_defeated
@@ -460,10 +475,10 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(character_will_be_defeated);
     };
 
-    struct character_defeated
+    struct character_revived
     {
         const character_id target;
-        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(character_defeated);
+        GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(character_revived);
     };
 
     // Entity events.
@@ -473,6 +488,8 @@ namespace givm
         const support_state current;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(support_state_changed);
     };
+
+    struct support_removal_effect {};
 
     struct support_removed
     {
@@ -485,6 +502,8 @@ namespace givm
         const summon_state state;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(resummoning);
     };
+
+    struct summon_removal_effect {};
 
     struct summon_removed
     {
@@ -505,6 +524,8 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(combat_status_state_changed);
     };
 
+    struct combat_status_removal_effect {};
+
     struct combat_status_removed
     {
         const combat_status_id status;
@@ -523,6 +544,8 @@ namespace givm
         const attachment_state current;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(attachment_state_changed);
     };
+
+    struct attachment_removal_effect {};
 
     struct attachment_removed
     {

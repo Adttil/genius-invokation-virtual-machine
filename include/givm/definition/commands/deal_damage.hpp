@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string>
 
@@ -28,7 +29,6 @@ namespace givm
 
         reason cause;
         std::size_t value{};
-        std::size_t index{};
     };
 
     inline std::string error_string(const deal_damage_error& error)
@@ -39,17 +39,17 @@ namespace givm
         case reason::dynamic_input_in_root:
             return "deal_damage: cannot consume dynamic input in a root program";
         case reason::invalid_source_player:
-            return "deal_damage: damages[" + std::to_string(error.index) + "].source.player must be self or opponent; got " + std::to_string(error.value);
+            return "deal_damage: source.player must be self or opponent; got " + std::to_string(error.value);
         case reason::invalid_source_selection:
-            return "deal_damage: damages[" + std::to_string(error.index) + "].source.selection must be character; got " + std::to_string(error.value);
+            return "deal_damage: source.selection must be character; got " + std::to_string(error.value);
         case reason::invalid_target_player:
-            return "deal_damage: damages[" + std::to_string(error.index) + "].target.player must be self or opponent; got " + std::to_string(error.value);
+            return "deal_damage: target.player must be self or opponent; got " + std::to_string(error.value);
         case reason::invalid_target_selection:
-            return "deal_damage: damages[" + std::to_string(error.index) + "].target.selection must be character, others or all; got " + std::to_string(error.value);
+            return "deal_damage: target.selection must be character, others, all or prioritized; got " + std::to_string(error.value);
         case reason::zero_multiplier_denominator:
-            return "deal_damage: damages[" + std::to_string(error.index) + "].multiplier_denominator must not be zero";
+            return "deal_damage: multiplier_denominator must not be zero";
         case reason::invalid_damage_type:
-            return "deal_damage: damages[" + std::to_string(error.index) + "].type must be a declared damage_type; got " + std::to_string(error.value);
+            return "deal_damage: type must be a declared damage_type; got " + std::to_string(error.value);
         }
         return {};
     }
@@ -66,17 +66,6 @@ namespace givm
         damage_flags flags;
     };
 
-    struct fixed_damage
-    {
-        relative_character_target source;
-        relative_character_target target{ relative_player::opponent };
-        std::uint32_t value;
-        std::uint16_t multiplier_numerator = 1;
-        std::uint16_t multiplier_denominator = 1;
-        damage_type type;
-        damage_flags flags;
-    };
-
     struct deal_damage_input
     {
         std::span<const damage> damages;
@@ -85,11 +74,17 @@ namespace givm
     struct deal_damage
     {
         using error_type = deal_damage_error;
-
         using input_type = deal_damage_input;
 
-        std::span<const fixed_damage> damages{};
+        relative_character_target source{};
+        relative_character_target target{ relative_player::opponent, std::numeric_limits<std::int32_t>::max() };
+        std::uint32_t value{};
+        std::uint16_t multiplier_numerator = 1;
+        std::uint16_t multiplier_denominator = 1;
+        damage_type type;
+        damage_flags flags;
     };
+
 }
 
 #endif

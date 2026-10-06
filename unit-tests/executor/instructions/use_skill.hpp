@@ -78,7 +78,7 @@ namespace
         {
             return { log, { .dice_requirement = { .any = dice }, .energy = energy,
                 .energy_tag = energy_tag.empty() ? givm::tag_id{} : *context.find_tag(energy_tag) },
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::action_cost_requirement query(const definition_type& data, const givm::skill_initial_cost&)
         {
@@ -180,11 +180,11 @@ namespace
                 context.resolve_id<givm::skill_view>("PassiveSkill"),
                 context.resolve_id<givm::skill_view>("UntargetedSkill"),
                 context.add_program(
-                    std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }),
+                    std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }),
                 context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
                 energy_tag.empty() ? givm::tag_id{} : *context.find_tag(energy_tag)
             };
@@ -340,7 +340,7 @@ namespace
     auto setup(std::span<const std::size_t> positions = {})
     {
         std::vector<givm::any_command> commands;
-        if(not positions.empty()) commands.emplace_back(givm::draw_cards{ .positions = positions });
+        if(not positions.empty()) commands.emplace_back(givm::draw_cards{ .position = 0, .count = positions.size() });
         commands.emplace_back(givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } });
         commands.emplace_back(givm::begin_action{});
         return commands;
@@ -538,8 +538,8 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4u - dice, 1 });
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().energy_tag == ids.get_tag_id("Resolve"));
-    CHECK(log.events == (dice == 0 ? std::vector<std::string>{ "energy", "will", "effect", "used" }
-        : std::vector<std::string>{ "dice", "energy", "will", "effect", "used" }));
+    CHECK(log.events == (dice == 0 ? std::vector<std::string>{ "will", "effect", "energy", "used" }
+        : std::vector<std::string>{ "will", "effect", "dice", "energy", "used" }));
     REQUIRE(log.resources_at_broadcast.size() == (dice == 0 ? 1 : 2));
     for(const auto snapshot : log.resources_at_broadcast)
         CHECK(snapshot == std::array<std::uint32_t, 2>{ 4u - dice, 1 });
@@ -595,8 +595,8 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
                 == (index + 1 == draws ? givm::execution_state::action_selection : givm::execution_state::card_selection));
         }
         CHECK(log.events == (cancelled
-            ? std::vector<std::string>{ "draw", "dice", "draw", "energy", "draw", "will", "draw", "used", "draw" }
-            : std::vector<std::string>{ "draw", "dice", "draw", "energy", "draw", "will", "draw", "effect", "draw", "used", "draw" }));
+            ? std::vector<std::string>{ "draw", "will", "dice", "draw", "energy", "draw", "used", "draw", "draw" }
+            : std::vector<std::string>{ "draw", "will", "effect", "draw", "dice", "draw", "energy", "draw", "used", "draw", "draw" }));
         CHECK(log.resources_at_draw == (cancelled
             ? std::vector<std::array<std::uint32_t, 2>>{ { 4, 3 }, { 3, 1 }, { 3, 1 }, { 3, 1 }, { 3, 1 } }
             : std::vector<std::array<std::uint32_t, 2>>{ { 4, 3 }, { 3, 1 }, { 3, 1 }, { 3, 1 }, { 3, 1 }, { 3, 1 } }));
@@ -668,7 +668,7 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4u - dice);
     CHECK(log.events == (dice == 0 ? std::vector<std::string>{ "energy" } : std::vector<std::string>{ "dice", "energy" }));
     for(const auto snapshot : log.resources_at_broadcast)
-        CHECK(snapshot == std::array<std::uint32_t, 2>{ 4u - dice, 1 });
+        CHECK(snapshot == std::array<std::uint32_t, 2>{ 4u - dice, switching ? 0u : 1u });
     CHECK(log.card_effects == (switching ? 0 : 1));
     CHECK(table[givm::player_id{ 0 }].state().active_character
         == givm::character_id{ givm::player_id{ 0 }, switching ? 1uz : 0uz });
@@ -757,7 +757,7 @@ TEST_CASE("entering a character loads its indexed initial skills without deck in
     const auto owner = givm::test::with_passive_skill(skill_character_source{ &log });
     const auto enter = givm::test::with_passive_skill(enter_skill_character_source{});
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, active, passive, untargeted, owner, enter);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(enter.name()) } }, {});

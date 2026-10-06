@@ -53,7 +53,7 @@ namespace
             CHECK(self.is_valid());
             data.log->order.push_back(2);
             if(not data.log->revive) return {};
-            return context.invoke(data.entry, givm::heal_input{ .source = self.id(), .target = event.target, .value = 2 });
+            return context.invoke(data.entry, givm::heal_input{ std::array{ givm::heal_input::item{ .source = self.id(), .target = event.target, .value = 2 , .kind = givm::healing_kind::prevent_defeat} } });
         }
         static givm::program_entry handle(const definition_type& data,
             givm::after_damage&, givm::handle_context<givm::attachment_view>& context, std::uint32_t = 0)
@@ -63,12 +63,7 @@ namespace
             CHECK(self.character().state().health == 2);
             return {};
         }
-        static givm::program_entry handle(const definition_type&,
-            givm::character_defeated&, givm::handle_context<givm::attachment_view>&, std::uint32_t = 0)
-        {
-            FAIL("The defeated character's removed attachments must not receive the defeat notification");
-            return {};
-        }
+
     };
 
     struct dying_observer
@@ -113,25 +108,22 @@ namespace
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
-            givm::character_defeated& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
+            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
+            data.log->after_health.push_back(context.table()[event.target].state().health);
+            if(not event.defeated) return {};
             CHECK(event.target == victim);
             const auto target = context.table()[event.target];
             CHECK(target.state().health == 0);
             CHECK(target.state().energy == 0);
             CHECK(target.state().aura == givm::element_aura::none);
             CHECK(target.attachments().empty());
-            CHECK(data.log->after_health.empty());
+
             data.log->defeated.push_back(event.target);
             if(data.log->pause_defeat) return context.invoke(data.defeat);
             return {};
         }
-        static givm::program_entry handle(const definition_type& data,
-            givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
-        {
-            data.log->after_health.push_back(context.table()[event.target].state().health);
-            return {};
-        }
+
     };
 
     struct zero_random { std::uint32_t operator()() const { return 0; } };
@@ -147,12 +139,12 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
     const auto observer = givm::test::with_passive_skill(dying_observer{ &log });
     const givm::test::initialized_character_source target{ "DyingTarget",
         { .max_health = 10, .max_energy = 3, .health = 1, .energy = 2 } };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::deal_damage{ .damages = damages },
-            givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
+        std::tuple{ givm::start_round{}, givm::settle{}, damages[0],
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
     const auto target_id = ids.get_id<givm::character_view>(target.name());
     givm::linked_deck defenders{ .characters = { target_id } };
     if(has_reserve) defenders.characters.push_back(target_id);
@@ -173,13 +165,22 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
         CHECK(std::ranges::distance(table[victim].attachments()) == 1);
         state = executor.advance(library, table, random);
     }
+    if(not revive && has_reserve)
+    {
+        REQUIRE(state == givm::execution_state::active_character_selection);
+        const auto view = executor.view_in<givm::execution_state::active_character_selection>();
+        CHECK(view.player() == victim.player_id);
+        CHECK(view.selection_validate(table, victim) == givm::active_character_selection_validation::defeated_character);
+        executor.submitted(view.select(library, table, random, { victim.player_id, 1 }));
+        state = executor.advance(library, table, random);
+    }
     REQUIRE(state == givm::execution_state::finished);
     CHECK(log.order == std::vector<int>{ 1, 2 });
     const bool terminated = not revive && not has_reserve;
     CHECK(executor.view_in<givm::execution_state::finished>().result()
         == (terminated ? givm::game_result::player_0_win : givm::game_result::both_loss));
     CHECK(table[victim].state().health == (revive ? 2 : 0));
-    CHECK(table[victim].state().energy == (revive || terminated ? 2 : 0));
+    CHECK(table[victim].state().energy == (revive ? 2 : 0));
     CHECK(std::ranges::distance(table[victim].attachments()) == (revive || terminated ? 1 : 0));
     CHECK(log.attachment_completions == (revive ? 1 : 0));
     CHECK(log.defeated == (not revive && has_reserve ? std::vector{ victim } : std::vector<givm::character_id>{}));
@@ -194,12 +195,12 @@ TEST_CASE("dying response inputs survive suspension and independent executor cop
     const auto observer = givm::test::with_passive_skill(dying_observer{ &log });
     const givm::test::initialized_character_source target{ "DyingTarget",
         { .max_health = 10, .max_energy = 3, .health = 1, .energy = 2 } };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::deal_damage{ .damages = damages },
-            givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
+        std::tuple{ givm::start_round{}, givm::settle{}, damages[0],
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -242,14 +243,14 @@ TEST_CASE("confirmed defeat notifications follow cleanup and resume before damag
     const auto observer = givm::test::with_passive_skill(dying_observer{ &log });
     const givm::test::initialized_character_source target{ "DyingTarget",
         { .max_health = 10, .max_energy = 3, .health = 1, .energy = 2, .aura = givm::element_aura::hydro } };
-    const std::array damages{ givm::fixed_damage{
+    const std::array damages{ givm::deal_damage{
         .source = givm::relative_character_target{ givm::relative_player::self, 0 },
         .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::deal_damage{ .damages = damages },
-            givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
+        std::tuple{ givm::start_round{}, givm::settle{}, damages[0],
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
     const auto target_id = ids.get_id<givm::character_view>(target.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = attacker }, { .active_character = victim } };
@@ -269,18 +270,18 @@ TEST_CASE("confirmed defeat notifications follow cleanup and resume before damag
     REQUIRE(state == givm::execution_state::card_selection);
     CHECK(log.order == std::vector<int>{ 1, 2 });
     CHECK(log.defeated == std::vector{ victim });
-    CHECK(log.after_health.empty());
+    CHECK(log.after_health == std::vector<std::uint32_t>{ 0 });
     CHECK(table[victim].state().energy == 0);
     CHECK(table[victim].state().aura == givm::element_aura::none);
     CHECK(table[victim].attachments().empty());
     auto copied_executor = executor;
     auto copied_table = table;
     executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
+    REQUIRE(givm_test::advance_selecting_first_alive(executor, library, table, random) == givm::execution_state::finished);
     CHECK(log.after_health == std::vector<std::uint32_t>{ 0 });
     copied_executor.submitted(copied_executor.view_in<givm::execution_state::card_selection>().select(library, copied_table, random, {}));
-    REQUIRE(copied_executor.advance(library, copied_table, random) == givm::execution_state::finished);
-    CHECK(log.after_health == std::vector<std::uint32_t>{ 0, 0 });
+    REQUIRE(givm_test::advance_selecting_first_alive(copied_executor, library, copied_table, random) == givm::execution_state::finished);
+    CHECK(log.after_health == std::vector<std::uint32_t>{ 0 });
     CHECK(log.defeated == std::vector{ victim });
     CHECK(log.attachment_completions == 0);
 }

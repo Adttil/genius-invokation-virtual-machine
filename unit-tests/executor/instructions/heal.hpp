@@ -68,10 +68,10 @@ namespace
             if(data.log->dynamic)
             {
                 if(data.log->relative_input)
-                    return context.invoke(data.heal, givm::heal_input{ patient,
+                    return context.invoke(data.heal, givm::heal_input{ std::array{ givm::heal_input::item{ patient,
                         givm::relative_character_target{ givm::relative_player::self,
-                            data.log->target_offset, data.log->selection }, data.log->value });
-                return context.invoke(data.heal, givm::heal_input{ patient, patient, data.log->value });
+                            data.log->target_offset, data.log->selection }, data.log->value } } });
+                return context.invoke(data.heal, givm::heal_input{ std::array{ givm::heal_input::item{ patient, patient, data.log->value } } });
             }
             return context.invoke(data.heal);
         }
@@ -112,7 +112,7 @@ namespace
     auto compile_healing(healing_log& log, givm::compile_mode mode, std::uint32_t other_health = 4)
     {
         return givm::test::compile_definitions_with_program(mode,
-            std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
             givm::test::with_passive_skill(healing_source{ &log }), bare_character_source{ other_health });
     }
 
@@ -175,12 +175,12 @@ TEST_CASE("healing modifies the request then reports actual recovery including z
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
-    const auto actual = std::min(log.value + log.bonus, 10 - log.initial_health);
+    const auto actual = log.initial_health == 0 ? 0u : std::min(log.value + log.bonus, 10 - log.initial_health);
     CHECK(table[patient].state().health == log.initial_health + actual);
-    CHECK(log.requested == std::vector{ log.value });
-    CHECK(log.actual == std::vector{ actual });
-    CHECK(log.healing_targets == std::vector{ patient });
-    CHECK(log.healed_targets == std::vector{ patient });
+    CHECK(log.requested == (log.initial_health == 0 ? decltype(log.requested){} : std::vector{ log.value }));
+    CHECK(log.actual == (log.initial_health == 0 ? decltype(log.actual){} : std::vector{ actual }));
+    CHECK(log.healing_targets == (log.initial_health == 0 ? decltype(log.healing_targets){} : std::vector{ patient }));
+    CHECK(log.healed_targets == (log.initial_health == 0 ? decltype(log.healed_targets){} : std::vector{ patient }));
 }
 
 TEST_CASE("range healing excludes defeated characters and permits an empty range", "[heal][group]")
@@ -201,8 +201,8 @@ TEST_CASE("range healing excludes defeated characters and permits an empty range
         CHECK(table[patient].state().health == 7);
         CHECK(log.requested == std::vector{ 2u });
         CHECK(log.actual == std::vector{ 3u });
-        CHECK(log.healing_targets == std::vector{ patient });
-        CHECK(log.healed_targets == std::vector{ patient });
+        CHECK(log.healing_targets == (log.initial_health == 0 ? decltype(log.healing_targets){} : std::vector{ patient }));
+        CHECK(log.healed_targets == (log.initial_health == 0 ? decltype(log.healed_targets){} : std::vector{ patient }));
         CHECK(log.healed_snapshots == std::vector<std::array<std::uint32_t, 2>>{ { 7, 0 } });
     }
     else

@@ -40,6 +40,7 @@ namespace
         std::uint32_t max_energy = 3;
         std::uint32_t standby_health = 10;
         std::uint32_t energy_notifications = 0;
+        std::uint32_t expected_notifications = 0;
         std::vector<std::uint32_t> energy_during_effect;
         std::vector<std::uint32_t> energy_after_skill;
         std::vector<givm::character_id> targets;
@@ -170,12 +171,13 @@ namespace
         static givm::program_entry handle(const definition_type& data,
             givm::changing_energy&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
-            ++data.log->energy_notifications;
+            FAIL("direct energy mutation must not broadcast changing_energy");
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
-            givm::energy_changed&, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+            givm::energy_changed& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
+            CHECK(event.previous != event.current);
             ++data.log->energy_notifications;
             return {};
         }
@@ -231,7 +233,7 @@ namespace
     inline void check_mutation(mutation_log& log, givm::compile_mode mode, Check check)
     {
         const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-            std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
             mutable_skill_source{ &log }, mutation_observer_source{ &log },
             mutable_character_source{ &log, "Actor", true },
             mutable_character_source{ &log, "Standby", false, log.standby_health },
@@ -247,7 +249,14 @@ namespace
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
         REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
-        CHECK(log.energy_notifications == 0);
+        const auto expected = [&] {
+            if(log.missing_target || log.kind == mutation_kind::skill) return 0u;
+            if(log.kind == mutation_kind::sequence) return 5u;
+            if(log.kind == mutation_kind::use_skill) return log.explicit_energy ? 1u : 0u;
+            const auto final = table[log.target].state().energy;
+            return final != log.initial_energy ? 1u : 0u;
+        }();
+        CHECK(log.energy_notifications == expected);
         for(const auto character : { active, standby, opponent })
         {
             CHECK(table[character].state().energy_tag == energy_tag);
@@ -260,7 +269,7 @@ namespace
     inline void check_group_mutation(mutation_log& log, givm::compile_mode mode, bool empty_opponent, Check check)
     {
         const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-            std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
             mutable_skill_source{ &log }, mutation_observer_source{ &log },
             mutable_character_source{ &log, "Actor", true },
             mutable_character_source{ &log, "Living" },
@@ -279,7 +288,6 @@ namespace
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
         REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
-        CHECK(log.energy_notifications == 0);
         for(const auto player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
             for(const auto character : table[player].characters())
             {
@@ -287,6 +295,7 @@ namespace
                 CHECK(character.state().max_energy == log.max_energy);
             }
         check(table);
+        CHECK(log.energy_notifications == log.expected_notifications);
     }
 }
 
@@ -313,7 +322,7 @@ TEST_CASE("set_skill_state changes an existing skill without removing it at zero
     });
 }
 
-TEST_CASE("set_energy assigns and clamps energy without broadcasts", "[set_energy]")
+TEST_CASE("set_energy assigns and clamps energy and queues actual changes", "[set_energy]")
 {
     mutation_log log{ .kind = mutation_kind::assign, .dynamic = GENERATE(false, true),
         .value = GENERATE(0u, 2u, UINT32_MAX), .max_energy = GENERATE(0u, 3u, UINT32_MAX),
@@ -402,6 +411,7 @@ TEST_CASE("fixed modify_energy changes living range targets without moving the a
                 const auto selected = owner == selected_player and character.state().health != 0
                     and (selection == givm::character_selection::all or index != anchor_index);
                 CHECK(character.state().energy == (selected ? 2 : 1));
+                if(selected) ++log.expected_notifications;
             }
     });
 }
@@ -425,6 +435,7 @@ TEST_CASE("dynamic modify_energy batches consume distinct and empty inputs in pr
 {
     mutation_log log{ .kind = mutation_kind::batch_sequence, .dynamic = true };
     log.runtime_inputs = GENERATE(false, true);
+    log.expected_notifications = 10;
     log.targets = { { givm::player_id{ 0 }, 1 }, { givm::player_id{ 0 }, 4 }, { givm::player_id{ 1 }, 2 } };
     log.second_targets = { { givm::player_id{ 0 }, 4 }, { givm::player_id{ 1 }, 0 } };
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);

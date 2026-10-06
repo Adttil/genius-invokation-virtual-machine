@@ -118,12 +118,14 @@ namespace givm::detail
                 });
         }
 
-        constexpr void load_deck(player_id player, const linked_deck& deck)
+        constexpr void load_deck(player_id player, const linked_deck& deck,
+            const std::array<definition_id<reaction_view>, elemental_reaction_count>& reactions = {})
         {
             auto& data = storage_.player_datas[player.index];
             GIVM_ASSERT(data.deck_card_datas.empty());
             GIVM_ASSERT(data.deck_card_order.empty());
             GIVM_ASSERT(data.character_datas.empty());
+            data.reactions = reactions;
 
             data.deck_card_datas.reserve(deck.cards.size());
             data.deck_card_order.reserve(deck.cards.size());
@@ -138,6 +140,12 @@ namespace givm::detail
             {
                 data.character_datas.emplace_back(definition.value(), character_state{});
             }
+        }
+
+        template<class Self>
+        constexpr reaction_view operator[](this Self& self, reaction_id id)
+        {
+            return self[id.player_id].reaction(id.slot);
         }
 
         template<class Self>

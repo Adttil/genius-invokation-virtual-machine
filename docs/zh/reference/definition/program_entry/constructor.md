@@ -36,7 +36,7 @@ struct result_source
         entry_type effect{};
         std::println("尚无后续效果: {}", effect.is_null());
         effect = context.add_program(
-            std::tuple{ givm::end_game{ .result = givm::game_result::both_loss } });
+            std::tuple{ givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } });
         std::println("已选择终局效果: {}", static_cast<bool>(effect));
         return effect;
     }
@@ -51,18 +51,13 @@ struct result_source
 int main()
 {
     const result_source source{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(source)) return 1;
     auto library_result = compile(
         sources, basics,
-        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal);
+        std::tuple{}, std::tuple{ givm::start_round{}, givm::settle{} }, givm::compile_mode::normal);
     if(not library_result)
     {
         std::println("{}", error_string(library_result.error()));

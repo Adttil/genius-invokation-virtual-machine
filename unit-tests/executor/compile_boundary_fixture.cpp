@@ -26,12 +26,11 @@ namespace givm_test::executor::compile_boundary
 
             definition_type compile(givm::definition_compile_context& context) const
             {
-                // The fixed command borrows local data only until add_program returns.
-                const std::array<std::size_t, 2> positions{ 1, 0 };
                 const givm::set_energy energy{};
-                const givm::draw_cards draw{ .positions = positions };
+                const givm::draw_cards draw{ .position = 1 };
+                const givm::draw_cards next_draw{ .position = 0 };
                 const givm::add_dice dice{};
-                const std::array<givm::any_command, 3> commands{ energy, draw, dice };
+                const std::array<givm::any_command, 4> commands{ energy, draw, next_draw, dice };
                 context.add_program();
                 switch(form)
                 {
@@ -40,18 +39,18 @@ namespace givm_test::executor::compile_boundary
                 case sequence_form::array:
                     return { context.add_program(commands) };
                 case sequence_form::vector:
-                    return { context.add_program(std::vector<givm::any_command>{ energy, draw, dice }) };
+                    return { context.add_program(std::vector<givm::any_command>{ energy, draw, next_draw, dice }) };
                 case sequence_form::tuple:
-                    return { context.add_program(std::tuple{ energy, draw, dice }) };
+                    return { context.add_program(std::tuple{ energy, draw, next_draw, dice }) };
                 case sequence_form::list:
-                    return { context.add_program(std::list<givm::any_command>{ energy, draw, dice }) };
+                    return { context.add_program(std::list<givm::any_command>{ energy, draw, next_draw, dice }) };
                 case sequence_form::subset_variant:
                 {
                     using command = std::variant<givm::set_energy, givm::draw_cards, givm::add_dice>;
-                    return { context.add_program(std::vector<command>{ energy, draw, dice }) };
+                    return { context.add_program(std::vector<command>{ energy, draw, next_draw, dice }) };
                 }
                 case sequence_form::variadic:
-                    return { context.add_program(energy, draw, dice) };
+                    return { context.add_program(energy, draw, next_draw, dice) };
                 }
                 throw std::logic_error{ "invalid test command sequence form" };
             }
@@ -102,8 +101,12 @@ namespace givm_test::executor::compile_boundary
         const givm_test::reaction_source<givm::card_definition> card_b{ "CompileBoundaryCardB" };
         auto sources = givm::make_definition_source_library(character, skill, card_a, card_b);
         if(not sources) throw std::logic_error{ givm::error_string(sources.error()) };
-        const std::array<givm::any_command, 2> round{
-            givm::start_round{}, givm::end_game{ givm::game_result::player_0_win } };
+        if(not sources->add(givm_test::dendro_core, givm_test::catalyzing_field,
+            givm_test::burning_flame, givm_test::frozen, givm_test::shield))
+            throw std::logic_error{ "invalid reaction dependencies" };
+        std::apply([&](const auto&... reaction) { sources->add(reaction...); }, givm_test::basic_reactions);
+        const std::array<givm::any_command, 3> round{
+            givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::player_0_win } };
         if(form == sequence_form::array)
         {
             const std::array<std::string_view, 1> character_names{ character.name() };

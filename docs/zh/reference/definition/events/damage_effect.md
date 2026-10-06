@@ -2,31 +2,7 @@
 
 # givm::damage_effect
 
-定义于头文件 `<givm/definition.hpp>`
-
-```cpp
-struct damage_effect;
-```
-
-扣除生命前的伤害结算事件。护盾和其他减伤效果可以在这里减少最终伤害。
-
-## 成员对象
-
-| 名称 | 类型 | 说明 |
-| --- | --- | --- |
-| `source` | `const damage_source_id` | 本次伤害的来源；只读 |
-| `target` | `const character_id` | 将扣除生命的角色；只读 |
-| `value` | `std::uint32_t` | 将用于扣除生命的伤害值，可由响应者减少 |
-| `type` | `const damage_type` | 伤害种类；只读 |
-| `flags` | `const damage_flags` | 伤害附加属性；只读 |
-| `reaction` | `const elemental_reaction` | 属性修饰后已判定的反应，默认为 none；只读 |
-| `replacement_reaction` | `const tag_id` | 已确定的替代反应标签，空值表示使用默认反应效果；只读 |
-
-## 时机
-
-本事件发生在 [`damage_calculation`](damage_calculation.md) 的加伤、默认反应加成及倍率计算之后，扣除生命之前。`value` 已经包含这些数值计算的结果；护盾与减伤在此调整最终用于扣血的数额。
-
-`reaction` 沿用属性修饰结束时的判定，便于响应判断本次伤害是否引起某种反应；`replacement_reaction` 沿用数值计算前确定的标签。替代反应仍保留原始反应种类，此后目标的附着即使发生变化，也不重新判定本次反应。
+加值和倍率已经处理后的即时减伤、护盾时机。只有 `std::uint32_t value` 可修改；`source`、`target`、`type`、`flags` 和 `reaction_id reaction` 只读。响应结束后以最终值扣血，并登记当前段的伤害摘要。反应槽位不会根据期间改变的附着重新判定。
 
 ## 示例
 

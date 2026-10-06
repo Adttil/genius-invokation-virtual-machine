@@ -40,9 +40,9 @@ TEST_CASE("swirl and crystallize require incoming Anemo and Geo", "[elemental_re
     for(const auto target : { givm::element::cryo, givm::element::hydro, givm::element::pyro, givm::element::electro })
     {
         CHECK(reaction_between(givm::element::anemo, target) == givm::elemental_reaction::none);
-        CHECK(reaction_between(target, givm::element::anemo) == givm::elemental_reaction::swirl);
+        CHECK(reaction_between(target, givm::element::anemo) == static_cast<givm::elemental_reaction>(static_cast<unsigned>(givm::elemental_reaction::swirl_cryo) + static_cast<unsigned>(target)));
         CHECK(reaction_between(givm::element::geo, target) == givm::elemental_reaction::none);
-        CHECK(reaction_between(target, givm::element::geo) == givm::elemental_reaction::crystallize);
+        CHECK(reaction_between(target, givm::element::geo) == static_cast<givm::elemental_reaction>(static_cast<unsigned>(givm::elemental_reaction::crystallize_cryo) + static_cast<unsigned>(target)));
     }
 }
 
@@ -69,8 +69,8 @@ TEST_CASE("Cryo Dendro reactions consume Cryo and preserve Dendro", "[elemental_
         std::pair{ givm::element::pyro, givm::elemental_reaction::melt },
         std::pair{ givm::element::hydro, givm::elemental_reaction::frozen },
         std::pair{ givm::element::electro, givm::elemental_reaction::superconduct },
-        std::pair{ givm::element::anemo, givm::elemental_reaction::swirl },
-        std::pair{ givm::element::geo, givm::elemental_reaction::crystallize }
+        std::pair{ givm::element::anemo, givm::elemental_reaction::swirl_cryo },
+        std::pair{ givm::element::geo, givm::elemental_reaction::crystallize_cryo }
     };
     for(const auto [incoming, reaction] : cases)
     {

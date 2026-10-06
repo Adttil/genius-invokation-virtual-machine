@@ -32,7 +32,7 @@ namespace givm
             executor_->validate_view<execution_state::active_character_changed>(version_);
 #endif
             const auto& event = get<0>(std::as_const(executor_->context_.stack()).top<
-                active_character_changed, detail::response_return>());
+                active_character_changed>());
             return event.current;
         }
 

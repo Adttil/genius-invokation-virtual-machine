@@ -30,14 +30,7 @@
 
 namespace givm::detail
 {
-    struct basic_definition_ids
-    {
-        definition_id<combat_status_view> dendro_core;
-        definition_id<combat_status_view> catalyzing_field;
-        definition_id<summon_view> burning_flame;
-        definition_id<attachment_view> frozen;
-        definition_id<combat_status_view> shield;
-    };
+    using default_reaction_ids = std::array<definition_id<reaction_view>, elemental_reaction_count>;
 
     template<class TView>
     struct definition_handle_vectors
@@ -85,7 +78,6 @@ namespace givm::detail
 
     using definition_history_handlers = subscribed_events<history_summary_definition>::apply<history_handler_lists>;
 
-    struct basic_definition_names;
 
     template<class TCategory>
     struct compile_definition;
@@ -166,7 +158,7 @@ namespace givm::detail
 namespace givm
 {
     class definition_source_library;
-    struct basic_definition_sources;
+    class reaction_definition_names;
     struct compile_error;
     struct definition_compile_result;
 
@@ -184,7 +176,7 @@ namespace givm
           tag_names_{ other.tag_names_ },
           equipment_tags_{ other.equipment_tags_ }, skill_tags_{ other.skill_tags_ }, control_tag_{ other.control_tag_ },
           control_immunity_tag_{ other.control_immunity_tag_ },
-          remove_at_zero_usages_tag_{ other.remove_at_zero_usages_tag_ }, basic_ids_{ other.basic_ids_ },
+          remove_at_zero_usages_tag_{ other.remove_at_zero_usages_tag_ }, default_reactions_{ other.default_reactions_ },
           buckets_{ other.buckets_ },
           history_layouts_{ other.history_layouts_ }, history_size_{ other.history_size_ },
           history_handlers_{ other.history_handlers_ }
@@ -211,30 +203,12 @@ namespace givm
         std::size_t definition_count() const noexcept { return bucket_for<T>().data.size(); }
         std::size_t tag_count() const noexcept { return tag_names_.size(); }
 
-        definition_id<combat_status_view> dendro_core_id() const noexcept
+        definition_id<reaction_view> default_reaction_id(elemental_reaction slot) const noexcept
         {
-            return basic_ids_.dendro_core;
+            GIVM_ASSERT(slot != elemental_reaction::none);
+            return default_reactions_[static_cast<std::size_t>(slot) - 1];
         }
 
-        definition_id<combat_status_view> catalyzing_field_id() const noexcept
-        {
-            return basic_ids_.catalyzing_field;
-        }
-
-        definition_id<summon_view> burning_flame_id() const noexcept
-        {
-            return basic_ids_.burning_flame;
-        }
-
-        definition_id<attachment_view> frozen_id() const noexcept
-        {
-            return basic_ids_.frozen;
-        }
-
-        definition_id<combat_status_view> shield_id() const noexcept
-        {
-            return basic_ids_.shield;
-        }
 
         template<class TDefinitionType>
         class definition_view
@@ -329,10 +303,27 @@ namespace givm
         }
 
     private:
+        detail::default_reaction_ids deck_reactions(const linked_deck& deck) const
+        {
+            auto reactions = default_reactions_;
+            for(std::size_t character = 0; character != deck.characters.size(); ++character)
+            {
+                const auto definition = (*this)[deck.characters[character]];
+                for(std::size_t index = 0; index != reactions.size(); ++index)
+                {
+                    const auto slot = static_cast<elemental_reaction>(index + 1);
+                    const auto replacement = definition.query(character_reaction_override{ slot });
+                    if(not replacement) continue;
+                    reactions[index] = replacement;
+                }
+            }
+            return reactions;
+        }
+
         void load_deck(table& card_table, player_id player, const linked_deck& deck) const
         {
             auto& writable_table = static_cast<detail::unrestricted_table&>(card_table);
-            writable_table.load_deck(player, deck);
+            writable_table.load_deck(player, deck, deck_reactions(deck));
             for(const auto card : writable_table[player].deck_cards())
             {
                 card.state() = (*this)[card.definition_id()].query(card_initial_state{});
@@ -514,7 +505,7 @@ namespace givm
     private:
         using definition_type_list = definition_types;
 
-        definition_library(const issued_id_map& id_map, const detail::basic_definition_names& basics);
+        definition_library(const issued_id_map& id_map, const reaction_definition_names& basics);
 
         template<class TDefinitionType>
         static consteval size_t index_of()
@@ -586,18 +577,18 @@ namespace givm
 
     public:
         static std::expected<definition_compile_result, std::vector<compile_error>> compile(
-            const definition_source_library& sources, const basic_definition_sources& basics,
+            const definition_source_library& sources, const reaction_definition_names& basics,
             std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
 
         static std::expected<definition_compile_result, std::vector<compile_error>> compile(
-            const definition_source_library& sources, const basic_definition_sources& basics,
+            const definition_source_library& sources, const reaction_definition_names& basics,
             const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
             std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
 
         template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
         requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
             || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
-        static auto compile(const definition_source_library& sources, const basic_definition_sources& basics,
+        static auto compile(const definition_source_library& sources, const reaction_definition_names& basics,
             TInitializationSequence&& initialization_program, TRoundSequence&& round_program, compile_mode mode)
         {
             const auto initialization = detail::make_command_sequence(std::forward<TInitializationSequence>(initialization_program));
@@ -608,7 +599,7 @@ namespace givm
         template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
         requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
             || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
-        static auto compile(const definition_source_library& sources, const basic_definition_sources& basics,
+        static auto compile(const definition_source_library& sources, const reaction_definition_names& basics,
             const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
             TInitializationSequence&& initialization_program,
             TRoundSequence&& round_program, compile_mode mode)
@@ -620,7 +611,7 @@ namespace givm
 
     private:
         static std::expected<definition_compile_result, std::vector<compile_error>> compile_prepared(
-            const definition_source_library& sources, const detail::basic_definition_names& basics, issued_id_map id_map,
+            const definition_source_library& sources, const reaction_definition_names& basics, issued_id_map id_map,
             std::span<const any_command> initialization_program, std::span<const any_command> round_program,
             compile_mode mode, std::vector<source_preparation_error> preparation_errors);
 
@@ -637,7 +628,7 @@ namespace givm
         tag_id control_tag_{};
         tag_id control_immunity_tag_{};
         tag_id remove_at_zero_usages_tag_{};
-        detail::basic_definition_ids basic_ids_;
+        detail::default_reaction_ids default_reactions_;
         definition_types::apply<detail::definition_bucket_tuple> buckets_;
         std::vector<detail::compiled_history_summary> history_layouts_;
         std::size_t history_size_{};

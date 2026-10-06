@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_DRAW_CARDS_HPP
 
 #include <cstddef>
+#include <limits>
 #include <span>
 #include <string>
 
@@ -15,14 +16,11 @@ namespace givm
         enum class reason
         {
             dynamic_input_in_root,
-            invalid_player,
-            duplicate_position
+            invalid_player
         };
 
         reason cause;
         std::size_t value{};
-        std::size_t index{};
-        std::size_t first_index{};
     };
 
     inline std::string error_string(const draw_cards_error& error)
@@ -34,8 +32,6 @@ namespace givm
             return "draw_cards: cannot consume dynamic input in a root program";
         case reason::invalid_player:
             return "draw_cards: player must be self or opponent; got " + std::to_string(error.value);
-        case reason::duplicate_position:
-            return "draw_cards: positions[" + std::to_string(error.index) + "] = " + std::to_string(error.value) + " duplicates positions[" + std::to_string(error.first_index) + "]";
         }
         return {};
     }
@@ -52,7 +48,8 @@ namespace givm
         using input_type = draw_cards_input;
 
         relative_player player = relative_player::self;
-        std::span<const std::size_t> positions{};
+        std::size_t position = std::numeric_limits<std::size_t>::max();
+        std::size_t count = 1;
     };
 }
 

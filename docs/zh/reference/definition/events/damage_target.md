@@ -4,7 +4,7 @@
 
 定义于头文件 `<givm/definition.hpp>`
 
-[`damage`](../command_inputs/damage.md) 用于定位角色的描述。既可以绑定具体角色，也可以在执行时相对出战位置定位一个角色。精确角色分支由 `damage::selection` 决定作用范围；相对目标分支由 `relative_character_target::selection` 决定作用范围，并忽略 `damage::selection`。
+[`damage`](../command_inputs/deal_damage_input.md) 用于定位角色的描述。既可以绑定具体角色，也可以在执行时相对出战位置定位一个角色。精确角色分支由 `damage::selection` 决定作用范围；相对目标分支由 `relative_character_target::selection` 决定作用范围，并忽略 `damage::selection`。
 
 ```cpp
 using damage_target = std::variant<character_id, relative_character_target>;

@@ -13,6 +13,7 @@
 
 #include <givm/executor/executor.hpp>
 #include "../character_target.hpp"
+#include "../broadcast.hpp"
 #include <givm/definition.hpp>
 #include <givm/macro_define.hpp>
 
@@ -42,7 +43,10 @@ namespace givm::detail
 #endif
         GIVM_ASSERT(table[input.target].is_valid());
         auto& state = table[input.target].state();
+        if(not state.alive) return continue_execution;
+        const auto previous = state.energy;
         state.energy = std::min(input.value, state.max_energy);
+        if(state.energy != previous) append_event_record(context, energy_changed{ input.target, previous, state.energy });
         return continue_execution;
     }
 

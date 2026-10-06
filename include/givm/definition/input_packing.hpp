@@ -22,11 +22,6 @@ namespace givm::detail
         return std::tie(input);
     }
 
-    inline auto command_input_members(const deal_damage_input& input) noexcept
-    {
-        return std::tuple{ dynamic_array<damage>(input.damages) };
-    }
-
     inline auto command_input_members(const discard_hand_card_input& input) noexcept
     {
         return std::tuple{ dynamic_array<hand_card_id>(input.cards) };
@@ -35,6 +30,16 @@ namespace givm::detail
     inline auto command_input_members(const draw_cards_input& input) noexcept
     {
         return std::tuple{ dynamic_array<deck_card_id>(input.cards) };
+    }
+
+    inline auto command_input_members(const deal_damage_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<damage>(input.damages) };
+    }
+
+    inline auto command_input_members(const heal_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<heal_input::item>(input.healings) };
     }
 
     inline auto command_input_members(const set_summon_state_input& input) noexcept

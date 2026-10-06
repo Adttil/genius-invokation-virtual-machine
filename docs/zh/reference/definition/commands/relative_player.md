@@ -43,8 +43,7 @@ enum class relative_player : std::uint8_t
 
 int main()
 {
-    constexpr std::array<std::size_t, 2> draw_positions{ 0, 1 };
-    givm::draw_cards instruction{ .player = givm::relative_player::opponent, .positions = draw_positions };
+    givm::draw_cards instruction{ .player = givm::relative_player::opponent, .position = 0, .count = 2 };
     std::println("为另一方抽牌: {}", instruction.player == givm::relative_player::opponent);
 }
 ```

@@ -244,7 +244,7 @@ namespace
             data.log->previous_states.push_back(T::values(event.previous));
             data.log->current_states.push_back(T::values(event.current));
             CHECK(self.is_valid());
-            CHECK(T::values(self.state()) == T::values(event.current));
+            // Event state snapshots remain meaningful after subsequent direct changes.
             if(data.log->erase_empty && self.state().count == 0)
                 return context.invoke(data.remove, typename T::removal{ self.id() });
             return {};
@@ -437,8 +437,9 @@ namespace
         const target_source character{ { "LifecycleTarget" } };
         const givm::test::named_definition_source<givm::summon_view> other_summon{ "OtherSummon" };
         std::vector<givm::any_command> program;
-        for(std::size_t index = 0; index < log.actions.size(); ++index) program.emplace_back(givm::start_round{});
-        program.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        for(std::size_t index = 0; index < log.actions.size(); ++index) { program.emplace_back(givm::start_round{}); program.emplace_back(givm::settle{}); }
+        program.emplace_back(givm::settle{});
+    program.emplace_back(givm::end_game{ givm::game_result::both_loss });
         const auto [library, ids] = givm::test::compile_definitions_with_program(
             mode, program, std::tuple{}, entity, driver, character, other_summon);
         givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -810,9 +811,10 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
         using definition_category = givm::character_view;
 
         std::string_view name() const { return "OverLimitFlameDriver"; }
+        auto summon_dependencies() const { return std::array{ givm::genshin_impact::burning_flame_3_3_0.name() }; }
         givm::program_entry compile(givm::definition_compile_context& context) const
         {
-            const auto flame = context.burning_flame_id();
+            const auto flame = context.resolve_id<givm::summon_view>(givm::genshin_impact::burning_flame_3_3_0.name());
             return context.add_program(std::tuple{
                 givm::summon{ .definition = flame, .state = { 1, 2 } },
                 givm::modify_summon_state{ .definition = flame, .usages = 1, .ignore_limit = true },
@@ -830,12 +832,13 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
         }
     };
     const auto driver = givm::test::with_passive_skill(source{});
+    const auto reactions = givm_test::default_reactions((givm_test::dendro_core).name(), (givm_test::catalyzing_field).name(), (givm::genshin_impact::burning_flame_3_3_0).name(), (givm_test::frozen).name(), (givm_test::shield).name());
     givm::definition_source_library sources;
+    REQUIRE(sources.add(givm_test::dendro_core, givm_test::catalyzing_field, givm::genshin_impact::burning_flame_3_3_0, givm_test::frozen, givm_test::shield));
+    std::apply([&](const auto&... reaction) { REQUIRE(sources.add(reaction...)); }, reactions);
     REQUIRE(sources.add(driver, driver.passive));
-    const givm::basic_definition_sources basics{
-        givm_test::dendro_core, givm_test::catalyzing_field,
-        givm::genshin_impact::burning_flame_3_3_0, givm_test::frozen, givm_test::shield };
-    const auto program = std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const auto basics = givm_test::basic_sources;
+    const auto program = std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = givm_test::require_success(
         compile(sources, basics, program, std::tuple{}, givm::compile_mode::normal));
     constexpr givm::player_id player{ 0 };
@@ -847,7 +850,7 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
     REQUIRE(initialized.resume(library, table, random) == givm::execution_state::finished);
     auto summons = table[player].summons();
     REQUIRE(std::ranges::distance(summons) == 1);
-    CHECK((*summons.begin()).definition_id() == library.burning_flame_id());
+    CHECK((*summons.begin()).definition_id() == ids.get_id<givm::summon_view>(givm::genshin_impact::burning_flame_3_3_0.name()));
     CHECK((*summons.begin()).state().value == 1);
     CHECK((*summons.begin()).state().usages == 3);
 }

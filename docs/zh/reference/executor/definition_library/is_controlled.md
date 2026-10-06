@@ -55,10 +55,11 @@ struct effect_source
 {
     using definition_category = givm::card_definition;
     std::string_view name() const { return "freeze"; }
+    auto attachment_dependencies() const { return std::array{ givm::genshin_impact::frozen_3_3_0.name() }; }
 
     givm::program_entry compile(givm::definition_compile_context& context) const
     {
-        return context.add_program(givm::attach{ .definition = context.frozen_id() });
+        return context.add_program(givm::attach{ .definition = context.resolve_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name()) });
     }
 
     static givm::program_entry handle(const givm::program_entry& entry,
@@ -72,23 +73,17 @@ int main()
 {
     character_source character{};
     const effect_source effect{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(character, effect)) return 1;
     const givm::character_id target{ givm::player_id{ 0 }, 0 };
     auto library_result = compile(sources, basics,
         std::tuple{ givm::select_active_character_both{} },
         std::tuple{
-            givm::start_battle{},
+            givm::start_battle{}, givm::settle{},
             givm::start_dice_roll_phase{ .count = 1 },
-            givm::start_round{},
-            givm::end_game{ .result = givm::game_result::both_loss }
+            givm::start_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss }
         }, givm::compile_mode::normal);
     if(not library_result)
     {
@@ -108,7 +103,7 @@ int main()
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
     execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     std::println("投骰时出战角色受控: {}", library.is_controlled(table[target]));
-    std::println("冻结属于控制: {}", library.is_control(library.frozen_id()));
+    std::println("冻结属于控制: {}", library.is_control(ids.get_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name())));
     execution.view_in<givm::execution_state::dice_selection>().select(library, table, random, {});
     execution.view_in<givm::execution_state::dice_selection>().select(library, table, random, {});
     std::println("回合开始通知后仍受控: {}", library.is_controlled(table[target]));

@@ -17,6 +17,7 @@ namespace givm
     class character_view;
     class skill_view;
     class attachment_view;
+    class reaction_view;
 
     namespace detail
     {

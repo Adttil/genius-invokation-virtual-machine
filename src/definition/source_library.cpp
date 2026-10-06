@@ -288,71 +288,6 @@ namespace givm
         }(std::make_index_sequence<definition_count>{});
     }
 
-    std::pair<definition_source_library, detail::basic_definition_names> definition_source_library::with_basic_definitions(
-        const basic_definition_sources& basics, std::vector<source_preparation_error>& errors) const
-    {
-        auto sources = *this;
-        pending_tuple pending;
-        pending_names_type pending_names;
-        const auto prepare = [&]<class TCategory>(
-            const definition_source_view<TCategory>& source, std::size_t input_index) -> std::string_view
-        {
-            constexpr auto index = index_of<TCategory>();
-            const auto name = source.name();
-            const auto& bucket = sources.bucket_for<TCategory>();
-            if(const auto found = bucket.name_to_index.find(name); found != bucket.name_to_index.end())
-            {
-                const auto existing = bucket.entries[found->second].source;
-                if(existing.source_ != source.source_ || existing.rtti_ != source.rtti_)
-                {
-                    errors.emplace_back(source_conflict{
-                        .definition = { index, std::string{ name } },
-                        .cause = existing.rtti_ != source.rtti_
-                            ? source_conflict::reason::different_type : source_conflict::reason::different_object,
-                        .first_input_index = std::nullopt,
-                        .second_input_index = input_index
-                    });
-                }
-                return name;
-            }
-            auto& entries = std::get<index>(pending);
-            const auto found = std::ranges::find(entries, name, &pending_entry<TCategory>::name);
-            if(found != entries.end())
-            {
-                if(found->source.source_ != source.source_ || found->source.rtti_ != source.rtti_)
-                {
-                    errors.emplace_back(source_conflict{
-                        .definition = { index, std::string{ name } },
-                        .cause = found->source.rtti_ != source.rtti_
-                            ? source_conflict::reason::different_type : source_conflict::reason::different_object,
-                        .first_input_index = found->input_index,
-                        .second_input_index = input_index
-                    });
-                }
-                return name;
-            }
-            pending_names[index].insert(name);
-            entries.push_back({ .source = source, .name = name,
-                .declarations = source.declarations(), .input_index = input_index });
-            return name;
-        };
-        const detail::basic_definition_names names{
-            .dendro_core = prepare(basics.dendro_core, 0),
-            .catalyzing_field = prepare(basics.catalyzing_field, 1),
-            .burning_flame = prepare(basics.burning_flame, 2),
-            .frozen = prepare(basics.frozen, 3),
-            .shield = prepare(basics.shield, 4)
-        };
-        definition_types::each([&]<class TCategory>
-        {
-            const auto& entries = std::get<index_of<TCategory>()>(pending);
-            for(std::size_t index = 0; index < entries.size(); ++index)
-                sources.collect_dependency_errors<TCategory>(pending, pending_names, index, errors);
-        });
-        sources.commit_pending(pending);
-        return { std::move(sources), names };
-    }
-
     definition_source_library::selection_mask definition_source_library::make_empty_selection() const
     {
         selection_mask selected;
@@ -375,16 +310,14 @@ namespace givm
 
     definition_source_library::selection_mask definition_source_library::resolve_selection(
         const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
-        const detail::basic_definition_names& basics, std::vector<source_preparation_error>& errors) const
+        const reaction_definition_names& basics, std::vector<source_preparation_error>& errors) const
     {
         auto selected = make_empty_selection();
         std::vector<queue_item> queue;
 
-        enqueue_name<index_of<combat_status_view>()>(basics.dendro_core, selected, queue, errors);
-        enqueue_name<index_of<combat_status_view>()>(basics.catalyzing_field, selected, queue, errors);
-        enqueue_name<index_of<summon_view>()>(basics.burning_flame, selected, queue, errors);
-        enqueue_name<index_of<attachment_view>()>(basics.frozen, selected, queue, errors);
-        enqueue_name<index_of<combat_status_view>()>(basics.shield, selected, queue, errors);
+        for(std::size_t index = 0; index != elemental_reaction_count; ++index)
+            enqueue_name<index_of<reaction_view>()>(basics[static_cast<elemental_reaction>(index + 1)],
+                selected, queue, errors);
 
         [&]<size_t...I>(std::index_sequence<I...>)
         {
@@ -634,6 +567,13 @@ namespace givm
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
         std::size_t, const definition_source_view<history_summary_definition>&) const;
     template void definition_source_library::collect_dependency_errors<history_summary_definition>(
+        const pending_tuple&, const pending_sources_by_name&,
+        std::optional<std::size_t>, std::vector<source_add_error>&) const;
+
+    template std::optional<std::size_t> definition_source_library::prepare_add<reaction_view>(
+        pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
+        std::size_t, const definition_source_view<reaction_view>&) const;
+    template void definition_source_library::collect_dependency_errors<reaction_view>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 

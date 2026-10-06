@@ -26,7 +26,7 @@ namespace
         definition_type compile(givm::definition_compile_context&) const { return { health }; }
         static givm::character_state query(const definition_type& definition, const givm::character_initial_state&)
         {
-            return { .max_health = 10, .health = definition.health };
+            return { .max_health = 10, .health = definition.health, .alive = definition.health != 0 };
         }
     };
 
@@ -46,7 +46,7 @@ TEST_CASE("fixed character positions use signed offsets and circular living targ
             givm::set_active_character{ { givm::relative_player::self, 1 } },
             givm::set_active_character{ { givm::relative_player::self, -1 } },
             givm::set_active_character{ { givm::relative_player::self, 2 } },
-            givm::end_game{ givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{},
         positioned_character_source{ "Alive", 10 }, positioned_character_source{ "Defeated", 0 });
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
@@ -74,10 +74,10 @@ TEST_CASE("fixed healing and maximum health increases can locate a defeated char
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{
-            givm::heal{ .source = relative(0), .target = relative(1), .value = 2 },
+            givm::heal{ .source = relative(0), .target = relative(1), .value = 2, .kind = givm::healing_kind::revive },
             givm::increase_max_health{ .source = relative(0), .target = relative(1), .value = 3 },
             givm::apply_element{ .source = relative(0), .target = relative(1), .element = givm::element::hydro },
-            givm::end_game{ givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{},
         positioned_character_source{ "Alive", 10 }, positioned_character_source{ "Defeated", 0 });
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
@@ -100,10 +100,10 @@ TEST_CASE("fixed character commands skip effects without an active character", "
         std::tuple{
             givm::set_active_character{ { givm::relative_player::self, 0 } },
             givm::set_active_character{ relative(1) },
-            givm::heal{ .source = relative(0), .target = relative(1), .value = 2 },
+            givm::heal{ .source = relative(0), .target = relative(1), .value = 2, .kind = givm::healing_kind::revive },
             givm::increase_max_health{ .source = relative(1), .target = relative(0), .value = 3 },
             givm::apply_element{ .source = relative(0), .target = relative(1), .element = givm::element::hydro },
-            givm::end_game{ givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, positioned_character_source{ "Alive", 7 });
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("Alive") } }, {});
@@ -174,8 +174,7 @@ TEST_CASE("switch notifications prioritize the new active character in both comp
     std::vector<givm::character_id> responses;
     const auto source = givm::test::with_passive_skill(switch_order_source{ &responses, dynamic });
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::set_active_character{ relative(0) }, givm::start_round{},
-            givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source);
+        std::tuple{ givm::set_active_character{ relative(0) }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source);
     const auto character = ids.get_id<givm::character_view>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
     load_deck(table, library, { .characters = { character, character } }, {});

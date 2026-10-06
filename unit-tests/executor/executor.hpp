@@ -25,7 +25,7 @@ TEST_CASE("executor repeats the round program and reports round boundaries", "[e
     auto sources = givm_test::make_source_library();
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{}, empty_round ? std::vector<givm::any_command>{}
-            : std::vector<givm::any_command>{ givm::start_round{} },
+            : std::vector<givm::any_command>{ givm::start_round{}, givm::settle{} },
         observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     givm::table table{ givm::table_state{ .max_rounds = 2 } };
@@ -50,14 +50,13 @@ TEST_CASE("terminal results survive copies and entering another game replaces th
     auto sources = givm_test::make_source_library();
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{
-            givm::end_game{ .result = result },
-            givm::start_round{},
-            givm::end_game{ .result = givm::game_result::both_loss }
+            givm::settle{}, givm::end_game{ .result = result },
+            givm::start_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss }
         },
         std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     const auto second = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
+        std::tuple{ givm::settle{}, givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     givm::table table;
     givm_test::executor_driver target;
@@ -81,10 +80,10 @@ TEST_CASE("executor uses the explicitly supplied library with an independent tab
     const bool observed = GENERATE(false, true);
     auto sources = givm_test::make_source_library();
     const auto first = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::end_game{ .result = givm::game_result::player_0_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
+        std::tuple{ givm::settle{}, givm::end_game{ .result = givm::game_result::player_0_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     const auto second = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
+        std::tuple{ givm::settle{}, givm::end_game{ .result = givm::game_result::player_1_win } }, std::tuple{}, observed ? givm::compile_mode::observed : givm::compile_mode::normal
     ));
     givm::table table;
     givm_test::executor_driver target;

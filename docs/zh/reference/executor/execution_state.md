@@ -12,6 +12,7 @@ enum class execution_state : std::uint8_t
     initial_card_selection,
     initial_active_character_selection,
     remaining_active_character_selection,
+    active_character_selection,
     dice_selection,
     action_selection,
     health_reduced,
@@ -39,6 +40,7 @@ enum class execution_state : std::uint8_t
 | `initial_card_selection` | 开局尚未接受任何一方换牌选择的现场 |
 | `initial_active_character_selection` | 开局尚未接受任何一方出战角色选择的现场 |
 | `remaining_active_character_selection` | 开局已经接受一方选择、等待另一方选择出战角色的现场 |
+| `active_character_selection` | 结算域处理完通知后，等待被击倒出战角色一方选择新出战角色 |
 | `dice_selection` | 双方投骰阶段等待重投选择的现场 |
 | `action_selection` | 等待选择行动的现场 |
 | `deck_cards_discarded` | 一批牌堆牌全部被舍弃、自身效果尚未开始的现场 |
@@ -57,7 +59,7 @@ enum class execution_state : std::uint8_t
 
 `card_selection` 的玩家已由当前流程确定，不一定是牌桌上的行动方；`initial_card_selection` 和 `initial_active_character_selection` 允许任选先提交的一方。首次出战选择被接受后，`remaining_active_character_selection` 固定等待另一方；双方选择全部被接受后才同时设置出战角色。以观察模式编译时，先报告 `initial_active_characters_selected`，随后推进才处理相应变更响应。
 
-`active_character_changed` 时，目标角色已经确定，牌桌上仍保留原出战角色。通过相应[视图](execution_view/active_character_changed.md)取得目标后，可按其所属玩家直接读取原出战角色；下一次推进才写入目标并处理变更响应。主动切人的支付及资源变化响应在此现场之前完成。
+`active_character_changed` 时，目标角色已经确定，牌桌上仍保留原出战角色。通过相应[视图](execution_view/active_character_changed.md)取得目标后，可按其所属玩家直接读取原出战角色；下一次推进才写入目标并处理变更响应。支付已完成；资源变化通知按其所在段在结算点处理。
 
 `round_started` 时，`round_number` 已增加；若超过上限，下一次推进才返回 `finished`。未超限时，后续推进先清空双方骰子；随后执行回合程序。该程序应先安排 `start_dice_roll_phase` 完成投骰与全部重投，再用 `start_round` 显式广播同名的 [`round_started`](../definition/events/round_started.md) 规则事件。冻结在该规则事件中解除，观察现场及投骰阶段尚未解除。
 
@@ -79,17 +81,12 @@ enum class execution_state : std::uint8_t
 
 int main()
 {
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     auto library_result = compile(
         sources, basics,
-        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::observed);
+        std::tuple{}, std::tuple{ givm::start_round{}, givm::settle{} }, givm::compile_mode::observed);
     if(not library_result)
     {
         std::println("{}", error_string(library_result.error()));

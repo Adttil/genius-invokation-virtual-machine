@@ -23,14 +23,6 @@ namespace givm::detail
         combat_status_state state;
     };
 
-    inline execution_state finish_combat_status_state_change(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(not continue_single_response<combat_status_state_changed, combat_status_id>(library, table, context, random)) return continue_execution;
-        pop_single_response<combat_status_state_changed, combat_status_id>(context);
-        return context.advance(response_extent<combat_status_state_changed>);
-    }
-
     inline execution_state change_combat_status_state(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random, const set_combat_status_state_input& input)
@@ -40,9 +32,9 @@ namespace givm::detail
         const auto status = std::as_const(table)[input.status];
         const auto definition = library[status.definition_id()];
         if(not definition.can_handle<combat_status_state_changed, combat_status_view>())
-            return context.advance(response_extent<combat_status_state_changed>);
-        prepare_single_response(event, input.status, table, context, context.position());
-        return finish_combat_status_state_change(library, table, context, random);
+            return continue_execution;
+        append_single_event_record(context, input.status, event);
+        return continue_execution;
     }
 
     template<bool Fixed, bool IgnoreLimit>
@@ -99,7 +91,6 @@ namespace givm::detail
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_combat_status_state_change<false, true> }
                 : execute_fn{ execute_combat_status_state_change<false, false> });
-        compile_single_response<combat_status_state_changed, combat_status_id>(writer, finish_combat_status_state_change);
     }
 }
 

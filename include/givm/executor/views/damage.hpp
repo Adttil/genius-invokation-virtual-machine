@@ -27,23 +27,22 @@ namespace givm
         std::size_t version_;
 #endif
 
-        const after_damage& event() const noexcept(detail::view_checks_disabled)
+        const damage_effect& observation() const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
             executor_->validate_view<execution_state::health_reduced>(version_);
 #endif
-            auto&& [event] = std::as_const(executor_->context_.stack()).top<after_damage>();
+            auto&& [event] = std::as_const(executor_->context_.stack()).top<damage_effect>();
             return event;
         }
 
     public:
-        const damage_source_id& source() const noexcept(detail::view_checks_disabled) { return event().source; }
-        character_id target() const noexcept(detail::view_checks_disabled) { return event().target; }
-        std::uint32_t value() const noexcept(detail::view_checks_disabled) { return event().value; }
-        damage_type type() const noexcept(detail::view_checks_disabled) { return event().type; }
-        damage_flags flags() const noexcept(detail::view_checks_disabled) { return event().flags; }
-        elemental_reaction reaction() const noexcept(detail::view_checks_disabled) { return event().reaction; }
-        tag_id replacement_reaction() const noexcept(detail::view_checks_disabled) { return event().replacement_reaction; }
+        const damage_source_id& source() const noexcept(detail::view_checks_disabled) { return observation().source; }
+        character_id target() const noexcept(detail::view_checks_disabled) { return observation().target; }
+        std::uint32_t value() const noexcept(detail::view_checks_disabled) { return observation().value; }
+        damage_type type() const noexcept(detail::view_checks_disabled) { return observation().type; }
+        damage_flags flags() const noexcept(detail::view_checks_disabled) { return observation().flags; }
+        reaction_id reaction() const noexcept(detail::view_checks_disabled) { return observation().reaction; }
 
         template<class TRandom>
         execution_state resume(const definition_library& library, table& card_table, TRandom& random) const

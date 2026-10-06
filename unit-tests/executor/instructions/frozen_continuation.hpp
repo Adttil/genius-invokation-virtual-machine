@@ -48,30 +48,32 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     std::size_t applications = 0;
     const pausing_frozen frozen{ &applications };
     const givm::test::initialized_character_source character{ "Character", { .max_health = 20, .health = 20 } };
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0, frozen, givm_test::shield };
+    const auto reactions = givm_test::default_reactions((givm::genshin_impact::dendro_core_3_3_0).name(), (givm::genshin_impact::catalyzing_field_3_4_0).name(), (givm::genshin_impact::burning_flame_3_3_0).name(), (frozen).name(), (givm_test::shield).name());
+    const auto basics = givm_test::basic_sources;
     givm::definition_source_library sources;
+    REQUIRE(sources.add(givm::genshin_impact::dendro_core_3_3_0, givm::genshin_impact::catalyzing_field_3_4_0, givm::genshin_impact::burning_flame_3_3_0, frozen, givm_test::shield));
+    std::apply([&](const auto&... reaction) { REQUIRE(sources.add(reaction...)); }, reactions);
     REQUIRE(sources.add(character));
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical }
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::cryo },
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::physical }
     };
+    const std::array attachment_names{ frozen.name() };
     const givm::test::initialization_skill_source initialization{
         [&](givm::definition_compile_context& context)
         {
             return std::tuple{
-                givm::attach{ .player = givm::relative_player::opponent, .definition = context.frozen_id() },
+                givm::attach{ .player = givm::relative_player::opponent, .definition = context.resolve_id<givm::attachment_view>(frozen.name()) },
                 givm::apply_element{ .source = { givm::relative_player::self },
                     .target = { givm::relative_player::opponent }, .element = givm::element::hydro },
-                givm::deal_damage{ .damages = damages } };
-        } };
+                damages[0], damages[1] };
+        }, {}, {}, attachment_names };
     const givm::test::initialization_character_source driver{ "FrozenDriver", { .max_health = 20, .health = 20 } };
     REQUIRE(sources.add(initialization, driver));
     const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{
         givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self } },
         givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent } },
-        givm::start_battle{}, givm::end_game{ givm::game_result::both_loss }
+        givm::start_battle{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::observed));
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -99,13 +101,13 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
         const auto next = running.view_in<givm::execution_state::health_reduced>();
         CHECK(next.target() == target);
         CHECK(next.value() == 1);
-        CHECK(next.reaction() == givm::elemental_reaction::none);
+        CHECK(next.reaction().slot == givm::elemental_reaction::none);
         REQUIRE(running.advance(library, current, random) == givm::execution_state::finished);
         CHECK(current[target].state().health == 17);
         CHECK(current.state().round_number == 1);
         CHECK(library.is_controlled(current[target]));
         REQUIRE(std::ranges::distance(current[target].attachments()) == 1);
-        CHECK((*current[target].attachments().begin()).definition_id() == library.frozen_id());
+        CHECK((*current[target].attachments().begin()).definition_id() == ids.get_id<givm::attachment_view>(frozen.name()));
         CHECK(applications == 1);
     };
     finish(executor, table);

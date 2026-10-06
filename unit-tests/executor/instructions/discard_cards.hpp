@@ -49,13 +49,13 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto discard = log->dynamic
-                ? context.add_program(std::tuple{ givm::discard_hand_card{}, givm::discard_deck_cards{} })
+                ? context.add_program(std::tuple{ givm::discard_hand_card{}, givm::settle{}, givm::discard_deck_cards{} })
                 : context.add_program(std::tuple{
                     givm::discard_hand_card{ .player = givm::relative_player::opponent,
-                        .definition = context.resolve_id<givm::card_definition>(name()) },
+                        .definition = context.resolve_id<givm::card_definition>(name()) }, givm::settle{},
                     givm::discard_deck_cards{ .count = 2, .player = givm::relative_player::opponent } });
             return { log, discard, context.add_program(std::tuple{
-                givm::replace_cards{ givm::player_id{ 1 } }, givm::draw_cards{ .positions = draw_positions_1 } }),
+                givm::replace_cards{ givm::player_id{ 1 } }, givm::draw_cards{ .position = 0, .count = 1 } }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } } }) };
         }
         static givm::card_state query(const definition_type&, const givm::card_initial_state&)
@@ -77,7 +77,6 @@ namespace
             givm::hand_card_discard_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
-            CHECK(self.id() == event.card);
             CHECK_FALSE(self.is_valid());
             CHECK(self.state().cost.energy == 3);
             data.log->order.push_back('h');
@@ -87,12 +86,11 @@ namespace
             givm::deck_card_discard_effect& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
-            CHECK(self.id() == event.card);
             CHECK_FALSE(self.is_valid());
             CHECK(self.state().cost.energy == 3);
             if(data.log->effect_cards.empty())
                 CHECK(context.table()[givm::player_id{ 0 }].deck_card_count() == (data.log->self_effects ? 2 : 3));
-            data.log->effect_cards.push_back(event.card);
+            data.log->effect_cards.push_back(context.entity().id());
             data.log->order.push_back('d');
             return data.log->self_effects ? context.invoke(data.effect) : givm::program_entry{};
         }
@@ -146,7 +144,6 @@ namespace
         {
             const auto self = context.entity();
             CHECK_FALSE(self.is_valid());
-            CHECK(self.id() == event.card);
             data.log->card = self.id();
             data.log->order.push_back('E');
             const auto target = context.table()[other_player(self.player().id())].characters().front().id();
@@ -168,11 +165,17 @@ namespace
             return { .max_health = 10, .health = 10 };
         }
         static givm::program_entry handle(const definition_type& data,
+            givm::damage_calculation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
+        {
+            REQUIRE(std::holds_alternative<givm::deck_card_id>(event.source));
+            CHECK(std::get<givm::deck_card_id>(event.source) == data.log->card);
+            return {};
+        }
+        static givm::program_entry handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
-            REQUIRE(std::holds_alternative<givm::deck_card_id>(event.source));
-            const auto card = std::get<givm::deck_card_id>(event.source);
+            const auto card = data.log->card;
             CHECK(card == data.log->card);
             CHECK_FALSE(context.table()[card].is_valid());
             CHECK(context.table()[card].definition_id() == data.log->definition);
@@ -214,7 +217,7 @@ TEST_CASE("discard batches leave together then run each effect and notification 
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const discard_source source{ &log };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions_2 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 2 }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
     const auto card = ids.get_id<givm::card_definition>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -272,7 +275,7 @@ TEST_CASE("deck discard count is capped and empty batches have no observation", 
     const givm::test::named_definition_source<givm::card_definition> source{ "PlainCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::discard_deck_cards{ .count = count, .player = givm::relative_player::opponent },
-            givm::discard_deck_cards{ .count = 2 }, givm::end_game{ givm::game_result::both_loss } },
+            givm::discard_deck_cards{ .count = 2 }, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
     const auto card = ids.get_id<givm::card_definition>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -300,7 +303,7 @@ TEST_CASE("overflow removes cards without invoking discard effects or notificati
     discard_log log{};
     const discard_source source{ &log };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions_3 }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 3 }, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
     const auto card = ids.get_id<givm::card_definition>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 1 } };
@@ -320,7 +323,7 @@ TEST_CASE("discarded deck cards remain valid effect sources through damage and n
     const discard_damage_card source{ &log };
     const auto observer = givm::test::with_passive_skill(discard_damage_observer{ &log });
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::discard_deck_cards{ .count = 1 }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::discard_deck_cards{ .count = 1 }, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source, observer);
     log.definition = ids.get_id<givm::card_definition>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -388,9 +391,8 @@ namespace
             givm::hand_card_discard_effect& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
-            CHECK(self.id() == event.card);
             for(const auto id : data.log->selected) CHECK_FALSE(context.table()[id].is_valid());
-            data.log->effects.push_back(event.card);
+            data.log->effects.push_back(context.entity().id());
             data.log->order.push_back('E');
             return context.invoke(data.effect);
         }
@@ -476,7 +478,7 @@ TEST_CASE("hand discard selects a batch once and resolves every card before the 
     const hand_discard_batch_driver driver{ &log };
     const givm::test::named_definition_source<givm::card_definition> absent{ "BatchAbsentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions_5 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 5 }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, first, second, absent, driver);
     const auto first_id = ids.get_id<givm::card_definition>(first.name());
     const auto second_id = ids.get_id<givm::card_definition>(second.name());
@@ -522,7 +524,7 @@ TEST_CASE("fixed hand discard with no matching definition is a no-op", "[discard
     const hand_discard_batch_driver driver{ &log };
     const givm::test::named_definition_source<givm::card_definition> absent{ "BatchAbsentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions_2 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 2 }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, card, absent, driver);
     const auto card_id = ids.get_id<givm::card_definition>(card.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };

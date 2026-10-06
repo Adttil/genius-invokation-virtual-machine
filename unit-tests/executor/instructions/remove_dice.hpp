@@ -49,7 +49,7 @@ namespace
             const auto nested = log->dynamic ? givm::remove_dice{}
                 : givm::remove_dice{ .player = givm::relative_player::self, .dice = log->nested };
             return { log,
-                context.add_program(std::tuple{ zero, first, zero, last, zero }),
+                context.add_program(std::tuple{ zero, first, givm::settle{}, zero, last, zero }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
         }
         static givm::program_entry handle(const definition_type& data,
@@ -158,7 +158,7 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
     const givm::test::initialization_character_source character;
     REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_battle{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_battle{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, mode));
     givm::table table{ { .round_number = 1, .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = log.expected[0] }, { .dice = log.expected[1] } };
@@ -211,7 +211,7 @@ TEST_CASE("successive end-round collectors choose dice from the updated pool", "
     const givm::test::initialization_character_source character;
     REQUIRE(sources.add(initialization, character));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::start_battle{}, givm::end_round{}, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ givm::start_battle{}, givm::settle{}, givm::end_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, mode));
     givm::dice_counts initial;
     initial[givm::elemental_dice::hydro] = 1;

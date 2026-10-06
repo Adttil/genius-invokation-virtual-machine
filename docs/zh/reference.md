@@ -31,7 +31,7 @@
 | [`definition_source_library`](reference/definition/definition_source_library.md) | 定义源库 |
 | [`make_definition_source_library`](reference/definition/make_definition_source_library.md) | 创建源库并批量登记定义源 |
 | [`error_string`](reference/definition/error_string.md) | 将源库登记或合并诊断转换为文本 |
-| [`basic_definition_sources`](reference/definition/basic_definition_sources.md) | 默认元素反应的基础定义源配置 |
+| [`reaction_definition_names`](reference/definition/reaction_definition_names.md) | 编译时按反应槽位指定默认反应定义名称 |
 | [命令](reference/definition/commands.md) | 游戏规则的操作描述 |
 | [`any_command`](reference/definition/any_command.md) | 核心命令 variant |
 | [命令输入](reference/definition/command_inputs.md) | 响应提交的动态命令参数 |

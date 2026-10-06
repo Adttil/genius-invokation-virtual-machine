@@ -2,6 +2,7 @@
 #define GIVM_TABLE_DATA_PLAYER_DATA_HPP
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -10,8 +11,10 @@
 #include <vector>
 
 #include "../../enums/elemental_dice.hpp"
+#include "../../enums/elemental_reaction.hpp"
 #include "../../utils/debug.hpp"
 #include "../entity_id.hpp"
+#include "../entity_fwd.hpp"
 #include "card_data.hpp"
 #include "character_data.hpp"
 #include "combat_status_data.hpp"
@@ -38,6 +41,8 @@ namespace givm::detail
     struct player_data
     {
         player_state state;
+
+        std::array<definition_id<reaction_view>, elemental_reaction_count> reactions{};
 
         std::vector<card_data> hand_card_datas;
         std::vector<card_data> deck_card_datas;

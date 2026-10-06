@@ -5,7 +5,8 @@
 
 #include <vector>
 
-#include "heal.hpp"
+#include "../broadcast.hpp"
+#include "../character_target.hpp"
 #ifndef NDEBUG
 #include "../debug_validation.hpp"
 #endif
@@ -43,7 +44,7 @@ namespace givm::detail
                 return event;
             }
         }();
-        if(not input) return context.advance(response_extent<healed>);
+        if(not input) return continue_execution;
         const bool valid = static_cast<bool>(table[input->target]);
         GIVM_ASSERT(valid);
         [[assume(valid)]];
@@ -57,8 +58,8 @@ namespace givm::detail
         const auto value = std::min(input->value, std::numeric_limits<std::uint32_t>::max() - state.max_health);
         state.max_health += value;
         state.health += value;
-        prepare_broadcast(library, healed{ input->source, input->target, value }, table, context.stack(), context.position());
-        return broadcast_healing_completed(library, table, context, random);
+        append_event_record(context, healed{ input->source, input->target, value });
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const givm::increase_max_health& command, compile_mode)
@@ -70,7 +71,6 @@ namespace givm::detail
             writer.write(execute_fn{ execute_max_health_increase<true> });
             writer.write(command);
         }
-        compile_broadcast<healed>(writer, broadcast_healing_completed);
     }
 }
 

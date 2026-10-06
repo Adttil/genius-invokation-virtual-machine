@@ -27,14 +27,13 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             context.add_program(std::tuple{ givm::set_energy{} });
-            const std::array<std::size_t, 4> positions{ 0, 0, 2, 2 };
             const std::array damages{
-                givm::fixed_damage{ .value = 1, .multiplier_denominator = 0, .type = givm::damage_type::physical },
-                givm::fixed_damage{ .value = 2, .multiplier_denominator = 0, .type = static_cast<givm::damage_type>(255) }
+                givm::deal_damage{ .target = { givm::relative_player::opponent, 0 }, .value = 1, .multiplier_denominator = 0, .type = givm::damage_type::physical },
+                givm::deal_damage{ .target = { givm::relative_player::opponent, 0 }, .value = 2, .multiplier_denominator = 0, .type = static_cast<givm::damage_type>(255) }
             };
             const std::vector<givm::any_command> commands{
-                givm::draw_cards{ .positions = positions },
-                givm::deal_damage{ .damages = damages },
+                givm::draw_cards{ .player = static_cast<givm::relative_player>(255), .position = 0 },
+                damages[0], damages[1],
                 givm::set_energy{ .target = { .selection = givm::character_selection::others }, .value = 1 }
             };
             const auto entry = context.add_program(commands);
@@ -88,7 +87,7 @@ TEST_CASE("variant command programs collect independent parameter errors with th
     REQUIRE(sources.add(source));
     const auto result = givm::compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     REQUIRE_FALSE(result);
-    REQUIRE(result.error().size() == 7);
+    REQUIRE(result.error().size() == 6);
     CHECK(finished);
     const auto& errors = result.error();
     for(std::size_t index = 0; index < errors.size(); ++index)
@@ -99,43 +98,34 @@ TEST_CASE("variant command programs collect independent parameter errors with th
         CHECK(location.source->name == "Invalid command source");
         CHECK(location.source->category_index == givm::definition_types::index_of<givm::support_view>());
         CHECK(location.program == givm::program_kind::response);
-        CHECK(location.program_index == (index < 6 ? 1 : 2));
+        CHECK(location.program_index == (index < 5 ? 1 : 2));
     }
-    for(std::size_t index = 0; index < 2; ++index)
-    {
-        const auto* error = std::get_if<givm::draw_cards::error_type>(&errors[index].reason);
-        REQUIRE(error);
-        CHECK(error->cause == givm::draw_cards::error_type::reason::duplicate_position);
-        CHECK(error->value == 2 * index);
-        CHECK(error->index == 2 * index + 1);
-        CHECK(error->first_index == 2 * index);
-        CHECK(errors[index].location.command_index == 0);
-    }
+    const auto* drawing = std::get_if<givm::draw_cards::error_type>(&errors[0].reason);
+    REQUIRE(drawing);
+    CHECK(drawing->cause == givm::draw_cards::error_type::reason::invalid_player);
+    CHECK(drawing->value == 255);
+    CHECK(errors[0].location.command_index == 0);
     for(std::size_t index = 0; index < 3; ++index)
     {
-        const auto* error = std::get_if<givm::deal_damage::error_type>(&errors[index + 2].reason);
+        const auto* error = std::get_if<givm::deal_damage::error_type>(&errors[index + 1].reason);
         REQUIRE(error);
-        CHECK(error->index == (index == 0 ? 0 : 1));
         CHECK(error->cause == (index < 2
             ? givm::deal_damage::error_type::reason::zero_multiplier_denominator
             : givm::deal_damage::error_type::reason::invalid_damage_type));
-        CHECK(errors[index + 2].location.command_index == 1);
+        CHECK(errors[index + 1].location.command_index == (index == 0 ? 1 : 2));
     }
-    const auto* energy = std::get_if<givm::set_energy::error_type>(&errors[5].reason);
-    const auto* end = std::get_if<givm::end_game::error_type>(&errors[6].reason);
+    const auto* energy = std::get_if<givm::set_energy::error_type>(&errors[4].reason);
+    const auto* end = std::get_if<givm::end_game::error_type>(&errors[5].reason);
     REQUIRE(energy);
     REQUIRE(end);
     CHECK(energy->cause == givm::set_energy::error_type::reason::invalid_target_selection);
-    CHECK(errors[5].location.command_index == 2);
+    CHECK(errors[4].location.command_index == 3);
     CHECK(end->cause == givm::end_game::error_type::reason::invalid_result);
     CHECK(end->value == 255);
-    CHECK(errors[6].location.command_index == 0);
+    CHECK(errors[5].location.command_index == 0);
 
-    const auto drawing_message = givm::error_string(std::get<givm::draw_cards::error_type>(errors[1].reason));
-    CHECK(drawing_message.find("positions[3] = 2") != std::string::npos);
-    CHECK(drawing_message.find("positions[2]") != std::string::npos);
-    const auto damage_message = givm::error_string(std::get<givm::deal_damage::error_type>(errors[4].reason));
-    CHECK(damage_message.find("damages[1].type") != std::string::npos);
+    const auto damage_message = givm::error_string(std::get<givm::deal_damage::error_type>(errors[3].reason));
+    CHECK(damage_message.find("type") != std::string::npos);
     CHECK(damage_message.find("255") != std::string::npos);
 }
 

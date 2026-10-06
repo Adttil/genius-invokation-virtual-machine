@@ -122,14 +122,15 @@ namespace
             {
                 data.log->nested_started = true;
                 const std::array changes{
-                    givm::set_summon_state_input::change{ data.log->original[2], { 3, 2 } } };
+                    givm::set_summon_state_input::change{ data.log->original[1], { 2, 2 } } };
                 return context.invoke(data.restore, givm::set_summon_state_input{ changes });
             }
             if(data.log->nested && not data.log->nested_started)
             {
                 data.log->nested_started = true;
                 const std::array target{ data.log->original[2] };
-                return context.invoke(data.nested, givm::remove_summon_input{ target });
+                const auto targets = context.table()[target[0]].is_valid() ? std::span{ target } : std::span<const givm::summon_id>{};
+                return context.invoke(data.nested, givm::remove_summon_input{ targets });
             }
             return {};
         }
@@ -141,7 +142,7 @@ namespace
         const batch_summon_source persistent{ false };
         const auto driver = givm::test::with_passive_skill(batch_driver_source{ &log });
         const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-            std::tuple{ givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } },
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
             std::tuple{}, ordinary, persistent, driver);
         const auto ordinary_id = ids.get_id<givm::summon_view>(ordinary.name());
         const auto persistent_id = ids.get_id<givm::summon_view>(persistent.name());
@@ -172,11 +173,6 @@ TEST_CASE("batch summon changes complete before the first removal notification",
     std::vector<givm::summon_id> expected;
     for(std::size_t index = 0; index != log.original.size(); ++index)
         if(log.set_then_remove || (index != 1 && index != 7)) expected.push_back(log.original[index]);
-    if(log.nested)
-    {
-        std::erase_if(expected, [&](const auto id) { return id == log.original[2]; });
-        expected.insert(expected.begin() + 1, log.original[2]);
-    }
     REQUIRE(log.removed == expected);
     const auto persistent_usages = log.set_then_remove ? 5u : 4u;
     const std::vector<std::uint32_t> expected_usages{ 0, persistent_usages, 0, 0, 0, 0, 0, persistent_usages };
@@ -219,18 +215,19 @@ TEST_CASE("empty summon batches leave every entity unchanged", "[summon][batch]"
     }
 }
 
-TEST_CASE("batch exhaustion checks usages after earlier removal responses", "[summon][batch]")
+TEST_CASE("batch exhaustion invalidates all exhausted summons before removal responses", "[summon][batch]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     batch_log log{ .restore_later = true };
     const auto table = run_batch(log, mode);
     REQUIRE(log.original.size() == 8);
-    CHECK(log.removed == std::vector{ log.original[0], log.original[3], log.original[4],
+    CHECK(log.removed == std::vector{ log.original[0], log.original[2], log.original[3], log.original[4],
         log.original[5], log.original[6] });
-    REQUIRE(table[log.original[2]].is_valid());
-    CHECK(table[log.original[2]].state().usages == 2);
-    REQUIRE(log.usages_at_removal.size() == 5);
-    CHECK(log.usages_at_removal[0][2] == 0);
-    CHECK(log.usages_at_removal[1][2] == 2);
+    CHECK_FALSE(table[log.original[2]].is_valid());
+    REQUIRE(table[log.original[1]].is_valid());
+    CHECK(table[log.original[1]].state().usages == 2);
+    REQUIRE(log.usages_at_removal.size() == 6);
+    CHECK(log.usages_at_removal[0][1] == 4);
+    CHECK(log.usages_at_removal[1][1] == 2);
 }
 }

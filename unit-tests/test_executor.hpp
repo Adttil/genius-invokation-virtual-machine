@@ -72,4 +72,26 @@ namespace givm_test
         std::optional<givm::execution_state> state_;
         bool submitted_ = false;
     };
+
+    template<class TRandom>
+    givm::execution_state advance_selecting_first_alive(executor_driver& execution,
+        const givm::definition_library& library, givm::table& table, TRandom& random)
+    {
+        auto state = execution.advance(library, table, random);
+        while(state == givm::execution_state::active_character_selection)
+        {
+            const auto view = execution.view_in<givm::execution_state::active_character_selection>();
+            bool selected = false;
+            for(const auto character : table[view.player()].characters())
+            {
+                if(not character.state().alive || character.state().health == 0) continue;
+                execution.submitted(view.select(library, table, random, character.id()));
+                selected = true;
+                break;
+            }
+            if(not selected) throw std::logic_error{ "no living character available for selection" };
+            state = execution.advance(library, table, random);
+        }
+        return state;
+    }
 }

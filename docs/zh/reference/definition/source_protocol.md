@@ -38,6 +38,7 @@
 | `skill_dependencies()` | 返回所依赖的技能定义名称 |
 | `attachment_dependencies()` | 返回所依赖的角色附着实体定义名称 |
 | `history_summary_dependencies()` | 返回所依赖的历史摘要定义名称 |
+| `reaction_dependencies()` | 返回所依赖的反应定义名称 |
 
 `*_dependencies()` 列出必须存在的定义名称，通过 [`resolve_id`](../executor/definition_compile_context/resolve_id.md) 取得其 ID。选定源时，这些依赖也进入本次编译集合；缺失依赖会使登记失败。编译中查询未声明的硬依赖会记录诊断并返回无效 ID，最终 [`compile`](../executor/compile.md) 返回失败，不以验证异常中断源的编译函数。
 
@@ -51,9 +52,9 @@ attachment 的装备类别使用 `weapon`、`artifact`、`talent`、`technique` 
 
 附属的 `control` 标签表示控制状态，例如冻结、石化、眩晕或水泡；`control_immunity` 表示阻止施加控制附属及效果引发的切人。控制查询检查当前仍在场的附属，移除其中一个不会解除其他实体提供的控制。免控不解除已经存在的控制，也不妨碍玩家在行动选择时主动切换。具体入口见 [`is_controlled`](../executor/definition_library/is_controlled.md)、[`is_control_immune`](../executor/definition_library/is_control_immune.md) 与 [`attach`](commands/attach.md)。标签只声明分类；到期移除等行为仍由定义响应实现。
 
-当调用方只选择部分定义时，[`compile`](../executor/compile.md) 会保留同次调用的 [`basic_definition_sources`](basic_definition_sources.md) 指定的五个默认反应定义，并自动加入这些定义和所选定义直接或间接按名称依赖的所有定义。例如卡牌声明生成的召唤物为名称依赖后，选择该卡牌即可带入相应召唤物；单纯按标签查询不会带入未选择的定义。
+当调用方只选择部分定义时，[`compile`](../executor/compile.md) 会保留同次调用的 [`reaction_definition_names`](reaction_definition_names.md) 指定的17 个默认反应定义，并自动加入这些定义和所选定义直接或间接按名称依赖的所有定义。例如卡牌声明生成的召唤物为名称依赖后，选择该卡牌即可带入相应召唤物；单纯按标签查询不会带入未选择的定义。
 
-需要引用本场采用的基础定义时，编译上下文直接提供 `dendro_core_id()`、`catalyzing_field_id()`、`burning_flame_id()`、`frozen_id()`、`shield_id()`，不需要声明具体版本的名称依赖。普通定义的硬依赖仍须声明名称；仅查找或筛选本次集合不需要声明。源库默认构造为空集合，普通 [`add`](definition_source_library/add.md) 验证名称冲突及普通名称依赖，并聚合返回结构化诊断；基础定义配置在准备映射和编译时才加入，不用于补足更早登记时缺失的普通名称依赖。
+使用 [`default_reaction_id(slot)`](../executor/definition_compile_context/default_reaction_id.md) 取得本场默认反应定义 ID。生成实体和角色替换反应必须声明名称依赖并按名称解析。编译接受的反应名称及其闭包须事先 `add` 到源库，不能补足登记时缺失的依赖。
 
 ## 事件响应
 
@@ -73,7 +74,7 @@ static givm::program_entry handle(
 
 响应可通过 [`context.query(id, parameters)`](../executor/handle_context/query.md) 取得指定定义支持的查询结果。例如，减费圣遗物按需向正在报价的牌查询 [`card_equipment_target_validation`](queries/card_equipment_target_validation.md)，确认能否装备给所属角色；天赋牌用编译时解析的角色硬依赖 ID 判断适用对象。此查询不需要向响应开放整个定义库。
 
-[`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个动态命令对应一个由其 `input_type` 指定的 [`xxx_input`](command_inputs.md) 对象；使用固定参数的命令不占输入位置。输入类型可以是独立结构体，也可以是字段相符事件的显式别名；是否发送事件仍由命令决定。编译后输入对象的数量、类型和顺序固定，各对象中的数组长度可以在响应时决定。例如 `deal_damage_input` 用一个 `damages` span 表示本次伤害组，整组仍只占一个输入位置。响应通过 `context.invoke(entry, inputs...)` 提交全部输入；延迟输入直接使用 [`defer_invoke`](defer_invoke.md) 的返回值。Lua 等动态定义源适配器也可使用 [`pack_inputs`](pack_inputs.md)、[`concat_inputs`](concat_inputs.md) 准备 [`program_inputs`](program_inputs.md)，再一次提交。
+[`handle_context`](../executor/handle_context.md) 由执行器提供，不由定义源构造。输入按命令执行顺序提供，每个动态命令对应一个由其 `input_type` 指定的 [`xxx_input`](command_inputs.md) 对象；使用固定参数的命令不占输入位置。输入类型可以是独立结构体，也可以是字段相符事件的显式别名；是否发送事件仍由命令决定。编译后输入对象的数量、类型和顺序固定，各对象中的数组长度可以在响应时决定。例如一个 `deal_damage_input` 表示一次伤害描述，其 `selection` 可以展开为多个目标；多条命令在同段内产生的结果由结算机制聚合。响应通过 `context.invoke(entry, inputs...)` 提交全部输入；延迟输入直接使用 [`defer_invoke`](defer_invoke.md) 的返回值。Lua 等动态定义源适配器也可使用 [`pack_inputs`](pack_inputs.md)、[`concat_inputs`](concat_inputs.md) 准备 [`program_inputs`](program_inputs.md)，再一次提交。
 
 一次响应至多调用一次 `invoke`，且必须立即返回其结果。调用可能使当前事件及借用的执行现场引用失效，因此必须先完成全部计算。命令输入中的数组内容在调用时复制，返回后不再借用原数组；原数组须在复制期间保持有效，不能因本次调用扩容而失效。定义源须保证输入数量、具体类型、顺序及所属定义库都与入口匹配。未定义 `NDEBUG` 时，在写入前检查入口、提交方式、重复提交及输入数量、类型与顺序，失败时抛出 [`program_input_error`](../executor/program_input_error.md)；数组长度不参与类型匹配。命令的值与执行前提在实际执行时检查，错误以 [`command_input_error`](../executor/command_input_error.md) 报告。发布构建不保留这些检查或对应诊断元数据，违反约定属于未定义行为。脚本适配器可在两种构建模式下使用相同的输入对象接口，不需要脚本自行生成检查信息或处理字节布局。
 
@@ -183,18 +184,13 @@ struct passive_skill_source
 int main()
 {
     const passive_skill_source source{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(source)) return 1;
     auto library_result = compile(
         sources, basics,
-        std::tuple{}, std::tuple{ givm::start_round{} }, givm::compile_mode::normal
+        std::tuple{}, std::tuple{ givm::start_round{}, givm::settle{} }, givm::compile_mode::normal
     );
     if(not library_result)
     {

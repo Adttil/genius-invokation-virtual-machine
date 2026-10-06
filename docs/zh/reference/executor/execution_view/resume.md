@@ -75,17 +75,12 @@ struct character_source
 int main()
 {
     character_source source{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(source)) return 1;
     const std::array damages{
-        givm::fixed_damage{
+        givm::deal_damage{
             .source = givm::relative_character_target{ givm::relative_player::self, 0 },
             .target = givm::relative_character_target{ givm::relative_player::opponent, 0 },
             .value = 999, .type = givm::damage_type::physical, .flags = {} }
@@ -95,7 +90,7 @@ int main()
         std::tuple{
             givm::select_active_character_both{},
             givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::self, 1 } },
-            givm::deal_damage{ .damages = damages } },
+            damages[0], givm::settle{} },
         std::tuple{}, givm::compile_mode::observed);
     if(not library_result)
     {

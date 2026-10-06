@@ -61,11 +61,11 @@ struct apply_element_error;
 
 ## 注意
 
-反应判定后先发出 [`elemental_reaction_will_occur`](../events/elemental_reaction_will_occur.md)，由响应者选择 `replacement_reaction`。后写标签无条件覆盖前写；空标签表示默认反应效果，非空标签取消默认派生伤害、实体生成和超载切人。两者都按原始反应处理附着消耗，并保留原始反应种类及反应后通知。替代效果可在后续已有事件中根据标签执行，其中另行造成的伤害独立结算。
+反应判定后先发出 [`elemental_reaction_will_occur`](../events/elemental_reaction_will_occur.md)。其 `new_aura` 已由选中反应定义预填，普通响应可直接修改最终附着；将 `cancel_default_effects` 设为 true 可取消反应定义的默认后续。写入附着后执行未取消的默认效果，反应事实及反应后通知始终保留。
 
-独立附着不产生伤害类默认效果：不应用反应加伤，超导、感电不产生后台穿透伤害，扩散也不产生后台元素伤害。因此不会广播伤害属性、数值、抵消或伤害后事件，也不会产生 `health_reduced` 观察现场。元素消耗、默认实体生成、冻结、超载切人及反应前后通知仍然有效，与伤害引发的反应相同。
+独立附着没有主伤害或反应加伤，但仍执行反应定义的后续；超导、感电和扩散可因此产生派生伤害。所有这些伤害的记录归当前段，后续在结算点处理。来源玩家从原始 source 取得，反应定义表则使用目标对手的本局映射。
 
-默认结晶在反应目标的对方生成一点护盾，采用 [`definition_library::shield_id`](../../executor/definition_library/shield_id.md) 指定的出战状态定义；独立附着不产生结晶的 1 点反应加伤。随库提供的护盾重复生成时累加至两层，已有超出上限的层数不会因此降低。
+默认结晶在反应目标的对方生成一点护盾，采用所选结晶反应定义声明依赖并按名称解析的出战状态定义；独立附着不产生结晶的 1 点反应加伤。随库提供的护盾重复生成时累加至两层，已有超出上限的层数不会因此降低。
 
 默认超载同样支持强制切换。反应判定及标签选择完成时，若目标是其所属玩家的出战角色，就登记该玩家；附着处理完成后，以该玩家当时的出战位置为起点，循环选择下一个存活角色，完成切换及其通知后再广播反应后通知。原目标后来死亡或中途换人不取消已登记的切换；若唯一存活角色已出战则不切换、不通知。观察模式也会报告实际切换产生的 `active_character_changed` 现场。
 
@@ -102,14 +102,9 @@ struct character_source
 int main()
 {
     character_source source{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(source)) return 1;
     auto library_result = compile(
         sources, basics,

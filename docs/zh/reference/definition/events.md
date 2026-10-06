@@ -95,7 +95,7 @@
 | [`after_damage`](events/after_damage.md) | 伤害及其元素附着结算完成后的通知 |
 | [`healing`](events/healing.md) | 角色恢复生命前的治疗调整事件 |
 | [`healed`](events/healed.md) | 角色治疗完成后的通知 |
-| [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 反应判定后选择替代效果的事件 |
+| [`elemental_reaction_will_occur`](events/elemental_reaction_will_occur.md) | 反应判定后修改附着结果和默认后续的内联事件 |
 | [`after_elemental_reaction`](events/after_elemental_reaction.md) | 元素反应处理完成后的通知 |
 
 ## 角色与实体
@@ -104,7 +104,7 @@
 | --- | --- |
 | [`active_character_changed`](events/active_character_changed.md) | 出战角色设置完成后的通知 |
 | [`character_will_be_defeated`](events/character_will_be_defeated.md) | 角色被击倒前的事件 |
-| [`character_defeated`](events/character_defeated.md) | 角色被击倒后的通知 |
+| [`character_revived`](events/character_revived.md) | 角色被击倒后的通知 |
 | [`support_removed`](events/support_removed.md) | 支援移除后向其他有效实体广播的通知 |
 | [`support_state_changed`](events/support_state_changed.md) | 支援状态修改后的自身通知 |
 | [`summon_removed`](events/summon_removed.md) | 召唤物移除后向其他有效实体广播的通知 |
@@ -141,3 +141,9 @@
 | [`technique_effect`](events/technique_effect.md) | 特技自身效果 |
 | [`technique_used`](events/technique_used.md) | 特技使用后广播 |
 | [`technique_target_id`](events/technique_target_id.md) | 特技目标 |
+
+## 治疗种类
+
+| 名称 | 说明 |
+| --- | --- |
+| [`healing_kind`](events/healing_kind.md) | 普通治疗、免于击倒恢复和复苏 |

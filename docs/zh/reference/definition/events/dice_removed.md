@@ -19,7 +19,7 @@ struct dice_removed;
 
 ## 注意
 
-[`remove_dice`](../commands/remove_dice.md) 一次性扣除全部指定骰子后，全场广播一次本事件，再继续后续命令。`dice` 是本次扣除量，不是玩家扣除后的骰子总量；全部数量为零时不广播。动态命令通过本事件的别名 [`remove_dice_input`](../command_inputs/remove_dice_input.md) 提交参数。
+[`remove_dice`](../commands/remove_dice.md) 一次性扣除全部指定骰子后，将一次本事件加入当前段，再继续后续命令。`dice` 是本次扣除量，不是玩家扣除后的骰子总量；全部数量为零时不广播。动态命令通过本事件的别名 [`remove_dice_input`](../command_inputs/remove_dice_input.md) 提交参数。
 
 行动支付先完成骰子与充能扣除，再处理非零骰子支付的本事件，随后处理非零充能支付的 [`energy_changed`](energy_changed.md)。
 

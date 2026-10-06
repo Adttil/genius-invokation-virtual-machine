@@ -102,7 +102,7 @@ namespace
         const givm::test::initialized_character_source plain{ "OwnedInputOpponent",
             { .max_health = 10, .max_energy = 10000, .health = 10 } };
         return givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-            std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, plain);
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, plain);
     }
 
     givm::table make_table(const givm::definition_library& library, const givm::issued_id_map& ids)
@@ -167,7 +167,7 @@ TEST_CASE("fixed deferred payload type mismatches are compile diagnostics", "[pr
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(source, source.passive));
     const auto result = givm::compile(sources, givm_test::basic_sources,
-        std::tuple{ givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
+        std::tuple{ givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::normal);
     REQUIRE_FALSE(result);
     bool found = false;
     for(const auto& diagnostic : result.error())

@@ -8,7 +8,7 @@
 struct heal;
 ```
 
-使一个或多个角色接受治疗。先为每个目标广播 [`healing`](../events/healing.md) 并完成实际加血，全部目标完成后，再按目标顺序广播 [`healed`](../events/healed.md) 通知实际恢复值。
+使一个或多个角色接受治疗。先为每个目标广播 [`healing`](../events/healing.md) 并完成实际加血，通知登记到当前段，在结算点广播 [`healed`](../events/healed.md) 通知实际恢复值。
 
 ## 成员类型
 
@@ -24,21 +24,20 @@ struct heal;
 | `source` | [`relative_character_target`](../events/relative_character_target.md) | 固定来源角色的位置；默认本方的出战角色 |
 | `target` | [`relative_character_target`](../events/relative_character_target.md) | 固定目标位置和范围；默认采用动态输入 |
 | `value` | `std::uint32_t` | 固定治疗量；默认 `0` |
+| `kind` | `healing_kind` | 普通治疗、免于击倒恢复或复苏，默认 `normal` |
 
 ## 输入
 
 - 默认构造 `heal{}`，接受响应通过 `invoke` 提交的一个 [`heal_input`](../command_inputs/heal_input.md)。
 - 显式指定 `target` 时使用命令中的固定参数，不消费响应输入。
 
-动态输入须指定有效来源和目标；目标可以是精确 `character_id`，也可以是带范围的 [`relative_character_target`](../events/relative_character_target.md)。固定参数在命令执行时分别定位来源和目标；缺少任一角色时跳过命令。来源不会被替换成目标，也不会从外层响应推断；需要精确技能、牌或召唤物来源时应采用动态输入。
+动态输入是治疗参数数组，按输入顺序执行，允许为空或重复目标；每项指定有效来源和目标。目标可以是精确 `character_id`，也可以是带范围的 [`relative_character_target`](../events/relative_character_target.md)。固定参数描述一次单体或范围治疗，在命令执行时分别定位来源和目标；缺少任一角色时跳过命令。来源不会被替换成目标，也不会从外层响应推断；需要精确技能、牌或召唤物来源时应采用动态输入。
 
-单角色治疗允许目标生命值为 `0`，因此濒死响应可以通过本命令恢复生命。`others` 和 `all` 的范围治疗只选择存活角色；从定位角色开始按循环顺序处理，`others` 跳过定位角色。轮到每个角色时判断其是否存活。
+`normal` 只治疗存活且生命非零的角色，并进行普通 `healing` 修饰。`prevent_defeat` 只恢复仍存活、生命为零的濒死角色；`revive` 只恢复已死亡角色。这两种特殊恢复不经过普通治疗量修饰，但都产生 `healed`。复苏实际恢复非零生命后将 `alive` 设为 true，并先登记 `character_revived`。
 
 ## 结算
 
-每个目标的 `healing` 响应和响应程序完成后，以此时的生命值和生命上限截断治疗量并立即加血；范围治疗会先完成全部目标，再按目标顺序发送 `healed`。恢复量为 `min(value, max_health - health)`，`healed::value` 记录这一实际值。
-
-满血或治疗量为 `0` 时仍完整处理两次广播；完成通知中的实际值为 `0`。响应程序可以暂停等待输入，恢复后继续本次治疗。
+每个有效目标立即恢复生命，恢复量为 `min(value, max_health - health)`，通知记录实际值和只读 `kind`。满血普通治疗仍可产生实际值为零的通知。每项范围在开始时采样角色集合，按角色循环顺序执行，不因中途复活或新增角色扩充；每个目标仍按所选 kind 判断资格。数组边界不自动分段或结算，通知到结算点才执行。
 
 ## 编译检查
 

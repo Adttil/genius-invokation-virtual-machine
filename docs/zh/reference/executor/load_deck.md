@@ -19,10 +19,6 @@ void load_deck(table& table, const definition_library& library, const linked_dec
 | `deck1` | 玩家 0 的 [`linked_deck`](../table/linked_deck.md) |
 | `deck2` | 玩家 1 的 [`linked_deck`](../table/linked_deck.md) |
 
-## 返回值
-
-（无）
-
 ## 注意
 
 双方的牌库和角色区必须尚未装载实体。每方卡牌按其牌组中 `cards` 的顺序装入，最后一张位于牌库顶；角色按 `characters` 的顺序装入。
@@ -32,6 +28,8 @@ void load_deck(table& table, const definition_library& library, const linked_dec
 [历史摘要](../definition/history_summary.md)在后续调用 [`executor::start`](executor/start.md) 时初始化。通常先装载双方牌组，使摘要的初始化响应可以读取完整的初始牌桌。
 
 使用非限定调用 `load_deck(table, library, deck1, deck2)`。不需要装载实体的一方可传入空牌组 `{}`。
+
+装载时从库的默认反应映射开始，按牌组 `characters` 顺序应用 `character_reaction_override`。同槽位有多个非空替换时，后面的覆盖前面的；空 ID 不覆盖已有映射。装载不进行规则合法性或替换冲突检查。
 
 装载不使用随机源、不广播事件，也不选择出战角色或开始对局。牌桌不保存对定义库的引用，后续执行仍须传入配套定义库。
 
@@ -60,14 +58,9 @@ struct example_source
 
 int main()
 {
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     const example_source<givm::card_definition> card_source{};
     const example_source<givm::character_view> character_source{};
     if(not sources.add(card_source, character_source)) return 1;

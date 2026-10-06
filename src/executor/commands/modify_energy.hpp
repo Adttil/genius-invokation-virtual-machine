@@ -14,6 +14,7 @@
 
 #include <givm/executor/executor.hpp>
 #include "../character_target.hpp"
+#include "../broadcast.hpp"
 #include <givm/definition.hpp>
 #include <givm/macro_define.hpp>
 
@@ -23,8 +24,10 @@ namespace givm::detail
     inline execution_state execute_energy_modification(
         const definition_library& library, unrestricted_table& table, execution_context& context, random_fn&)
     {
-        const auto modify = [](character_state& state, std::int64_t delta)
+        const auto modify = [&](character_id target, std::int64_t delta)
         {
+            auto& state = table[target].state();
+            if(not state.alive) return;
             const auto previous = static_cast<std::int64_t>(state.energy);
             if(delta <= -previous)
                 state.energy = 0;
@@ -32,6 +35,8 @@ namespace givm::detail
                 state.energy = state.max_energy;
             else
                 state.energy = static_cast<std::uint32_t>(previous + delta);
+            if(state.energy != previous) append_event_record(context, energy_changed{ target,
+                static_cast<std::uint32_t>(previous), state.energy });
         };
         if constexpr(Fixed)
         {
@@ -40,7 +45,7 @@ namespace givm::detail
             if constexpr(Selection == character_selection::character)
             {
                 const auto target = resolve_character_target<false>(table, command.target);
-                if(target) modify(table[*target].state(), command.delta);
+                if(target) modify(*target, command.delta);
             }
             else
             {
@@ -73,7 +78,7 @@ namespace givm::detail
                         if(index == anchor) continue;
                     const auto character = characters[index];
                     if(character && character.state().health != 0)
-                        modify(character.state(), command.delta);
+                        modify(character.id(), command.delta);
                 }
             }
         }
@@ -88,7 +93,7 @@ namespace givm::detail
             {
                 const auto character = table[target];
                 GIVM_ASSERT(character.is_valid());
-                modify(character.state(), delta);
+                modify(target, delta);
             }
             context.stack().pop<character_id[], std::int64_t>();
             context.enter_next();
@@ -113,6 +118,8 @@ namespace givm::detail
             case character_selection::all:
                 writer.write(execute_fn{ execute_energy_modification<true, character_selection::all> });
                 break;
+            case character_selection::prioritized:
+                std::unreachable();
             }
             writer.write(command);
         }

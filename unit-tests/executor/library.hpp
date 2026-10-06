@@ -15,9 +15,9 @@ namespace givm_test::executor::library
 TEST_CASE("initialization and round programs accept tuple-like and range forms", "[executor][library]")
 {
     const auto initialization = std::tuple{
-        givm::start_round{}
+        givm::start_round{}, givm::settle{}
     };
-    const std::vector round{ givm::end_game{ givm::game_result::player_0_win } };
+    const std::vector<givm::any_command> round{ givm::settle{}, givm::end_game{ givm::game_result::player_0_win } };
 
     auto sources = givm_test::make_source_library();
     const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, initialization, round, givm::compile_mode::normal));

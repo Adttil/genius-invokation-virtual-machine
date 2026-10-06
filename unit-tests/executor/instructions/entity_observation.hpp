@@ -184,12 +184,12 @@ namespace
         {
             if(behavior == 1)
                 return { log, context.add_program(std::tuple{
-                    givm::end_game{ .result = givm::game_result::player_0_win }
+                    givm::settle{}, givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
             if(behavior == 2)
                 return { log, context.add_program(std::tuple{
                     givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, -1 } },
-                    givm::end_game{ .result = givm::game_result::player_0_win }
+                    givm::settle{}, givm::end_game{ .result = givm::game_result::player_0_win }
                 }) };
             return { log, givm::program_entry::null() };
         }
@@ -249,7 +249,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     {
         return givm::test::compile_definitions_with_program(
             mode,
-            std::tuple{ givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
             program_source, card_source, other_card_source, character_source
         );
     };
@@ -292,7 +292,7 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
     {
         return givm::test::compile_definitions_with_program(
             mode,
-            std::tuple{ givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, source
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{}, source
         );
     };
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
@@ -328,10 +328,10 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
         return givm::test::compile_definitions_with_program(
             mode,
             std::tuple{
-                givm::draw_cards{ .positions = std::span{ draw_positions_2 }.first(initial_hand_count) },
-                givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_5 },
-                givm::draw_cards{ .player = givm::relative_player::self, .positions = draw_positions_1 },
-                givm::end_game{ .result = givm::game_result::both_loss }
+                givm::draw_cards{ .position = 0, .count = initial_hand_count },
+                givm::draw_cards{ .player = givm::relative_player::self, .position = 0, .count = 5 },
+                givm::draw_cards{ .player = givm::relative_player::self, .position = 0, .count = 1 },
+                givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss }
             },
             std::tuple{}, observer_source, card_source
         );
@@ -358,12 +358,11 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     REQUIRE(observed.advance(library, table, random) == givm::execution_state::finished);
     CHECK(player.deck_card_count() == 0);
     CHECK(player.hand_card_count() == 2);
-    CHECK(log.drawn.size() == 2);
+    CHECK(log.drawn.size() == initial_hand_count + 3);
     std::vector<givm::hand_card_id> hand_ids;
     for(const auto card : player.hand_cards()) hand_ids.push_back(card.id());
-    CHECK(log.drawn == hand_ids);
-    std::vector<std::array<std::size_t, 2>> expected_counts(initial_hand_count, { initial_hand_count, 3 });
-    if(initial_hand_count == 1) expected_counts.push_back({ 2, 0 });
+    CHECK(std::vector<givm::hand_card_id>(log.drawn.begin(), log.drawn.begin() + 2) == hand_ids);
+    std::vector<std::array<std::size_t, 2>> expected_counts(initial_hand_count + 3, { 2, 0 });
     CHECK(log.card_counts_at_drawn == expected_counts);
     for(const auto card : log.drawn) CHECK(table[card].definition_id() == card_definition);
     CHECK(player.hand_card_count() == normal_table[givm::player_id{ 0 }].hand_card_count());
@@ -383,7 +382,7 @@ TEST_CASE("single-player active-character observation precedes the table update 
         return givm::test::compile_definitions_with_program(
             mode,
             std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
-                givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } }, givm::end_game{ .result = givm::game_result::both_loss } },
+                givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 0 } }, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } },
             std::tuple{}, observer_source, character_source
         );
     };
@@ -425,7 +424,7 @@ TEST_CASE("initial active choices update both players before either response", "
     const initialized_character_source character_source;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
-        std::tuple{ givm::select_active_character_both{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::select_active_character_both{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
         observer, character_source
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
@@ -502,13 +501,13 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::observed,
         std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
-            givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
+            givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
         response, character_source
     );
     const auto normal_compilation = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::self, 1 } },
-            givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
+            givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } }, std::tuple{},
         response, character_source
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = previous } };
@@ -559,10 +558,10 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
-            givm::draw_cards{ .positions = draw_positions_2 },
-            givm::replace_cards{ .player = givm::player_id{ 0 } },
-            givm::draw_cards{ .positions = draw_positions_1 },
-            givm::end_game{ givm::game_result::both_loss }
+            givm::draw_cards{ .position = 0, .count = 2 }, givm::settle{},
+            givm::replace_cards{ .player = givm::player_id{ 0 } }, givm::settle{},
+            givm::draw_cards{ .position = 0, .count = 1 },
+            givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, observer, first, second
     );
     const auto first_id = ids.get_id<givm::card_definition>(first.name());

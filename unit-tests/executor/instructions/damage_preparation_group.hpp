@@ -50,11 +50,11 @@ namespace
             preparation_log* log;
             givm::program_entry entry;
             givm::program_entry nested;
-            std::array<givm::damage, 2> inputs;
+            std::array<givm::deal_damage_input, 2> inputs;
             std::size_t input_count;
         };
         preparation_log* log;
-        std::span<const givm::damage> inputs{};
+        std::span<const givm::deal_damage_input> inputs{};
         std::string_view name() const { return "PreparationObserver"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
@@ -62,7 +62,7 @@ namespace
                 .nested = context.add_program(std::tuple{ givm::deal_damage{} }), .input_count = inputs.size() };
             if(not inputs.empty())
             {
-                result.entry = context.add_program(std::tuple{ givm::deal_damage{} });
+                result.entry = context.add_program(std::vector<givm::deal_damage>(inputs.size()));
                 std::ranges::copy(inputs, result.inputs.begin());
             }
             return result;
@@ -74,8 +74,8 @@ namespace
         static givm::program_entry handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            return context.invoke(data.entry,
-                givm::deal_damage_input{ std::span<const givm::damage>{ data.inputs }.first(data.input_count) });
+            if(data.input_count == 2) return context.invoke(data.entry, data.inputs[0], data.inputs[1]);
+            return context.invoke(data.entry, data.inputs[0]);
         }
         static givm::program_entry handle(const definition_type& data,
             givm::damage_preparation& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
@@ -89,7 +89,7 @@ namespace
             givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             data.log->order.emplace_back(phase::reaction, event.target.index);
-            data.log->reactions.push_back(event.reaction);
+            data.log->reactions.push_back(event.reaction.slot);
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
@@ -146,19 +146,17 @@ namespace
         return result;
     }
 
-    void check_preparation_precedes_numbers(const preparation_log& log)
+    void check_numbers_precede_completion(const preparation_log& log)
     {
-        bool calculating = false;
         bool completing = false;
         for(const auto& [current, index] : log.order)
         {
             if(current == phase::calculation || current == phase::effect)
             {
-                calculating = true;
                 CHECK_FALSE(completing);
             }
             else if(current == phase::completion) completing = true;
-            else CHECK_FALSE(calculating);
+            else CHECK_FALSE(completing);
         }
     }
 
@@ -171,6 +169,16 @@ namespace
         {
             const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::finished) return targets;
+            if(state == givm::execution_state::active_character_selection)
+            {
+                const auto view = executor.view_in<givm::execution_state::active_character_selection>();
+                auto choices = table[view.player()].characters();
+                const auto chosen = std::ranges::find_if(choices, [](const auto character)
+                    { return character.state().alive && character.state().health != 0; });
+                REQUIRE(chosen != choices.end());
+                executor.submitted(view.select(library, table, random, (*chosen).id()));
+                continue;
+            }
             REQUIRE(observed);
             REQUIRE(state == givm::execution_state::health_reduced);
             targets.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index);
@@ -183,7 +191,7 @@ namespace
     }
 }
 
-TEST_CASE("numeric conditions read the original aura even after the whole group has applied its elements", "[deal_damage][preparation-group]")
+TEST_CASE("numeric conditions read each hit aura before its element is applied", "[deal_damage][preparation-group]")
 {
     const bool observed = GENERATE(false, true);
     preparation_log log{ .bonus_on_existing_pyro = true };
@@ -191,12 +199,12 @@ TEST_CASE("numeric conditions read the original aura even after the whole group 
     const givm::test::initialized_character_source bare{ "Bare", { .max_health = 20, .health = 20 } };
     const givm::test::initialized_character_source burning{ "Burning", { .max_health = 20, .health = 20, .aura = givm::element_aura::pyro } };
     const std::array damages{
-        givm::fixed_damage{ .source = fixed_source, .target = fixed_target(0), .value = 1, .type = givm::damage_type::pyro },
-        givm::fixed_damage{ .source = fixed_source, .target = fixed_target(1), .value = 1, .type = givm::damage_type::pyro }
+        givm::deal_damage{ .source = fixed_source, .target = fixed_target(0), .value = 1, .type = givm::damage_type::pyro },
+        givm::deal_damage{ .source = fixed_source, .target = fixed_target(1), .value = 1, .type = givm::damage_type::pyro }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, bare, burning);
     auto table = active_table();
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
@@ -205,16 +213,16 @@ TEST_CASE("numeric conditions read the original aura even after the whole group 
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
     CHECK(log.original_auras == std::vector{ givm::element_aura::none, givm::element_aura::pyro });
-    CHECK(log.current_auras == std::vector{ givm::element_aura::pyro, givm::element_aura::pyro });
+    CHECK(log.current_auras == std::vector{ givm::element_aura::none, givm::element_aura::pyro });
     CHECK(log.values == std::vector<std::uint32_t>{ 1, 3 });
     CHECK(table[target(0)].state().health == 19);
     CHECK(table[target(1)].state().health == 17);
     CHECK(targets_at(log, phase::preparation) == std::vector<std::size_t>{ 0, 1 });
     CHECK(observations == (observed ? std::vector<std::size_t>{ 0, 1 } : std::vector<std::size_t>{}));
-    check_preparation_precedes_numbers(log);
+    check_numbers_precede_completion(log);
 }
 
-TEST_CASE("a reaction prepared for a later defeated target retains its secondary damage", "[deal_damage][preparation-group][reaction]")
+TEST_CASE("reaction damage still reacts on a target reduced to zero by an earlier hit", "[deal_damage][preparation-group][reaction]")
 {
     const bool observed = GENERATE(false, true);
     preparation_log log;
@@ -222,11 +230,11 @@ TEST_CASE("a reaction prepared for a later defeated target retains its secondary
     const givm::test::initialized_character_source water{ "Water", { .max_health = 20, .health = 20, .aura = givm::element_aura::hydro } };
     const givm::test::initialized_character_source electro{ "Electro", { .max_health = 20, .health = 20, .aura = givm::element_aura::electro } };
     const givm::test::initialized_character_source fragile{ "Fragile", { .max_health = 20, .health = 1, .aura = givm::element_aura::electro } };
-    const std::array damages{ givm::fixed_damage{ .source = fixed_source, .target = fixed_target(0),
+    const std::array damages{ givm::deal_damage{ .source = fixed_source, .target = fixed_target(0),
         .value = 1, .type = givm::damage_type::anemo } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, water, electro, fragile);
     auto table = active_table();
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
@@ -235,22 +243,22 @@ TEST_CASE("a reaction prepared for a later defeated target retains its secondary
     givm_test::executor_driver executor;
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
-    CHECK(log.reactions == std::vector{ givm::elemental_reaction::swirl,
+    CHECK(log.reactions == std::vector{ givm::elemental_reaction::swirl_hydro,
         givm::elemental_reaction::electro_charged, givm::elemental_reaction::electro_charged });
     CHECK(targets_at(log, phase::reaction) == std::vector<std::size_t>{ 0, 1, 2 });
-    CHECK(targets_at(log, phase::preparation) == std::vector<std::size_t>{ 0 });
-    const std::vector<std::size_t> expected{ 0, 1, 2, 0, 0, 1 };
+    CHECK(targets_at(log, phase::preparation) == std::vector<std::size_t>{ 0, 1, 2, 0, 2, 0, 1 });
+    const std::vector<std::size_t> expected{ 0, 1, 2, 0, 2, 0, 1 };
     CHECK(targets_at(log, phase::effect) == expected);
-    CHECK(observations == (observed ? expected : std::vector<std::size_t>{}));
+    CHECK(observations == (observed ? std::vector<std::size_t>{ 0, 1, 2, 0, 0, 1 } : std::vector<std::size_t>{}));
     CHECK(table[target(0)].state().health == 17);
     CHECK(table[target(1)].state().health == 17);
     CHECK(table[target(2)].state().health == 0);
     CHECK(table[target(2)].state().aura == givm::element_aura::none);
     for(const auto& health : log.completion_health) CHECK(health == std::vector<std::uint32_t>{ 17, 17, 0 });
-    check_preparation_precedes_numbers(log);
+    check_numbers_precede_completion(log);
 }
 
-TEST_CASE("each original wind description prepares once while its range and reaction hits retain that element", "[deal_damage][preparation-group][range]")
+TEST_CASE("each range and reaction hit receives its own damage preparation", "[deal_damage][preparation-group][range]")
 {
     const bool observed = GENERATE(false, true);
     const bool dynamic = GENERATE(false, true);
@@ -258,7 +266,7 @@ TEST_CASE("each original wind description prepares once while its range and reac
     const bool relative = GENERATE(false, true);
     const auto selection = range ? givm::character_selection::all : givm::character_selection::character;
     preparation_log log{ .infuse_anemo = true };
-    const std::array inputs{
+    const std::array dynamic_damages{
         givm::damage{ .source = source,
             .target = relative ? givm::damage_target{ givm::relative_character_target{ givm::relative_player::opponent, 0, selection } }
                 : givm::damage_target{ target(0) },
@@ -266,19 +274,22 @@ TEST_CASE("each original wind description prepares once while its range and reac
             .value = 1, .type = givm::damage_type::physical },
         givm::damage{ .source = source, .target = target(1), .value = 1, .type = givm::damage_type::physical }
     };
+    const std::array inputs{ givm::deal_damage_input{ std::span{ dynamic_damages }.first(1) },
+        givm::deal_damage_input{ std::span{ dynamic_damages }.last(1) } };
     const auto observer = givm::test::with_passive_skill(preparation_source{
-        &log, dynamic ? std::span{ inputs }.first(range ? 1 : 2) : std::span<const givm::damage>{} });
+        &log, dynamic ? std::span{ inputs }.first(range ? 1 : 2) : std::span<const givm::deal_damage_input>{} });
     const givm::test::initialized_character_source water{ "Water", { .max_health = 20, .health = 20, .aura = givm::element_aura::hydro } };
     const givm::test::initialized_character_source bare{ "Bare", { .max_health = 20, .health = 20 } };
     const std::array damages{
-        givm::fixed_damage{ .source = fixed_source,
+        givm::deal_damage{ .source = fixed_source,
             .target = { givm::relative_player::opponent, 0, range ? givm::character_selection::all : givm::character_selection::character },
             .value = 1, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = fixed_source, .target = fixed_target(1), .value = 1, .type = givm::damage_type::physical }
+        givm::deal_damage{ .source = fixed_source, .target = fixed_target(1), .value = 1, .type = givm::damage_type::physical }
     };
     std::vector<givm::any_command> program;
-    if(dynamic) program.emplace_back(givm::start_round{});
-    else program.emplace_back(givm::deal_damage{ .damages = std::span{ damages }.first(range ? 1 : 2) });
+    if(dynamic) { program.emplace_back(givm::start_round{}); program.emplace_back(givm::settle{}); }
+    else for(const auto& item : std::span{ damages }.first(range ? 1 : 2)) program.emplace_back(item);
+    program.emplace_back(givm::settle{});
     program.emplace_back(givm::end_game{ givm::game_result::both_loss });
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal, program, std::tuple{}, observer, water, bare);
@@ -290,20 +301,20 @@ TEST_CASE("each original wind description prepares once while its range and reac
     givm_test::executor_driver executor;
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
-    CHECK(targets_at(log, phase::preparation) == (range ? std::vector<std::size_t>{ 0 } : std::vector<std::size_t>{ 0, 1 }));
+    CHECK(targets_at(log, phase::preparation) == targets_at(log, phase::effect));
     CHECK(targets_at(log, phase::reaction) == (range ? std::vector<std::size_t>{ 0, 1, 2 } : std::vector<std::size_t>{ 0, 1 }));
     const auto expected = range ? std::vector<std::size_t>{ 0, 1, 2, 1, 2, 0, 2, 0, 1 }
         : std::vector<std::size_t>{ 0, 1, 2, 1, 2, 0 };
     CHECK(targets_at(log, phase::effect) == expected);
-    CHECK(targets_at(log, phase::completion) == expected);
+    CHECK(targets_at(log, phase::completion) == std::vector<std::size_t>{ 0, 1, 2 });
     CHECK(observations == (observed ? expected : std::vector<std::size_t>{}));
     const auto one_swirl = std::vector{ givm::damage_type::anemo, givm::damage_type::hydro, givm::damage_type::hydro };
     for(std::size_t i = 0; i < log.types.size(); ++i) CHECK(log.types[i] == one_swirl[i % 3]);
     for(const auto character : table[givm::player_id{ 1 }].characters()) CHECK(character.state().health == (range ? 17 : 18));
-    check_preparation_precedes_numbers(log);
+    check_numbers_precede_completion(log);
 }
 
-TEST_CASE("defeat clears aura applied while preparing a later skipped hit", "[deal_damage][preparation-group][defeat]")
+TEST_CASE("an explicitly prioritized later hit resolves past a dying character", "[deal_damage][preparation-group][defeat]")
 {
     const bool observed = GENERATE(false, true);
     preparation_log log;
@@ -311,12 +322,14 @@ TEST_CASE("defeat clears aura applied while preparing a later skipped hit", "[de
     const givm::test::initialized_character_source fragile{ "Fragile", { .max_health = 20, .max_energy = 3, .health = 1, .energy = 3 } };
     const givm::test::initialized_character_source reserve{ "Reserve", { .max_health = 20, .health = 20 } };
     const std::array damages{
-        givm::fixed_damage{ .source = fixed_source, .target = fixed_target(0), .value = 1, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = fixed_source, .target = fixed_target(0), .value = 1, .type = givm::damage_type::pyro }
+        givm::deal_damage{ .source = fixed_source, .target = fixed_target(0), .value = 1, .type = givm::damage_type::physical },
+        givm::deal_damage{ .source = fixed_source,
+            .target = { givm::relative_player::opponent, 0, givm::character_selection::prioritized },
+            .value = 1, .type = givm::damage_type::pyro }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, fragile, reserve);
     auto table = active_table();
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
@@ -324,15 +337,15 @@ TEST_CASE("defeat clears aura applied while preparing a later skipped hit", "[de
     givm_test::executor_driver executor;
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
-    CHECK(targets_at(log, phase::preparation) == std::vector<std::size_t>{ 0, 0 });
-    CHECK(log.current_auras == std::vector{ givm::element_aura::pyro });
-    CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0 });
+    CHECK(targets_at(log, phase::preparation) == std::vector<std::size_t>{ 0, 1 });
+    CHECK(log.current_auras == std::vector{ givm::element_aura::none, givm::element_aura::none });
+    CHECK(targets_at(log, phase::effect) == std::vector<std::size_t>{ 0, 1 });
     CHECK(table[target(0)].state().health == 0);
     CHECK(table[target(0)].state().energy == 0);
     CHECK(table[target(0)].state().aura == givm::element_aura::none);
-    CHECK(table[target(1)].state().health == 20);
-    CHECK(observations == (observed ? std::vector<std::size_t>{ 0 } : std::vector<std::size_t>{}));
-    check_preparation_precedes_numbers(log);
+    CHECK(table[target(1)].state().health == 19);
+    CHECK(observations == (observed ? std::vector<std::size_t>{ 0, 1 } : std::vector<std::size_t>{}));
+    check_numbers_precede_completion(log);
 }
 
 TEST_CASE("damage resumes past a target defeated by its own numeric or shield response", "[deal_damage][preparation-group][nested][defeat]")
@@ -344,12 +357,12 @@ TEST_CASE("damage resumes past a target defeated by its own numeric or shield re
     const givm::test::initialized_character_source fragile{ "Fragile", { .max_health = 20, .health = 3 } };
     const givm::test::initialized_character_source reserve{ "Reserve", { .max_health = 20, .health = 20 } };
     const std::array damages{
-        givm::fixed_damage{ .source = fixed_source, .target = fixed_target(0), .value = 1, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = fixed_source, .target = fixed_target(1), .value = 2, .type = givm::damage_type::physical }
+        givm::deal_damage{ .source = fixed_source, .target = fixed_target(0), .value = 1, .type = givm::damage_type::physical },
+        givm::deal_damage{ .source = fixed_source, .target = fixed_target(1), .value = 2, .type = givm::damage_type::physical }
     };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::end_game{ givm::game_result::both_loss } },
+        std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, fragile, reserve);
     auto table = active_table();
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
@@ -358,8 +371,8 @@ TEST_CASE("damage resumes past a target defeated by its own numeric or shield re
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
     CHECK(log.dying == std::vector<std::size_t>{ 0 });
-    CHECK(targets_at(log, phase::completion) == std::vector<std::size_t>{ 0, 1 });
-    CHECK(log.completion_health == std::vector<std::vector<std::uint32_t>>{ { 0, 20 }, { 0, 18 } });
+    CHECK(targets_at(log, phase::completion) == std::vector<std::size_t>{ 1, 0 });
+    CHECK(log.completion_health == std::vector<std::vector<std::uint32_t>>{ { 0, 18 }, { 0, 18 } });
     CHECK(table[target(0)].state().health == 0);
     CHECK(table[target(1)].state().health == 18);
     CHECK(observations == (observed ? std::vector<std::size_t>{ 0, 1 } : std::vector<std::size_t>{}));

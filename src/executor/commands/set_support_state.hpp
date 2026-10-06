@@ -15,14 +15,6 @@
 
 namespace givm::detail
 {
-    inline execution_state finish_support_state_change(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(not continue_single_response<support_state_changed, support_id>(library, table, context, random)) return continue_execution;
-        pop_single_response<support_state_changed, support_id>(context);
-        return context.advance(response_extent<support_state_changed>);
-    }
-
     inline execution_state change_support_state(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random, const set_support_state_input& input)
@@ -32,9 +24,9 @@ namespace givm::detail
         const auto support = std::as_const(table)[input.support];
         const auto definition = library[support.definition_id()];
         if(not definition.can_handle<support_state_changed, support_view>())
-            return context.advance(response_extent<support_state_changed>);
-        prepare_single_response(event, input.support, table, context, context.position());
-        return finish_support_state_change(library, table, context, random);
+            return continue_execution;
+        append_single_event_record(context, input.support, event);
+        return continue_execution;
     }
 
     template<bool Fixed>
@@ -80,7 +72,6 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ execute_support_state_change<false> });
-        compile_single_response<support_state_changed, support_id>(writer, finish_support_state_change);
     }
 }
 

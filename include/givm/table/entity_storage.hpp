@@ -17,6 +17,14 @@ namespace givm::detail
     };
 
     template<class TStorage>
+    struct reaction_entity_storage
+    {
+        TStorage* table;
+        maybe_mutable<not std::is_const_v<TStorage>, player_data>* player;
+        elemental_reaction slot;
+    };
+
+    template<class TStorage>
     struct hand_card_entity_storage
     {
         TStorage* table;

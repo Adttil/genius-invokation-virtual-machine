@@ -139,6 +139,11 @@ namespace givm::detail
                 return source.history_summary_dependencies();
             else return std::array<std::string_view, 0>{};
         }
+        else if constexpr(std::same_as<TCategory, reaction_view>)
+        {
+            if constexpr(requires { source.reaction_dependencies(); }) return source.reaction_dependencies();
+            else return std::array<std::string_view, 0>{};
+        }
         else
         {
             static_assert(std::same_as<TCategory, attachment_view>);

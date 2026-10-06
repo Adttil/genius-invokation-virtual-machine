@@ -29,11 +29,8 @@ namespace
         bool action_taken = false;
         bool pause_switch = false;
         bool paused = false;
-        std::vector<givm::tag_id> previous_tags;
-        std::vector<givm::tag_id> calculated_tags;
-        std::vector<givm::tag_id> effect_tags;
-        std::vector<givm::tag_id> reaction_tags;
-        std::vector<givm::tag_id> completion_tags;
+        std::vector<bool> previous_tags;
+        std::vector<bool> calculated_tags;
         std::vector<givm::elemental_reaction> original_reactions;
         std::vector<std::size_t> active_at_calculation;
         std::vector<std::size_t> active_at_completion;
@@ -71,13 +68,13 @@ namespace
             data.log->recording = true;
             if(data.first)
             {
-                if(data.log->mode != replacement::none) event.replacement_reaction = data.tag;
+                if(data.log->mode != replacement::none) event.cancel_default_effects = true;
             }
             else
             {
-                data.log->previous_tags.push_back(event.replacement_reaction);
-                if(data.log->mode == replacement::second) event.replacement_reaction = data.tag;
-                if(data.log->mode == replacement::clear) event.replacement_reaction = {};
+                data.log->previous_tags.push_back(event.cancel_default_effects);
+                if(data.log->mode == replacement::second) event.cancel_default_effects = true;
+                if(data.log->mode == replacement::clear) event.cancel_default_effects = false;
             }
             return {};
         }
@@ -85,8 +82,9 @@ namespace
             givm::damage_calculation& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first) return {};
-            data.log->calculated_tags.push_back(event.replacement_reaction);
-            data.log->original_reactions.push_back(event.reaction);
+            event.cancel_reaction_bonus = data.log->mode == replacement::first || data.log->mode == replacement::second;
+            data.log->calculated_tags.push_back(event.cancel_reaction_bonus);
+            data.log->original_reactions.push_back(event.reaction.slot);
             data.log->active_at_calculation.push_back(context.table()[givm::player_id{ 1 }].state().active_character->index);
             if(not data.log->action_taken && (data.log->change_current || data.log->nested_damage))
             {
@@ -102,20 +100,17 @@ namespace
         static givm::program_entry handle(const definition_type& data,
             givm::damage_effect& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
-            if(not data.first) data.log->effect_tags.push_back(event.replacement_reaction);
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
             givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
-            if(not data.first) data.log->reaction_tags.push_back(event.replacement_reaction);
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first) return {};
-            data.log->completion_tags.push_back(event.replacement_reaction);
             data.log->values.push_back(event.value);
             data.log->active_at_completion.push_back(context.table()[givm::player_id{ 1 }].state().active_character->index);
             return {};
@@ -177,7 +172,6 @@ namespace
             const auto self = context.entity().character();
             if(data.log->recording)
             {
-                CHECK(context.table()[event.current.player_id].state().active_character == event.current);
                 data.log->switch_responder_order.push_back(self.id().index);
             }
             return {};
@@ -194,7 +188,7 @@ namespace
                 { .max_health = 20, .health = health, .aura = givm::element_aura::electro } }),
             givm::test::with_passive_skill(switch_observer_character{ &log, "Reserve",
                 { .max_health = 20, .health = 20, .aura = givm::element_aura::electro } }),
-            givm::test::with_passive_skill(switch_observer_character{ &log, "Defeated", { .max_health = 20, .health = 0 } }));
+            givm::test::with_passive_skill(switch_observer_character{ &log, "Defeated", { .max_health = 20, .health = 0, .alive = false } }));
     }
 
     void load_scenario(givm::table& table, const givm::definition_library& library,
@@ -205,24 +199,27 @@ namespace
         load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("OverloadSource") } }, opponents);
     }
 
-    auto damage_program(std::span<const givm::fixed_damage> damages)
+    auto damage_program(std::span<const givm::deal_damage> damages)
     {
-        return std::tuple{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent, 0 } }, givm::deal_damage{ .damages = damages },
-            givm::end_game{ givm::game_result::both_loss } };
+        std::vector<givm::any_command> commands{ givm::set_active_character{
+            givm::relative_character_target{ givm::relative_player::opponent, 0 } } };
+        for(const auto& item : damages) commands.emplace_back(item);
+        commands.emplace_back(givm::settle{});
+        commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
+        return commands;
     }
 
     struct zero_random { std::uint32_t operator()() const { return 0; } };
 }
 
-TEST_CASE("the final reaction replacement tag reaches every damage stage and preserves aura consumption", "[reaction-replacement]")
+TEST_CASE("reaction bonus and default effects can be cancelled without erasing the reaction fact", "[reaction-replacement]")
 {
     const auto mode = GENERATE(replacement::first, replacement::second, replacement::clear);
     const bool observed = GENERATE(false, true);
     reaction_log log{ .mode = mode };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(damage_program(damages), log, observed);
-    const auto expected_tag = mode == replacement::clear ? givm::tag_id{}
-        : ids.get_tag_id(mode == replacement::first ? "FirstReplacement" : "LastReplacement");
+    const bool expected_cancel = mode != replacement::clear;
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
@@ -240,16 +237,12 @@ TEST_CASE("the final reaction replacement tag reaches every damage stage and pre
         REQUIRE(state == givm::execution_state::health_reduced);
         ++observed_damage;
         const auto damage = executor.view_in<givm::execution_state::health_reduced>();
-        CHECK(damage.reaction() == givm::elemental_reaction::overloaded);
-        CHECK(damage.replacement_reaction() == expected_tag);
+        CHECK(damage.reaction().slot == givm::elemental_reaction::overloaded);
         CHECK(damage.value() == (mode == replacement::clear ? 3 : 1));
     }
     CHECK(observed_damage == (observed ? 1 : 0));
-    CHECK(log.previous_tags == std::vector{ ids.get_tag_id("FirstReplacement") });
-    CHECK(log.calculated_tags == std::vector{ expected_tag });
-    CHECK(log.effect_tags == std::vector{ expected_tag });
-    CHECK(log.reaction_tags == std::vector{ expected_tag });
-    CHECK(log.completion_tags == std::vector{ expected_tag });
+    CHECK(log.previous_tags == std::vector<bool>{ true });
+    CHECK(log.calculated_tags == std::vector<bool>{ expected_cancel });
     CHECK(log.original_reactions == std::vector{ givm::elemental_reaction::overloaded });
     CHECK(table[target(0)].state().aura == givm::element_aura::none);
     CHECK(table[target(0)].state().health == (mode == replacement::clear ? 17 : 19));
@@ -258,16 +251,18 @@ TEST_CASE("the final reaction replacement tag reaches every damage stage and pre
         : std::vector<std::size_t>{}));
 }
 
-TEST_CASE("a damage group overloads only once after all hits and ignores standby triggers", "[overload][group]")
+TEST_CASE("each overload resolves immediately while standby reactions do not switch", "[overload][segment]")
 {
     const bool observed = GENERATE(false, true);
     const bool standby_only = GENERATE(false, true);
     reaction_log log;
     const std::array group{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 2 }, .value = 1, .type = givm::damage_type::pyro },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro }
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro },
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 },
+            .target = givm::relative_character_target{ givm::relative_player::opponent, 2, givm::character_selection::prioritized },
+            .value = 1, .type = givm::damage_type::pyro },
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::electro },
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro }
     };
     const auto damages = standby_only ? std::span{ group }.subspan(1, 1) : std::span{ group }.subspan(0);
     const auto [library, ids] = compile_scenario(damage_program(damages), log, observed);
@@ -287,7 +282,7 @@ TEST_CASE("a damage group overloads only once after all hits and ignores standby
         if(state == givm::execution_state::health_reduced)
         {
             ++observed_hits;
-            CHECK(table[givm::player_id{ 1 }].state().active_character == target(0));
+            CHECK(table[givm::player_id{ 1 }].state().active_character == target(observed_hits == 2 && not standby_only ? 2 : 0));
             CHECK(log.values.empty());
         }
         else
@@ -295,18 +290,19 @@ TEST_CASE("a damage group overloads only once after all hits and ignores standby
             REQUIRE(state == givm::execution_state::active_character_changed);
             if(log.recording)
             {
-                CHECK(observed_hits == 4);
-                CHECK(executor.view_in<givm::execution_state::active_character_changed>().character() == target(2));
+                CHECK((observed_hits == 1 || observed_hits == 2 || observed_hits == 4));
+                CHECK(executor.view_in<givm::execution_state::active_character_changed>().character()
+                    == target(observed_hits == 2 ? 0 : 2));
                 CHECK(log.values.empty());
             }
         }
     }
-    const auto expected_values = standby_only ? std::vector<std::uint32_t>{ 3 } : std::vector<std::uint32_t>{ 3, 3, 1, 3 };
+    const auto expected_values = standby_only ? std::vector<std::uint32_t>{ 3 } : std::vector<std::uint32_t>{ 7, 3 };
     CHECK(log.values == expected_values);
-    CHECK(log.active_at_calculation == std::vector<std::size_t>(expected_values.size(), 0));
+    CHECK(log.active_at_calculation == (standby_only ? std::vector<std::size_t>{ 0 } : std::vector<std::size_t>{ 0, 2, 0, 0 }));
     CHECK(log.active_at_completion == std::vector<std::size_t>(expected_values.size(), standby_only ? 0 : 2));
-    CHECK(log.switches == (standby_only ? std::vector<std::size_t>{} : std::vector<std::size_t>{ 2 }));
-    CHECK(log.switch_responder_order == (standby_only ? std::vector<std::size_t>{} : std::vector<std::size_t>{ 2, 0, 1 }));
+    CHECK(log.switches == (standby_only ? std::vector<std::size_t>{} : std::vector<std::size_t>{ 2, 0, 2 }));
+    CHECK(log.switch_responder_order == (standby_only ? std::vector<std::size_t>{} : std::vector<std::size_t>{ 2, 0, 2, 0, 2, 0 }));
     CHECK(table[target(0)].state().health == (standby_only ? 20 : 13));
     CHECK(table[target(2)].state().health == 17);
 }
@@ -317,7 +313,7 @@ TEST_CASE("overload follows the current active character after death or nested r
     const auto behavior = GENERATE(response::defeated, response::changed, response::nested);
     const bool observed = GENERATE(false, true);
     reaction_log log{ .change_current = behavior == response::changed, .nested_damage = behavior == response::nested };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(damage_program(damages), log, observed,
         behavior == response::defeated ? 1 : 20);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
@@ -334,25 +330,24 @@ TEST_CASE("overload follows the current active character after death or nested r
         REQUIRE(observed);
         REQUIRE((state == givm::execution_state::health_reduced || state == givm::execution_state::active_character_changed));
     }
-    CHECK(log.switches == (behavior == response::changed ? std::vector<std::size_t>{ 1, 2 } : std::vector<std::size_t>{ 1 }));
-    const auto expected_active = behavior == response::changed ? 2uz : 1uz;
+    CHECK(log.switches == std::vector<std::size_t>{ 1 });
+    const auto expected_active = 1uz;
     CHECK(table[givm::player_id{ 1 }].state().active_character == target(expected_active));
-    CHECK(log.active_at_completion == (behavior == response::nested ? std::vector<std::size_t>{ 0, 1 }
-        : std::vector<std::size_t>{ expected_active }));
-    CHECK(table[target(0)].state().health == (behavior == response::defeated ? 0 : behavior == response::nested ? 16 : 17));
+    CHECK(log.active_at_completion == std::vector<std::size_t>{ expected_active });
+    CHECK(table[target(0)].state().health == (behavior == response::defeated ? 0 : behavior == response::nested ? 14 : 17));
     if(behavior == response::nested)
     {
-        // The outer preparation has consumed electro before the nested pyro hit.
-        CHECK(log.original_reactions == std::vector{ givm::elemental_reaction::overloaded, givm::elemental_reaction::none });
-        CHECK(log.values == std::vector<std::uint32_t>{ 1, 3 });
-        CHECK(table[target(0)].state().aura == givm::element_aura::pyro);
+        // The outer aura is written after its inline calculation responses return.
+        CHECK(log.original_reactions == std::vector{ givm::elemental_reaction::overloaded, givm::elemental_reaction::overloaded });
+        CHECK(log.values == std::vector<std::uint32_t>{ 6 });
+        CHECK(table[target(0)].state().aura == givm::element_aura::none);
     }
 }
 
 TEST_CASE("copied overload switch responses resume before group completion exactly once", "[overload][observation]")
 {
     reaction_log log{ .pause_switch = true };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     const auto [library, ids] = compile_scenario(damage_program(damages), log, true);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -392,11 +387,12 @@ TEST_CASE("overload from element application respects missing alternatives and g
     const auto kind = GENERATE(scenario::application, scenario::lone_application, scenario::lone_damage, scenario::terminal);
     const bool observed = GENERATE(false, true);
     reaction_log log;
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1, .type = givm::damage_type::pyro } };
     std::vector<givm::any_command> program{ givm::set_active_character{ givm::relative_character_target{ givm::relative_player::opponent, 0 } } };
     if(kind == scenario::application || kind == scenario::lone_application)
         program.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::pyro });
-    else program.emplace_back(givm::deal_damage{ .damages = damages });
+    else for(const auto& item : damages) program.emplace_back(item);
+    program.emplace_back(givm::settle{});
     program.emplace_back(givm::end_game{ givm::game_result::both_loss });
     const auto [library, ids] = compile_scenario(program, log, observed, kind == scenario::terminal ? 1 : 20);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
@@ -426,7 +422,6 @@ TEST_CASE("overload from element application respects missing alternatives and g
     if(kind == scenario::terminal)
     {
         CHECK(log.values.empty());
-        CHECK(log.reaction_tags.empty());
     }
     else
     {

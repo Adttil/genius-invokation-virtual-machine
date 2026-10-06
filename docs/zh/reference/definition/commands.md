@@ -60,7 +60,7 @@
 | [`set_skill_state`](commands/set_skill_state.md) | 技能完整状态的赋值命令 |
 | [`set_energy`](commands/set_energy.md) | 角色充能的赋值命令 |
 | [`modify_energy`](commands/modify_energy.md) | 按有符号增量修改单角色或多个角色充能的命令 |
-| [`deal_damage`](commands/deal_damage.md) | 完成一组可由范围和元素反应展开的伤害 |
+| [`deal_damage`](commands/deal_damage.md) | 造成一次或一个范围的伤害，通知按段合并 |
 | [`heal`](commands/heal.md) | 调整治疗量、恢复生命并通知实际恢复值 |
 | [`increase_max_health`](commands/increase_max_health.md) | 增加生命上限，恢复相同数量生命并通知 |
 | [`apply_element`](commands/apply_element.md) | 元素附着命令 |
@@ -109,6 +109,5 @@
 | [`relative_attachment_target`](commands/attachment_target.md) | 按相对角色位置与定义或装备类别定位的附属实体 |
 | [`attachment_target`](commands/attachment_target.md) | 动态输入中的附属实体定位 variant |
 | [`equipment_target`](commands/attachment_target.md) | 按角色 ID 与装备类别定位的当前装备 |
-| [`fixed_damage`](commands/fixed_damage.md) | 固定伤害组中的单段描述 |
 | [`character_selection`](commands/character_selection.md) | 选择定位角色、其他角色或全部角色 |
 | [`action_argument`](../executor/action_argument.md) | 行动输入参数 |

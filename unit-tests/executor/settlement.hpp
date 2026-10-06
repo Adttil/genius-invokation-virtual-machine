@@ -185,7 +185,7 @@ TEST_CASE("response continuation waits for deferred programs and ignores their r
     skill_source skill{ scenario::multiple, &log };
     character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
     auto table = make_table(library, ids);
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::finished);
@@ -200,12 +200,12 @@ TEST_CASE("explicit settlement preserves later inputs and separates multiple bat
     skill_source skill{ scenario::checkpoints, &log };
     character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
     auto table = make_table(library, ids);
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::finished);
     CHECK(log.responses == std::vector<std::uint32_t>{ 0, 6 });
-    CHECK(log.energy == std::vector<std::uint32_t>{ 7, 31 });
+    CHECK(log.energy == std::vector<std::uint32_t>{ 15, 31 });
     CHECK(table[own].state().energy == 31);
 }
 
@@ -215,7 +215,7 @@ TEST_CASE("nested deferred scopes restore parent segments and rebuild after copi
     skill_source skill{ scenario::nested_pause, &log };
     character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
     auto table = make_table(library, ids);
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::card_selection);
@@ -241,7 +241,7 @@ TEST_CASE("starting an executor replaces paused domains without changing an exis
     skill_source suspended_skill{ scenario::nested_pause, &suspended_log };
     character_source character;
     const auto [suspended_library, suspended_ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         suspended_skill, character);
     auto suspended_table = make_table(suspended_library, suspended_ids);
     givm::executor execution;
@@ -253,8 +253,7 @@ TEST_CASE("starting an executor replaces paused domains without changing an exis
     log_state restarted_log;
     skill_source restarted_skill{ scenario::multiple, &restarted_log };
     const auto [restarted_library, restarted_ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::settle{}, givm::end_segment{}, givm::settle{}, givm::start_round{}, givm::settle{},
-            givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, restarted_skill, character);
+        std::tuple{ givm::settle{}, givm::end_segment{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, restarted_skill, character);
     auto restarted_table = make_table(restarted_library, restarted_ids);
     REQUIRE(execution.start(restarted_library, restarted_table).resume(
         restarted_library, restarted_table, givm_test::zero_random) == givm::execution_state::finished);
@@ -277,7 +276,7 @@ TEST_CASE("ordinary and deferred execution share a compiled entry but not respon
     skill_source skill{ scenario::reuse, &log };
     character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
     auto table = make_table(library, ids);
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::finished);
@@ -291,7 +290,7 @@ TEST_CASE("return truncates later invalid commands and dynamic input requirement
     skill_source skill{ scenario::truncate, &log };
     character_source character;
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
     auto table = make_table(library, ids);
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::finished);
@@ -306,14 +305,15 @@ TEST_CASE("root explicit settlement controls deferred inline work across segment
     skill_source skill{ scenario::root_inline, &log };
     character_source character;
     givm::test::initialized_character_source victim{ .source_name = "Victim" };
-    const std::array damages{ givm::fixed_damage{
+    const std::array damages{ givm::deal_damage{
         .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     std::vector<givm::any_command> commands{
-        givm::deal_damage{ .damages = damages }, givm::end_segment{} };
+        damages[0], givm::end_segment{} };
     if(settle_before_increment) commands.emplace_back(givm::settle{});
     commands.emplace_back(givm::modify_energy{ .target = { givm::relative_player::self, 0 }, .delta = 1 });
     commands.emplace_back(givm::end_segment{});
+    commands.emplace_back(givm::settle{});
     commands.emplace_back(givm::settle{});
     commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
@@ -335,15 +335,14 @@ TEST_CASE("root deferred records survive action windows independent settlements 
     skill_source skill{ scenario::root_inline, &log };
     character_source character;
     givm::test::initialized_character_source victim{ .source_name = "Victim" };
-    const std::array damages{ givm::fixed_damage{
+    const std::array damages{ givm::deal_damage{
         .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{
             givm::set_energy{ .target = { givm::relative_player::self, 0 }, .value = 1 },
-            givm::deal_damage{ .damages = damages }, givm::end_segment{}, givm::begin_action{},
-            givm::replace_cards{ .player = givm::player_id{ 0 } }, givm::settle{},
-            givm::end_game{ givm::game_result::both_loss }
+            damages[0], givm::end_segment{}, givm::begin_action{},
+            givm::replace_cards{ .player = givm::player_id{ 0 } }, givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, skill, character, victim);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = own }, { .active_character = opponent } };
@@ -389,12 +388,11 @@ TEST_CASE("inline responses cannot explicitly seal or settle their parent domain
     skill_source skill{ kind, &log };
     character_source character;
     givm::test::initialized_character_source victim{ .source_name = "Victim" };
-    const std::array damages{ givm::fixed_damage{
+    const std::array damages{ givm::deal_damage{
         .source = { givm::relative_player::self, 0 }, .target = { givm::relative_player::opponent, 0 },
         .value = 1, .type = givm::damage_type::physical } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::deal_damage{ .damages = damages }, givm::settle{},
-            givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character, victim);
+        std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character, victim);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = own }, { .active_character = opponent } };
     load_deck(table, library,

@@ -46,18 +46,18 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto commands = std::tuple{
-                givm::set_active_character{},
+                givm::set_active_character{}, givm::settle{},
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
                 givm::set_active_character{},
-                givm::draw_cards{ .positions = draw_positions_1 },
+                givm::draw_cards{ .position = 0, .count = 1 },
                 givm::set_active_character{}
             };
             const auto main = runtime_commands
                 ? context.add_program(std::vector<givm::any_command>{
-                    givm::set_active_character{},
+                    givm::set_active_character{}, givm::settle{},
                     givm::replace_cards{ .player = givm::player_id{ 0 } },
                     givm::set_active_character{},
-                    givm::draw_cards{ .positions = draw_positions_1 },
+                    givm::draw_cards{ .position = 0, .count = 1 },
                     givm::set_active_character{}
                 })
                 : context.add_program(commands);
@@ -105,7 +105,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_program(std::vector<givm::any_command>{
-                givm::set_active_character{},
+                givm::set_active_character{}, givm::settle{},
                 givm::replace_cards{ .player = givm::player_id{ 0 } },
                 givm::set_active_character{}
             }) };
@@ -155,7 +155,7 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
     const givm::test::initialized_character_source plain;
     const givm::test::named_definition_source<givm::card_definition> card{ "InputCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, plain, card);
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, plain, card);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const auto plain_id = ids.get_id<givm::character_view>(plain.name());
     load_deck(table, library, {
@@ -262,12 +262,14 @@ namespace
         std::string_view name() const noexcept { return "ArrayInputSource"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{
-                givm::set_energy{}, givm::deal_damage{},
-                givm::replace_cards{ .player = givm::player_id{ 0 } },
-                givm::deal_damage{}, givm::set_energy{}
-            }), count, runtime_inputs };
+            std::vector<givm::any_command> commands{ givm::set_energy{} };
+            for(std::size_t i = 0; i != count; ++i) commands.emplace_back(givm::deal_damage{});
+            commands.emplace_back(givm::replace_cards{ .player = givm::player_id{ 0 } });
+            commands.emplace_back(givm::deal_damage{});
+            commands.emplace_back(givm::set_energy{});
+            return { context.add_program(commands), count, runtime_inputs };
         }
+
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 3, .health = 10 };
@@ -283,26 +285,19 @@ namespace
             const givm::character_id target{ givm::player_id{ 1 }, 0 };
             // Both ranges are local: invoke must retain their contents through
             // the later selection pause and through deferred payment execution.
-            const std::vector<givm::damage> first(data.count,
-                { .source = self.id(), .target = target, .value = 1, .type = givm::damage_type::physical });
-            const std::array second{
-                givm::damage{ .source = self.id(), .target = target, .value = 2, .type = givm::damage_type::physical } };
             const givm::set_energy_input begin{ self.id(), 1 };
             const givm::set_energy_input end{ self.id(), 3 };
-            const auto invoke = [&](const auto&... inputs)
-            {
-                if constexpr(std::same_as<Event, givm::cost_of_switch>)
-                    return context.invoke(givm::substack_t{}, data.entry, inputs...);
-                else
-                    return context.invoke(data.entry, inputs...);
-            };
-            if(data.runtime_inputs)
-            {
-                const auto inputs = givm::pack_inputs(
-                    begin, givm::deal_damage_input{ first }, givm::deal_damage_input{ second }, end);
-                return invoke(inputs);
-            }
-            return invoke(begin, givm::deal_damage_input{ first }, givm::deal_damage_input{ second }, end);
+            std::vector<givm::program_inputs> parts{ givm::pack_inputs(begin) };
+            for(std::size_t i = 0; i != data.count; ++i)
+                parts.push_back(givm::pack_inputs(givm::deal_damage_input{ std::array{ givm::damage{ .source = self.id(), .target = target,
+                    .value = 1, .type = givm::damage_type::physical } } }));
+            parts.push_back(givm::pack_inputs(givm::deal_damage_input{ std::array{ givm::damage{ .source = self.id(), .target = target,
+                .value = 2, .type = givm::damage_type::physical } } }, end));
+            const auto inputs = givm::concat_inputs(parts);
+            if constexpr(std::same_as<Event, givm::cost_of_switch>)
+                return context.invoke(givm::substack_t{}, data.entry, inputs);
+            else return context.invoke(data.entry, inputs);
+
         }
     };
 }
@@ -317,7 +312,7 @@ TEST_CASE("dynamic damage array inputs retain their contents through cached and 
     const auto source = givm::test::with_passive_skill(array_input_source{ count, runtime_inputs });
     const givm::test::initialized_character_source plain;
     const auto program = cached ? std::vector<givm::any_command>{ givm::begin_action{} }
-        : std::vector<givm::any_command>{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+        : std::vector<givm::any_command>{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [compiled_library, ids] = givm::test::compile_definitions_with_program(mode, program, std::tuple{}, source, plain);
     const givm::definition_library library = compiled_library;
     const givm::character_id owner{ givm::player_id{ 0 }, 0 };
@@ -500,7 +495,7 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
     const givm::test::initialized_character_source plain;
     const auto program = cached
         ? std::vector<givm::any_command>{ givm::begin_action{} }
-        : std::vector<givm::any_command>{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+        : std::vector<givm::any_command>{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, program, std::tuple{}, source, plain);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = cached ? std::optional{ givm::character_id{ givm::player_id{ 0 }, 0 } } : std::nullopt },
@@ -574,7 +569,7 @@ TEST_CASE("debug entries reject foreign libraries and remain usable in library c
     givm::program_entry exported;
     givm::program_entry foreign;
     const auto source = givm::test::with_passive_skill(mismatched_input_source{ input_mismatch::foreign_entry, &exported, &foreign });
-    const auto init = std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const auto init = std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [first, first_ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal, init, std::tuple{}, source);
     foreign = exported;
     const auto [second, second_ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal, init, std::tuple{}, source);

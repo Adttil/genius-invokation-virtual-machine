@@ -76,7 +76,7 @@ namespace
         {
             const auto self = context.entity().character();
             data.log->order.push_back(2);
-            CHECK(event.reaction == givm::elemental_reaction::vaporize);
+            CHECK(event.reaction.slot == givm::elemental_reaction::vaporize);
             CHECK(event.reacted_aura == givm::element_aura::hydro);
             CHECK(context.table()[event.target].state().aura == givm::element_aura::hydro);
             return context.invoke(data.during_reaction,
@@ -89,11 +89,11 @@ namespace
         {
             const auto self = context.entity().character();
             data.log->order.push_back(3);
-            CHECK(event.reaction == givm::elemental_reaction::vaporize);
+            CHECK(event.reaction.slot == givm::elemental_reaction::vaporize);
             CHECK(event.reacted_aura == givm::element_aura::hydro);
-            CHECK(context.table()[event.target].state().aura == givm::element_aura::none);
+            CHECK(context.table()[event.target].state().aura == givm::element_aura::cryo);
             return context.invoke(data.after_reaction,
-                givm::apply_element_input{ .source = self.id(), .target = event.target, .element = givm::element::electro });
+                givm::apply_element_input{ .source = self.id(), .target = event.target, .element = givm::element::none });
         }
     };
 
@@ -114,8 +114,7 @@ TEST_CASE("element application inputs resume nested responses with the same resu
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{
-            givm::start_round{},
-            givm::end_game{ givm::game_result::both_loss }
+            givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, source, target);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -135,7 +134,7 @@ TEST_CASE("element application inputs resume nested responses with the same resu
     executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.order == std::vector{ 1, 2, 3 });
-    CHECK(table[target_id].state().aura == givm::element_aura::cryo);
+    CHECK(table[target_id].state().aura == givm::element_aura::none);
     CHECK(table[target_id].state().health == 10);
 }
 }

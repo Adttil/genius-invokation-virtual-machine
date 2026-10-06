@@ -55,6 +55,17 @@ namespace givm
             bits_ &= static_cast<std::uint16_t>(~value_of(bit));
         }
 
+        constexpr damage_flags& operator|=(damage_flags other) noexcept
+        {
+            bits_ |= other.bits_;
+            return *this;
+        }
+
+        friend constexpr damage_flags operator|(damage_flags lhs, damage_flags rhs) noexcept
+        {
+            return lhs |= rhs;
+        }
+
         friend constexpr damage_flags operator|(damage_flags lhs, damage_flag_bits rhs) noexcept
         {
             lhs.set(rhs);

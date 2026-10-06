@@ -55,4 +55,5 @@ namespace givm
     template std::vector<definition_id<skill_view>> issued_id_map::query_by_tag<skill_view>(std::string_view) const;
     template std::vector<definition_id<attachment_view>> issued_id_map::query_by_tag<attachment_view>(std::string_view) const;
     template std::vector<definition_id<history_summary_definition>> issued_id_map::query_by_tag<history_summary_definition>(std::string_view) const;
+    template std::vector<definition_id<reaction_view>> issued_id_map::query_by_tag<reaction_view>(std::string_view) const;
 }

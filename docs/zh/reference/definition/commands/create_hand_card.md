@@ -119,19 +119,13 @@ int main()
 {
     const card_source source{};
     const effect_source effect{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(source, effect)) return 1;
     auto library_result = compile(sources, basics, std::tuple{},
         std::tuple{
-            givm::start_round{},
-            givm::end_game{ .result = givm::game_result::both_loss }
+            givm::start_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss }
         }, givm::compile_mode::normal);
     if(not library_result)
     {

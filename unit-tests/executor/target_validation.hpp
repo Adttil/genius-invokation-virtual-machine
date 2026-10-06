@@ -99,7 +99,7 @@ TEST_CASE("action target queries can inspect target definition tags", "[action][
     const tagged_target_character_source tagged;
     const givm::test::initialized_character_source untagged;
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, std::tuple{
-        givm::draw_cards{ .positions = draw_positions_1 }, givm::begin_action{}
+        givm::draw_cards{ .position = 0, .count = 1 }, givm::begin_action{}
     }, std::tuple{}, card, skill, tagged, untagged);
     const auto tagged_id = ids.get_id<givm::character_view>(tagged.name());
     const auto untagged_id = ids.get_id<givm::character_view>(untagged.name());

@@ -3,6 +3,8 @@
 
 #include <cstddef>
 
+#include "../enums/elemental_reaction.hpp"
+
 namespace givm
 {
     struct player_id
@@ -16,6 +18,15 @@ namespace givm
     {
         return { player.index ^ 1uz };
     }
+
+    struct reaction_id
+    {
+        player_id player_id{};
+        elemental_reaction slot = elemental_reaction::none;
+
+        constexpr explicit operator bool() const noexcept { return slot != elemental_reaction::none; }
+        friend constexpr bool operator==(reaction_id, reaction_id) = default;
+    };
 
     struct hand_card_id
     {

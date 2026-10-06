@@ -18,8 +18,11 @@ struct hand_card_added
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `card` | `const hand_card_id` | 本次事件对应的牌标识；只读 |
+| `overflow` | `const bool` | 入手时超出手牌上限，加入后立即失效 |
 
 ## 注意
+
+入手时先取得手牌 ID，爆牌立即标记失效，`overflow` 保留该事实。段收尾时保留爆牌记录以及仍在接收方手牌中的记录，之后不因混合事件中的转移或移除再次筛选。事件中的牌 ID 因此可能已经失效；读取前不能假定它仍在手牌中。
 
 [`create_hand_card`](../commands/create_hand_card.md) 成功生成手牌后发出本通知。手牌已满而未生成新牌时，不发送通知。
 

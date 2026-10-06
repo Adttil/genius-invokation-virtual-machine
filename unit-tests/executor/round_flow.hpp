@@ -66,7 +66,7 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } } },
         std::tuple{ givm::start_dice_roll_phase{ .count = 2, .reroll_count = { 0, 0 } },
-            givm::start_round{}, givm::replace_cards{ givm::player_id{ 0 } } }, observer);
+            givm::start_round{}, givm::settle{}, givm::replace_cards{ givm::player_id{ 0 } } }, observer);
     givm::table table{ givm::table_state{ .max_rounds = 2 } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});
     givm_test::executor_driver executor;
@@ -145,7 +145,7 @@ TEST_CASE("start round commands only broadcast and never count rounds clear dice
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } },
-            givm::start_round{}, givm::start_round{}, givm::end_game{ givm::game_result::player_0_win } },
+            givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::player_0_win } },
         std::tuple{}, observer);
     givm::table table{ givm::table_state{ .max_rounds = 0 } };
     load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});

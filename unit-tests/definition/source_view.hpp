@@ -541,7 +541,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
 
     auto source_library = givm_test::make_source_library();
     REQUIRE(source_library.add(card, alpha, beta));
-    const auto program = std::tuple{ givm::draw_cards{ .positions = draw_positions_1 }, givm::start_round{}, givm::end_game{ givm::game_result::both_loss } };
+    const auto program = std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = givm_test::require_success(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal));
     const auto card_id = id_map.get_id<givm::card_definition>(card.name());
 

@@ -17,17 +17,6 @@
 
 namespace givm::detail
 {
-    template<std::size_t Next = response_instruction_count<dice_removed>>
-    inline execution_state broadcast_removed_dice(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<dice_removed>(library, table, context, random))
-            return continue_execution;
-        pop_broadcast<dice_removed>(context);
-        return context.advance(Next * sizeof(execute_fn));
-    }
-
     template<bool Fixed>
     inline execution_state remove_dice_execute(
         const definition_library& library, unrestricted_table& table,
@@ -64,15 +53,15 @@ namespace givm::detail
             context.stack().pop<remove_dice_input>();
             context.enter_next();
             if(dice.total() == 0)
-                return context.advance(response_extent<dice_removed>);
+                return continue_execution;
         }
 
         GIVM_ASSERT(player.index < 2);
         auto& available = table[player].state().dice;
         GIVM_ASSERT(available.contains(dice));
         available -= dice;
-        prepare_broadcast(library, dice_removed{ player, dice }, table, context.stack(), context.position());
-        return broadcast_removed_dice(library, table, context, random);
+        append_event_record(context, dice_removed{ player, dice });
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const remove_dice& command, compile_mode)
@@ -87,7 +76,6 @@ namespace givm::detail
             writer.write(execute_fn{ remove_dice_execute<true> });
             writer.write(command);
         }
-        compile_broadcast<dice_removed>(writer, broadcast_removed_dice<>);
     }
 }
 

@@ -97,7 +97,7 @@ namespace
         {
             return { log, element,
                 context.add_program(std::tuple{ givm::replace_cards{ .player = givm::player_id{ 0 } } }),
-                context.add_program(std::tuple{ givm::draw_cards{ .positions = draw_positions_1 } }) };
+                context.add_program(std::tuple{ givm::draw_cards{ .position = 0, .count = 1 } }) };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
         {
@@ -157,7 +157,7 @@ namespace
     auto setup()
     {
         return std::tuple{
-            givm::draw_cards{ .positions = draw_positions_2 },
+            givm::draw_cards{ .position = 0, .count = 2 },
             givm::start_dice_roll_phase{ .count = 3, .reroll_count = { 0, 0 } },
             givm::begin_action{}
         };

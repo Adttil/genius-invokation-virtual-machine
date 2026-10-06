@@ -395,7 +395,7 @@ namespace givm::genshin_impact
         definition_type compile(definition_compile_context& context) const
         {
             return {
-                context.add_program(std::tuple{ deal_damage{}, modify_summon_state{} }),
+                context.add_program(std::tuple{ deal_damage{}, settle{}, modify_summon_state{} }),
                 context.add_program(std::tuple{ modify_summon_state{} })
             };
         }
@@ -440,6 +440,205 @@ namespace givm::genshin_impact
     inline constexpr catalyzing_field_3_3_0_source catalyzing_field_3_3_0;
     inline constexpr catalyzing_field_3_4_0_source catalyzing_field_3_4_0;
     inline constexpr burning_flame_3_3_0_source burning_flame_3_3_0;
+
+    template<elemental_reaction Slot>
+    struct reaction_3_3_0_source
+    {
+        using definition_category = reaction_view;
+
+        struct definition_type
+        {
+            program_entry effect;
+            definition_id<attachment_view> frozen;
+        };
+
+        std::string_view source_name;
+        constexpr std::string_view name() const noexcept { return source_name; }
+
+        constexpr auto combat_status_dependencies() const noexcept
+        {
+            if constexpr(Slot == elemental_reaction::bloom) return std::array{ dendro_core_3_3_0.name() };
+            else if constexpr(Slot == elemental_reaction::quicken) return std::array{ catalyzing_field_3_4_0.name() };
+            else if constexpr(Slot >= elemental_reaction::crystallize_cryo) return std::array{ shield_3_3_0.name() };
+            else return std::array<std::string_view, 0>{};
+        }
+
+        constexpr auto summon_dependencies() const noexcept
+        {
+            if constexpr(Slot == elemental_reaction::burning) return std::array{ burning_flame_3_3_0.name() };
+            else return std::array<std::string_view, 0>{};
+        }
+
+        constexpr auto attachment_dependencies() const noexcept
+        {
+            if constexpr(Slot == elemental_reaction::frozen) return std::array{ frozen_3_3_0.name() };
+            else return std::array<std::string_view, 0>{};
+        }
+
+        definition_type compile(definition_compile_context& context) const
+        {
+            if constexpr(Slot == elemental_reaction::bloom || Slot == elemental_reaction::quicken)
+            {
+                const auto definition = context.resolve_id<combat_status_view>(combat_status_dependencies()[0]);
+                return { context.add_program(std::tuple{ generate_combat_status{ .definition = definition,
+                    .state = { Slot == elemental_reaction::bloom ? 1u : 2u, 0 } } }), {} };
+            }
+            else if constexpr(Slot == elemental_reaction::burning)
+            {
+                const auto definition = context.resolve_id<summon_view>(burning_flame_3_3_0.name());
+                return { context.add_program(std::tuple{ summon{ .definition = definition, .state = { 1, 1 } } }), {} };
+            }
+            else if constexpr(Slot >= elemental_reaction::crystallize_cryo)
+            {
+                const auto definition = context.resolve_id<combat_status_view>(shield_3_3_0.name());
+                return { context.add_program(std::tuple{ generate_combat_status{ .definition = definition, .state = { 1, 0 } } }), {} };
+            }
+            else if constexpr(Slot == elemental_reaction::frozen)
+                return { context.add_program(std::tuple{ attach{} }), context.resolve_id<attachment_view>(frozen_3_3_0.name()) };
+            else if constexpr(Slot == elemental_reaction::overloaded)
+                return { context.add_program(std::tuple{ set_active_character{} }), {} };
+            else if constexpr(Slot == elemental_reaction::superconduct || Slot == elemental_reaction::electro_charged
+                || (Slot >= elemental_reaction::swirl_cryo && Slot <= elemental_reaction::swirl_electro))
+                return { context.add_program(std::tuple{ deal_damage{} }), {} };
+            else return {};
+        }
+
+        static program_entry handle(const definition_type&, damage_calculation& event,
+            handle_context<reaction_view>&, std::uint32_t = 0)
+        {
+            constexpr std::uint32_t bonus = Slot == elemental_reaction::melt || Slot == elemental_reaction::vaporize
+                || Slot == elemental_reaction::overloaded ? 2
+                : Slot >= elemental_reaction::swirl_cryo && Slot <= elemental_reaction::swirl_electro ? 0 : 1;
+            constexpr auto maximum = std::numeric_limits<std::uint32_t>::max();
+            event.value = maximum - event.value < bonus ? maximum : event.value + bonus;
+            return {};
+        }
+
+        static program_entry handle(const definition_type& definition, elemental_reaction_will_occur& event,
+            handle_context<reaction_view>& context, std::uint32_t = 0)
+        {
+            if constexpr(Slot == elemental_reaction::superconduct || Slot == elemental_reaction::electro_charged
+                || (Slot >= elemental_reaction::swirl_cryo && Slot <= elemental_reaction::swirl_electro))
+            {
+                constexpr auto type = Slot >= elemental_reaction::swirl_cryo && Slot <= elemental_reaction::swirl_electro
+                    ? static_cast<damage_type>(static_cast<std::size_t>(Slot) - static_cast<std::size_t>(elemental_reaction::swirl_cryo))
+                    : damage_type::piercing;
+                return context.invoke(definition.effect, deal_damage_input{ std::array{ damage{ .source = event.source,
+                    .target = event.target, .selection = character_selection::others, .value = 1,
+                    .type = type, .flags = damage_flag_bits::reaction_damage } } });
+            }
+            else if constexpr(Slot == elemental_reaction::frozen)
+            {
+                if(context.table()[event.target].state().health == 0) return {};
+                return context.invoke(definition.effect, attach_input{ event.target, definition.frozen });
+            }
+            else if constexpr(Slot == elemental_reaction::overloaded)
+            {
+                const auto player = context.table()[event.target.player_id];
+                if(player.state().active_character != event.target) return {};
+                const auto all = player.characters<false>();
+                for(std::size_t offset = 1; offset < all.size(); ++offset)
+                {
+                    const auto target = all[(event.target.index + offset) % all.size()];
+                    if(target && target.state().alive && target.state().health != 0)
+                        return context.invoke(definition.effect, set_active_character_input{ target.id() });
+                }
+                return {};
+            }
+            else if constexpr(Slot == elemental_reaction::bloom || Slot == elemental_reaction::quicken
+                || Slot == elemental_reaction::burning || Slot >= elemental_reaction::crystallize_cryo)
+                return context.invoke(definition.effect);
+            else return {};
+        }
+    };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::melt> melt_reaction_3_3_0{ "melt-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::vaporize> vaporize_reaction_3_3_0{ "vaporize-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::overloaded> overloaded_reaction_3_3_0{ "overloaded-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::superconduct> superconduct_reaction_3_3_0{ "superconduct-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::electro_charged> electro_charged_reaction_3_3_0{ "electro_charged-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::frozen> frozen_reaction_3_3_0{ "frozen-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::burning> burning_reaction_3_3_0{ "burning-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::bloom> bloom_reaction_3_3_0{ "bloom-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::quicken> quicken_reaction_3_3_0{ "quicken-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::swirl_cryo> swirl_cryo_reaction_3_3_0{ "swirl_cryo-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::swirl_hydro> swirl_hydro_reaction_3_3_0{ "swirl_hydro-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::swirl_pyro> swirl_pyro_reaction_3_3_0{ "swirl_pyro-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::swirl_electro> swirl_electro_reaction_3_3_0{ "swirl_electro-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::crystallize_cryo> crystallize_cryo_reaction_3_3_0{ "crystallize_cryo-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::crystallize_hydro> crystallize_hydro_reaction_3_3_0{ "crystallize_hydro-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::crystallize_pyro> crystallize_pyro_reaction_3_3_0{ "crystallize_pyro-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_3_3_0_source<elemental_reaction::crystallize_electro> crystallize_electro_reaction_3_3_0{ "crystallize_electro-reaction-3.3.0-genshin_impact" };
+
+    inline constexpr reaction_definition_names reaction_names_3_3_0 = []
+    {
+        reaction_definition_names names;
+        names[elemental_reaction::melt] = melt_reaction_3_3_0.name();
+        names[elemental_reaction::vaporize] = vaporize_reaction_3_3_0.name();
+        names[elemental_reaction::overloaded] = overloaded_reaction_3_3_0.name();
+        names[elemental_reaction::superconduct] = superconduct_reaction_3_3_0.name();
+        names[elemental_reaction::electro_charged] = electro_charged_reaction_3_3_0.name();
+        names[elemental_reaction::frozen] = frozen_reaction_3_3_0.name();
+        names[elemental_reaction::burning] = burning_reaction_3_3_0.name();
+        names[elemental_reaction::bloom] = bloom_reaction_3_3_0.name();
+        names[elemental_reaction::quicken] = quicken_reaction_3_3_0.name();
+        names[elemental_reaction::swirl_cryo] = swirl_cryo_reaction_3_3_0.name();
+        names[elemental_reaction::swirl_hydro] = swirl_hydro_reaction_3_3_0.name();
+        names[elemental_reaction::swirl_pyro] = swirl_pyro_reaction_3_3_0.name();
+        names[elemental_reaction::swirl_electro] = swirl_electro_reaction_3_3_0.name();
+        names[elemental_reaction::crystallize_cryo] = crystallize_cryo_reaction_3_3_0.name();
+        names[elemental_reaction::crystallize_hydro] = crystallize_hydro_reaction_3_3_0.name();
+        names[elemental_reaction::crystallize_pyro] = crystallize_pyro_reaction_3_3_0.name();
+        names[elemental_reaction::crystallize_electro] = crystallize_electro_reaction_3_3_0.name();
+        return names;
+    }();
+
+    inline definition_source_library reaction_sources_3_3_0()
+    {
+        definition_source_library result;
+        (void)result.add(
+            dendro_core_3_3_0,
+            catalyzing_field_3_4_0,
+            burning_flame_3_3_0,
+            frozen_3_3_0,
+            shield_3_3_0,
+            melt_reaction_3_3_0,
+            vaporize_reaction_3_3_0,
+            overloaded_reaction_3_3_0,
+            superconduct_reaction_3_3_0,
+            electro_charged_reaction_3_3_0,
+            frozen_reaction_3_3_0,
+            burning_reaction_3_3_0,
+            bloom_reaction_3_3_0,
+            quicken_reaction_3_3_0,
+            swirl_cryo_reaction_3_3_0,
+            swirl_hydro_reaction_3_3_0,
+            swirl_pyro_reaction_3_3_0,
+            swirl_electro_reaction_3_3_0,
+            crystallize_cryo_reaction_3_3_0,
+            crystallize_hydro_reaction_3_3_0,
+            crystallize_pyro_reaction_3_3_0,
+            crystallize_electro_reaction_3_3_0
+        );
+        return result;
+    }
+
 }
 
 #endif

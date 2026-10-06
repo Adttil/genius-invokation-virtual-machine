@@ -64,9 +64,11 @@ namespace
         std::string_view name() const { return "DrawDriver"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto draw = log->dynamic
-                ? context.add_program(std::tuple{ givm::draw_cards{}, givm::draw_cards{} })
-                : context.add_program(std::tuple{ givm::draw_cards{ .player = log->player, .positions = log->positions } });
+            std::vector<givm::any_command> commands;
+            if(log->dynamic) commands = { givm::draw_cards{}, givm::draw_cards{} };
+            else for(const auto position : log->positions)
+                commands.emplace_back(givm::draw_cards{ .player = log->player, .position = position });
+            const auto draw = context.add_program(commands);
             return { log, draw,
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) };
         }
@@ -85,7 +87,7 @@ namespace
             givm::card_drawn& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto card = context.table()[event.card];
-            CHECK(card.is_valid());
+            CHECK(card.is_valid() == not event.overflow);
             CHECK(card.state().cost.speed == givm::action_speed::fast);
             CHECK_FALSE(card.state().elemental_tuning_allowed);
             data.log->drawn.push_back(card.state().cost.energy);
@@ -113,7 +115,7 @@ namespace
     {
         const auto driver = givm::test::with_passive_skill(draw_driver_source{ &log });
         const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-            std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+            std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
             driver, draw_card_source{ "A", 1 }, draw_card_source{ "B", 2 }, draw_card_source{ "C", 3 },
             draw_card_source{ "D", 4 }, draw_card_source{ "E", 5 });
         const auto a = ids.get_id<givm::card_definition>("A");
@@ -167,13 +169,13 @@ namespace
     }
 }
 
-TEST_CASE("fixed draw positions use the original deck order and preserve remaining cards", "[draw_cards]")
+TEST_CASE("fixed draw commands resolve positions in order and preserve remaining cards", "[draw_cards]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto player = GENERATE(givm::relative_player::self, givm::relative_player::opponent);
     const bool reverse = GENERATE(false, true);
     draw_log log{ .player = player, .positions = reverse ? std::vector<std::size_t>{ 3, 99, 1 }
-        : std::vector<std::size_t>{ 1, 99, 3 }, .pause = true };
+        : std::vector<std::size_t>{ 1, 99, 2 }, .pause = true };
     const auto table = run_draw(log, mode);
     const auto target = givm::player_id{ player == givm::relative_player::self ? 0u : 1u };
     const std::vector<std::uint32_t> expected = reverse ? std::vector<std::uint32_t>{ 2, 4 }
@@ -199,8 +201,8 @@ TEST_CASE("dynamic draw IDs keep input order across both players and finish the 
     draw_log log{ .dynamic = true, .selections = { { 1, 1 }, { 0, 3 }, { 1, 4 }, { 0, 0 } }, .pause = true };
     const auto table = run_draw(log, mode, full ? std::array<std::uint32_t, 2>{ 1, 1 }
         : std::array<std::uint32_t, 2>{ 10, 10 });
-    CHECK(log.drawn == (full ? std::vector<std::uint32_t>{ 2, 4 } : std::vector<std::uint32_t>{ 2, 4, 5, 1 }));
-    CHECK(log.owners == (full ? std::vector<std::size_t>{ 1, 0 } : std::vector<std::size_t>{ 1, 0, 1, 0 }));
+    CHECK(log.drawn == std::vector<std::uint32_t>{ 2, 4, 5, 1 });
+    CHECK(log.owners == std::vector<std::size_t>{ 1, 0, 1, 0 });
     CHECK(hand_values(table, givm::player_id{ 0 }) == (full ? std::vector<std::uint32_t>{ 4 }
         : std::vector<std::uint32_t>{ 4, 1 }));
     CHECK(hand_values(table, givm::player_id{ 1 }) == (full ? std::vector<std::uint32_t>{ 2 }
@@ -213,7 +215,7 @@ TEST_CASE("dynamic draw IDs keep input order across both players and finish the 
     CHECK(log.pauses == 1);
 }
 
-TEST_CASE("empty and entirely overflowing draw batches leave no notifications", "[draw_cards]")
+TEST_CASE("empty draw batches have no notifications while overflow records remain", "[draw_cards]")
 {
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto scenario = GENERATE(0, 1, 2, 3);
@@ -222,10 +224,10 @@ TEST_CASE("empty and entirely overflowing draw batches leave no notifications", 
     if(scenario == 3)
     {
         log.dynamic = false;
-        log.positions = { 0, 1, 2, 3, 4, 5 };
+        log.positions = { 0, 0, 0, 0, 0, 0 };
     }
     const auto table = run_draw(log, mode, { 0, 0 });
-    CHECK(log.drawn.empty());
+    CHECK(log.drawn.size() == (scenario == 3 ? 5 : scenario == 2 ? 2 : 0));
     CHECK(log.pauses == 0);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 0);
     CHECK(table[givm::player_id{ 1 }].hand_card_count() == 0);

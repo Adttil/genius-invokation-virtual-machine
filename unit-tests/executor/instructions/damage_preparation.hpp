@@ -25,7 +25,7 @@ namespace
         std::vector<givm::elemental_reaction> calculated;
         std::vector<givm::element_aura> reacted_auras;
         std::vector<givm::elemental_reaction> applied;
-        std::vector<givm::elemental_reaction> completed;
+        std::vector<givm::elemental_reaction_mask> completed;
         std::vector<givm::elemental_reaction> side_effects;
         std::vector<std::array<std::uint32_t, 2>> health_at_completion;
         std::size_t normal_bonuses = 0;
@@ -51,7 +51,7 @@ namespace
         static givm::program_entry handle(const definition_type& data,
             givm::damage_calculation& event, givm::handle_context<givm::combat_status_view>& context, std::uint32_t = 0)
         {
-            data.log->calculated.push_back(event.reaction);
+            data.log->calculated.push_back(event.reaction.slot);
             data.log->reacted_auras.push_back(event.reacted_aura);
             if(event.type == givm::damage_type::cryo) ++event.value;
             if(event.flags.contains(givm::damage_flag_bits::normal_attack))
@@ -64,9 +64,10 @@ namespace
                 event.value += 3;
                 ++data.log->burst_bonuses;
             }
-            if(event.replacement_reaction == data.replacement)
+            if(data.log->replace_reaction_bonus)
             {
                 event.value += 5;
+                event.cancel_reaction_bonus = true;
             }
             if(data.log->change_aura_in_calculation && event.target == front)
                 return context.invoke(data.change_aura);
@@ -75,15 +76,15 @@ namespace
         static givm::program_entry handle(const definition_type& data,
             givm::damage_effect& event, givm::handle_context<givm::combat_status_view>&, std::uint32_t = 0)
         {
-            data.log->applied.push_back(event.reaction);
+            data.log->applied.push_back(event.reaction.slot);
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
             givm::elemental_reaction_will_occur& event, givm::handle_context<givm::combat_status_view>&, std::uint32_t = 0)
         {
-            data.log->side_effects.push_back(event.reaction);
-            CHECK_FALSE(event.replacement_reaction.is_valid());
-            if(data.log->replace_reaction_bonus) event.replacement_reaction = data.replacement;
+            data.log->side_effects.push_back(event.reaction.slot);
+            CHECK_FALSE(event.cancel_default_effects);
+            if(data.log->replace_reaction_bonus) event.cancel_default_effects = true;
             return {};
         }
         static givm::program_entry handle(const definition_type& data,
@@ -125,7 +126,7 @@ namespace
     {
         using definition_category = givm::skill_view;
         struct definition_type { givm::program_entry entry; };
-        std::span<const givm::fixed_damage> damages;
+        std::span<const givm::deal_damage> damages;
         std::string_view name() const { return "PreparationDriver"; }
         auto combat_status_dependencies() const
         {
@@ -133,12 +134,13 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.add_program(std::tuple{
+            std::vector<givm::any_command> commands{
                 givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("DamageBonus") },
-                givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("Infusion") },
-                givm::deal_damage{ .damages = damages }
-            }) };
+                givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("Infusion") } };
+            for(const auto& item : damages) commands.emplace_back(item);
+            return { context.add_program(commands) };
         }
+
         static givm::program_entry handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
@@ -175,9 +177,9 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     const bool grouped = GENERATE(false, true);
     preparation_log log{ .change_aura_in_calculation = true };
     const std::array damages{
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1,
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 1,
             .multiplier_numerator = 3, .multiplier_denominator = 2, .type = givm::damage_type::physical },
-        givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 1,
+        givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 1 }, .value = 1,
             .multiplier_numerator = 2, .multiplier_denominator = 3, .type = givm::damage_type::physical }
     };
     const preparation_character character;
@@ -189,7 +191,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     const givm::test::initialized_character_source reserve{ "Reserve", { .max_health = 20, .health = 20 } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         character, driver, bonus, infusion, target, reserve);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -215,8 +217,8 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
             REQUIRE(observed);
             REQUIRE(state == givm::execution_state::health_reduced);
             const auto damage = executor.view_in<givm::execution_state::health_reduced>();
-            observed_reactions.push_back(damage.reaction());
-            CHECK(damage.value() == (damage.target() == front ? 12 : 4));
+            observed_reactions.push_back(damage.reaction().slot);
+            CHECK(damage.value() == (damage.target() == front ? 12 : 5));
             CHECK(damage.type() == givm::damage_type::cryo);
             CHECK(damage.flags().contains(givm::damage_flag_bits::normal_attack));
             CHECK(damage.flags().contains(givm::damage_flag_bits::elemental_burst));
@@ -226,25 +228,25 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
         : std::vector{ givm::elemental_reaction::frozen };
     CHECK(log.calculated == expected);
     CHECK(log.applied == expected);
-    CHECK(log.completed == expected);
+    CHECK(log.completed == std::vector<givm::elemental_reaction_mask>(expected.begin(), expected.end()));
     CHECK(log.reacted_auras.front() == givm::element_aura::hydro);
     CHECK(log.side_effects == std::vector{ givm::elemental_reaction::frozen });
     CHECK(log.normal_bonuses == (grouped ? 2 : 1));
     CHECK(log.burst_bonuses == (grouped ? 2 : 1));
     CHECK(table[front].state().health == 8);
-    CHECK(table[front].state().aura == givm::element_aura::pyro);
-    CHECK(table[back].state().health == (grouped ? 16 : 20));
+    CHECK(table[front].state().aura == givm::element_aura::none);
+    CHECK(table[back].state().health == (grouped ? 15 : 20));
     CHECK(table.state().round_number == 0);
     CHECK(pauses == (grouped ? 2 : 1));
     CHECK(observed_reactions == (observed ? expected : std::vector<givm::elemental_reaction>{}));
     for(const auto health : log.health_at_completion)
-        CHECK(health == std::array<std::uint32_t, 2>{ 8, grouped ? 16u : 20u });
+        CHECK(health == std::array<std::uint32_t, 2>{ 8, grouped ? 15u : 20u });
 }
 
 TEST_CASE("replacement reaction numbers are applied without default secondary damage", "[deal_damage][preparation][reaction]")
 {
     preparation_log log{ .replace_reaction_bonus = true };
-    const std::array damages{ givm::fixed_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 2,
+    const std::array damages{ givm::deal_damage{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .value = 2,
         .type = givm::damage_type::physical } };
     const preparation_character character;
     const preparation_driver driver{ damages };
@@ -253,7 +255,7 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     const givm::test::initialized_character_source target{ "Target", { .max_health = 20, .health = 20,
         .aura = givm::element_aura::cryo } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         character, driver, bonus, infusion, target);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -274,7 +276,7 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     const std::vector expected{ givm::elemental_reaction::superconduct };
     CHECK(log.calculated == expected);
     CHECK(log.applied == expected);
-    CHECK(log.completed == expected);
+    CHECK(log.completed == std::vector<givm::elemental_reaction_mask>(expected.begin(), expected.end()));
     for(const auto health : log.health_at_completion) CHECK(health == std::array<std::uint32_t, 2>{ 13, 20 });
 }
 }

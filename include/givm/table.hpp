@@ -39,6 +39,11 @@ namespace givm
             return static_cast<const detail::unrestricted_table&>(*this)[id];
         }
 
+        constexpr auto operator[](reaction_id id) const
+        {
+            return static_cast<const detail::unrestricted_table&>(*this)[id];
+        }
+
         constexpr auto operator[](support_id id) const
         {
             return static_cast<const detail::unrestricted_table&>(*this)[id];

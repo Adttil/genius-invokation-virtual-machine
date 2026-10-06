@@ -75,19 +75,13 @@ int main()
 {
     card_source first{ "first" };
     card_source second{ "second" };
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(first, second)) return 1;
-    constexpr std::array<std::size_t, 1> draw_positions{ 0 };
     auto library_result = compile(
         sources, basics,
-        std::tuple{ givm::draw_cards{ .positions = draw_positions }, givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions }, givm::replace_cards_both{} },
+        std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 }, givm::replace_cards_both{} },
         std::tuple{}, givm::compile_mode::normal);
     if(not library_result)
     {

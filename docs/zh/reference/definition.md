@@ -15,7 +15,7 @@
 |  |  |
 | --- | --- |
 | [`definition_source_library`](definition/definition_source_library.md) | 可供编译的定义源集合 |
-| [`basic_definition_sources`](definition/basic_definition_sources.md) | 默认元素反应的基础定义源配置 |
+| [`reaction_definition_names`](definition/reaction_definition_names.md) | 编译时按反应槽位指定默认反应定义名称 |
 | [`definition_name`](definition/definition_name.md) | 定义类别及名称 |
 | [`source_conflict`](definition/source_conflict.md) | 同类别同名源的冲突诊断 |
 | [`source_missing_dependency`](definition/source_missing_dependency.md) | 定义源的缺失依赖诊断 |

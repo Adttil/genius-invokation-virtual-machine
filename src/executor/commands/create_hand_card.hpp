@@ -14,16 +14,6 @@
 
 namespace givm::detail
 {
-    inline execution_state broadcast_hand_card_added(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<hand_card_added>(library, table, context, random))
-            return continue_execution;
-        pop_broadcast<hand_card_added>(context);
-        return context.advance(response_extent<hand_card_added>);
-    }
-
     template<bool Fixed>
     inline execution_state create_hand_card_execute(
         const definition_library& library, unrestricted_table& table,
@@ -55,13 +45,13 @@ namespace givm::detail
         }
 
         const auto player = table[input.player];
-        if(player.hand_card_count() >= player.state().hand_limit)
-            return context.advance(response_extent<hand_card_added>);
-
         const auto state = library[input.definition].query(card_initial_state{});
-        const auto card = player.add_hand_card(input.definition, state).id();
-        prepare_broadcast(library, hand_card_added{ card }, table, context.stack(), context.position());
-        return broadcast_hand_card_added(library, table, context, random);
+        const auto card = player.add_hand_card(input.definition, state);
+        const bool overflow = player.hand_card_count() > player.state().hand_limit;
+        const auto id = card.id();
+        if(overflow) card.erase();
+        record_hand_entry(context, id, hand_entry_kind::added, overflow);
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const create_hand_card& command, compile_mode)
@@ -73,7 +63,6 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ create_hand_card_execute<false> });
-        compile_broadcast<hand_card_added>(writer, broadcast_hand_card_added);
     }
 }
 

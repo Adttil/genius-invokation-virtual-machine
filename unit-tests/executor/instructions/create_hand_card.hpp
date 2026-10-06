@@ -65,7 +65,7 @@ namespace
                 : givm::create_hand_card{ .definition = card };
             return { log, card,
                 context.add_program(std::tuple{ create,
-                    givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 }, create }),
+                    givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 }, create }),
                 context.add_program(std::tuple{ givm::replace_cards{ givm::player_id{ 1 } }, nested }) };
         }
         static givm::program_entry handle(const definition_type& data,
@@ -83,7 +83,7 @@ namespace
             TEvent& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
             const auto card = context.table()[event.card];
-            CHECK(card.is_valid());
+            CHECK(card.is_valid() == not event.overflow);
             CHECK(card.definition_id() == data.card);
             CHECK(card.state().cost.energy == 3);
             CHECK(card.state().cost.speed == givm::action_speed::fast);
@@ -154,7 +154,7 @@ namespace
             return { context.add_program(std::tuple{
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = first },
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = second },
-                givm::draw_cards{ .player = givm::relative_player::opponent, .positions = draw_positions_1 },
+                givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 },
                 givm::create_hand_card{ .player = givm::relative_player::opponent,
                     .definition = context.resolve_id<givm::card_definition>("CreatedCard") } }) };
         }
@@ -172,7 +172,7 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
     const bool full = GENERATE(false, true);
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         created_card_source{}, creation_driver_source{ &log });
     const auto card = ids.get_id<givm::card_definition>("CreatedCard");
     givm::table table{ {}, { .hand_limit = full ? 1u : 10u }, {} };
@@ -189,7 +189,7 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
         if(state != givm::execution_state::card_selection) continue;
         ++pauses;
         CHECK(log.notifications == std::vector<char>{ 'A' });
-        CHECK(table[givm::player_id{ 0 }].hand_card_count() == 1);
+        CHECK(table[givm::player_id{ 0 }].hand_card_count() == (full ? 1 : 3));
         CHECK(table[givm::player_id{ 1 }].hand_card_count() == 0);
         auto copied_table = table;
         auto copied_executor = executor;
@@ -201,8 +201,8 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
     }
     CHECK(pauses == 1);
     CHECK(log.discards == 0);
-    CHECK(log.notifications == (full ? std::vector<char>{ 'A', 'A' } : std::vector<char>{ 'A', 'A', 'D', 'A' }));
-    REQUIRE(log.cards.size() == (full ? 2u : 4u));
+    CHECK(log.notifications == std::vector<char>{ 'A', 'A', 'D', 'A' });
+    REQUIRE(log.cards.size() == 4);
     for(std::size_t index = 0; index < log.cards.size(); ++index)
         CHECK(table[log.cards[index]].player().id() == givm::player_id{ index == 1 ? 1u : 0u });
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == (full ? 1u : 3u));
@@ -214,7 +214,7 @@ TEST_CASE("draw and general hand entry responders share attachment order", "[cre
 {
     entry_order_log log{ GENERATE(false, true) };
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
-        std::tuple{ givm::start_round{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         created_card_source{}, entry_order_driver_source{ &log }, entry_attachment_source<false>{ &log },
         entry_attachment_source<true>{ &log }, givm::test::initialized_character_source{});
     const givm::character_id active{ givm::player_id{ 0 }, 0 };

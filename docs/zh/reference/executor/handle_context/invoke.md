@@ -68,7 +68,7 @@ program_entry invoke(substack_t, program_entry entry, const program_inputs& inpu
 
 ## 示例
 
-下例由角色的被动技能响应事件，依次提交一组伤害和设置出战的目标。伤害数组在响应内准备，`invoke` 复制其内容；两个动态命令各对应一个输入对象。
+下例由角色的被动技能响应事件，依次提交一次伤害和设置出战的目标。`invoke` 复制输入；两个动态命令各对应一个输入对象。
 
 ```cpp
 #include <utility>
@@ -87,7 +87,7 @@ struct passive_skill_source
 
     givm::program_entry compile(givm::definition_compile_context& context) const
     {
-        return context.add_program(std::tuple{ givm::deal_damage{}, givm::set_active_character{} });
+        return context.add_program(std::tuple{ givm::deal_damage{}, givm::deal_damage{}, givm::set_active_character{} });
     }
 
     static givm::program_entry handle(
@@ -96,12 +96,12 @@ struct passive_skill_source
     {
         const auto self = context.entity();
         const std::array damages{
-            givm::damage{ .source = self.id(), .target = self.character().id(),
-                .value = 1, .type = givm::damage_type::physical },
-            givm::damage{ .source = self.id(), .target = self.character().id(),
-                .value = 2, .type = givm::damage_type::physical }
+            givm::deal_damage_input{ std::array{ givm::damage{ .source = self.id(), .target = self.character().id(),
+                .value = 1, .type = givm::damage_type::physical } } },
+            givm::deal_damage_input{ std::array{ givm::damage{ .source = self.id(), .target = self.character().id(),
+                .value = 2, .type = givm::damage_type::physical } } }
         };
-        return context.invoke(entry, givm::deal_damage_input{ damages },
+        return context.invoke(entry, damages[0], damages[1],
             givm::set_active_character_input{ .current = self.character().id() });
     }
 };
@@ -130,18 +130,13 @@ int main()
 {
     const passive_skill_source source{};
     const character_source character{};
-    const givm::basic_definition_sources basics{
-        givm::genshin_impact::dendro_core_3_3_0,
-        givm::genshin_impact::catalyzing_field_3_4_0,
-        givm::genshin_impact::burning_flame_3_3_0,
-        givm::genshin_impact::frozen_3_3_0,
-        givm::genshin_impact::shield_3_3_0
-    };
+    const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
+    sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     if(not sources.add(source)) return 1;
     if(not sources.add(character)) return 1;
     auto library_result = compile(sources, basics,
-        std::tuple{ givm::start_round{}, givm::end_game{ .result = givm::game_result::both_loss } },
+        std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal);
     if(not library_result)
     {

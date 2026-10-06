@@ -11,19 +11,6 @@
 
 namespace givm::detail
 {
-    inline execution_state broadcast_round_end(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random
-    )
-    {
-        if(not continue_broadcast<round_ended>(library, table, context, random))
-        {
-            return continue_execution;
-        }
-        pop_broadcast<round_ended>(context);
-        return context.advance(response_extent<round_ended>);
-    }
-
     inline execution_state prepare_round_end(
         const definition_library& library, unrestricted_table& table,
         execution_context& context, random_fn& random
@@ -32,9 +19,8 @@ namespace givm::detail
         auto& state = table.state();
         state.active_player = other_player(state.active_player);
         state.first_ended = false;
-        prepare_broadcast(library, round_ended{}, table, context.stack(), context.position() + sizeof(execute_fn));
-        context.enter_next();
-        return broadcast_round_end(library, table, context, random);
+        append_event_record(context, round_ended{});
+        return context.enter_next();
     }
 
     inline execution_state observe_round_end(
@@ -52,7 +38,6 @@ namespace givm::detail
             writer.write<execute_fn>(&observe_round_end);
         }
         writer.write<execute_fn>(&prepare_round_end);
-        compile_broadcast<round_ended>(writer, broadcast_round_end);
     }
 }
 

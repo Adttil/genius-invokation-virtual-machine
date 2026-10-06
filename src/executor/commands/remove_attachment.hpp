@@ -125,15 +125,7 @@ namespace givm::detail
         return require_attachment(table, equipment->character, equipment->type);
     }
 
-    inline execution_state broadcast_attachment_removal(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<attachment_removed>(library, table, context, random))
-            return continue_execution;
-        pop_broadcast<attachment_removed>(context);
-        return context.advance(response_extent<attachment_removed>);
-    }
+
 
     template<class Selector = void>
     execution_state execute_attachment_removal(
@@ -163,8 +155,8 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         table[attachment].erase();
-        prepare_broadcast(library, attachment_removed{ attachment }, table, context.stack(), context.position());
-        return broadcast_attachment_removal(library, table, context, random);
+        append_removal_record<attachment_removal_effect>(context, attachment, attachment_removed{ attachment });
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const givm::remove_attachment& command, compile_mode)
@@ -185,7 +177,6 @@ namespace givm::detail
             writer.write(execute_fn{ execute_attachment_removal<selector_type> });
             writer.write(fixed_attachment_target<selector_type>{ command.target.character, selector });
         }, command.target.selector);
-        compile_broadcast<attachment_removed>(writer, broadcast_attachment_removal);
     }
 }
 

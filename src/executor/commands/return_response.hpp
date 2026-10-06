@@ -22,7 +22,6 @@ namespace givm::detail
         }
         auto& record = get<0>(context.stack().top<response_return>());
         record.result = index;
-        table.state().self_player = record.previous_player;
         return context.jump(record.position);
     }
 

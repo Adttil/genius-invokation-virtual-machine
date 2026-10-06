@@ -17,8 +17,7 @@
 
 namespace givm::detail
 {
-    inline execution_state broadcast_combat_status_removal(
-        const definition_library&, unrestricted_table&, execution_context&, random_fn&);
+
 
     inline combat_status_id require_combat_status(
         const unrestricted_table& table, player_id player, definition_id<combat_status_view> definition)
@@ -62,19 +61,11 @@ namespace givm::detail
         GIVM_ASSERT(valid);
         [[assume(valid)]];
         table[status].erase();
-        prepare_broadcast(library, combat_status_removed{ status }, table, context.stack(), context.position());
-        return broadcast_combat_status_removal(library, table, context, random);
+        append_removal_record<combat_status_removal_effect>(context, status, combat_status_removed{ status });
+        return continue_execution;
     }
 
-    inline execution_state broadcast_combat_status_removal(
-        const definition_library& library, unrestricted_table& table,
-        execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<combat_status_removed>(library, table, context, random))
-            return continue_execution;
-        pop_broadcast<combat_status_removed>(context);
-        return context.advance(response_extent<combat_status_removed>);
-    }
+
 
     inline void compile(program_writer& writer, const givm::remove_combat_status& command, compile_mode)
     {
@@ -85,7 +76,6 @@ namespace givm::detail
         }
         else
             writer.write(execute_fn{ prepare_combat_status_removal<false> });
-        compile_broadcast<combat_status_removed>(writer, broadcast_combat_status_removal);
     }
 }
 

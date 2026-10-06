@@ -33,7 +33,8 @@ namespace givm
         character_view,
         skill_view,
         attachment_view,
-        history_summary_definition
+        history_summary_definition,
+        reaction_view
     >;
 }
 

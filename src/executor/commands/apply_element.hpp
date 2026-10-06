@@ -1,23 +1,8 @@
 #ifndef GIVM_EXECUTOR_COMMANDS_APPLY_ELEMENT_HPP
 #define GIVM_EXECUTOR_COMMANDS_APPLY_ELEMENT_HPP
 
-#include "../program_writer.hpp"
-
-#include <vector>
-
-#include <cstdint>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <utility>
-
 #include "../broadcast.hpp"
 #include "../character_target.hpp"
-#include "attach.hpp"
-#include "generate_combat_status.hpp"
-#include "summon.hpp"
-#include "set_active_character.hpp"
-#include <givm/definition.hpp>
 #ifndef NDEBUG
 #include "../debug_validation.hpp"
 #endif
@@ -26,229 +11,88 @@
 
 namespace givm::detail
 {
-    inline std::optional<execution_state> prepare_default_reaction_entities(
-        const definition_library& library, unrestricted_table& table, execution_context& context,
-        random_fn& random, elemental_reaction reaction, character_id target,
-        execution_position summon_resume, execution_position combat_status_resume,
-        execution_position reapplication_resume, execution_position attachment_resume)
-    {
-        if(reaction == elemental_reaction::quicken || reaction == elemental_reaction::burning
-            || reaction == elemental_reaction::bloom || reaction == elemental_reaction::crystallize)
-        {
-            const auto player = other_player(target.player_id);
-            std::optional<execution_state> state;
-            if(reaction == elemental_reaction::burning)
-                state = prepare_summoning(library, table, context, random,
-                    { .player = player, .definition = library.burning_flame_id(), .state = { 1, 1 } }, summon_resume);
-            else if(reaction == elemental_reaction::crystallize)
-                state = prepare_combat_status_generation(library, table, context, random,
-                    { .player = player, .definition = library.shield_id(), .state = { 1, 0 } }, combat_status_resume);
-            else
-            {
-                const auto definition = reaction == elemental_reaction::quicken
-                    ? library.catalyzing_field_id() : library.dendro_core_id();
-                state = prepare_combat_status_generation(library, table, context, random,
-                    { .player = player, .definition = definition }, combat_status_resume);
-            }
-            if(state) return state;
-        }
-        else if(reaction == elemental_reaction::frozen && table[target].state().health != 0)
-            return prepare_attachment_application(library, table, context, random,
-                { .target = target, .definition = library.frozen_id() }, reapplication_resume, attachment_resume);
-        return std::nullopt;
-    }
-
-    inline std::optional<execution_state> continue_reaction_overloaded_switch(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<active_character_changed>(library, table, context, random)) return continue_execution;
-        pop_broadcast<active_character_changed>(context);
-        return std::nullopt;
-    }
-
-    inline std::optional<execution_state> resume_reaction_overloaded_observation(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        const auto frame = context.stack().top<active_character_changed, response_return>();
-        const auto event = get<0>(frame);
-        const auto position = get<1>(frame).position;
-        context.stack().pop<active_character_changed, response_return>();
-        if(const auto state = prepare_active_character_switch(library, table, context, random,
-            event, position - response_extent<attachment_removed> - sizeof(execute_fn), position)) return *state;
-        return continue_reaction_overloaded_switch(library, table, context, random);
-    }
-
-    template<bool Observed>
-    inline std::optional<execution_state> prepare_reaction_overloaded_switch(
-        const definition_library& library, unrestricted_table& table, execution_context& context,
-        random_fn& random, player_id affected_player, execution_position removal_resume,
-        execution_position observation_resume, execution_position broadcast_resume)
-    {
-        const auto player = table[affected_player];
-        const auto characters = player.template characters<false>();
-        GIVM_ASSERT(player.state().active_character.has_value());
-        const auto current = *player.state().active_character;
-        if(library.is_control_immune(std::as_const(table)[current])) return std::nullopt;
-        auto index = current.index;
-        for(std::size_t remaining = characters.size(); remaining != 0; --remaining)
-        {
-            if(++index == characters.size()) index = 0;
-            const auto target = characters[index];
-            if(not target || target.state().health == 0) continue;
-            if(target.id() == current) break;
-
-            const active_character_changed event{ .current = target.id() };
-            if constexpr(Observed)
-            {
-                // Collect responders after applying the change, in both modes.
-                context.stack().push(event, response_return{ table.state().self_player, broadcast_resume });
-                context.jump(observation_resume);
-                return context.yield(execution_state::active_character_changed);
-            }
-            else
-            {
-                if(const auto state = prepare_active_character_switch(library, table, context, random,
-                    event, removal_resume, broadcast_resume)) return *state;
-                return continue_reaction_overloaded_switch(library, table, context, random);
-            }
-        }
-        return std::nullopt;
-    }
-
     struct element_application_frame
     {
         after_elemental_reaction event;
-        execution_position instructions;
+        execution_position resume;
     };
 
-    inline constexpr std::size_t element_reaction_offset = 0;
-    inline constexpr std::size_t element_summon_resume_offset = element_reaction_offset + response_instruction_count<elemental_reaction_will_occur>;
-    inline constexpr std::size_t element_combat_status_resume_offset = element_summon_resume_offset + response_instruction_count<resummoning>;
-    inline constexpr std::size_t element_reapplication_resume_offset = element_combat_status_resume_offset + response_instruction_count<combat_status_regeneration>;
-    inline constexpr std::size_t element_attachment_resume_offset = element_reapplication_resume_offset + response_instruction_count<attachment_reapplication>;
-    inline constexpr std::size_t element_overloaded_removal_offset = element_attachment_resume_offset + response_instruction_count<attachment_removed>;
-    inline constexpr std::size_t element_overloaded_observation_offset = element_overloaded_removal_offset + response_instruction_count<attachment_removed>;
-    template<bool Observed>
-    inline constexpr std::size_t element_overloaded_broadcast_offset = element_overloaded_observation_offset + Observed;
-    template<bool Observed>
-    inline constexpr std::size_t element_after_reaction_offset = element_overloaded_broadcast_offset<Observed> + response_instruction_count<active_character_changed>;
-    template<bool Observed>
-    inline constexpr std::size_t element_end_offset = element_after_reaction_offset<Observed> + response_instruction_count<after_elemental_reaction>;
+    inline constexpr std::size_t reaction_effect_extent = 2 * response_extent<elemental_reaction_will_occur>;
 
-    template<bool Observed>
-    inline execution_state continue_element_application_completion(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+    struct reaction_driver
     {
-        if(not continue_broadcast<after_elemental_reaction>(library, table, context, random)) return continue_execution;
-        pop_broadcast<after_elemental_reaction>(context);
-        const auto position = get<0>(context.stack().top<element_application_frame>()).instructions;
-        context.stack().pop<element_application_frame>();
-        return context.jump(position + element_end_offset<Observed> * sizeof(execute_fn));
-    }
-
-    template<bool Observed>
-    inline execution_state prepare_element_application_completion(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        const auto frame = get<0>(context.stack().top<element_application_frame>());
-        prepare_broadcast(library, frame.event, table, context.stack(),
-            frame.instructions + element_after_reaction_offset<Observed> * sizeof(execute_fn));
-        return continue_element_application_completion<Observed>(library, table, context, random);
-    }
-
-    template<bool Observed, class TEvent, class TId>
-    inline execution_state resume_element_entity_generation(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(not continue_single_response<TEvent, TId>(library, table, context, random)) return continue_execution;
-        pop_single_response<TEvent, TId>(context);
-        return prepare_element_application_completion<Observed>(library, table, context, random);
-    }
-
-    template<bool Observed>
-    inline execution_state resume_element_attachment_replacement(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(const auto state = continue_attachment_replacement(library, table, context, random)) return *state;
-        return prepare_element_application_completion<Observed>(library, table, context, random);
-    }
-
-    template<bool Observed>
-    inline execution_state continue_element_overloaded_switch(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(const auto state = continue_reaction_overloaded_switch(library, table, context, random)) return *state;
-        return prepare_element_application_completion<Observed>(library, table, context, random);
-    }
-
-    template<bool Observed>
-    inline execution_state resume_element_overloaded_removal(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(const auto state = continue_switch_prepared_removal(library, table, context, random)) return *state;
-        return continue_element_overloaded_switch<Observed>(library, table, context, random);
-    }
-
-    inline execution_state resume_element_overloaded_observation(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(const auto state = resume_reaction_overloaded_observation(library, table, context, random)) return *state;
-        return prepare_element_application_completion<true>(library, table, context, random);
-    }
-
-    template<bool Observed>
-    inline execution_state continue_element_application_reaction(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
-    {
-        if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random)) return continue_execution;
-        const auto event = get<0>(context.stack().top<elemental_reaction_will_occur, response_return>());
-#ifndef NDEBUG
-        if(event.replacement_reaction && event.replacement_reaction.value() >= library.tag_count())
-            throw command_input_error{ "apply_element", invalid_numeric_argument{ "replacement_reaction", event.replacement_reaction.value(), library.tag_count(), invalid_numeric_argument::constraint_kind::less_than } };
-#endif
-        pop_broadcast<elemental_reaction_will_occur>(context);
-        auto& frame = get<0>(context.stack().top<element_application_frame>());
-        std::construct_at(&frame.event, after_elemental_reaction{
-            .source = event.source, .target = event.target, .incoming_element = event.incoming_element,
-            .reacted_aura = event.reacted_aura, .reaction = event.reaction, .cause = event.cause,
-            .replacement_reaction = event.replacement_reaction
-        });
-        // Replacement changes effects, never the reaction's aura consumption.
-        table[event.target].state().aura = aura_after_reaction(event.reacted_aura, event.incoming_element, event.reaction);
-        if(not event.replacement_reaction)
+        static execution_state complete(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random)
         {
-            if(event.reaction == elemental_reaction::overloaded
-                && table[event.target.player_id].state().active_character == event.target)
-            {
-                if(const auto state = prepare_reaction_overloaded_switch<Observed>(library, table, context, random,
-                    event.target.player_id, frame.instructions + element_overloaded_removal_offset * sizeof(execute_fn),
-                    frame.instructions + element_overloaded_observation_offset * sizeof(execute_fn),
-                    frame.instructions + element_overloaded_broadcast_offset<Observed> * sizeof(execute_fn))) return *state;
-            }
-            else if(const auto state = prepare_default_reaction_entities(library, table, context, random,
-                event.reaction, event.target, frame.instructions + element_summon_resume_offset * sizeof(execute_fn),
-                frame.instructions + element_combat_status_resume_offset * sizeof(execute_fn),
-                frame.instructions + element_reapplication_resume_offset * sizeof(execute_fn),
-                frame.instructions + element_attachment_resume_offset * sizeof(execute_fn))) return *state;
+            if(not continue_single_response<elemental_reaction_will_occur, reaction_id>(library, table, context, random))
+                return continue_execution;
+            pop_single_response<elemental_reaction_will_occur, reaction_id>(context);
+            return finish(context);
         }
-        return prepare_element_application_completion<Observed>(library, table, context, random);
-    }
 
-    template<bool Fixed, bool Observed>
-    inline execution_state prepare_element_application(
-        const definition_library& library, unrestricted_table& table, execution_context& context, random_fn& random)
+        static execution_state finish(execution_context& context)
+        {
+            const auto frame = get<0>(context.stack().top<element_application_frame>());
+            append_event_record(context, frame.event);
+            context.stack().pop<element_application_frame>();
+            return context.jump(frame.resume);
+        }
+
+        static execution_state apply(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random)
+        {
+            if(not continue_broadcast<elemental_reaction_will_occur>(library, table, context, random))
+                return continue_execution;
+            const auto event = get<0>(context.stack().top<elemental_reaction_will_occur, response_return>());
+            pop_broadcast<elemental_reaction_will_occur>(context);
+            const auto target = table[event.target];
+            if(target && target.state().alive) target.state().aura = event.new_aura;
+            if(event.cancel_default_effects) return finish(context);
+            context.advance(response_extent<elemental_reaction_will_occur>);
+            prepare_single_response(event, event.reaction, table, context, context.position());
+            return complete(library, table, context, random);
+        }
+
+        static execution_state start(const definition_library& library, unrestricted_table& table,
+            execution_context& context, random_fn& random, const element_application_source_id& source,
+            character_id target, element incoming, element_aura aura, reaction_id reaction,
+            element_application_cause cause, execution_position position, execution_position resume)
+        {
+            const auto character = table[target];
+            if(not character || not character.state().alive) return context.jump(resume);
+            if(incoming == element::none)
+            {
+                if(cause == element_application_cause::effect) character.state().aura = element_aura::none;
+                return context.jump(resume);
+            }
+            if(not reaction)
+            {
+                character.state().aura = aura_without_reaction(aura, incoming);
+                return context.jump(resume);
+            }
+            const auto new_aura = library[table[reaction].definition_id()].query(reaction_aura{ reaction.slot, aura, incoming });
+            context.stack().push(element_application_frame{
+                { source, target, incoming, aura, reaction, cause }, resume });
+            prepare_broadcast(library, elemental_reaction_will_occur{
+                source, target, incoming, aura, reaction, cause, new_aura }, table, context.stack(), position);
+            context.jump(position);
+            return apply(library, table, context, random);
+        }
+    };
+
+    template<bool Fixed>
+    inline execution_state prepare_element_application(const definition_library& library, unrestricted_table& table,
+        execution_context& context, random_fn& random)
     {
         apply_element_input input;
-        execution_position position;
         if constexpr(Fixed)
         {
-            const auto& command = context.instruction_data<1, givm::apply_element>(library);
-            position = context.position() + instruction_extent<1, givm::apply_element>;
+            const auto command = context.instruction_data<1, apply_element>(library);
+            context.advance(instruction_extent<1, apply_element>);
             const auto source = resolve_character_target<false>(table, command.source);
             const auto target = resolve_character_target<false>(table, command.target);
-            if(not source || not target)
-                return context.jump(position + element_end_offset<Observed> * sizeof(execute_fn));
-            input = { .source = *source, .target = *target, .element = command.element, .cause = command.cause };
+            if(not source || not target) return context.advance(reaction_effect_extent);
+            input = { *source, *target, command.element, command.cause };
         }
         else
         {
@@ -262,56 +106,32 @@ namespace givm::detail
                 throw command_input_error{ "apply_element", invalid_enum_argument{ "cause", static_cast<std::size_t>(input.cause) } };
 #endif
             context.stack().pop<apply_element_input>();
-            position = context.position() + sizeof(execute_fn);
+            context.enter_next();
         }
         const auto target = table[input.target];
-        if(not target) return context.jump(position + element_end_offset<Observed> * sizeof(execute_fn));
+        if(not target || not target.state().alive) return context.advance(reaction_effect_extent);
         const auto aura = target.state().aura;
-        const auto reaction = reaction_from_aura(aura, input.element);
-        if(reaction == elemental_reaction::none)
-        {
-            target.state().aura = aura_without_reaction(aura, input.element);
-            return context.jump(position + element_end_offset<Observed> * sizeof(execute_fn));
-        }
-        context.stack().push(element_application_frame{ .event = {
-            .source = input.source, .target = input.target, .incoming_element = input.element,
-            .reacted_aura = aura, .reaction = reaction, .cause = input.cause
-        }, .instructions = position });
-        prepare_broadcast(library, elemental_reaction_will_occur{
-            .source = input.source, .target = input.target, .incoming_element = input.element,
-            .reacted_aura = aura, .reaction = reaction, .cause = input.cause
-        }, table, context.stack(), position + element_reaction_offset * sizeof(execute_fn));
-        return continue_element_application_reaction<Observed>(library, table, context, random);
+        const reaction_id reaction{ other_player(input.target.player_id), reaction_from_aura(aura, input.element) };
+        return reaction_driver::start(library, table, context, random, input.source, input.target,
+            input.element, aura, reaction, input.cause, context.position(), context.position() + reaction_effect_extent);
     }
 
-    template<bool Fixed, bool Observed>
-    inline void compile_element_application(program_writer& writer, const givm::apply_element& command)
+    inline void compile_reaction_effect(program_writer& writer)
     {
-        writer.write(execute_fn{ prepare_element_application<Fixed, Observed> });
-        if constexpr(Fixed) writer.write(command);
-        compile_broadcast<elemental_reaction_will_occur>(writer, continue_element_application_reaction<Observed>);
-        compile_single_response<resummoning, summon_id>(writer, resume_element_entity_generation<Observed, resummoning, summon_id>);
-        compile_single_response<combat_status_regeneration, combat_status_id>(writer, resume_element_entity_generation<Observed, combat_status_regeneration, combat_status_id>);
-        compile_single_response<attachment_reapplication, attachment_id>(writer, resume_element_entity_generation<Observed, attachment_reapplication, attachment_id>);
-        compile_broadcast<attachment_removed>(writer, resume_element_attachment_replacement<Observed>);
-        compile_broadcast<attachment_removed>(writer, resume_element_overloaded_removal<Observed>);
-        if constexpr(Observed) writer.write(execute_fn{ resume_element_overloaded_observation });
-        compile_broadcast<active_character_changed>(writer, continue_element_overloaded_switch<Observed>);
-        compile_broadcast<after_elemental_reaction>(writer, continue_element_application_completion<Observed>);
+        compile_broadcast<elemental_reaction_will_occur>(writer, reaction_driver::apply);
+        compile_single_response<elemental_reaction_will_occur, reaction_id>(writer, reaction_driver::complete);
     }
 
-    inline void compile(program_writer& writer, const givm::apply_element& command, compile_mode mode)
+    inline void compile(program_writer& writer, const givm::apply_element& command, compile_mode)
     {
         if(command.target.offset == std::numeric_limits<std::int32_t>::max())
-        {
-            if(mode == compile_mode::observed) compile_element_application<false, true>(writer, command);
-            else compile_element_application<false, false>(writer, command);
-        }
+            writer.write(execute_fn{ prepare_element_application<false> });
         else
         {
-            if(mode == compile_mode::observed) compile_element_application<true, true>(writer, command);
-            else compile_element_application<true, false>(writer, command);
+            writer.write(execute_fn{ prepare_element_application<true> });
+            writer.write(command);
         }
+        compile_reaction_effect(writer);
     }
 }
 

@@ -81,7 +81,7 @@ namespace givm::detail
         const auto target = table[target_id];
         const auto definition = attachment.definition_id();
         if(library.is_control(definition) && library.is_control_immune(std::as_const(table)[target_id]))
-            return context.advance(response_extent<attachment_removed>);
+            return continue_execution;
 
         auto state = attachment.state();
         if(reset_round_usages)
@@ -100,13 +100,9 @@ namespace givm::detail
         else
             target.add(definition, state, type);
 
-        // Removal responses observe the completed transfer and cannot be overwritten by it.
         if(removed)
-        {
-            prepare_broadcast(library, attachment_removed{ *removed }, table, context.stack(), context.position());
-            return broadcast_attachment_removal(library, table, context, random);
-        }
-        return context.advance(response_extent<attachment_removed>);
+            append_removal_record<attachment_removal_effect>(context, *removed, attachment_removed{ *removed });
+        return continue_execution;
     }
 
     inline void compile(program_writer& writer, const transfer_attachment& command, compile_mode)
@@ -131,7 +127,6 @@ namespace givm::detail
             writer.write(attachment_transfer_data<selector_type>{
                 { command.source.character, selector }, command.target });
         }, command.source.selector);
-        compile_broadcast<attachment_removed>(writer, broadcast_attachment_removal);
     }
 }
 

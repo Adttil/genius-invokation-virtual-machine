@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <span>
 #include <string>
 
 #include "../events.hpp"
@@ -46,9 +47,15 @@ namespace givm
 
     struct heal_input
     {
-        effect_source_id source;
-        healing_target target;
-        std::uint32_t value;
+        struct item
+        {
+            effect_source_id source;
+            healing_target target;
+            std::uint32_t value;
+            healing_kind kind = healing_kind::normal;
+        };
+
+        std::span<const item> healings;
     };
 
     struct heal
@@ -60,6 +67,7 @@ namespace givm
         relative_character_target source{};
         relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
         std::uint32_t value{};
+        healing_kind kind = healing_kind::normal;
     };
 }
 
