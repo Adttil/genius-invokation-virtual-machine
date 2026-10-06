@@ -5,9 +5,11 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <tuple>
 
 #include "../../table.hpp"
 #include "../../enums/relative_player.hpp"
+#include "../../utils/stack.hpp"
 
 namespace givm
 {
@@ -51,6 +53,14 @@ namespace givm
         std::size_t position = std::numeric_limits<std::size_t>::max();
         std::size_t count = 1;
     };
+}
+
+namespace givm::detail
+{
+    inline auto command_input_members(const draw_cards_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<deck_card_id>(input.cards) };
+    }
 }
 
 #endif

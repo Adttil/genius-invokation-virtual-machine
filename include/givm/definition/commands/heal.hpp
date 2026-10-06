@@ -6,8 +6,10 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <tuple>
 
 #include "../events.hpp"
+#include "../../utils/stack.hpp"
 
 namespace givm
 {
@@ -69,6 +71,14 @@ namespace givm
         std::uint32_t value{};
         healing_kind kind = healing_kind::normal;
     };
+}
+
+namespace givm::detail
+{
+    inline auto command_input_members(const heal_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<heal_input::item>(input.healings) };
+    }
 }
 
 #endif

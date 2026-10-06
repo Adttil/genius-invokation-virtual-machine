@@ -6,9 +6,11 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <tuple>
 
 #include "../../table.hpp"
 #include "../events.hpp"
+#include "../../utils/stack.hpp"
 
 namespace givm
 {
@@ -55,6 +57,14 @@ namespace givm
         relative_character_target target{ {}, std::numeric_limits<std::int32_t>::max() };
         std::int64_t delta{};
     };
+}
+
+namespace givm::detail
+{
+    inline auto command_input_members(const modify_energy_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<character_id>(input.targets), input.delta };
+    }
 }
 
 #endif

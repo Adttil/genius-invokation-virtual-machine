@@ -5,9 +5,11 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <tuple>
 
 #include "../../table.hpp"
 #include "../../enums/relative_player.hpp"
+#include "../../utils/stack.hpp"
 
 namespace givm
 {
@@ -59,6 +61,14 @@ namespace givm
         std::int64_t usages{};
         bool ignore_limit = false;
     };
+}
+
+namespace givm::detail
+{
+    inline auto command_input_members(const modify_summon_state_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<summon_id>(input.summons), input.value, input.usages };
+    }
 }
 
 #endif

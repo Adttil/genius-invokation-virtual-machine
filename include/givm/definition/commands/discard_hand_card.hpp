@@ -5,9 +5,11 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <tuple>
 
 #include "../../table.hpp"
 #include "../../enums/relative_player.hpp"
+#include "../../utils/stack.hpp"
 
 namespace givm
 {
@@ -55,6 +57,14 @@ namespace givm
         definition_id<card_definition> definition{};
         std::uint32_t count = 1;
     };
+}
+
+namespace givm::detail
+{
+    inline auto command_input_members(const discard_hand_card_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<hand_card_id>(input.cards) };
+    }
 }
 
 #endif

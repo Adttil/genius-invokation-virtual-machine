@@ -6,11 +6,13 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <tuple>
 
 #include "../../enums/relative_player.hpp"
 #include "../../enums/damage_flags.hpp"
 #include "../../enums/damage_type.hpp"
 #include "../events.hpp"
+#include "../../utils/stack.hpp"
 
 namespace givm
 {
@@ -85,6 +87,14 @@ namespace givm
         damage_flags flags;
     };
 
+}
+
+namespace givm::detail
+{
+    inline auto command_input_members(const deal_damage_input& input) noexcept
+    {
+        return std::tuple{ dynamic_array<damage>(input.damages) };
+    }
 }
 
 #endif
