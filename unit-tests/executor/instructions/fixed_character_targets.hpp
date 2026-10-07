@@ -17,7 +17,7 @@ namespace
 {
     struct positioned_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { std::uint32_t health; };
         std::string_view source_name;
         std::uint32_t health = 10;
@@ -50,8 +50,8 @@ TEST_CASE("fixed character positions use signed offsets and circular living targ
         }, std::tuple{},
         positioned_character_source{ "Alive", 10 }, positioned_character_source{ "Defeated", 0 });
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
-    const auto alive = ids.get_id<givm::character_view>("Alive");
-    const auto defeated = ids.get_id<givm::character_view>("Defeated");
+    const auto alive = ids.get_id<givm::definition_category::character>("Alive");
+    const auto defeated = ids.get_id<givm::definition_category::character>("Defeated");
     load_deck(table, library, { .characters = { alive, defeated, alive } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -62,7 +62,7 @@ TEST_CASE("fixed character positions use signed offsets and circular living targ
         {
             REQUIRE(executor.advance(library, table, random) == givm::execution_state::active_character_changed);
             CHECK(executor.view_in<givm::execution_state::active_character_changed>().character()
-                == givm::character_id{ player, index });
+                == givm::character_id{ player, static_cast<std::uint32_t>(index) });
         }
     }
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
@@ -81,8 +81,8 @@ TEST_CASE("fixed healing and maximum health increases can locate a defeated char
         }, std::tuple{},
         positioned_character_source{ "Alive", 10 }, positioned_character_source{ "Defeated", 0 });
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("Alive"),
-        ids.get_id<givm::character_view>("Defeated") } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>("Alive"),
+        ids.get_id<givm::definition_category::character>("Defeated") } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
@@ -106,7 +106,7 @@ TEST_CASE("fixed character commands skip effects without an active character", "
             givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, positioned_character_source{ "Alive", 7 });
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("Alive") } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>("Alive") } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
@@ -122,7 +122,7 @@ namespace
 {
     struct switch_order_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             std::vector<givm::character_id>* responses;
@@ -149,7 +149,7 @@ namespace
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
-            if(self.id().index != 0) return {};
+            if(self.id().index() != 0) return {};
             if(data.dynamic)
                 return context.invoke(data.entry, givm::set_active_character_input{ { player, 0 } },
                     givm::set_active_character_input{ { player, 1 } }, givm::set_active_character_input{ { player, 1 } });
@@ -159,7 +159,7 @@ namespace
             givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
-            CHECK(event.current.index == 1);
+            CHECK(event.current.index() == 1);
             CHECK(context.table()[player].state().active_character == event.current);
             data.responses->push_back(self.id());
             return {};
@@ -175,7 +175,7 @@ TEST_CASE("switch notifications prioritize the new active character in both comp
     const auto source = givm::test::with_passive_skill(switch_order_source{ &responses, dynamic });
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::set_active_character{ relative(0) }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source);
-    const auto character = ids.get_id<givm::character_view>(source.name());
+    const auto character = ids.get_id<givm::definition_category::character>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ player, 0 } } };
     load_deck(table, library, { .characters = { character, character } }, {});
     givm_test::executor_driver executor;

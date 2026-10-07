@@ -40,9 +40,9 @@ namespace givm::detail
     {
         const auto input = context.stack().top<std::size_t, character_id>();
         const auto first = get<1>(input);
-        const character_id second{ other_player(first.player_id), get<0>(input) };
-        const auto player0 = first.player_id == player_id{ 0 } ? first : second;
-        const auto player1 = first.player_id == player_id{ 0 } ? second : first;
+        const character_id second{ other_player(first.player_id()), static_cast<std::uint32_t>(get<0>(input)) };
+        const auto player0 = first.player_id() == player_id{ 0 } ? first : second;
+        const auto player1 = first.player_id() == player_id{ 0 } ? second : first;
         context.stack().pop<std::size_t, character_id>();
 
         append_event_record(context, active_character_changed{ player0 });
@@ -58,9 +58,9 @@ namespace givm::detail
     {
         const auto input = context.stack().top<std::size_t, character_id>();
         const auto first = get<1>(input);
-        const character_id second{ other_player(first.player_id), get<0>(input) };
-        const auto player0 = first.player_id == player_id{ 0 } ? first : second;
-        const auto player1 = first.player_id == player_id{ 0 } ? second : first;
+        const character_id second{ other_player(first.player_id()), static_cast<std::uint32_t>(get<0>(input)) };
+        const auto player0 = first.player_id() == player_id{ 0 } ? first : second;
+        const auto player1 = first.player_id() == player_id{ 0 } ? second : first;
         GIVM_ASSERT(static_cast<bool>(table[player0]));
         GIVM_ASSERT(static_cast<bool>(table[player1]));
         table[player_id{ 0 }].state().active_character = player0;

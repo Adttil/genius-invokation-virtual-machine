@@ -66,7 +66,7 @@ effect<Category> add_effect(TCommands&&... commands); // (3)
 
 struct support_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
 
     std::string_view name() const { return "洗牌助手"; }
 

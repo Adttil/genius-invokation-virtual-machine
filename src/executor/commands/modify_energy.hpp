@@ -49,12 +49,13 @@ namespace givm::detail
             }
             else
             {
-                const auto self = table.state().self_player;
+                const auto self = table.state().self_player.get();
 #ifndef NDEBUG
                 debug_validate_entity(table, self, "modify_energy", "self_player");
 #endif
-                GIVM_ASSERT(self.index < 2);
-                [[assume(self.index < 2)]];
+                GIVM_ASSERT(self.index() < 2);
+                const auto self_index = self.index();
+                [[assume(self_index < 2)]];
                 const auto player = table[command.target.player == relative_player::self ? self : other_player(self)];
                 const auto characters = player.template characters<false>();
                 const auto count = characters.size();
@@ -69,7 +70,7 @@ namespace givm::detail
                     const auto shift = static_cast<std::int64_t>(command.target.offset) % static_cast<std::int64_t>(count);
                     const auto normalized = shift < 0 ? count - static_cast<std::size_t>(-shift)
                                                      : static_cast<std::size_t>(shift);
-                    anchor = player.state().active_character->index + normalized;
+                    anchor = player.state().active_character.get().index() + normalized;
                     if(anchor >= count) anchor -= count;
                 }
                 for(std::size_t index = 0; index != count; ++index)

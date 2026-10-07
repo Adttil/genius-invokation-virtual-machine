@@ -31,7 +31,7 @@ namespace
 
     struct initializing_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
 
         struct definition_type
         {
@@ -84,10 +84,10 @@ namespace
 
 TEST_CASE("deck linking resolves names and table loading preserves input order", "[deck]")
 {
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
-    const givm::test::named_definition_source<givm::character_view> first{ "First" };
-    const givm::test::named_definition_source<givm::character_view> second{ "Second" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::character> first{ "First" };
+    const givm::test::named_definition_source<givm::definition_category::character> second{ "Second" };
 
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(alpha, beta, first, second));
@@ -104,9 +104,9 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
     const auto player = table[givm::player_id{ 0 }];
 
     CHECK(deck_definition_values(player) == std::vector<std::size_t>{
-        id_map.get_id<givm::card_definition>("Beta").value(),
-        id_map.get_id<givm::card_definition>("Alpha").value(),
-        id_map.get_id<givm::card_definition>("Beta").value()
+        id_map.get_id<givm::definition_category::card>("Beta").value(),
+        id_map.get_id<givm::definition_category::card>("Alpha").value(),
+        id_map.get_id<givm::definition_category::card>("Beta").value()
     });
 
     std::vector<std::size_t> character_definitions;
@@ -116,8 +116,8 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
         CHECK(character.state().max_health == 0);
     }
     CHECK(character_definitions == std::vector<std::size_t>{
-        id_map.get_id<givm::character_view>("Second").value(),
-        id_map.get_id<givm::character_view>("First").value()
+        id_map.get_id<givm::definition_category::character>("Second").value(),
+        id_map.get_id<givm::definition_category::character>("First").value()
     });
 
     const auto invalid_deck = link_deck(id_map,
@@ -143,10 +143,10 @@ TEST_CASE("deck linking resolves names and table loading preserves input order",
 
 TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
 {
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
-    const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
-    const givm::test::named_definition_source<givm::card_definition> delta{ "Delta" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::card> gamma{ "Gamma" };
+    const givm::test::named_definition_source<givm::definition_category::card> delta{ "Delta" };
 
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(alpha, beta, gamma, delta));
@@ -156,10 +156,10 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     ));
     const givm::linked_deck deck{
         .cards = {
-            id_map.get_id<givm::card_definition>("Alpha"),
-            id_map.get_id<givm::card_definition>("Beta"),
-            id_map.get_id<givm::card_definition>("Gamma"),
-            id_map.get_id<givm::card_definition>("Delta")
+            id_map.get_id<givm::definition_category::card>("Alpha"),
+            id_map.get_id<givm::definition_category::card>("Beta"),
+            id_map.get_id<givm::definition_category::card>("Gamma"),
+            id_map.get_id<givm::definition_category::card>("Delta")
         }
     };
 
@@ -181,26 +181,26 @@ TEST_CASE("shuffle_deck changes only logical order", "[deck][instruction]")
     CHECK(random.position == 3);
 
     CHECK(deck_definition_values(table[givm::player_id{ 0 }]) == std::vector<std::size_t>{
-        id_map.get_id<givm::card_definition>("Gamma").value(),
-        id_map.get_id<givm::card_definition>("Beta").value(),
-        id_map.get_id<givm::card_definition>("Alpha").value(),
-        id_map.get_id<givm::card_definition>("Delta").value()
+        id_map.get_id<givm::definition_category::card>("Gamma").value(),
+        id_map.get_id<givm::definition_category::card>("Beta").value(),
+        id_map.get_id<givm::definition_category::card>("Alpha").value(),
+        id_map.get_id<givm::definition_category::card>("Delta").value()
     });
     CHECK(
         table[original_ids[0]].definition_id().value()
-        == id_map.get_id<givm::card_definition>("Alpha").value()
+        == id_map.get_id<givm::definition_category::card>("Alpha").value()
     );
     CHECK(
         table[original_ids[1]].definition_id().value()
-        == id_map.get_id<givm::card_definition>("Beta").value()
+        == id_map.get_id<givm::definition_category::card>("Beta").value()
     );
     CHECK(
         table[original_ids[2]].definition_id().value()
-        == id_map.get_id<givm::card_definition>("Gamma").value()
+        == id_map.get_id<givm::definition_category::card>("Gamma").value()
     );
     CHECK(
         table[original_ids[3]].definition_id().value()
-        == id_map.get_id<givm::card_definition>("Delta").value()
+        == id_map.get_id<givm::definition_category::card>("Delta").value()
     );
 }
 
@@ -219,14 +219,14 @@ TEST_CASE("loading decks immediately initializes characters from cached states i
     CHECK(initial_state_queries == 2);
     const givm::linked_deck deck{
         .characters = {
-            id_map.get_id<givm::character_view>("Beta"),
-            id_map.get_id<givm::character_view>("Alpha")
+            id_map.get_id<givm::definition_category::character>("Beta"),
+            id_map.get_id<givm::definition_category::character>("Alpha")
         }
     };
 
     givm::table table{};
     load_deck(table, library, deck, {
-        .characters = { id_map.get_id<givm::character_view>("Alpha") }
+        .characters = { id_map.get_id<givm::definition_category::character>("Alpha") }
     });
     CHECK(initial_state_queries == 2);
 

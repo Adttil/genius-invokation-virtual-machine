@@ -10,6 +10,12 @@ class character_view;
 
 对局中一名角色的只读视图。它承载角色的生命、充能、元素附着，以及角色拥有的技能和附属实体。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](character_view/category.md) | 此视图的实体类别 |
+
 ## 成员函数
 
 |  |  |
@@ -47,7 +53,7 @@ class character_view;
 
 struct example_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     struct definition_type {};
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -74,7 +80,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto definition = ids.get_id<givm::character_view>("示例");
+    const auto definition = ids.get_id<givm::definition_category::character>("示例");
     givm::table table{};
     load_deck(table, library, givm::linked_deck{ .characters = { definition } }, {});
 

@@ -23,7 +23,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -56,7 +56,7 @@ namespace givm
         using input_type = modify_summon_state_input;
 
         relative_player player = relative_player::self;
-        definition_id<summon_view> definition{};
+        optional_definition_id<definition_category::summon> definition{};
         std::int64_t value{};
         std::int64_t usages{};
         bool ignore_limit = false;

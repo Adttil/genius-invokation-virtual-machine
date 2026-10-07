@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_SET_SUPPORT_STATE_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "../../table.hpp"
@@ -19,7 +20,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -51,7 +52,7 @@ namespace givm
         using input_type = set_support_state_input;
 
         relative_player player = relative_player::self;
-        definition_id<support_view> definition{};
+        optional_definition_id<definition_category::support> definition{};
         support_state state{};
     };
 }

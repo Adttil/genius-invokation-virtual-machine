@@ -73,7 +73,7 @@ enum class begin_action_error {};
 
 struct character_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     struct definition_type {};
     std::string_view name() const { return "character"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -86,7 +86,7 @@ struct character_source
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     struct definition_type {};
     std::string_view name() const { return "card"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -112,8 +112,8 @@ int main()
     }
     const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
-    const auto definition = ids.get_id<givm::character_view>("character");
-    const auto card_definition = ids.get_id<givm::card_definition>("card");
+    const auto definition = ids.get_id<givm::definition_category::character>("character");
+    const auto card_definition = ids.get_id<givm::definition_category::card>("card");
     load_deck(table, library,
         givm::linked_deck{
             .cards = { card_definition }, .characters = { definition, definition }

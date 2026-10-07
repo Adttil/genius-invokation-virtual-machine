@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_CREATE_HAND_CARD_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "../../table.hpp"
@@ -19,7 +20,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -41,7 +42,7 @@ namespace givm
     struct create_hand_card_input
     {
         player_id player;
-        definition_id<card_definition> definition;
+        definition_id<definition_category::card> definition;
     };
 
     struct create_hand_card
@@ -51,7 +52,7 @@ namespace givm
         using input_type = create_hand_card_input;
 
         relative_player player = relative_player::self;
-        definition_id<card_definition> definition{};
+        optional_definition_id<definition_category::card> definition{};
     };
 }
 

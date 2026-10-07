@@ -55,7 +55,7 @@ namespace givm::detail
 
         static execution_state start(const definition_library& library, unrestricted_table& table,
             execution_context& context, random_fn& random, const element_application_source_id& source,
-            character_id target, element incoming, element_aura aura, reaction_id reaction,
+            character_id target, element incoming, element_aura aura, optional_reaction_id reaction,
             element_application_cause cause, execution_position position, execution_position resume)
         {
             const auto character = table[target];
@@ -70,11 +70,12 @@ namespace givm::detail
                 character.state().aura = aura_without_reaction(aura, incoming);
                 return context.jump(resume);
             }
-            const auto new_aura = library[table[reaction].definition_id()].query(reaction_aura{ reaction.slot, aura, incoming });
+            const auto reaction_entity = reaction.get<entity_category::reaction>();
+            const auto new_aura = library[table[reaction_entity].definition_id()].query(reaction_aura{ reaction_entity.slot(), aura, incoming });
             context.stack().push(element_application_frame{
-                { source, target, incoming, aura, reaction, cause }, resume });
+                { source, target, incoming, aura, reaction_entity, cause }, resume });
             prepare_broadcast(library, elemental_reaction_will_occur{
-                source, target, incoming, aura, reaction, cause, new_aura }, table, context.stack(), position);
+                source, target, incoming, aura, reaction_entity, cause, new_aura }, table, context.stack(), position);
             context.jump(position);
             return apply(library, table, context, random);
         }
@@ -111,7 +112,10 @@ namespace givm::detail
         const auto target = table[input.target];
         if(not target || not target.state().alive) return context.advance(reaction_effect_extent);
         const auto aura = target.state().aura;
-        const reaction_id reaction{ other_player(input.target.player_id), reaction_from_aura(aura, input.element) };
+        optional_reaction_id reaction;
+        const auto reaction_slot = reaction_from_aura(aura, input.element);
+        if(reaction_slot != elemental_reaction::none)
+            reaction = reaction_id{ other_player(input.target.player_id()), reaction_slot };
         return reaction_driver::start(library, table, context, random, input.source, input.target,
             input.element, aura, reaction, input.cause, context.position(), context.position() + reaction_effect_extent);
     }

@@ -27,7 +27,7 @@ std::string_view name() const;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "恢复药剂"; }
     auto tags() const { return std::array<std::string_view, 1>{ "治疗" }; }
@@ -51,7 +51,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto card = ids.get_id<givm::card_definition>("恢复药剂");
+    const auto card = ids.get_id<givm::definition_category::card>("恢复药剂");
     std::println("定义名称: {}", library[card].name());
 }
 ```

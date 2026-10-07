@@ -67,7 +67,7 @@ std::expected<void, std::vector<source_add_error>> add(
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view source_name;
 
@@ -77,7 +77,7 @@ struct card_source
 
 struct dependent_card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "求助牌"; }
     auto support_dependencies() const
@@ -98,7 +98,7 @@ int main()
     const auto result = sources.add(another_potion, dependent);
     if(not result)
         std::println("{}", error_string(result.error()));
-    std::println("失败后登记求助牌: {}", sources.has<givm::card_definition>("求助牌"));
+    std::println("失败后登记求助牌: {}", sources.has<givm::definition_category::card>("求助牌"));
 }
 ```
 
@@ -107,7 +107,7 @@ int main()
 ```text
 批量登记成功: true
 重复登记成功: true
-source conflict (different_object): card_definition "恢复药剂"; first: receiver library; second: input[0]
-missing dependency: card_definition "求助牌" (input[1]) requires support_view "失踪支援"
+source conflict (different_object): card "恢复药剂"; first: receiver library; second: input[0]
+missing dependency: card "求助牌" (input[1]) requires support "失踪支援"
 失败后登记求助牌: false
 ```

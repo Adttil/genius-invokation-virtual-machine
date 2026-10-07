@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class TDefinition>
+template<definition_category TDefinition>
 std::vector<definition_id<TDefinition>> query_by_tag(std::string_view expression) const;
 ```
 
@@ -15,7 +15,7 @@ std::vector<definition_id<TDefinition>> query_by_tag(std::string_view expression
 
 |  |  |
 | --- | --- |
-| `TDefinition` | 定义类别，见 [`definition_types`](../definition_types.md) |
+| `TDefinition` | 定义类别，见 [`definition_category`](../../enums/definition_category.md) |
 
 ## 参数
 
@@ -41,11 +41,11 @@ std::vector<definition_id<TDefinition>> query_by_tag(std::string_view expression
 int main()
 {
     givm::issued_id_map ids{ "治疗", "料理" };
-    ids.add<givm::card_definition>("恢复药剂", { "治疗" });
-    ids.add<givm::card_definition>("恢复料理", { "治疗", "料理" });
-    const auto cards = ids.query_by_tag<givm::card_definition>("治疗 & !料理");
+    ids.add<givm::definition_category::card>("恢复药剂", { "治疗" });
+    ids.add<givm::definition_category::card>("恢复料理", { "治疗", "料理" });
+    const auto cards = ids.query_by_tag<givm::definition_category::card>("治疗 & !料理");
     std::println("非料理治疗牌数量: {}", cards.size());
-    std::println("包含恢复药剂: {}", ids.has<givm::card_definition>("恢复药剂"));
+    std::println("包含恢复药剂: {}", ids.has<givm::definition_category::card>("恢复药剂"));
 }
 ```
 

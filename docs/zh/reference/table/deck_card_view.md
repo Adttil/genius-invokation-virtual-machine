@@ -10,6 +10,12 @@ class deck_card_view;
 
 牌库中一张卡牌的只读视图。它代表具体的卡牌，与这张牌在牌库中的先后位置是两个概念。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](deck_card_view/category.md) | 此视图的实体类别 |
+
 ## 成员函数
 
 |  |  |
@@ -44,7 +50,7 @@ class deck_card_view;
 
 struct example_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     struct definition_type {};
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -66,7 +72,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto definition = ids.get_id<givm::card_definition>("示例");
+    const auto definition = ids.get_id<givm::definition_category::card>("示例");
     givm::table table{};
     load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});
     const givm::deck_card_view view = table[givm::deck_card_id{ givm::player_id{ 0 }, 0 }];

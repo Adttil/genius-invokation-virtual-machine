@@ -10,6 +10,12 @@ class deck_card_status_view;
 
 附着在一张牌库卡牌上的状态。卡牌从牌库移动到手牌时，可以连同这些状态一起转移。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](deck_card_status_view/category.md) | 此视图的实体类别 |
+
 ## 成员函数
 
 |  |  |

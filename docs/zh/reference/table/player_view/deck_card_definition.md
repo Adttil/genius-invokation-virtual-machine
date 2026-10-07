@@ -5,7 +5,7 @@
 定义于头文件 `<givm/table.hpp>`
 
 ```cpp
-constexpr definition_id<card_definition> deck_card_definition(size_t index) const;
+constexpr definition_id<givm::definition_category::card> deck_card_definition(size_t index) const;
 ```
 
 取得牌库指定位置上的卡牌定义，以便查询该位置是什么牌。
@@ -18,7 +18,7 @@ constexpr definition_id<card_definition> deck_card_definition(size_t index) cons
 
 ## 返回值
 
-该位置上的 [`definition_id<card_definition>`](../definition_id.md)。
+该位置上的 [`definition_id<givm::definition_category::card>`](../definition_id.md)。
 
 ## 示例
 
@@ -34,7 +34,7 @@ constexpr definition_id<card_definition> deck_card_definition(size_t index) cons
 
 struct example_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     struct definition_type {};
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -56,7 +56,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto definition = ids.get_id<givm::card_definition>("示例");
+    const auto definition = ids.get_id<givm::definition_category::card>("示例");
     givm::table table{};
     load_deck(table, library, givm::linked_deck{ .cards = { definition } }, {});
     const givm::deck_card_view view = table[givm::deck_card_id{ givm::player_id{ 0 }, 0 }];

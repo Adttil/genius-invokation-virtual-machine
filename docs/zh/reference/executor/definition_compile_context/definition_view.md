@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TCategory>
+template<definition_category TCategory>
 class definition_view;
 ```
 
@@ -15,7 +15,7 @@ class definition_view;
 
 | | |
 | --- | --- |
-| `TCategory` | 定义类别，见 [`definition_types`](../../definition/definition_types.md) |
+| `TCategory` | 定义类别，见 [`definition_category`](../../enums/definition_category.md) |
 
 ## 成员函数
 

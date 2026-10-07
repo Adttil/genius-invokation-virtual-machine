@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class TDefinition>
+template<definition_category TDefinition>
 using id_type = definition_id<TDefinition>;
 ```
 
@@ -15,7 +15,7 @@ using id_type = definition_id<TDefinition>;
 
 |  |  |
 | --- | --- |
-| `TDefinition` | 定义类别，见 [`definition_types`](../definition_types.md) |
+| `TDefinition` | 定义类别，见 [`definition_category`](../../enums/definition_category.md) |
 
 ## 示例
 
@@ -27,9 +27,9 @@ using id_type = definition_id<TDefinition>;
 int main()
 {
     givm::issued_id_map ids{};
-    const givm::issued_id_map::id_type<givm::card_definition> card =
-        ids.add<givm::card_definition>("恢复药剂", {});
-    std::println("已取得定义 ID: {}", card.is_valid());
+    const givm::issued_id_map::id_type<givm::definition_category::card> card =
+        ids.add<givm::definition_category::card>("恢复药剂", {});
+    std::println("已取得定义 ID: {}", card.value() == 0);
 }
 ```
 

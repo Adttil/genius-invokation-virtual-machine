@@ -7,7 +7,7 @@
 ```cpp
 struct character_initial_skill
 {
-    using result_t = definition_id<skill_view>;
+    using result_t = optional_definition_id<givm::definition_category::skill>;
     std::size_t skill_index;
 };
 ```
@@ -18,7 +18,7 @@ struct character_initial_skill
 
 | | |
 | --- | --- |
-| `result_t` | `definition_id<skill_view>` |
+| `result_t` | `optional_definition_id<givm::definition_category::skill>` |
 
 ## 成员对象
 

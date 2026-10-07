@@ -20,20 +20,20 @@ namespace
 {
     struct tagged_target_card_source
     {
-        using definition_category = givm::card_definition;
-        struct definition_type { givm::tag_id target_tag; };
+        static constexpr auto category = givm::definition_category::card;
+        struct definition_type { givm::optional_tag_id target_tag; };
 
         std::string_view name() const noexcept { return "TaggedTargetCard"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.find_tag("allowed_target").value_or(givm::tag_id{}) };
+            return { context.find_tag("allowed_target") };
         }
         static givm::target_validation query(const definition_type& data, const givm::card_target_validation& query)
         {
             if(query.target_count == 0) return givm::target_validation::valid_incomplete;
             if(query.target_count != 1) return givm::target_validation::invalid;
-            const auto* target = std::get_if<givm::character_id>(&query.targets[0]);
-            return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
+            const auto target = query.targets[0].template get_if<givm::entity_category::character>();
+            return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag.get())
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::normal_effect handle(
@@ -45,20 +45,20 @@ namespace
 
     struct tagged_target_skill_source
     {
-        using definition_category = givm::skill_view;
-        struct definition_type { givm::tag_id target_tag; };
+        static constexpr auto category = givm::definition_category::skill;
+        struct definition_type { givm::optional_tag_id target_tag; };
 
         std::string_view name() const noexcept { return "TaggedTargetSkill"; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.find_tag("allowed_target").value_or(givm::tag_id{}) };
+            return { context.find_tag("allowed_target") };
         }
         static givm::target_validation query(const definition_type& data, const givm::skill_target_validation& query)
         {
             if(query.target_count == 0) return givm::target_validation::valid_incomplete;
             if(query.target_count != 1) return givm::target_validation::invalid;
-            const auto* target = std::get_if<givm::character_id>(&query.targets[0]);
-            return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag)
+            const auto target = query.targets[0].template get_if<givm::entity_category::character>();
+            return target != nullptr && data.target_tag && query.library[query.table[*target].definition_id()].has_tag(data.target_tag.get())
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::normal_effect handle(
@@ -70,23 +70,23 @@ namespace
 
     struct tagged_target_character_source
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::definition_id<givm::skill_view> skill; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::optional_definition_id<givm::definition_category::skill> skill; };
 
         std::string_view name() const noexcept { return "TaggedTargetCharacter"; }
         auto tags() const { return std::array{ std::string_view{ "allowed_target" } }; }
         auto skill_dependencies() const { return std::array{ std::string_view{ "TaggedTargetSkill" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>("TaggedTargetSkill") };
+            return { context.resolve_id<givm::definition_category::skill>("TaggedTargetSkill") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.skill : givm::definition_id<givm::skill_view>{};
+            return query.skill_index == 0 ? data.skill : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 }
@@ -101,12 +101,12 @@ TEST_CASE("action target queries can inspect target definition tags", "[action][
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, std::tuple{
         givm::draw_cards{ .position = 0, .count = 1 }, givm::begin_action{}
     }, std::tuple{}, card, skill, tagged, untagged);
-    const auto tagged_id = ids.get_id<givm::character_view>(tagged.name());
-    const auto untagged_id = ids.get_id<givm::character_view>(untagged.name());
+    const auto tagged_id = ids.get_id<givm::definition_category::character>(tagged.name());
+    const auto untagged_id = ids.get_id<givm::definition_category::character>(untagged.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
-        { .cards = { ids.get_id<givm::card_definition>(card.name()) }, .characters = { tagged_id, untagged_id } },
+        { .cards = { ids.get_id<givm::definition_category::card>(card.name()) }, .characters = { tagged_id, untagged_id } },
         { .characters = { untagged_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);

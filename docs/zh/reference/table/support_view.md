@@ -10,6 +10,12 @@ class support_view;
 
 玩家支援区中一个支援的只读视图。它承载该支援在本场对局中的状态。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](support_view/category.md) | 此视图的实体类别 |
+
 ## 成员函数
 
 |  |  |

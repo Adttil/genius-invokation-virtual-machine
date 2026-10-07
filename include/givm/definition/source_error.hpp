@@ -7,11 +7,13 @@
 #include <variant>
 #include <vector>
 
+#include "../enums/definition_category.hpp"
+
 namespace givm
 {
     struct definition_name
     {
-        std::size_t category_index;
+        definition_category category;
         std::string name;
     };
 

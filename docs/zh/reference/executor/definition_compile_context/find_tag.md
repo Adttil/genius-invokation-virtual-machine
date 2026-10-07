@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-std::optional<tag_id> find_tag(std::string_view name) const;
+optional_tag_id find_tag(std::string_view name) const;
 ```
 
 查找本次编译集合中存在的标签。未被选入本场规则的定义不参与标签查询。
@@ -37,7 +37,7 @@ std::optional<tag_id> find_tag(std::string_view name) const;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "治疗检索"; }
     auto tags() const
     { return std::array<std::string_view, 1>{ "治疗" }; }

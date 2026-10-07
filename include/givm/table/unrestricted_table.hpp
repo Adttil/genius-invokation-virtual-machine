@@ -119,24 +119,24 @@ namespace givm::detail
         }
 
         constexpr void load_deck(player_id player, const linked_deck& deck,
-            const std::array<definition_id<reaction_view>, elemental_reaction_count>& reactions = {})
+            const std::array<definition_id<definition_category::reaction>, elemental_reaction_count>& reactions = {})
         {
-            auto& data = storage_.player_datas[player.index];
+            auto& data = storage_.player_datas[player.index()];
             GIVM_ASSERT(data.deck_card_datas.empty());
             GIVM_ASSERT(data.deck_card_order.empty());
             GIVM_ASSERT(data.character_datas.empty());
-            data.reactions = reactions;
+            std::ranges::copy(reactions, data.reactions.begin());
 
             data.deck_card_datas.reserve(deck.cards.size());
             data.deck_card_order.reserve(deck.cards.size());
-            for(definition_id<card_definition> definition : deck.cards)
+            for(definition_id<definition_category::card> definition : deck.cards)
             {
                 data.deck_card_datas.emplace_back(definition.value(), card_state{});
                 data.deck_card_order.push_back(data.deck_card_datas.size() - 1);
             }
 
             data.character_datas.reserve(deck.characters.size());
-            for(definition_id<character_view> definition : deck.characters)
+            for(definition_id<definition_category::character> definition : deck.characters)
             {
                 data.character_datas.emplace_back(definition.value(), character_state{});
             }
@@ -145,7 +145,7 @@ namespace givm::detail
         template<class Self>
         constexpr reaction_view operator[](this Self& self, reaction_id id)
         {
-            return self[id.player_id].reaction(id.slot);
+            return self[id.player_id()].reaction(id.slot());
         }
 
         template<class Self>
@@ -156,7 +156,7 @@ namespace givm::detail
             auto result = detail::table_accessor::make_uninitialized<player_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
                 .table = &self,
-                .data = &storage.player_datas[player_id.index]
+                .data = &storage.player_datas[player_id.index()]
             };
             return result;
         }
@@ -164,29 +164,29 @@ namespace givm::detail
         template<class Self>
         constexpr auto operator[](this Self& self, support_id support_id)
         {
-            const auto player = self[support_id.player_id];
-            return player.template supports<false>()[support_id.index];
+            const auto player = self[support_id.player_id()];
+            return player.template supports<false>()[support_id.index()];
         }
 
         template<class Self>
         constexpr auto operator[](this Self& self, summon_id summon_id)
         {
-            const auto player = self[summon_id.player_id];
-            return player.template summons<false>()[summon_id.index];
+            const auto player = self[summon_id.player_id()];
+            return player.template summons<false>()[summon_id.index()];
         }
 
         template<class Self>
         constexpr auto operator[](this Self& self, combat_status_id combat_status_id)
         {
-            const auto player = self[combat_status_id.player_id];
-            return player.template combat_statuses<false>()[combat_status_id.index];
+            const auto player = self[combat_status_id.player_id()];
+            return player.template combat_statuses<false>()[combat_status_id.index()];
         }
 
         template<class Self>
         constexpr auto operator[](this Self& self, hand_card_id hand_card_id)
         {
-            const auto player = self[hand_card_id.player_id];
-            return player.template hand_cards<false>()[hand_card_id.index];
+            const auto player = self[hand_card_id.player_id()];
+            return player.template hand_cards<false>()[hand_card_id.index()];
         }
 
         template<class Self>
@@ -194,13 +194,13 @@ namespace givm::detail
         {
             auto& storage = detail::table_accessor::storage_of(self);
             using table_type = std::remove_reference_t<decltype(self)>;
-            auto& player = storage.player_datas[deck_card_id.player_id.index];
+            auto& player = storage.player_datas[deck_card_id.player_id().index()];
             auto result = detail::table_accessor::make_uninitialized<deck_card_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
                 .table = &self,
                 .player = &player,
-                .slot = deck_card_id.index,
-                .data = &player.deck_card_datas[deck_card_id.index]
+                .slot = deck_card_id.index(),
+                .data = &player.deck_card_datas[deck_card_id.index()]
             };
             return result;
         }
@@ -213,9 +213,9 @@ namespace givm::detail
             auto result = detail::table_accessor::make_uninitialized<hand_card_status_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
                 .table = &self,
-                .owner = status_id.card_id,
-                .slot = status_id.index,
-                .data = &storage.status_slots[status_id.index]
+                .owner = status_id.hand_card_id(),
+                .slot = status_id.index(),
+                .data = &storage.status_slots[status_id.index()]
             };
             return result;
         }
@@ -228,9 +228,9 @@ namespace givm::detail
             auto result = detail::table_accessor::make_uninitialized<deck_card_status_handle<table_type>>();
             detail::table_accessor::storage_of(result) = {
                 .table = &self,
-                .owner = status_id.card_id,
-                .slot = status_id.index,
-                .data = &storage.status_slots[status_id.index]
+                .owner = status_id.deck_card_id(),
+                .slot = status_id.index(),
+                .data = &storage.status_slots[status_id.index()]
             };
             return result;
         }
@@ -238,49 +238,49 @@ namespace givm::detail
         template<class Self>
         constexpr auto operator[](this Self& self, character_id character_id)
         {
-            const auto player = self[character_id.player_id];
-            return player.template characters<false>()[character_id.index];
+            const auto player = self[character_id.player_id()];
+            return player.template characters<false>()[character_id.index()];
         }
 
         template<class Self>
         constexpr auto operator[](this Self& self, skill_id skill_id)
         {
-            const auto character = self[skill_id.character_id];
-            return character.template skills<false>()[skill_id.index];
+            const auto character = self[skill_id.character_id()];
+            return character.template skills<false>()[skill_id.index()];
         }
 
         template<class Self>
         constexpr auto operator[](this Self& self, attachment_id attachment_id)
         {
-            const auto character = self[attachment_id.character_id];
-            return character.template attachments<false>()[attachment_id.index];
+            const auto character = self[attachment_id.character_id()];
+            return character.template attachments<false>()[attachment_id.index()];
         }
 
 #ifndef NDEBUG
         bool debug_entity_in_range(deck_card_id id) const noexcept
         {
-            return id.player_id.index < 2
-                && id.index < storage_.player_datas[id.player_id.index].deck_card_datas.size();
+            return id.player_id().index() < 2
+                && id.index() < storage_.player_datas[id.player_id().index()].deck_card_datas.size();
         }
 
         bool debug_entity_in_range(hand_card_status_id id) const noexcept
         {
-            if(id.card_id.player_id.index >= 2 || id.index >= storage_.status_slots.size()) return false;
-            const auto& cards = storage_.player_datas[id.card_id.player_id.index].hand_card_datas;
-            if(id.card_id.index >= cards.size()) return false;
-            for(auto index = cards[id.card_id.index].first_status; index != invalid_status_index;
+            if(id.hand_card_id().player_id().index() >= 2 || id.index() >= storage_.status_slots.size()) return false;
+            const auto& cards = storage_.player_datas[id.hand_card_id().player_id().index()].hand_card_datas;
+            if(id.hand_card_id().index() >= cards.size()) return false;
+            for(auto index = cards[id.hand_card_id().index()].first_status; index != invalid_status_index;
                 index = storage_.status_slots[index].next)
-                if(index == id.index) return true;
+                if(index == id.index()) return true;
             return false;
         }
 
         bool debug_entity_in_range(deck_card_status_id id) const noexcept
         {
-            if(not debug_entity_in_range(id.card_id) || id.index >= storage_.status_slots.size()) return false;
-            const auto& card = storage_.player_datas[id.card_id.player_id.index].deck_card_datas[id.card_id.index];
+            if(not debug_entity_in_range(id.deck_card_id()) || id.index() >= storage_.status_slots.size()) return false;
+            const auto& card = storage_.player_datas[id.deck_card_id().player_id().index()].deck_card_datas[id.deck_card_id().index()];
             for(auto index = card.first_status; index != invalid_status_index;
                 index = storage_.status_slots[index].next)
-                if(index == id.index) return true;
+                if(index == id.index()) return true;
             return false;
         }
 #endif
@@ -300,7 +300,7 @@ namespace givm::detail
 
         constexpr void clean_up_statuses() noexcept
         {
-            constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+            constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
             // Unlink erased statuses before compaction reuses their next fields.
             const auto clean_up_chain = [&](card_data& card)
             {

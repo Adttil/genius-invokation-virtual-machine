@@ -14,7 +14,7 @@ struct set_skill_state
     using input_type = set_skill_state_input;
 
     relative_character_target character{};
-    definition_id<skill_view> definition{};
+    optional_optional_definition_id<givm::definition_category::skill> definition{};
     skill_state state{};
 };
 ```
@@ -33,7 +33,7 @@ struct set_skill_state
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `character` | [`relative_character_target`](../events/relative_character_target.md) | 固定模式下技能所属角色的位置，默认本方出战角色 |
-| `definition` | `definition_id<skill_view>` | 固定模式下要匹配的技能定义 |
+| `definition` | `optional_definition_id<givm::definition_category::skill>` | 固定模式下要匹配的技能定义 |
 | `state` | [`skill_state`](../../table/skill_state.md) | 固定模式下要写入的完整状态 |
 
 ## 编译检查
@@ -58,7 +58,7 @@ struct set_skill_state_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `value` | `std::uint64_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
 | `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。

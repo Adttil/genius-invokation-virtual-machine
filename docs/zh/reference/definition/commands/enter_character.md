@@ -21,7 +21,7 @@ struct enter_character;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 角色所属的玩家 |
-| `definition` | `definition_id<character_view>` | 要入场的角色定义 |
+| `definition` | `optional_definition_id<givm::definition_category::character>` | 要入场的角色定义 |
 
 ## 编译检查
 
@@ -35,7 +35,7 @@ struct enter_character_error;
 
 | | |
 | --- | --- |
-| `invalid_player` | `player.index` 不是固定席位 `0` 或 `1` |
+| `invalid_player` | `player.index()` 不是固定席位 `0` 或 `1` |
 | `invalid_definition` | `definition` 的定义 ID 数值超出本次编译集合的 `character_view` 定义数量 |
 
 ### `enter_character_error` 的成员对象
@@ -43,7 +43,7 @@ struct enter_character_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | 出错的 `player.index` 或定义 ID 的 `value()` |
+| `value` | `std::uint64_t` | 出错的 `player.index()` 或定义 ID 的 `value()` |
 | `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。
@@ -66,7 +66,7 @@ struct enter_character_error;
 
 struct character_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     struct definition_type {};
     std::string_view name() const { return "character"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -79,14 +79,14 @@ struct character_source
 
 struct effect_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "effect"; }
     auto character_dependencies() const
     { return std::array<std::string_view, 1>{ "character" }; }
 
     givm::normal_effect compile(givm::definition_compile_context& context) const
     {
-        const auto definition = context.resolve_id<givm::character_view>("character");
+        const auto definition = context.resolve_id<givm::definition_category::character>("character");
         return context.add_normal_effect(
             givm::enter_character{ .player = givm::player_id{ 0 }, .definition = definition });
     }
@@ -118,13 +118,13 @@ int main()
     const auto [library, ids] = std::move(*library_result);
     givm::table table{};
     load_deck(table, library,
-        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>("effect") } },
+        givm::linked_deck{ .cards = { ids.get_id<givm::definition_category::card>("effect") } },
         givm::linked_deck{});
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
-    const auto character = table[givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 }];
+    const auto character = table[givm::character_id{ givm::player_id{ 0 }, 0  }];
     std::println("初始生命: {}", character.state().health);
 }
 ```

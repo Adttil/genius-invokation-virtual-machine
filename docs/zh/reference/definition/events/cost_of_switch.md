@@ -33,7 +33,7 @@ struct cost_of_switch;
 
 int main()
 {
-    givm::cost_of_switch event{ .target = { .player_id = givm::player_id{ 0 }, .index = 1 } };
+    givm::cost_of_switch event{ .target = { givm::player_id{ 0 }, 1 } };
     event.requirement.dice_requirement.any = 1;
     // 一次效果把切换改为无需骰子的快速行动。
     --event.requirement.dice_requirement.any;

@@ -14,7 +14,7 @@ struct create_hand_card
     using input_type = create_hand_card_input;
 
     relative_player player = relative_player::self;
-    definition_id<card_definition> definition{};
+    optional_definition_id<givm::definition_category::card> definition{};
 };
 ```
 
@@ -32,7 +32,7 @@ struct create_hand_card
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`relative_player`](relative_player.md) | 固定模式下接收新牌的一方，默认为本方 |
-| `definition` | `definition_id<card_definition>` | 固定模式下新牌的定义；默认采用动态输入 |
+| `definition` | `optional_definition_id<givm::definition_category::card>` | 固定模式下新牌的定义；默认采用动态输入 |
 
 ## 编译检查
 
@@ -55,7 +55,7 @@ struct create_hand_card_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `value` | `std::uint64_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
 | `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
@@ -84,7 +84,7 @@ struct create_hand_card_error;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     struct definition_type {};
     std::string_view name() const { return "生成示例牌"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -97,14 +97,14 @@ struct card_source
 
 struct effect_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "effect"; }
     auto card_dependencies() const
     { return std::array<std::string_view, 1>{ "生成示例牌" }; }
 
     givm::normal_effect compile(givm::definition_compile_context& context) const
     {
-        const auto definition = context.resolve_id<givm::card_definition>("生成示例牌");
+        const auto definition = context.resolve_id<givm::definition_category::card>("生成示例牌");
         return context.add_normal_effect(givm::create_hand_card{ .definition = definition });
     }
 
@@ -136,7 +136,7 @@ int main()
 
     givm::table table{};
     load_deck(table, library,
-        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>("effect") } },
+        givm::linked_deck{ .cards = { ids.get_id<givm::definition_category::card>("effect") } },
         givm::linked_deck{});
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };

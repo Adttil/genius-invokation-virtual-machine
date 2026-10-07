@@ -49,20 +49,20 @@ namespace
     };
 
     void check_removed_card(const givm::table& table, givm::hand_card_id id,
-                            givm::definition_id<givm::card_definition> definition)
+                            givm::definition_id<givm::definition_category::card> definition)
     {
         const auto card = table[id];
         CHECK_FALSE(card.is_valid());
         CHECK(card.id() == id);
         CHECK(card.definition_id() == definition);
-        CHECK(card.player().id() == id.player_id);
+        CHECK(card.player().id() == id.player_id());
         (void)card.state();
-        for(const auto remaining : table[id.player_id].hand_cards()) CHECK(remaining.id() != id);
+        for(const auto remaining : table[id.player_id()].hand_cards()) CHECK(remaining.id() != id);
     }
 
     struct playable_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
             play_log* log;
@@ -104,17 +104,17 @@ namespace
             }
             if(parameters.target_count == 1)
             {
-                const auto* first = std::get_if<givm::character_id>(&parameters.targets[0]);
-                if(first == nullptr || first->player_id != parameters.card.id().player_id || not data.log->condition_met)
+                const auto first = parameters.targets[0].template get_if<givm::entity_category::character>();
+                if(first == nullptr || first.get().player_id() != parameters.card.id().player_id() || not data.log->condition_met)
                     return givm::target_validation::invalid;
                 return data.single_target ? givm::target_validation::valid_complete
                     : data.optional_targets ? givm::target_validation::valid_complete_or_continue
                     : givm::target_validation::valid_incomplete;
             }
             if(data.single_target) return givm::target_validation::invalid;
-            const auto first = std::get<givm::character_id>(parameters.targets[0]);
-            const auto* second = std::get_if<givm::character_id>(&parameters.targets[1]);
-            return second != nullptr && second->player_id != first.player_id
+            const auto first = parameters.targets[0].template get<givm::entity_category::character>();
+            const auto second = parameters.targets[1].template get_if<givm::entity_category::character>();
+            return second != nullptr && second.get().player_id() != first.player_id()
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::normal_effect handle(
@@ -147,7 +147,7 @@ namespace
 
     struct play_observer_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             play_log* log;
@@ -224,7 +224,7 @@ namespace
         {
             if(not data.log->record) return {};
             data.log->events.push_back("draw");
-            data.log->dice_at_draw.push_back(context.table()[event.card.player_id].state().dice.total());
+            data.log->dice_at_draw.push_back(context.table()[event.card.player_id()].state().dice.total());
             if(data.log->nested) return context.invoke(data.selection);
             return {};
         }
@@ -232,7 +232,7 @@ namespace
 
     struct untargeted_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { play_log* log; };
         play_log* log;
         std::string_view name() const noexcept { return "ZeroCostCard"; }
@@ -291,17 +291,17 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
     const playable_card_source second_source{ &log, "SecondPlayedCard", 2, givm::action_speed::combat };
     const auto observer = givm::test::with_passive_skill(play_observer_source{ &log });
     const givm::test::initialized_character_source character;
-    const givm::test::named_definition_source<givm::card_definition> filler{ "PlayFiller" };
+    const givm::test::named_definition_source<givm::definition_category::card> filler{ "PlayFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(draw_positions_2), std::tuple{}, first_source, second_source, observer, character, filler);
-    const auto filler_id = ids.get_id<givm::card_definition>(filler.name());
+    const auto filler_id = ids.get_id<givm::definition_category::card>(filler.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { filler_id, filler_id, filler_id,
-            ids.get_id<givm::card_definition>(second_source.name()), ids.get_id<givm::card_definition>(first_source.name()) },
-        .characters = { ids.get_id<givm::character_view>(observer.name()) }
-    }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
+            ids.get_id<givm::definition_category::card>(second_source.name()), ids.get_id<givm::definition_category::card>(first_source.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(observer.name()) }
+    }, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
@@ -311,8 +311,8 @@ TEST_CASE("card quotes remain independent and copied executions pay only for the
     const auto first = action.card_id(0);
     const auto second = action.card_id(1);
     const card_targets targets{ givm::character_id{ givm::player_id{ 0 }, 0 }, givm::character_id{ givm::player_id{ 1 }, 0 } };
-    REQUIRE(table[first].definition_id() == ids.get_id<givm::card_definition>(first_source.name()));
-    REQUIRE(table[second].definition_id() == ids.get_id<givm::card_definition>(second_source.name()));
+    REQUIRE(table[first].definition_id() == ids.get_id<givm::definition_category::card>(first_source.name()));
+    REQUIRE(table[second].definition_id() == ids.get_id<givm::definition_category::card>(second_source.name()));
     CHECK(log.initial_cost_queries == 2);
     CHECK(log.quoted.empty());
     const auto random_calls = random.calls;
@@ -385,9 +385,9 @@ TEST_CASE("card target queries advance one step at a time and default to no targ
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(plain.name()), ids.get_id<givm::card_definition>(source.name()) },
-        .characters = { ids.get_id<givm::character_view>(observer.name()) }
-    }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
+        .cards = { ids.get_id<givm::definition_category::card>(plain.name()), ids.get_id<givm::definition_category::card>(source.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(observer.name()) }
+    }, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
@@ -497,9 +497,9 @@ TEST_CASE("optional targets may finish or continue and target spans ignore entri
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(source.name()) },
-        .characters = { ids.get_id<givm::character_view>(observer.name()) }
-    }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
+        .cards = { ids.get_id<givm::definition_category::card>(source.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(observer.name()) }
+    }, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
@@ -570,17 +570,17 @@ TEST_CASE("card payment and broadcasts resume in order after removal even when i
     const playable_card_source source{ &log, "NestedPlayedCard", 1, givm::action_speed::combat };
     const auto observer = givm::test::with_passive_skill(play_observer_source{ &log });
     const givm::test::initialized_character_source character;
-    const givm::test::named_definition_source<givm::card_definition> filler{ "NestedFiller" };
+    const givm::test::named_definition_source<givm::definition_category::card> filler{ "NestedFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(draw_positions_1), std::tuple{}, source, observer, character, filler);
-    const auto card_definition = ids.get_id<givm::card_definition>(source.name());
-    const auto filler_definition = ids.get_id<givm::card_definition>(filler.name());
+    const auto card_definition = ids.get_id<givm::definition_category::card>(source.name());
+    const auto filler_definition = ids.get_id<givm::definition_category::card>(filler.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 }, .hand_limit = 4 },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 }, .hand_limit = 4 } };
     load_deck(table, library, {
         .cards = { filler_definition, filler_definition, filler_definition, filler_definition, card_definition },
-        .characters = { ids.get_id<givm::character_view>(observer.name()) }
-    }, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
+        .characters = { ids.get_id<givm::definition_category::character>(observer.name()) }
+    }, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
@@ -650,12 +650,12 @@ TEST_CASE("action submissions validate the first target before trusting a second
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::begin_action{} },
         std::tuple{}, card, character);
-    const auto character_id = ids.get_id<givm::character_view>(character.name());
+    const auto character_id = ids.get_id<givm::definition_category::character>(character.name());
     const givm::character_id own{ givm::player_id{ 0 }, 0 };
     const givm::character_id opponent{ givm::player_id{ 1 }, 0 };
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = own }, { .active_character = opponent } };
-    load_deck(table, library, { .cards = { ids.get_id<givm::card_definition>(card.name()) }, .characters = { character_id } },
+    load_deck(table, library, { .cards = { ids.get_id<givm::definition_category::card>(card.name()) }, .characters = { character_id } },
         { .characters = { character_id } });
     givm::executor execution;
     counting_random random;

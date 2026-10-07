@@ -16,11 +16,11 @@
 
 | | |
 | --- | --- |
-| `using definition_category = ...;` | 定义所属类别，取 [`definition_types`](definition_types.md) 中的类型 |
+| `static constexpr auto category = ...;` | 定义所属类别，取 [`definition_category`](../enums/definition_category.md) 中的值 |
 | `name() const` | 返回同一类别内唯一的完整名称 |
 | `compile(definition_compile_context&) const` | 返回这项定义的配置数据，供查询与事件响应使用 |
 
-`compile` 的返回值不能是 `void` 或引用，须能存入 `std::any`，因此其类型须可复制构造。返回类型由源自行决定，不必命名为 `definition_type`，也不必与 `definition_category` 相同。
+`compile` 的返回值不能是 `void` 或引用，须能存入 `std::any`，因此其类型须可复制构造。返回类型由源自行决定，不必命名为 `definition_type`。
 
 ## 可选的分类与依赖
 
@@ -40,7 +40,7 @@
 | `history_summary_dependencies()` | 返回所依赖的历史摘要定义名称 |
 | `reaction_dependencies()` | 返回所依赖的反应定义名称 |
 
-`*_dependencies()` 列出必须存在的定义名称，通过 [`resolve_id`](../executor/definition_compile_context/resolve_id.md) 取得其 ID。选定源时，这些依赖也进入本次编译集合；缺失依赖会使登记失败。编译中查询未声明的硬依赖会记录诊断并返回无效 ID，最终 [`compile`](../executor/compile.md) 返回失败，不以验证异常中断源的编译函数。
+`*_dependencies()` 列出必须存在的定义名称，通过 [`resolve_id`](../executor/definition_compile_context/resolve_id.md) 取得其 ID。选定源时，这些依赖也进入本次编译集合；缺失依赖会使登记失败。编译中查询未声明的硬依赖会记录诊断并返回空 ID，最终 [`compile`](../executor/compile.md) 返回失败，不以验证异常中断源的编译函数。
 
 编译期间可自由查看本次集合中的元数据，不需要为查询另行声明依赖：[`definitions<T>()`](../executor/definition_compile_context/definitions.md) 遍历指定类别，按名称使用 [`find_definition<T>()`](../executor/definition_compile_context/find_definition.md)，按已有 ID 使用 [`operator[]`](../executor/definition_compile_context/operator_at.md)。这些视图提供名称、标签、名称依赖以及是否具有响应或自定义查询的信息，不执行响应或查询函数。
 
@@ -71,7 +71,7 @@ static givm::preview_effect handle(
     givm::preview_handle_context<TView>& context);
 ```
 
-`TView` 必须属于 [`views_of_definition`](views_of_definition.md)，`TEvent` 必须属于该 view 的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。普通静态源只按匹配的函数判断是否响应，没有匹配函数就不响应；已有函数的返回类型必须正确。
+`TView` 必须对应所属定义类别的 [`entity_categories_of`](../enums/entity_categories_of.md) 中的实体类别，`TEvent` 必须属于该实体类别的 [`subscribed_events`](subscribed_events.md)。可按具体类型编写重载，也可用受约束的函数模板覆盖多个事件。普通静态源只按匹配的函数判断是否响应，没有匹配函数就不响应；已有函数的返回类型必须正确。
 
 响应函数通过 [`context.entity()`](../executor/handle_context/entity.md) 取得响应实体，通过 `context.table()` 读取其所属牌桌、`context.random()` 取得随机值，并修改事件允许调整的成员。`response_index` 是本次响应编号，首次为 0；不使用该编号的响应可省略形参名，保留 `std::uint32_t = 0`。返回类型须为 `effect<TEvent::category>`；不需要后续效果时返回空入口（`return {};`）。需要后续操作时，先在 `compile` 中组合[核心命令](commands.md)，通过 [`add_normal_effect`](../executor/definition_compile_context/add_effect.md) 登记入口；响应时准备这段程序所需的全部输入，普通响应以 `return context.invoke(entry, inputs...);` 结束响应，预览响应也以 `return context.invoke(entry, inputs...);` 缓存稍后执行的效果，上下文自动选择保存方式。
 
@@ -119,7 +119,7 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 
 支援、召唤物、出战状态和角色附属实体分别通过 [`support_state_limit`](queries/support_state_limit.md)、[`summon_state_limit`](queries/summon_state_limit.md)、[`combat_status_state_limit`](queries/combat_status_state_limit.md)、[`attachment_state_limit`](queries/attachment_state_limit.md) 提供各状态字段的上限，并在编译定义库时缓存。生成和直接添加命令的 `state` 成员默认将各字段设为 `UINT32_MAX`，执行时与显式输入一样按上限裁剪；显式的 `state{}` 仍将各字段初始化为零。召唤、生成和附属请求在实际执行时决定创建新实体，或通知首个已有同定义实体；支援则直接添加独立实体。重复请求仍使用普通 `handle` 接口。支援、出战状态与角色附属的状态修改会通知自身；召唤物不提供状态修改自身通知，`modify_summon_state` 通过 `remove_at_zero_usages` 标签处理耗尽离场，`set_summon_state` 仅写入状态。
 
-角色初始技能通过有参查询 [`character_initial_skill`](queries/character_initial_skill.md) 按索引逐个取得，首次返回无效 ID 时结束。定义源自行决定如何产生和保存这些结果，不要求使用特定容器。
+角色初始技能通过有参查询 [`character_initial_skill`](queries/character_initial_skill.md) 按索引逐个取得，首次返回空 ID 时结束。定义源自行决定如何产生和保存这些结果，不要求使用特定容器。
 
 查询结果若包含引用、指针或视图，所引用的数据必须在结果使用期间保持有效。空查询的结果会随定义库保存与复制，定义源须相应保证其所借用数据的生命周期。
 
@@ -134,7 +134,7 @@ static Q::result_t query(const definition_type& definition, const Q& parameters)
 ```cpp
 static constexpr bool is_dynamic = true;
 
-template<class TView, class TEvent>
+template<givm::entity_category Entity, class TEvent>
 bool can_handle() const;
 
 template<class Q>
@@ -156,7 +156,7 @@ bool can_query() const;
 
 ## 历史摘要
 
-依赖过去事件的规则可以声明 `history_summary_definition` 类别的摘要源。摘要字段在编译定义库时确定，在 [`executor::start`](../executor/executor/start.md) 中通过初始化事件设定初值，通常先完成双方 [`load_deck`](../executor/load_deck.md)。普通实体对某次通知的全部响应及效果完成后，才更新订阅它的摘要；这些普通响应读取的摘要尚未包含本次通知，但可以包含先完成的嵌套通知。费用预览和检查不会改变摘要。
+依赖过去事件的规则可以声明 `definition_category::history_summary` 类别的摘要源。摘要字段在编译定义库时确定，在 [`executor::start`](../executor/executor/start.md) 中通过初始化事件设定初值，通常先完成双方 [`load_deck`](../executor/load_deck.md)。普通实体对某次通知的全部响应及效果完成后，才更新订阅它的摘要；这些普通响应读取的摘要尚未包含本次通知，但可以包含先完成的嵌套通知。费用预览和检查不会改变摘要。
 
 摘要无需借用场上实体，也不会因相关卡牌尚未进入手牌而遗漏记录。需要摘要的实体定义声明相应依赖，在 `compile` 中通过 `resolve_history_field<T>(summary, field)` 取得读取键，再以 `context.table()[key]` 读取。完整协议、字段类型及示例见[历史摘要](history_summary.md)。
 
@@ -175,7 +175,7 @@ bool can_query() const;
 
 struct passive_skill_source
 {
-    using definition_category = givm::skill_view;
+    static constexpr auto category = givm::definition_category::skill;
 
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
@@ -207,9 +207,9 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto id = ids.get_id<givm::skill_view>("重投助手");
+    const auto id = ids.get_id<givm::definition_category::skill>("重投助手");
 
-    std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::skill_view>(id));
+    std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::entity_category::skill>(id));
 }
 ```
 

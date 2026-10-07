@@ -49,8 +49,8 @@ namespace givm::detail
     {
         using reason = shuffle_deck::error_type::reason;
         std::vector<shuffle_deck::error_type> errors;
-        if(command.player.index >= 2)
-            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index });
+        if(command.player.index() >= 2)
+            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index() });
         return errors;
     }
 }

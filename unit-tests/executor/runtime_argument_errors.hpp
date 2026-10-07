@@ -35,7 +35,7 @@ namespace givm_test::executor::runtime_argument_errors
 
     struct argument_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             scenario selected;
@@ -54,7 +54,7 @@ namespace givm_test::executor::runtime_argument_errors
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto summon = context.resolve_id<givm::summon_view>("RuntimeArgumentSummon");
+            const auto summon = context.resolve_id<givm::definition_category::summon>("RuntimeArgumentSummon");
             const auto create = context.add_normal_effect(std::tuple{
                 givm::add_summon{ .definition = summon, .state = { .value = 1, .usages = 1 } }
             });
@@ -90,7 +90,7 @@ namespace givm_test::executor::runtime_argument_errors
             case scenario::invalid_character:
             {
                 auto target = self.id();
-                target.index += 20;
+                target = givm::character_id{ target.player_id(), target.index() + 20 };
                 return context.invoke(data.effect, givm::set_energy_input{ target, 1 });
             }
             case scenario::removed_summon:
@@ -143,8 +143,8 @@ namespace givm_test::executor::runtime_argument_errors
     {
         bool observed = false;
         const auto source = givm::test::with_passive_skill(argument_source{ selected, &observed });
-        const givm::test::named_definition_source<givm::summon_view> summon{ "RuntimeArgumentSummon" };
-        const givm::test::named_definition_source<givm::card_definition> card{ "RuntimeArgumentCard" };
+        const givm::test::named_definition_source<givm::definition_category::summon> summon{ "RuntimeArgumentSummon" };
+        const givm::test::named_definition_source<givm::definition_category::card> card{ "RuntimeArgumentCard" };
         std::vector<givm::any_command> initialization{ givm::start_round{}, givm::settle{} };
         if(selected == scenario::removed_summon) { initialization.emplace_back(givm::start_round{}); initialization.emplace_back(givm::settle{}); }
         initialization.emplace_back(givm::settle{});
@@ -153,8 +153,8 @@ namespace givm_test::executor::runtime_argument_errors
             initialization, std::tuple{}, source, summon, card);
         givm::table table{ {}, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
         load_deck(table, library, {
-            .cards = { ids.get_id<givm::card_definition>(card.name()) },
-            .characters = { ids.get_id<givm::character_view>(source.name()) }
+            .cards = { ids.get_id<givm::definition_category::card>(card.name()) },
+            .characters = { ids.get_id<givm::definition_category::character>(source.name()) }
         }, {});
         givm_test::executor_driver execution;
         execution.start(library, table);
@@ -180,8 +180,8 @@ namespace givm_test::executor::runtime_argument_errors
                     {
                         CHECK(error.command == "set_energy");
                         CHECK(reason->cause == givm::invalid_entity_argument::reason::out_of_range);
-                        REQUIRE(std::holds_alternative<givm::character_id>(reason->entity));
-                        CHECK(std::get<givm::character_id>(reason->entity).index == 20);
+                        REQUIRE(reason->entity.template holds<givm::entity_category::character>());
+                        CHECK(reason->entity.template get<givm::entity_category::character>().index() == 20);
                     }
                     else
                     {

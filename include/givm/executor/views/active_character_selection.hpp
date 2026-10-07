@@ -47,12 +47,12 @@ namespace givm
 #ifndef NDEBUG
             executor_->validate_view<execution_state::active_character_selection>(version_);
 #endif
-            if(character.player_id.index >= 2) return active_character_selection_validation::invalid_player;
-            if(character.player_id != player()) return active_character_selection_validation::wrong_player;
+            if(character.player_id().index() >= 2) return active_character_selection_validation::invalid_player;
+            if(character.player_id() != player()) return active_character_selection_validation::wrong_player;
             const auto characters = card_table[player()].characters<false>();
-            if(character.index >= characters.size() || not characters[character.index])
+            if(character.index() >= characters.size() || not characters[character.index()])
                 return active_character_selection_validation::invalid_character;
-            const auto& state = characters[character.index].state();
+            const auto& state = characters[character.index()].state();
             if(not state.alive || state.health == 0) return active_character_selection_validation::defeated_character;
             return active_character_selection_validation::valid;
         }

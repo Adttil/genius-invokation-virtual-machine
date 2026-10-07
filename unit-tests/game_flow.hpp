@@ -21,7 +21,7 @@ namespace
 {
     struct test_card_definition_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
 
         struct definition_type{};
 
@@ -38,7 +38,7 @@ namespace
 
     struct test_character_definition_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
 
         struct definition_type{};
 
@@ -212,14 +212,14 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     REQUIRE(table[givm::player_id{ 1 }].deck_card_count() == 5);
 
     REQUIRE(state == givm::execution_state::initial_active_character_selection);
-    target.submitted(target.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ .player_id = first_selection_player, .index = 0 }));
+    target.submitted(target.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ first_selection_player, 0  }));
     state = target.advance(library, table, random);
 
     REQUIRE(state == givm::execution_state::remaining_active_character_selection);
     const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
     REQUIRE(remaining.player() == second_selection_player);
-    CHECK(remaining.first_selected_character() == givm::character_id{ .player_id = first_selection_player, .index = 0 });
-    target.submitted(remaining.select(library, table, random, givm::character_id{ .player_id = second_selection_player, .index = 0 }));
+    CHECK(remaining.first_selected_character() == givm::character_id{ first_selection_player, 0  });
+    target.submitted(remaining.select(library, table, random, givm::character_id{ second_selection_player, 0  }));
     state = target.advance(library, table, random);
 
     REQUIRE(table[givm::player_id{ 0 }].state().active_character.has_value());
@@ -315,8 +315,8 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     REQUIRE(target.advance(library, table, random) == givm::execution_state::initial_active_character_selection);
     CHECK(random.value == prepared_random_count);
 
-    const givm::character_id player1_choice{ .player_id = givm::player_id{ 1 }, .index = 1 };
-    const givm::character_id player0_choice{ .player_id = givm::player_id{ 0 }, .index = 2 };
+    const givm::character_id player1_choice{ givm::player_id{ 1 }, 1 };
+    const givm::character_id player0_choice{ givm::player_id{ 0 }, 2 };
     target.submitted(target.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, player1_choice));
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());

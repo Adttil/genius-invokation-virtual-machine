@@ -26,7 +26,7 @@ int main()
 {
     givm::table table{};
     std::println("初始回合数: {}", table.state().round_number);
-    std::println("初始行动玩家: {}", table.state().active_player.index);
+    std::println("初始行动玩家: {}", table.state().active_player.index());
 }
 ```
 

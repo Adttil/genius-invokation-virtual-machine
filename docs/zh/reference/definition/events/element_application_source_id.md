@@ -5,8 +5,7 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-using element_application_source_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id,
-                 summon_id, combat_status_id, character_id, skill_id, attachment_id>;
+using element_application_source_id = variant_entity_id<entity_category::hand_card, entity_category::deck_card, entity_category::hand_card_status, entity_category::deck_card_status, entity_category::support, entity_category::summon, entity_category::combat_status, entity_category::character, entity_category::skill, entity_category::attachment>;
 ```
 
 元素附着的来源标识。
@@ -22,7 +21,7 @@ using element_application_source_id = std::variant<hand_card_id, deck_card_id, h
 int main()
 {
     givm::element_application_source_id source{ givm::summon_id{} };
-    std::println("来源是召唤物: {}", std::holds_alternative<givm::summon_id>(source));
+    std::println("来源是召唤物: {}", source.template holds<givm::entity_category::summon>());
 }
 ```
 

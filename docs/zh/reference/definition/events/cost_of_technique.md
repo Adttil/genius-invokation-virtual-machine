@@ -15,7 +15,7 @@ struct cost_of_technique;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `technique` | `const attachment_id` | 本次准备使用的特技；只读。 |
-| `targets` | `const std::array<technique_target_id, 2>` | 已选定的目标；`std::monostate` 为空槽。 |
+| `targets` | `const std::array<technique_target_id, 2>` | 已选定的目标；``null` 空类别` 为空槽。 |
 | `requirement` | [`action_cost_requirement`](../../table/action_cost_requirement.md) | 特技使用的骰子、充能费用与行动速度。 |
 
 ## 注意

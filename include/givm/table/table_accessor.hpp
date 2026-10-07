@@ -2,7 +2,7 @@
 #define GIVM_TABLE_TABLE_ACCESSOR_HPP
 
 #include "entity_fwd.hpp"
-#include "issued_id.hpp"
+#include "tag_id.hpp"
 
 namespace givm::detail
 {
@@ -43,12 +43,6 @@ namespace givm::detail
         friend class basic_reaction_handle;
         template<class, class, class>
         friend class card_status_range;
-
-        template<class TTag>
-        static constexpr issued_id<TTag> make_issued_id(size_t value) noexcept
-        {
-            return issued_id<TTag>{ value };
-        }
 
         template<class THandle>
         static constexpr THandle make_uninitialized() noexcept

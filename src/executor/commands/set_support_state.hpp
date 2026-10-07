@@ -23,7 +23,7 @@ namespace givm::detail
         table[input.support].state() = input.state;
         const auto support = std::as_const(table)[input.support];
         const auto definition = library[support.definition_id()];
-        if(not definition.can_handle<this_support_state_change, support_view>())
+        if(not definition.can_handle<this_support_state_change, entity_category::support>())
             return continue_execution;
         append_single_event_record(context, input.support, event);
         return continue_execution;
@@ -39,11 +39,11 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, set_support_state>(library);
             const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
 #ifndef NDEBUG
-            debug_validate_required_entity(table, player, command.definition, "set_support_state", "support");
+            debug_validate_required_entity(table, player, command.definition.get<definition_category::support>(), "set_support_state", "support");
 #endif
-            input = { require_support(table, player, command.definition), command.state };
+            input = { require_support(table, player, command.definition.get<definition_category::support>()), command.state };
             context.advance(instruction_extent<1, set_support_state>);
         }
         else
@@ -90,8 +90,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<support_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<support_view>() });
+        if(command.definition.get<definition_category::support>().value() >= context.definition_count<definition_category::support>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::support>().value(), .limit = context.definition_count<definition_category::support>() });
         return errors;
     }
 }

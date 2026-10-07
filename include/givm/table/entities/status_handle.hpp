@@ -20,7 +20,7 @@ namespace givm::detail
     constexpr size_t add_status(
         TStorage& storage,
         card_data& card,
-        givm::definition_id<status_definition> definition_id,
+        givm::definition_id<definition_category::card_status> definition_id,
         const status_state& state
     )
     {
@@ -44,7 +44,7 @@ namespace givm::detail
 
     constexpr void erase_statuses(table_storage& storage, card_data& card) noexcept
     {
-        constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+        static constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
         size_t current = card.first_status;
         while(current != invalid_status_index)
         {
@@ -97,7 +97,7 @@ namespace givm::detail
 
             constexpr void skip_erased() noexcept
             {
-                constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+                constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
                 const auto& storage = table_accessor::storage_of(*table_);
                 while(index_ != invalid_status_index
                     && (storage.status_slots[index_].data.definition_and_flags & erased_mask) != 0)
@@ -194,11 +194,11 @@ namespace givm::detail
         constexpr auto card() const
         {
             auto result = detail::table_accessor::make_uninitialized<hand_card_handle<TStorage>>();
-            auto& player = table_accessor::storage_of(*storage_.table).player_datas[storage_.owner.player_id.index];
+            auto& player = table_accessor::storage_of(*storage_.table).player_datas[storage_.owner.player_id().index()];
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
                 .player = &player,
-                .data = &player.hand_card_datas[storage_.owner.index]
+                .data = &player.hand_card_datas[storage_.owner.index()]
             };
             return result;
         }
@@ -210,20 +210,20 @@ namespace givm::detail
 
         constexpr hand_card_status_id id() const
         {
-            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
-            return { storage_.owner, storage_.slot };
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<std::uint64_t>(-1));
+            return { storage_.owner, static_cast<std::uint32_t>(storage_.slot) };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
-            return table_accessor::make_issued_id<status_definition>(
-                storage_.data->data.definition_and_flags & ~erased_mask);
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<std::uint64_t>(-1));
+            return givm::definition_id<definition_category::card_status>{
+                storage_.data->data.definition_and_flags & detail::definition_index_mask};
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<std::uint64_t>(-1));
             return storage_.data->data.state;
         }
 
@@ -234,7 +234,7 @@ namespace givm::detail
         }
 
     private:
-        static constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+        static constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
 
         constexpr basic_hand_card_status_handle(detail::uninitialized_entity_t) noexcept {}
 
@@ -299,12 +299,12 @@ namespace givm::detail
         constexpr auto card() const
         {
             auto result = detail::table_accessor::make_uninitialized<deck_card_handle<TStorage>>();
-            auto& player = table_accessor::storage_of(*storage_.table).player_datas[storage_.owner.player_id.index];
+            auto& player = table_accessor::storage_of(*storage_.table).player_datas[storage_.owner.player_id().index()];
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
                 .player = &player,
-                .slot = storage_.owner.index,
-                .data = &player.deck_card_datas[storage_.owner.index]
+                .slot = storage_.owner.index(),
+                .data = &player.deck_card_datas[storage_.owner.index()]
             };
             return result;
         }
@@ -316,20 +316,20 @@ namespace givm::detail
 
         constexpr deck_card_status_id id() const
         {
-            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
-            return { storage_.owner, storage_.slot };
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<std::uint64_t>(-1));
+            return { storage_.owner, static_cast<std::uint32_t>(storage_.slot) };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
-            return table_accessor::make_issued_id<status_definition>(
-                storage_.data->data.definition_and_flags & ~erased_mask);
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<std::uint64_t>(-1));
+            return givm::definition_id<definition_category::card_status>{
+                storage_.data->data.definition_and_flags & detail::definition_index_mask};
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->data.definition_and_flags != static_cast<std::uint64_t>(-1));
             return storage_.data->data.state;
         }
 
@@ -340,7 +340,7 @@ namespace givm::detail
         }
 
     private:
-        static constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+        static constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
 
         constexpr basic_deck_card_status_handle(detail::uninitialized_entity_t) noexcept {}
 
@@ -357,6 +357,8 @@ namespace givm
         using base_type = detail::basic_hand_card_status_handle<const detail::unrestricted_table>;
 
     public:
+        static constexpr entity_category category = entity_category::hand_card_status;
+
         using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;
@@ -380,6 +382,8 @@ namespace givm
         using base_type = detail::basic_deck_card_status_handle<const detail::unrestricted_table>;
 
     public:
+        static constexpr entity_category category = entity_category::deck_card_status;
+
         using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;

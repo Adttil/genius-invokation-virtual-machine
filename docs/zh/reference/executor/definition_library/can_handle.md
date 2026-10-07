@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<class TEvent, class TView, class TDefinitionType>
+template<class TEvent, entity_category Entity, definition_category TDefinitionType>
 bool can_handle(definition_id<TDefinitionType> id) const noexcept;
 ```
 
@@ -16,7 +16,7 @@ bool can_handle(definition_id<TDefinitionType> id) const noexcept;
 |  |  |
 | --- | --- |
 | `TEvent` | 要查询的事件，须属于该 view 的 [`subscribed_events`](../../definition/subscribed_events.md) |
-| `TView` | 响应实体的只读 view，须属于定义对应的 [`views_of_definition`](../../definition/views_of_definition.md) |
+| `Entity` | 响应实体的类别，须属于定义对应的 [`entity_categories_of`](../../enums/entity_categories_of.md) |
 | `TDefinitionType` | 由 ID 推导的定义类别 |
 
 ## 参数
@@ -46,7 +46,7 @@ bool can_handle(definition_id<TDefinitionType> id) const noexcept;
 
 struct support_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
 
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
@@ -78,9 +78,9 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto id = ids.get_id<givm::support_view>("重投助手");
-    std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::support_view>(id));
-    std::println("响应回合结束: {}", library.can_handle<givm::round_ended, givm::support_view>(id));
+    const auto id = ids.get_id<givm::definition_category::support>("重投助手");
+    std::println("响应掷骰准备: {}", library.can_handle<givm::dice_roll_preparation, givm::entity_category::support>(id));
+    std::println("响应回合结束: {}", library.can_handle<givm::round_ended, givm::entity_category::support>(id));
 }
 ```
 

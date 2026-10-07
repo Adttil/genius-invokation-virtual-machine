@@ -35,11 +35,11 @@ namespace givm::detail
             [[assume(has_character)]];
             auto skills = table[*character].skills();
             const auto found = std::ranges::find_if(skills,
-                [&](const auto skill) { return skill.definition_id() == command.definition; });
+                [&](const auto skill) { return skill.definition_id() == command.definition.get<definition_category::skill>(); });
             const bool has_skill = found != skills.end();
 #ifndef NDEBUG
             if(not has_skill)
-                throw command_input_error{ "set_skill_state", missing_entity_argument{ "skill", command_entity_id{ *character }, command.definition.value() } };
+                throw command_input_error{ "set_skill_state", missing_entity_argument{ "skill", command_entity_id{ *character }, command.definition.get<definition_category::skill>().value() } };
 #endif
             GIVM_ASSERT(has_skill);
             [[assume(has_skill)]];
@@ -90,8 +90,8 @@ namespace givm::detail
             errors.push_back({ .cause = reason::invalid_character_player, .value = static_cast<std::size_t>(command.character.player) });
         if(command.character.selection != character_selection::character)
             errors.push_back({ .cause = reason::invalid_character_selection, .value = static_cast<std::size_t>(command.character.selection) });
-        if(command.definition.value() >= context.definition_count<skill_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<skill_view>() });
+        if(command.definition.get<definition_category::skill>().value() >= context.definition_count<definition_category::skill>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::skill>().value(), .limit = context.definition_count<definition_category::skill>() });
         return errors;
     }
 }

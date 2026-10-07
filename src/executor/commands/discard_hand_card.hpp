@@ -28,10 +28,10 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, discard_hand_card>(library);
 #ifndef NDEBUG
-            debug_validate_entity(table, table.state().self_player, "discard_hand_card", "self_player");
+            debug_validate_entity(table, table.state().self_player.get(), "discard_hand_card", "self_player");
 #endif
             const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
             const auto capacity = std::min<std::size_t>(command.count, table[player].hand_cards<false>().size());
             const auto cards = get<0>(context.stack().push(dynamic_array<hand_card_id>(capacity)));
             count = 0;
@@ -39,7 +39,7 @@ namespace givm::detail
             {
                 for(const auto card : table[player].hand_cards())
                 {
-                    if(card.definition_id() != command.definition) continue;
+                    if(card.definition_id() != command.definition.get<definition_category::card>()) continue;
                     std::construct_at(cards.data() + count++, card.id());
                     if(count == capacity) break;
                 }
@@ -93,8 +93,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<card_definition>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<card_definition>() });
+        if(command.definition.get<definition_category::card>().value() >= context.definition_count<definition_category::card>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::card>().value(), .limit = context.definition_count<definition_category::card>() });
         return errors;
     }
 }

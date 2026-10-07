@@ -30,7 +30,7 @@
 
 namespace givm::detail
 {
-    using default_reaction_ids = std::array<definition_id<reaction_view>, elemental_reaction_count>;
+    using default_reaction_ids = std::array<definition_id<definition_category::reaction>, elemental_reaction_count>;
 
     template<class TView>
     struct definition_handle_vectors
@@ -38,7 +38,7 @@ namespace givm::detail
         template<class... TEvents>
         using tuple_for = std::tuple<std::vector<handle_fn_t<TView, TEvents>>...>;
 
-        using type = subscribed_events<TView>::template apply<tuple_for>;
+        using type = subscribed_events<std::remove_cvref_t<TView>::category>::template apply<tuple_for>;
     };
 
     template<class... TViews>
@@ -48,13 +48,13 @@ namespace givm::detail
     using definition_query_vectors = std::tuple<std::vector<std::conditional_t<
         std::is_empty_v<TQueries>, typename TQueries::result_t, query_fn_t<TQueries>>>...>;
 
-    template<class TCategory>
+    template<definition_category TCategory>
     struct definition_bucket
     {
         std::vector<std::string_view> names;
         std::vector<definition_data> data;
         std::vector<tag_mask> tags;
-        views_of_definition<TCategory>::template apply<definition_handle_groups> handle_fns;
+        detail::definition_views<TCategory>::template apply<definition_handle_groups> handle_fns;
 #ifdef _MSC_VER
         [[msvc::no_unique_address]]
 #else
@@ -63,7 +63,7 @@ namespace givm::detail
         typename supported_queries<TCategory>::template apply<definition_query_vectors> queries;
     };
 
-    template<class... TCategories>
+    template<auto... TCategories>
     using definition_bucket_tuple = std::tuple<definition_bucket<TCategories>...>;
 
     template<class TEvent>
@@ -76,16 +76,19 @@ namespace givm::detail
     template<class... TEvents>
     using history_handler_lists = std::tuple<std::vector<history_handler<TEvents>>...>;
 
-    using definition_history_handlers = subscribed_events<history_summary_definition>::apply<history_handler_lists>;
+    using definition_history_handlers = history_subscribed_events::apply<history_handler_lists>;
 
 
-    template<class TCategory>
+    template<definition_category TCategory>
     struct compile_definition;
 
-    template<class... TCategories>
+    template<auto... TCategories>
     using compile_definition_vectors = std::tuple<std::vector<compile_definition<TCategories>>...>;
 
-    using compile_definitions = definition_types::apply<compile_definition_vectors>;
+    using compile_definitions = typename decltype([]<std::size_t... I>(std::index_sequence<I...>)
+        {
+            return std::type_identity<compile_definition_vectors<detail::definition_categories[I]...>>{};
+        }(std::make_index_sequence<detail::definition_categories.size()>{}))::type;
 
     struct compiled_history_field
     {
@@ -108,7 +111,7 @@ namespace givm::detail
 
     struct response_return
     {
-        player_id previous_player;
+        optional_player_id previous_player;
         execution_position position;
         std::uint32_t result = return_response::null;
     };
@@ -196,18 +199,18 @@ namespace givm
         definition_library& operator=(definition_library&&) noexcept = default;
         ~definition_library() = default;
 
-        template<class T>
+        template<definition_category T>
         std::size_t definition_count() const noexcept { return bucket_for<T>().data.size(); }
         std::size_t tag_count() const noexcept { return tag_names_.size(); }
 
-        definition_id<reaction_view> default_reaction_id(elemental_reaction slot) const noexcept
+        definition_id<definition_category::reaction> default_reaction_id(elemental_reaction slot) const noexcept
         {
             GIVM_ASSERT(slot != elemental_reaction::none);
             return default_reactions_[static_cast<std::size_t>(slot) - 1];
         }
 
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         class definition_view
         {
         public:
@@ -221,7 +224,7 @@ namespace givm
                 return library_->name(id_);
             }
 
-            givm::equipment_type equipment_type() const noexcept requires std::same_as<TDefinitionType, attachment_view>
+            givm::equipment_type equipment_type() const noexcept requires (TDefinitionType == definition_category::attachment)
             {
                 return library_->equipment_type(id_);
             }
@@ -249,10 +252,10 @@ namespace givm
                 return library_->matches_tags(id_, required_tags, excluded_tags);
             }
 
-            template<class TEvent, class TView>
+            template<class TEvent, entity_category Entity>
             bool can_handle() const noexcept
             {
-                return library_->template can_handle<TEvent, TView>(id_);
+                return library_->template can_handle<TEvent, Entity>(id_);
             }
 
             template<class TQuery>
@@ -292,7 +295,7 @@ namespace givm
             definition_id<TDefinitionType> id_;
         };
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         definition_view<TDefinitionType> operator[](definition_id<TDefinitionType> id) const
         {
             return { *this, id };
@@ -319,7 +322,7 @@ namespace givm
                     const auto slot = static_cast<elemental_reaction>(index + 1);
                     const auto replacement = definition.query(character_reaction_override{ slot });
                     if(not replacement) continue;
-                    reactions[index] = replacement;
+                    reactions[index] = replacement.get<definition_category::reaction>();
                 }
             }
             return reactions;
@@ -344,7 +347,7 @@ namespace givm
                     {
                         break;
                     }
-                    character.add(skill, {});
+                    character.add(skill.get<definition_category::skill>(), {});
                 }
             }
         }
@@ -355,11 +358,11 @@ namespace givm
         }
 
     public:
-        dynamic_history_value history_field(definition_id<history_summary_definition> id, std::string_view name) const
+        dynamic_history_value history_field(definition_id<definition_category::history_summary> id, std::string_view name) const
         {
 #ifndef NDEBUG
             if(id.value() >= history_layouts_.size())
-                throw history_access_error{ definition_metadata_error{ definition_types::index_of<history_summary_definition>(), id.value(), history_layouts_.size() } };
+                throw history_access_error{ definition_metadata_error{ definition_category::history_summary, id.value(), history_layouts_.size() } };
 #endif
             const auto& layout = history_layouts_[id.value()];
             const auto* field = layout.find(name);
@@ -373,7 +376,7 @@ namespace givm
         }
 
         template<class T>
-        history_value_key<T> history_field(definition_id<history_summary_definition> id, std::string_view name) const
+        history_value_key<T> history_field(definition_id<definition_category::history_summary> id, std::string_view name) const
         {
             const auto field = history_field(id, name);
             const auto* key = std::get_if<history_value_key<T>>(&field);
@@ -384,7 +387,7 @@ namespace givm
             return *key;
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         std::string_view name(definition_id<TDefinitionType> id) const
         {
             return bucket_for<TDefinitionType>().names[id.value()];
@@ -395,11 +398,11 @@ namespace givm
             return tag_names_[id.value()];
         }
 
-        givm::equipment_type equipment_type(definition_id<attachment_view> id) const noexcept
+        givm::equipment_type equipment_type(definition_id<definition_category::attachment> id) const noexcept
         {
             for(size_t index = 0; index != equipment_tags_.size(); ++index)
             {
-                if(equipment_tags_[index] && has_tag(id, equipment_tags_[index]))
+                if(equipment_tags_[index] && has_tag(id, equipment_tags_[index].get()))
                 {
                     return static_cast<givm::equipment_type>(index);
                 }
@@ -407,31 +410,31 @@ namespace givm
             return givm::equipment_type::none;
         }
 
-        givm::skill_flags skill_flags(definition_id<skill_view> id) const noexcept
+        givm::skill_flags skill_flags(definition_id<definition_category::skill> id) const noexcept
         {
             givm::skill_flags result;
             constexpr std::array bits{ skill_flag_bits::normal_attack, skill_flag_bits::elemental_skill,
                                        skill_flag_bits::elemental_burst };
             for(size_t index = 0; index != skill_tags_.size(); ++index)
-                if(skill_tags_[index] && has_tag(id, skill_tags_[index])) result.set(bits[index]);
+                if(skill_tags_[index] && has_tag(id, skill_tags_[index].get())) result.set(bits[index]);
             return result;
         }
 
-        bool is_control(definition_id<attachment_view> id) const noexcept
+        bool is_control(definition_id<definition_category::attachment> id) const noexcept
         {
-            return control_tag_ && has_tag(id, control_tag_);
+            return control_tag_ && has_tag(id, control_tag_.get());
         }
 
-        bool remove_at_zero_usages(definition_id<summon_view> id) const noexcept
+        bool remove_at_zero_usages(definition_id<definition_category::summon> id) const noexcept
         {
-            return remove_at_zero_usages_tag_ && has_tag(id, remove_at_zero_usages_tag_);
+            return remove_at_zero_usages_tag_ && has_tag(id, remove_at_zero_usages_tag_.get());
         }
 
         bool is_controlled(character_view character) const noexcept
         {
             if(not control_tag_) return false;
             for(const auto attachment : character.attachments())
-                if(has_tag(attachment.definition_id(), control_tag_)) return true;
+                if(has_tag(attachment.definition_id(), control_tag_.get())) return true;
             return false;
         }
 
@@ -439,29 +442,29 @@ namespace givm
         {
             if(not control_immunity_tag_) return false;
             for(const auto attachment : character.attachments())
-                if(has_tag(attachment.definition_id(), control_immunity_tag_)) return true;
+                if(has_tag(attachment.definition_id(), control_immunity_tag_.get())) return true;
             return false;
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         bool has_tag(definition_id<TDefinitionType> id, tag_id tag) const
         {
             return bucket_for<TDefinitionType>().tags[id.value()].has(tag);
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         bool has_all_tags(definition_id<TDefinitionType> id, std::span<const tag_id> tags) const
         {
             return bucket_for<TDefinitionType>().tags[id.value()].has_all(tags);
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         bool has_any_tag(definition_id<TDefinitionType> id, std::span<const tag_id> tags) const
         {
             return bucket_for<TDefinitionType>().tags[id.value()].has_any(tags);
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         bool matches_tags(
             definition_id<TDefinitionType> id,
             std::span<const tag_id> required_tags,
@@ -471,13 +474,14 @@ namespace givm
             return bucket_for<TDefinitionType>().tags[id.value()].matches(required_tags, excluded_tags);
         }
 
-        template<class TEvent, class TView, class TDefinitionType>
+        template<class TEvent, entity_category Entity, definition_category TDefinitionType>
         bool can_handle(definition_id<TDefinitionType> id) const noexcept
         {
-            return get_handle_fn<TEvent, TView>(id) != nullptr;
+            if constexpr(definition_category_of<Entity> != TDefinitionType) return false;
+            else return get_handle_fn<TEvent, entity_view<Entity>>(id) != nullptr;
         }
 
-        template<class TDefinitionType, class TQuery>
+        template<definition_category TDefinitionType, class TQuery>
         TQuery::result_t query(definition_id<TDefinitionType> id, const TQuery& parameters) const
         {
             const auto& bucket = bucket_for<TDefinitionType>();
@@ -493,7 +497,7 @@ namespace givm
             }
         }
 
-        template<class TEvent, class TDefinitionType, class TView>
+        template<class TEvent, definition_category TDefinitionType, class TView>
         requires (TEvent::category != event_category::preview)
         effect<TEvent::category> handle(
             definition_id<TDefinitionType> id,
@@ -508,7 +512,7 @@ namespace givm
             return handle_fn(bucket.data[index], event, context, response_index);
         }
 
-        template<class TEvent, class TDefinitionType, class TView>
+        template<class TEvent, definition_category TDefinitionType, class TView>
         requires (TEvent::category == event_category::preview)
         preview_effect handle(definition_id<TDefinitionType> id, TEvent& event,
             handle_context<TView, event_category::preview>& context) const
@@ -518,17 +522,16 @@ namespace givm
         }
 
     private:
-        using definition_type_list = definition_types;
 
         definition_library(const issued_id_map& id_map, const reaction_definition_names& basics);
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         static consteval size_t index_of()
         {
-            return definition_type_list::template index_of<TDefinitionType>();
+            return static_cast<std::size_t>(TDefinitionType);
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         decltype(auto) bucket_for(this auto& self)
         {
             return (std::get<index_of<TDefinitionType>()>(self.buckets_));
@@ -545,11 +548,11 @@ namespace givm
         template<class TEvent>
         void record_history(const TEvent& event, detail::unrestricted_table& card_table) const
         {
-            if constexpr(requires { subscribed_events<history_summary_definition>::template index_of<TEvent>(); })
+            if constexpr(requires { history_subscribed_events::template index_of<TEvent>(); })
             {
-                const auto& handlers = std::get<subscribed_events<history_summary_definition>::template index_of<TEvent>()>(
+                const auto& handlers = std::get<history_subscribed_events::template index_of<TEvent>()>(
                     history_handlers_);
-                const auto& definitions = bucket_for<history_summary_definition>().data;
+                const auto& definitions = bucket_for<definition_category::history_summary>().data;
                 for(const auto& handler : handlers)
                 {
                     const auto& layout = history_layouts_[handler.index];
@@ -560,16 +563,16 @@ namespace givm
         }
 
     private:
-        template<class TEvent, class TView, class TDefinitionType>
+        template<class TEvent, class TView, definition_category TDefinitionType>
         handle_fn_t<TView, TEvent> get_handle_fn(definition_id<TDefinitionType> id) const noexcept
         {
             const auto& bucket = bucket_for<TDefinitionType>();
-            return std::get<subscribed_events<TView>::template index_of<TEvent>()>(
-                std::get<views_of_definition<TDefinitionType>::template index_of<TView>()>(bucket.handle_fns)
+            return std::get<subscribed_events<std::remove_cvref_t<TView>::category>::template index_of<TEvent>()>(
+                std::get<detail::definition_views<TDefinitionType>::template index_of<TView>()>(bucket.handle_fns)
             )[id.value()];
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         void compile_source(
             const detail::compile_definition<TDefinitionType>& definition,
             const issued_id_map& id_map,
@@ -598,7 +601,7 @@ namespace givm
 
         static std::expected<definition_compile_result, std::vector<compile_error>> compile(
             const definition_source_library& sources, const reaction_definition_names& basics,
-            const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
+            const std::array<std::span<const std::string_view>, detail::definition_categories.size()>& selection,
             std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
 
         template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
@@ -616,7 +619,7 @@ namespace givm
         requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
             || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
         static auto compile(const definition_source_library& sources, const reaction_definition_names& basics,
-            const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
+            const std::array<std::span<const std::string_view>, detail::definition_categories.size()>& selection,
             TInitializationSequence&& initialization_program,
             TRoundSequence&& round_program, compile_mode mode)
         {
@@ -639,13 +642,16 @@ namespace givm
         std::size_t debug_library_identity_ = detail::next_program_library_identity.fetch_add(1, std::memory_order_relaxed);
 #endif
         std::vector<std::string_view> tag_names_;
-        std::array<tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
-        std::array<tag_id, 3> skill_tags_{};
-        tag_id control_tag_{};
-        tag_id control_immunity_tag_{};
-        tag_id remove_at_zero_usages_tag_{};
+        std::array<optional_tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
+        std::array<optional_tag_id, 3> skill_tags_{};
+        optional_tag_id control_tag_{};
+        optional_tag_id control_immunity_tag_{};
+        optional_tag_id remove_at_zero_usages_tag_{};
         detail::default_reaction_ids default_reactions_;
-        definition_types::apply<detail::definition_bucket_tuple> buckets_;
+        decltype([]<std::size_t... I>(std::index_sequence<I...>)
+        {
+            return detail::definition_bucket_tuple<detail::definition_categories[I]...>{};
+        }(std::make_index_sequence<detail::definition_categories.size()>{})) buckets_;
         std::vector<detail::compiled_history_summary> history_layouts_;
         std::size_t history_size_{};
         detail::definition_history_handlers history_handlers_;

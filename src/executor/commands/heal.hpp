@@ -136,7 +136,7 @@ namespace givm::detail
                         throw command_input_error{ "heal", invalid_enum_argument{ "target.selection", static_cast<std::size_t>(relative.selection) } };
                 }
 #endif
-                std::optional<character_id> anchor;
+                optional_entity_id<entity_category::character> anchor;
                 auto selection = character_selection::character;
                 if(const auto* id = std::get_if<character_id>(&input.target)) anchor = *id;
                 else

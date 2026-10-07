@@ -15,7 +15,7 @@ struct card_candidate_chosen;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | `const player_id` | 这次事件对应的玩家；只读 |
-| `definition_id` | `const definition_id<card_definition>` | 对应的牌定义标识；只读 |
+| `definition_id` | `const definition_id<givm::definition_category::card>` | 对应的牌定义标识；只读 |
 
 ## 示例
 

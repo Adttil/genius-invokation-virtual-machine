@@ -6,11 +6,10 @@
 
 namespace givm
 {
-    template<class EntityView>
+    template<entity_category Category>
     struct subscribed_events;
 
-    template<>
-    struct subscribed_events<history_summary_definition> : type_list<
+    struct history_subscribed_events : type_list<
         struct history_summary_initialization,
         struct action_phase_started,
         struct battle_started,
@@ -44,7 +43,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<hand_card_status_view> : type_list<
+    struct subscribed_events<entity_category::hand_card_status> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -71,7 +70,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<hand_card_view> : type_list<
+    struct subscribed_events<entity_category::hand_card> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -100,7 +99,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<deck_card_view> : type_list<
+    struct subscribed_events<entity_category::deck_card> : type_list<
         struct this_deck_card_discard,
         struct action_phase_started,
         struct battle_started,
@@ -122,7 +121,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<deck_card_status_view> : type_list<
+    struct subscribed_events<entity_category::deck_card_status> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -143,7 +142,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<support_view> : type_list<
+    struct subscribed_events<entity_category::support> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -195,7 +194,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<summon_view> : type_list<
+    struct subscribed_events<entity_category::summon> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -247,7 +246,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<combat_status_view> : type_list<
+    struct subscribed_events<entity_category::combat_status> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -300,16 +299,16 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<reaction_view> : type_list<
+    struct subscribed_events<entity_category::reaction> : type_list<
         struct damage_calculation,
         struct elemental_reaction_will_occur
     >{};
 
     template<>
-    struct subscribed_events<character_view> : type_list<>{};
+    struct subscribed_events<entity_category::character> : type_list<>{};
 
     template<>
-    struct subscribed_events<skill_view> : type_list<
+    struct subscribed_events<entity_category::skill> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,
@@ -360,7 +359,7 @@ namespace givm
     >{};
 
     template<>
-    struct subscribed_events<attachment_view> : type_list<
+    struct subscribed_events<entity_category::attachment> : type_list<
         struct action_phase_started,
         struct battle_started,
         struct round_started,

@@ -39,14 +39,14 @@ namespace givm
 
     struct character_initial_skill
     {
-        using result_t = definition_id<skill_view>;
+        using result_t = optional_definition_id<definition_category::skill>;
 
         std::size_t skill_index;
     };
 
     struct character_reaction_override
     {
-        using result_t = definition_id<reaction_view>;
+        using result_t = optional_definition_id<definition_category::reaction>;
         elemental_reaction slot;
     };
 
@@ -155,12 +155,12 @@ namespace givm
         return { std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     }
 
-    constexpr definition_id<skill_view> query_default(const character_initial_skill&) noexcept
+    constexpr optional_definition_id<definition_category::skill> query_default(const character_initial_skill&) noexcept
     {
         return {};
     }
 
-    constexpr definition_id<reaction_view> query_default(const character_reaction_override&) noexcept
+    constexpr optional_definition_id<definition_category::reaction> query_default(const character_reaction_override&) noexcept
     {
         return {};
     }

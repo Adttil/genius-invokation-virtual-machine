@@ -40,7 +40,7 @@ namespace
 
     struct command_skill_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { command_log* log; givm::normal_effect effect; };
         command_log* log;
         std::string_view name() const { return "CommandSkill"; }
@@ -70,7 +70,7 @@ namespace
 
     struct command_observer_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { command_log* log; givm::immediate_effect before; givm::normal_effect after; };
         command_log* log;
         std::string_view name() const { return "CommandObserver"; }
@@ -119,7 +119,7 @@ namespace
             givm::card_drawn& event, givm::handle_context<givm::skill_view>&, std::uint32_t = 0)
         {
             if(data.log->record)
-                data.log->events.push_back(event.card.player_id == owner ? "draw:owner" : "draw:opponent");
+                data.log->events.push_back(event.card.player_id() == owner ? "draw:owner" : "draw:opponent");
             return {};
         }
         static givm::normal_effect handle(const definition_type& data,
@@ -133,11 +133,11 @@ namespace
 
     struct command_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
-            givm::definition_id<givm::skill_view> active;
-            givm::definition_id<givm::skill_view> observer;
+            givm::optional_definition_id<givm::definition_category::skill> active;
+            givm::optional_definition_id<givm::definition_category::skill> observer;
         };
         std::string_view source_name;
         bool observes;
@@ -149,14 +149,14 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { active ? context.resolve_id<givm::skill_view>("CommandSkill") : givm::definition_id<givm::skill_view>{},
-                observes ? context.resolve_id<givm::skill_view>("CommandObserver") : givm::definition_id<givm::skill_view>{} };
+            return { active ? context.resolve_id<givm::definition_category::skill>("CommandSkill") : givm::optional_definition_id<givm::definition_category::skill>{},
+                observes ? context.resolve_id<givm::definition_category::skill>("CommandObserver") : givm::optional_definition_id<givm::definition_category::skill>{} };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 3, .health = 10, .energy = 3 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
             if(query.skill_index == 0) return data.active;
             if(query.skill_index == 1) return data.observer;
@@ -166,7 +166,7 @@ namespace
 
     struct command_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { command_log* log; givm::normal_effect effect; bool dynamic; };
         command_log* log;
         bool dynamic;
@@ -176,7 +176,7 @@ namespace
         {
             const auto command = dynamic ? givm::use_skill{} : givm::use_skill{
                 .player = givm::relative_player::opponent,
-                .definition = context.resolve_id<givm::skill_view>("CommandSkill")
+                .definition = context.resolve_id<givm::definition_category::skill>("CommandSkill")
             };
             return { log, context.add_normal_effect(std::tuple{ command, givm::draw_cards{ .position = 0, .count = 1 } }), dynamic };
         }
@@ -228,20 +228,20 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
     const command_character_source own_character{ "CommandOwner", false };
     const command_character_source other_character{ "CommandOpponent", true };
     const command_card_source card{ &log, dynamic };
-    const givm::test::named_definition_source<givm::card_definition> filler{ "CommandFiller" };
+    const givm::test::named_definition_source<givm::definition_category::card> filler{ "CommandFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, std::tuple{
         givm::draw_cards{ .position = 0, .count = 1 },
         givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
         givm::begin_action{}
     }, std::tuple{}, skill, observer, own_character, other_character, card, filler);
-    const auto filler_id = ids.get_id<givm::card_definition>(filler.name());
+    const auto filler_id = ids.get_id<givm::definition_category::card>(filler.name());
     givm::table table{ { .self_player = owner }, { .active_character = actor, .can_plunge = true },
         { .active_character = enemy, .can_plunge = true } };
     load_deck(table, library,
-        { .cards = { filler_id, filler_id, ids.get_id<givm::card_definition>(card.name()) },
-            .characters = { ids.get_id<givm::character_view>(own_character.name()) } },
+        { .cards = { filler_id, filler_id, ids.get_id<givm::definition_category::card>(card.name()) },
+            .characters = { ids.get_id<givm::definition_category::character>(own_character.name()) } },
         { .cards = { filler_id, filler_id },
-            .characters = { ids.get_id<givm::character_view>(other_character.name()) } });
+            .characters = { ids.get_id<givm::definition_category::character>(other_character.name()) } });
     log.skill = (*table[dynamic ? actor : enemy].skills().begin()).id();
     log.flags = dynamic ? givm::skill_flag_bits::elemental_burst | givm::skill_flag_bits::charged_attack
         | givm::skill_flag_bits::plunging_attack : givm::skill_flags{ givm::skill_flag_bits::normal_attack };
@@ -308,7 +308,7 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     const command_character_source other_character{ "CommandOpponent", false, false };
     const command_character_source standby_character{ "CommandStandby", true };
     const command_card_source card{ &log, false };
-    const givm::test::named_definition_source<givm::card_definition> filler{ "CommandFiller" };
+    const givm::test::named_definition_source<givm::definition_category::card> filler{ "CommandFiller" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, std::tuple{
         givm::draw_cards{ .position = 0, .count = 1 },
         givm::start_dice_roll_phase{ .count = 4, .reroll_count = { 0, 0 } },
@@ -316,10 +316,10 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     }, std::tuple{}, skill, observer, own_character, other_character, standby_character, card, filler);
     givm::table table{ { .self_player = owner }, { .active_character = actor }, { .active_character = enemy } };
     load_deck(table, library,
-        { .cards = { ids.get_id<givm::card_definition>(filler.name()), ids.get_id<givm::card_definition>(card.name()) },
-            .characters = { ids.get_id<givm::character_view>(own_character.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(other_character.name()),
-            ids.get_id<givm::character_view>(standby_character.name()) } });
+        { .cards = { ids.get_id<givm::definition_category::card>(filler.name()), ids.get_id<givm::definition_category::card>(card.name()) },
+            .characters = { ids.get_id<givm::definition_category::character>(own_character.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(other_character.name()),
+            ids.get_id<givm::definition_category::character>(standby_character.name()) } });
     const givm::character_id standby{ opponent, 1 };
     REQUIRE(table[enemy].skills().empty());
     REQUIRE_FALSE(table[standby].skills().empty());

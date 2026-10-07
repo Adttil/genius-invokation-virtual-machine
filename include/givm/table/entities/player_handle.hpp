@@ -56,7 +56,7 @@ namespace givm::detail
         constexpr player_id id() const
         {
             const auto& storage = table_accessor::storage_of(*storage_.table);
-            return { static_cast<size_t>(storage_.data - storage.player_datas) };
+            return player_id{ static_cast<std::uint32_t>(storage_.data - storage.player_datas) };
         }
 
         constexpr auto& state() const
@@ -210,7 +210,7 @@ namespace givm::detail
             }
         }
 
-        constexpr hand_card_handle<TStorage> add_hand_card(definition_id<card_definition> definition_id, const card_state& state) const requires is_mutable
+        constexpr hand_card_handle<TStorage> add_hand_card(definition_id<definition_category::card> definition_id, const card_state& state) const requires is_mutable
         {
             storage_.data->hand_card_datas.emplace_back(definition_id.value(), state);
             auto result = detail::table_accessor::make_uninitialized<hand_card_handle<TStorage>>();
@@ -222,7 +222,7 @@ namespace givm::detail
             return result;
         }
 
-        constexpr deck_card_handle<TStorage> add_deck_card(definition_id<card_definition> definition_id, const card_state& state) const requires is_mutable
+        constexpr deck_card_handle<TStorage> add_deck_card(definition_id<definition_category::card> definition_id, const card_state& state) const requires is_mutable
         {
             storage_.data->deck_card_datas.emplace_back(definition_id.value(), state);
             storage_.data->deck_card_order.push_back(storage_.data->deck_card_datas.size() - 1);
@@ -231,7 +231,7 @@ namespace givm::detail
 
         constexpr deck_card_handle<TStorage> insert_deck_card(
             size_t index,
-            definition_id<card_definition> definition_id,
+            definition_id<definition_category::card> definition_id,
             const card_state& state
         ) const requires is_mutable
         {
@@ -239,7 +239,7 @@ namespace givm::detail
             storage_.data->deck_card_datas.emplace_back(definition_id.value(), state);
             const size_t slot = storage_.data->deck_card_datas.size() - 1;
             storage_.data->deck_card_order.insert(storage_.data->deck_card_order.begin() + index, slot);
-            return deck_card({ id(), slot });
+            return deck_card({ id(), static_cast<std::uint32_t>(slot) });
         }
 
         constexpr deck_card_handle<TStorage> insert_deck_card(
@@ -251,7 +251,7 @@ namespace givm::detail
             storage_.data->deck_card_datas.push_back(std::move(data));
             const size_t slot = storage_.data->deck_card_datas.size() - 1;
             storage_.data->deck_card_order.insert(storage_.data->deck_card_order.begin() + index, slot);
-            return deck_card({ id(), slot });
+            return deck_card({ id(), static_cast<std::uint32_t>(slot) });
         }
 
         constexpr size_t deck_card_count() const noexcept
@@ -277,12 +277,12 @@ namespace givm::detail
             ));
         }
 
-        constexpr definition_id<card_definition> deck_card_definition(size_t index) const
+        constexpr definition_id<definition_category::card> deck_card_definition(size_t index) const
         {
             GIVM_ASSERT(index < storage_.data->deck_card_order.size());
-            return detail::table_accessor::make_issued_id<card_definition>(
+            return givm::definition_id<definition_category::card>{
                 storage_.data->deck_card_datas[storage_.data->deck_card_order[index]].definition_and_flags
-                    & ~deck_card_erased_mask);
+                    & ~deck_card_erased_mask};
         }
 
         constexpr card_data take_top_deck_card() const requires is_mutable
@@ -302,9 +302,9 @@ namespace givm::detail
         // No event responses may run between extracting cards and compacting the order.
         constexpr card_data take_deck_card(deck_card_id card_id) const requires is_mutable
         {
-            GIVM_ASSERT(card_id.player_id == id());
-            GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
-            auto& source = storage_.data->deck_card_datas[card_id.index];
+            GIVM_ASSERT(card_id.player_id() == id());
+            GIVM_ASSERT(card_id.index() < storage_.data->deck_card_datas.size());
+            auto& source = storage_.data->deck_card_datas[card_id.index()];
             GIVM_ASSERT((source.definition_and_flags & deck_card_erased_mask) == 0);
             card_data result = std::move(source);
             source.definition_and_flags = static_cast<size_t>(-1);
@@ -315,9 +315,9 @@ namespace givm::detail
 
         constexpr void discard_deck_card(deck_card_id card_id) const requires is_mutable
         {
-            GIVM_ASSERT(card_id.player_id == id());
-            GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
-            auto& source = storage_.data->deck_card_datas[card_id.index];
+            GIVM_ASSERT(card_id.player_id() == id());
+            GIVM_ASSERT(card_id.index() < storage_.data->deck_card_datas.size());
+            auto& source = storage_.data->deck_card_datas[card_id.index()];
             GIVM_ASSERT((source.definition_and_flags & deck_card_erased_mask) == 0);
             detail::erase_statuses(table_accessor::storage_of(*storage_.table), source);
             source.definition_and_flags |= deck_card_erased_mask;
@@ -376,9 +376,9 @@ namespace givm::detail
 
         constexpr card_data take_hand_card(hand_card_id card_id) const requires is_mutable
         {
-            GIVM_ASSERT(card_id.player_id == id());
-            GIVM_ASSERT(card_id.index < storage_.data->hand_card_datas.size());
-            auto& source = storage_.data->hand_card_datas[card_id.index];
+            GIVM_ASSERT(card_id.player_id() == id());
+            GIVM_ASSERT(card_id.index() < storage_.data->hand_card_datas.size());
+            auto& source = storage_.data->hand_card_datas[card_id.index()];
             GIVM_ASSERT((source.definition_and_flags & hand_card_erased_mask) == 0);
             card_data result = std::move(source);
             source.definition_and_flags = static_cast<size_t>(-1);
@@ -409,7 +409,7 @@ namespace givm::detail
             return result;
         }
 
-        constexpr support_handle<TStorage> add(definition_id<support_view> definition_id, const support_state& state) const requires is_mutable
+        constexpr support_handle<TStorage> add(definition_id<definition_category::support> definition_id, const support_state& state) const requires is_mutable
         {
             storage_.data->support_datas.emplace_back(definition_id.value(), state);
             auto result = detail::table_accessor::make_uninitialized<support_handle<TStorage>>();
@@ -421,7 +421,7 @@ namespace givm::detail
             return result;
         }
 
-        constexpr summon_handle<TStorage> add(definition_id<summon_view> definition_id, const summon_state& state) const requires is_mutable
+        constexpr summon_handle<TStorage> add(definition_id<definition_category::summon> definition_id, const summon_state& state) const requires is_mutable
         {
             storage_.data->summon_datas.emplace_back(definition_id.value(), state);
             auto result = detail::table_accessor::make_uninitialized<summon_handle<TStorage>>();
@@ -433,7 +433,7 @@ namespace givm::detail
             return result;
         }
 
-        constexpr combat_status_handle<TStorage> add(definition_id<combat_status_view> definition_id, const combat_status_state& state) const requires is_mutable
+        constexpr combat_status_handle<TStorage> add(definition_id<definition_category::combat_status> definition_id, const combat_status_state& state) const requires is_mutable
         {
             storage_.data->combat_status_datas.emplace_back(definition_id.value(), state);
             auto result = detail::table_accessor::make_uninitialized<combat_status_handle<TStorage>>();
@@ -445,7 +445,7 @@ namespace givm::detail
             return result;
         }
 
-        constexpr character_handle<TStorage> add(definition_id<character_view> definition_id, const character_state& state) const requires is_mutable
+        constexpr character_handle<TStorage> add(definition_id<definition_category::character> definition_id, const character_state& state) const requires is_mutable
         {
             storage_.data->character_datas.emplace_back(definition_id.value(), state);
             auto result = detail::table_accessor::make_uninitialized<character_handle<TStorage>>();
@@ -463,10 +463,8 @@ namespace givm::detail
         }
 
     private:
-        static constexpr size_t hand_card_erased_mask =
-            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
-        static constexpr size_t deck_card_erased_mask =
-            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+        static constexpr std::uint64_t hand_card_erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
+        static constexpr std::uint64_t deck_card_erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
 
         constexpr basic_player_handle(detail::uninitialized_entity_t) noexcept {}
 
@@ -486,27 +484,27 @@ namespace givm::detail
 
         constexpr deck_card_handle<TStorage> deck_card(deck_card_id card_id) const
         {
-            GIVM_ASSERT(card_id.player_id == id());
-            GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
+            GIVM_ASSERT(card_id.player_id() == id());
+            GIVM_ASSERT(card_id.index() < storage_.data->deck_card_datas.size());
             auto result = detail::table_accessor::make_uninitialized<deck_card_handle<TStorage>>();
             detail::table_accessor::storage_of(result) = {
                 .table = storage_.table,
                 .player = storage_.data,
-                .slot = card_id.index,
-                .data = &storage_.data->deck_card_datas[card_id.index]
+                .slot = card_id.index(),
+                .data = &storage_.data->deck_card_datas[card_id.index()]
             };
             return result;
         }
 
         constexpr void erase_deck_card(deck_card_id card_id) const requires is_mutable
         {
-            GIVM_ASSERT(card_id.player_id == id());
-            GIVM_ASSERT(card_id.index < storage_.data->deck_card_datas.size());
-            auto& source = storage_.data->deck_card_datas[card_id.index];
+            GIVM_ASSERT(card_id.player_id() == id());
+            GIVM_ASSERT(card_id.index() < storage_.data->deck_card_datas.size());
+            auto& source = storage_.data->deck_card_datas[card_id.index()];
             GIVM_ASSERT((source.definition_and_flags & deck_card_erased_mask) == 0);
             detail::erase_statuses(table_accessor::storage_of(*storage_.table), source);
             source.definition_and_flags |= deck_card_erased_mask;
-            const auto order = std::ranges::find(storage_.data->deck_card_order, card_id.index);
+            const auto order = std::ranges::find(storage_.data->deck_card_order, card_id.index());
             GIVM_ASSERT(order != storage_.data->deck_card_order.end());
             storage_.data->deck_card_order.erase(order);
         }
@@ -522,6 +520,8 @@ namespace givm
         using base_type = detail::basic_player_handle<const detail::unrestricted_table>;
 
     public:
+        static constexpr entity_category category = entity_category::player;
+
         using base_type::table;
         using base_type::id;
         using base_type::state;

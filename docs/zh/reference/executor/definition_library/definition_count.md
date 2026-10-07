@@ -15,7 +15,7 @@ std::size_t definition_count() const noexcept;
 
 |  |  |
 | --- | --- |
-| `T` | 定义类别，须为 [`definition_types`](../../definition/definition_types.md) 中的一种类型 |
+| `T` | 定义类别，须为 [`definition_category`](../../enums/definition_category.md) 中的一种类型 |
 
 ## 返回值
 

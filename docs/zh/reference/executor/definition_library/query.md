@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<class TDefinitionType, class TQuery>
+template<definition_category TDefinitionType, class TQuery>
 TQuery::result_t query(definition_id<TDefinitionType> id, const TQuery& parameters) const;
 ```
 
@@ -47,7 +47,7 @@ TQuery::result_t query(definition_id<TDefinitionType> id, const TQuery& paramete
 
 struct character_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
 
     std::string_view name() const { return "角色"; }
     int compile(givm::definition_compile_context&) const { return 10; }
@@ -73,7 +73,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto id = ids.get_id<givm::character_view>("角色");
+    const auto id = ids.get_id<givm::definition_category::character>("角色");
     const auto state = library.query(id, givm::character_initial_state{});
     std::println("初始生命: {}", state.health);
 }

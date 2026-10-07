@@ -20,7 +20,7 @@ namespace givm
     struct relative_attachment_target
     {
         relative_character_target character{};
-        std::variant<definition_id<attachment_view>, equipment_type> selector{};
+        std::variant<optional_definition_id<definition_category::attachment>, equipment_type> selector{};
     };
 }
 

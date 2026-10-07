@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TCategory>
+template<definition_category TCategory>
 definition_view<TCategory> operator[](definition_id<TCategory> id) const;
 ```
 

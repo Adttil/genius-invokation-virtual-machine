@@ -5,8 +5,7 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-using damage_source_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id,
-                 summon_id, combat_status_id, character_id, skill_id, attachment_id>;
+using damage_source_id = variant_entity_id<entity_category::hand_card, entity_category::deck_card, entity_category::hand_card_status, entity_category::deck_card_status, entity_category::support, entity_category::summon, entity_category::combat_status, entity_category::character, entity_category::skill, entity_category::attachment>;
 ```
 
 伤害的来源标识。它保留造成伤害的具体实体种类，便于区分角色、技能和场上效果造成的伤害。
@@ -23,8 +22,8 @@ using damage_source_id = std::variant<hand_card_id, deck_card_id, hand_card_stat
 
 int main()
 {
-    givm::damage_source_id source{ givm::character_id{ .player_id = givm::player_id{ 0 }, .index = 0 } };
-    std::println("来源是角色: {}", std::holds_alternative<givm::character_id>(source));
+    givm::damage_source_id source{ givm::character_id{ givm::player_id{ 0 }, 0  } };
+    std::println("来源是角色: {}", source.template holds<givm::entity_category::character>());
 }
 ```
 

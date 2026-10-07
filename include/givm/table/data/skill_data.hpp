@@ -2,6 +2,8 @@
 #define GIVM_TABLE_DATA_SKILL_DATA_HPP
 
 #include <cstddef>
+
+#include "../definition_id.hpp"
 #include <cstdint>
 
 namespace givm
@@ -16,7 +18,7 @@ namespace givm::detail
 {
     struct skill_data
     {
-        size_t definition_and_flags = static_cast<size_t>(-1);
+        std::uint64_t definition_and_flags = static_cast<std::uint64_t>(-1);
         skill_state state;
     };
 }

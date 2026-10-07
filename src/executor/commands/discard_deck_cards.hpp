@@ -35,10 +35,10 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, discard_deck_cards>(library);
 #ifndef NDEBUG
-            debug_validate_entity(table, table.state().self_player, "discard_deck_cards", "self_player");
+            debug_validate_entity(table, table.state().self_player.get(), "discard_deck_cards", "self_player");
 #endif
             player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
             requested_count = command.count;
             context.advance(instruction_extent<1, discard_deck_cards>);
         }

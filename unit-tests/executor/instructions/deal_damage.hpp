@@ -40,7 +40,7 @@ namespace
 
     struct damage_observer_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
 
         struct definition_type
         {
@@ -94,7 +94,7 @@ namespace
             givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             data.log->order.push_back(observed_event::reaction_will_occur);
-            data.log->reaction = event.reaction.slot;
+            data.log->reaction = event.reaction.slot();
             data.log->reaction_cause = event.cause;
             return {};
         }
@@ -180,9 +180,9 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto victim_id = ids.get_id<givm::character_view>(victim.name());
+    const auto victim_id = ids.get_id<givm::definition_category::character>(victim.name());
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { victim_id, victim_id } });
     givm_test::executor_driver target;
     target.start(library, table);
@@ -192,7 +192,7 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     {
         REQUIRE(state == givm::execution_state::active_character_selection);
         target.submitted(target.view_in<givm::execution_state::active_character_selection>().select(
-            library, table, random, { damaged.player_id, 1 }));
+            library, table, random, { damaged.player_id(), 1 }));
         state = target.advance(library, table, random);
     }
     REQUIRE(state == givm::execution_state::finished);
@@ -241,8 +241,8 @@ TEST_CASE("damage observation follows aura preparation and copies resume indepen
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     auto normal_table = table;
     givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
@@ -302,8 +302,8 @@ TEST_CASE("lethal damage reports overkill and ends the game before later instruc
     givm::table table{ { .self_player = other_player(damaged_player) },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const givm::linked_deck attacking_deck{ .characters = { ids.get_id<givm::character_view>(attacker.name()) } };
-    const givm::linked_deck defending_deck{ .characters = { ids.get_id<givm::character_view>(victim.name()) } };
+    const givm::linked_deck attacking_deck{ .characters = { ids.get_id<givm::definition_category::character>(attacker.name()) } };
+    const givm::linked_deck defending_deck{ .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } };
     load_deck(table, library,
         damaged_player == givm::player_id{ 0 } ? defending_deck : attacking_deck,
         damaged_player == givm::player_id{ 1 } ? defending_deck : attacking_deck);
@@ -349,8 +349,8 @@ TEST_CASE("zero damage skips health observation and preserves element applicatio
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;

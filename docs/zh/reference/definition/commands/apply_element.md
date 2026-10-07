@@ -88,7 +88,7 @@ struct apply_element_error;
 
 struct character_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     struct definition_type {};
     std::string_view name() const { return "character"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -117,7 +117,7 @@ int main()
     }
     const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
-    const auto definition = ids.get_id<givm::character_view>("character");
+    const auto definition = ids.get_id<givm::definition_category::character>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },
         givm::linked_deck{ .characters = { definition } });

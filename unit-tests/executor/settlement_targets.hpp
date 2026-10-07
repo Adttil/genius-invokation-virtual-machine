@@ -18,7 +18,7 @@ namespace
     using namespace givm;
     constexpr character_id character(std::size_t player, std::size_t index)
     {
-        return { player_id{ player }, index };
+        return { player_id{ static_cast<std::uint32_t>(player) }, static_cast<std::uint32_t>(index) };
     }
 
     struct flow_log
@@ -42,7 +42,7 @@ namespace
 
     struct observer_source
     {
-        using definition_category = character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             flow_log* log;
@@ -146,7 +146,7 @@ namespace
         static normal_effect handle(const definition_type& data, active_character_changed& event,
             handle_context<skill_view>& context, std::uint32_t index = 0)
         {
-            const auto player = event.current.player_id.index;
+            const auto player = event.current.player_id().index();
             data.log->order.push_back(static_cast<int>((index == 0 ? 2 : 4) + player));
             if(index != 0) return {};
             data.log->changes.push_back(event.current);
@@ -189,8 +189,8 @@ TEST_CASE("dynamic damage and healing batches share the fixed sequence settlemen
         std::tuple{ start_round{}, settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, victim);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = character(0, 0) },
         { .active_character = character(1, 0) } };
-    const auto victim_id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
+    const auto victim_id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { victim_id, victim_id } });
     executor_driver execution;
     execution.start(library, table);
@@ -225,9 +225,9 @@ TEST_CASE("ordinary damage and standby ranges do not inherit prioritized targeti
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, commands, std::tuple{}, observer, victim, dead);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = character(0, 0) },
         { .active_character = character(1, 0) } };
-    const auto victim_id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
-        { .characters = { ids.get_id<character_view>(dead.name()), victim_id, victim_id } });
+    const auto victim_id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(dead.name()), victim_id, victim_id } });
     executor_driver execution;
     execution.start(library, table);
     CHECK(finish(execution, library, table) == 0);
@@ -250,8 +250,8 @@ TEST_CASE("zero health characters still receive damage and reactions before segm
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, victim);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = character(0, 0) },
         { .active_character = character(1, 0) } };
-    const auto victim_id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
+    const auto victim_id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { victim_id, victim_id } });
     executor_driver execution;
     execution.start(library, table);
@@ -275,9 +275,9 @@ TEST_CASE("a range does not acquire characters revived by its first inline respo
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, victim, dead);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = character(0, 0) },
         { .active_character = character(1, 0) } };
-    const auto victim_id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
-        { .characters = { victim_id, ids.get_id<character_view>(dead.name()), victim_id } });
+    const auto victim_id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { victim_id, ids.get_id<givm::definition_category::character>(dead.name()), victim_id } });
     executor_driver execution;
     execution.start(library, table);
     CHECK(finish(execution, library, table) == 0);
@@ -298,9 +298,9 @@ TEST_CASE("only a child settlement with its own defeat checks the parent's defea
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, fragile, victim);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = character(0, 0) },
         { .active_character = character(1, 0) } };
-    const auto fragile_id = ids.get_id<character_view>(fragile.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()), fragile_id } },
-        { .characters = { fragile_id, ids.get_id<character_view>(victim.name()) } });
+    const auto fragile_id = ids.get_id<givm::definition_category::character>(fragile.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()), fragile_id } },
+        { .characters = { fragile_id, ids.get_id<givm::definition_category::character>(victim.name()) } });
     executor_driver execution;
     execution.start(library, table);
     REQUIRE(execution.advance(library, table, zero_random) == execution_state::active_character_selection);
@@ -326,11 +326,11 @@ TEST_CASE("both defeated active choices are collected before switches and acting
         deal_damage{ .target = { relative_player::opponent, 0 }, .value = 1, .type = damage_type::physical },
         deal_damage{ .target = { relative_player::self, 0 }, .value = 1, .type = damage_type::physical },
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, fragile, victim);
-    givm::table table{ { .active_player = player_id{ first }, .self_player = player_id{ 0 } },
+    givm::table table{ { .active_player = player_id{ static_cast<std::uint32_t>(first) }, .self_player = player_id{ 0 } },
         { .active_character = character(0, 0) }, { .active_character = character(1, 0) } };
-    const auto fragile_id = ids.get_id<character_view>(fragile.name());
-    load_deck(table, library, { .characters = { fragile_id, ids.get_id<character_view>(observer.name()) } },
-        { .characters = { fragile_id, ids.get_id<character_view>(victim.name()) } });
+    const auto fragile_id = ids.get_id<givm::definition_category::character>(fragile.name());
+    load_deck(table, library, { .characters = { fragile_id, ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { fragile_id, ids.get_id<givm::definition_category::character>(victim.name()) } });
     executor_driver execution;
     execution.start(library, table);
     auto state = execution.advance(library, table, zero_random);
@@ -371,7 +371,7 @@ TEST_CASE("the entire segment resolves dying before a simultaneous team defeat e
         settle{}, end_game{ game_result::player_0_win } }, std::tuple{}, fragile);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = character(0, 0) },
         { .active_character = character(1, 0) } };
-    const auto id = ids.get_id<character_view>(fragile.name());
+    const auto id = ids.get_id<givm::definition_category::character>(fragile.name());
     load_deck(table, library, { .characters = { id } }, { .characters = { id } });
     executor_driver execution;
     execution.start(library, table);
@@ -398,8 +398,8 @@ TEST_CASE("segment boundaries keep dead active positions until an explicit settl
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, fragile, victim);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = character(0, 0) },
         { .active_character = character(1, 0) } };
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
-        { .characters = { ids.get_id<character_view>(fragile.name()), ids.get_id<character_view>(victim.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(fragile.name()), ids.get_id<givm::definition_category::character>(victim.name()) } });
     executor_driver execution;
     execution.start(library, table);
     CHECK(finish(execution, library, table) == 1);

@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
-static constexpr size_t definition_count = definition_types::size();
+static constexpr size_t definition_count = detail::definition_categories::size();
 ```
 
 定义系统支持的类别数量，不是某个库中已登记定义的数量。可用于为每个类别准备统计或配置项。
@@ -22,9 +22,9 @@ static constexpr size_t definition_count = definition_types::size();
 int main()
 {
     std::array<std::size_t, givm::definition_source_library::definition_count> selected_counts{};
-    selected_counts[givm::definition_types::index_of<givm::card_definition>()] = 30;
+    selected_counts[static_cast<std::size_t>(givm::definition_category::card)] = 30;
     std::println("类别数量: {}", selected_counts.size());
-    std::println("计划选择的卡牌数: {}", selected_counts[givm::definition_types::index_of<givm::card_definition>()]);
+    std::println("计划选择的卡牌数: {}", selected_counts[static_cast<std::size_t>(givm::definition_category::card)]);
 }
 ```
 

@@ -26,12 +26,12 @@ namespace givm::detail
     inline void apply_active_character_switch(const definition_library& library,
         unrestricted_table& table, execution_context& context, active_character_changed event)
     {
-        auto& state = table[event.current.player_id].state();
+        auto& state = table[event.current.player_id()].state();
         if(state.active_character)
         {
             for(const auto attachment : table[*state.active_character].attachments())
             {
-                if(library[attachment.definition_id()].can_handle<this_prepared_skill_use, attachment_view>())
+                if(library[attachment.definition_id()].can_handle<this_prepared_skill_use, entity_category::attachment>())
                 {
                     attachment.erase();
                     append_removal_record<this_attachment_remove>(context, attachment.id(),
@@ -57,7 +57,7 @@ namespace givm::detail
     inline execution_state prepare_active_character_change(const definition_library& library,
         unrestricted_table& table, execution_context& context, random_fn&)
     {
-        std::optional<character_id> target;
+        optional_entity_id<entity_category::character> target;
         if constexpr(Fixed)
         {
             const auto command = context.instruction_data<1, givm::set_active_character>(library);
@@ -77,7 +77,7 @@ namespace givm::detail
             context.enter_next();
         }
         if(not target) return context.advance(Observed * sizeof(execute_fn));
-        const auto& state = table[target->player_id].state();
+        const auto& state = table[target.get().player_id()].state();
         if(state.active_character == *target || (state.active_character
             && library.is_control_immune(std::as_const(table)[*state.active_character])))
             return context.advance(Observed * sizeof(execute_fn));

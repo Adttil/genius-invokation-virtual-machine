@@ -31,7 +31,7 @@ namespace
 
     struct summon_source
     {
-        using definition_category = givm::summon_view;
+        static constexpr auto category = givm::definition_category::summon;
         struct definition_type { call_log* log; givm::normal_effect body; givm::normal_effect removal; };
         call_log* log;
         std::string_view name() const { return "SingleSettlementSummon"; }
@@ -66,7 +66,7 @@ namespace
 
     struct prepared_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { call_log* log; givm::normal_effect body; };
         call_log* log;
         std::string_view name() const { return "SingleSettlementPreparation"; }
@@ -99,7 +99,7 @@ namespace
 
     struct driver_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { givm::normal_effect setup; };
         call_log* log;
         std::string_view name() const { return "SingleSettlementDriver"; }
@@ -110,8 +110,8 @@ namespace
             using namespace givm;
             if(log->prepared)
                 return { context.add_normal_effect(add_attachment{
-                    .definition = context.resolve_id<attachment_view>("SingleSettlementPreparation") }) };
-            const auto definition = context.resolve_id<summon_view>("SingleSettlementSummon");
+                    .definition = context.resolve_id<givm::definition_category::attachment>("SingleSettlementPreparation") }) };
+            const auto definition = context.resolve_id<givm::definition_category::summon>("SingleSettlementSummon");
             return { context.add_normal_effect(add_summon{ .definition = definition, .state = { 1, 1 } },
                 summon{ .definition = definition, .state = { 7, 3 } }) };
         }
@@ -131,8 +131,8 @@ namespace
         givm::table table{ { .self_player = owner },
             { .active_character = actor, .can_plunge = true }, { .active_character = opponent } };
         load_deck(table, library,
-            { .characters = { ids.get_id<givm::character_view>("SingleSettlementDriver") } },
-            { .characters = { ids.get_id<givm::character_view>("SingleSettlementOpponent") } });
+            { .characters = { ids.get_id<givm::definition_category::character>("SingleSettlementDriver") } },
+            { .characters = { ids.get_id<givm::definition_category::character>("SingleSettlementOpponent") } });
         return table;
     }
 }
@@ -185,16 +185,16 @@ TEST_CASE("prepared combat effect keeps plunge eligibility gained by its charact
         givm::test::initialized_character_source{ "SingleSettlementOpponent" });
     givm::table table{ { .self_player = owner },
         { .active_character = actor, .can_plunge = true }, { .active_character = opponent } };
-    const auto ordinary = ids.get_id<givm::character_view>("SingleSettlementOpponent");
+    const auto ordinary = ids.get_id<givm::definition_category::character>("SingleSettlementOpponent");
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>("SingleSettlementDriver"), ordinary } },
+        { .characters = { ids.get_id<givm::definition_category::character>("SingleSettlementDriver"), ordinary } },
         { .characters = { ordinary } });
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::action_selection);
     CHECK(log.indices == std::vector<std::uint32_t>{ 0, 7 });
     CHECK(log.energy == std::vector<std::uint32_t>{ 0, 4096 });
     CHECK(table[owner].state().active_character == givm::character_id{ owner, 1 });
-    CHECK(table.state().active_player == opponent.player_id);
+    CHECK(table.state().active_player == opponent.player_id());
     CHECK(table[owner].state().can_plunge);
 }
 }

@@ -5,8 +5,8 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TCategory>
-definition_id<TCategory> resolve_id(std::string_view name) const;
+template<definition_category TCategory>
+optional_definition_id<TCategory> resolve_id(std::string_view name) const;
 ```
 
 按名称取得本定义所依赖的另一项定义，例如一张卡牌生成的支援定义。
@@ -25,11 +25,11 @@ definition_id<TCategory> resolve_id(std::string_view name) const;
 
 ## 返回值
 
-已编译选择范围中该定义的 ID。名称未在本源的对应依赖声明中出现，或该定义不存在时，返回无效 ID，并向本次编译记录 [`definition_resolution_error`](../definition_resolution_error.md)。最终 [`compile`](../compile.md) 返回失败诊断，不抛出验证异常。
+已编译选择范围中该定义的可空 ID。名称未在本源的对应依赖声明中出现，或该定义不存在时，返回空值，并向本次编译记录 [`definition_resolution_error`](../definition_resolution_error.md)。最终 [`compile`](../compile.md) 返回失败诊断，不抛出验证异常。
 
 ## 注意
 
-失败后源的 `compile` 仍可继续执行，以收集其他独立错误；不要用无效 ID 索引元数据或访问定义。
+失败后源的 `compile` 仍可继续执行，以收集其他独立错误。使用 `if(id)` 判断是否取得结果；只有取得的强类型 `id.get()` 可用于索引元数据或访问定义。
 
 ## 示例
 
@@ -44,22 +44,22 @@ definition_id<TCategory> resolve_id(std::string_view name) const;
 
 struct support_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
     std::string_view name() const { return "协助者"; }
     int compile(givm::definition_compile_context&) const { return 0; }
 };
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "召唤卡"; }
     auto support_dependencies() const
     { return std::array<std::string_view, 1>{ "协助者" }; }
 
-    givm::definition_id<givm::support_view> compile(givm::definition_compile_context& context) const
+    givm::optional_definition_id<givm::definition_category::support> compile(givm::definition_compile_context& context) const
     {
-        const auto support = context.resolve_id<givm::support_view>("协助者");
-        std::println("已找到依赖的支援: {}", support.is_valid());
+        const auto support = context.resolve_id<givm::definition_category::support>("协助者");
+        std::println("已找到依赖的支援: {}", bool(support));
         return support;
     }
 };

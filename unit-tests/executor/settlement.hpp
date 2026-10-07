@@ -29,7 +29,7 @@ namespace
 
     struct skill_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             scenario kind;
@@ -137,7 +137,7 @@ namespace
         static givm::normal_effect handle(const definition_type& data, givm::dice_added& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            if(event.player == own.player_id) data.log->energy.push_back(context.table()[own].state().energy);
+            if(event.player == own.player_id()) data.log->energy.push_back(context.table()[own].state().energy);
             return {};
         }
 
@@ -154,21 +154,21 @@ namespace
 
     struct character_source
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::definition_id<givm::skill_view> skill; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::optional_definition_id<givm::definition_category::skill> skill; };
         std::string_view name() const { return "SettlementCharacter"; }
         auto skill_dependencies() const { return std::array{ std::string_view{ "SettlementSkill" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>("SettlementSkill") };
+            return { context.resolve_id<givm::definition_category::skill>("SettlementSkill") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 10000, .health = 10 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.skill : givm::definition_id<givm::skill_view>{};
+            return query.skill_index == 0 ? data.skill : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 
@@ -176,7 +176,7 @@ namespace
     {
         givm::table result{ { .self_player = givm::player_id{ 0 } },
             { .active_character = own }, {} };
-        const auto id = ids.get_id<givm::character_view>("SettlementCharacter");
+        const auto id = ids.get_id<givm::definition_category::character>("SettlementCharacter");
         load_deck(result, library, { .characters = { id } }, {});
         return result;
     }
@@ -324,8 +324,8 @@ TEST_CASE("root explicit settlement controls deferred inline work across segment
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = own }, { .active_character = opponent } };
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(character.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::finished);
     CHECK(table[own].state().energy == (settle_before_increment ? 1u : 0u));
@@ -350,8 +350,8 @@ TEST_CASE("root deferred records survive action windows independent settlements 
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = own }, { .active_character = opponent } };
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(character.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm::executor execution;
     REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random)
         == givm::execution_state::action_selection);

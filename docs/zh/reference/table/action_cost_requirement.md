@@ -17,7 +17,7 @@ struct action_cost_requirement;
 | `dice_requirement` | [`elemental_dice_requirement`](../enums/elemental_dice_requirement.md) | 这项行动需要的骰子 |
 | `speed` | [`action_speed`](../enums/action_speed.md) | 行动速度 |
 | `energy` | `std::uint32_t` | 从确认时锁定的原付费角色扣除的充能数量，默认为零 |
-| `energy_tag` | [`tag_id`](tag_id.md) | 所需充能类型；默认无效 ID 表示普通充能，有效 ID 表示对应标签的替代充能 |
+| `energy_tag` | [`optional_tag_id`](optional_tag_id.md) | 所需充能类型；默认空值表示普通充能，非空值表示对应标签的替代充能 |
 
 ## 注意
 

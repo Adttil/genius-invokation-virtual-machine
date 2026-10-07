@@ -45,7 +45,7 @@ namespace
 
     struct tagged_attachment
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { control_log* log; };
         std::string_view source_name;
         std::string_view source_tag;
@@ -64,7 +64,7 @@ namespace
     template<class TProgram>
     struct control_driver
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             control_log* log;
@@ -72,7 +72,7 @@ namespace
             givm::normal_effect dynamic_operations;
             givm::normal_effect end_phase;
             givm::normal_effect round_start;
-            givm::definition_id<givm::attachment_view> control;
+            givm::optional_definition_id<givm::definition_category::attachment> control;
         };
         control_log* log;
         TProgram program;
@@ -91,7 +91,7 @@ namespace
                     givm::attach{}, givm::add_attachment{}, givm::set_active_character{} }) : givm::normal_effect{},
                 end_phase.empty() ? givm::normal_effect{} : context.add_normal_effect(end_phase),
                 pause_round_start ? context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } }) : givm::normal_effect{},
-                context.resolve_id<givm::attachment_view>("Control") };
+                context.resolve_id<givm::definition_category::attachment>("Control") };
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::battle_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
@@ -107,8 +107,8 @@ namespace
                 return {};
             }
             return context.invoke(data.dynamic_operations,
-                givm::attach_input{ .target = actor, .definition = data.control, .state = { 1 } },
-                givm::add_attachment_input{ .target = actor, .definition = data.control, .state = { 1 } },
+                givm::attach_input{ .target = actor, .definition = data.control.get(), .state = { 1 } },
+                givm::add_attachment_input{ .target = actor, .definition = data.control.get(), .state = { 1 } },
                 givm::set_active_character_input{ .current = ally });
         }
         static givm::preview_effect handle(const definition_type&,
@@ -120,7 +120,7 @@ namespace
         static givm::normal_effect handle(const definition_type& data,
             givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id()].state().active_character == event.current);
             data.log->switches.push_back(event.current);
             return {};
         }
@@ -165,27 +165,27 @@ namespace
 
     struct driver_character
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::definition_id<givm::skill_view> skill; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::optional_definition_id<givm::definition_category::skill> skill; };
         std::string_view name() const { return "DriverCharacter"; }
         auto skill_dependencies() const { return std::array{ std::string_view{ "ControlDriver" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>("ControlDriver") };
+            return { context.resolve_id<givm::definition_category::skill>("ControlDriver") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 20, .health = 20 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.skill : givm::definition_id<givm::skill_view>{};
+            return query.skill_index == 0 ? data.skill : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 
     struct talent_card
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type {};
         std::string_view name() const { return "ControlledTalent"; }
         definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -220,10 +220,10 @@ namespace
 
     void load_scenario(givm::table& table, const givm::definition_library& library, const givm::issued_id_map& ids)
     {
-        const auto ordinary = ids.get_id<givm::character_view>("PlainCharacter");
+        const auto ordinary = ids.get_id<givm::definition_category::character>("PlainCharacter");
         load_deck(table, library,
-            { .cards = { ids.get_id<givm::card_definition>("ControlledTalent") },
-                .characters = { ids.get_id<givm::character_view>("DriverCharacter"), ordinary } },
+            { .cards = { ids.get_id<givm::definition_category::card>("ControlledTalent") },
+                .characters = { ids.get_id<givm::definition_category::character>("DriverCharacter"), ordinary } },
             { .characters = { ordinary, ordinary } });
     }
 
@@ -252,10 +252,10 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     const auto [library, ids] = compile_scenario(log, observed, [&](givm::definition_compile_context& context)
     {
         std::vector<givm::any_command> commands;
-        const auto control = context.resolve_id<givm::attachment_view>("Control");
+        const auto control = context.resolve_id<givm::definition_category::attachment>("Control");
         if(preexisting) commands.emplace_back(givm::add_attachment{ .definition = control, .state = { 1 } });
-        if(immune) commands.emplace_back(givm::add_attachment{ .definition = context.resolve_id<givm::attachment_view>("Immunity") });
-        commands.emplace_back(givm::add_attachment{ .definition = context.resolve_id<givm::attachment_view>("Ordinary") });
+        if(immune) commands.emplace_back(givm::add_attachment{ .definition = context.resolve_id<givm::definition_category::attachment>("Immunity") });
+        commands.emplace_back(givm::add_attachment{ .definition = context.resolve_id<givm::definition_category::attachment>("Ordinary") });
         if(dynamic) { commands.emplace_back(givm::start_battle{}); commands.emplace_back(givm::settle{}); }
         else
         {
@@ -279,9 +279,9 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     executor.start(library, table);
     zero_random random;
     REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
-    CHECK(library.is_control(ids.get_id<givm::attachment_view>("Control")));
-    CHECK(library.is_control(ids.get_id<givm::attachment_view>(givm::genshin_impact::frozen_3_3_0.name())));
-    CHECK_FALSE(library.is_control(ids.get_id<givm::attachment_view>("Immunity")));
+    CHECK(library.is_control(ids.get_id<givm::definition_category::attachment>("Control")));
+    CHECK(library.is_control(ids.get_id<givm::definition_category::attachment>(givm::genshin_impact::frozen_3_3_0.name())));
+    CHECK_FALSE(library.is_control(ids.get_id<givm::definition_category::attachment>("Immunity")));
     CHECK(library.is_controlled(table[actor]) == (preexisting || not immune));
     CHECK(library.is_control_immune(table[actor]) == immune);
     CHECK_FALSE(library.is_controlled(table[ally]));
@@ -315,7 +315,7 @@ TEST_CASE("control immunity prevents overload switching without suppressing its 
     {
         std::vector<givm::any_command> commands;
         if(immune) commands.emplace_back(givm::attach{ .player = givm::relative_player::opponent,
-            .definition = context.resolve_id<givm::attachment_view>("Immunity") });
+            .definition = context.resolve_id<givm::definition_category::attachment>("Immunity") });
         commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::electro });
         for(const auto& item : damages) commands.emplace_back(item);
         commands.emplace_back(givm::settle{});
@@ -358,7 +358,7 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
     {
         std::vector<givm::any_command> commands;
         if(immune) commands.emplace_back(givm::attach{ .player = givm::relative_player::opponent,
-            .definition = context.resolve_id<givm::attachment_view>("Immunity") });
+            .definition = context.resolve_id<givm::definition_category::attachment>("Immunity") });
         commands.emplace_back(givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::hydro });
         for(const auto& item : damages) commands.emplace_back(item);
         commands.emplace_back(givm::settle{});
@@ -381,7 +381,7 @@ TEST_CASE("frozen is attached between grouped hits and shatters before damage ab
         REQUIRE(observed);
         REQUIRE(state == givm::execution_state::health_reduced);
         const auto damage = executor.view_in<givm::execution_state::health_reduced>();
-        CHECK(damage.reaction().slot == (observations == 0 ? givm::elemental_reaction::frozen : givm::elemental_reaction::none));
+        CHECK((damage.reaction() ? damage.reaction().get().slot() : givm::elemental_reaction::none) == (observations == 0 ? givm::elemental_reaction::frozen : givm::elemental_reaction::none));
         ++observations;
     }
     CHECK(table[target].state().health == 18);
@@ -502,7 +502,7 @@ TEST_CASE("round start responses wait for both rerolls and resume independently 
     {
         std::vector<givm::any_command> commands;
         commands.emplace_back(givm::attach{ .player = givm::relative_player::opponent,
-            .definition = context.resolve_id<givm::attachment_view>("frozen-3.3.0-genshin_impact") });
+            .definition = context.resolve_id<givm::definition_category::attachment>("frozen-3.3.0-genshin_impact") });
         return commands;
     }, false, {}, true, round);
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
@@ -562,7 +562,7 @@ TEST_CASE("exceeding the round limit prevents rolling and round start responses"
     {
         std::vector<givm::any_command> commands;
         commands.emplace_back(givm::attach{ .player = givm::relative_player::opponent,
-            .definition = context.resolve_id<givm::attachment_view>("frozen-3.3.0-genshin_impact") });
+            .definition = context.resolve_id<givm::definition_category::attachment>("frozen-3.3.0-genshin_impact") });
         return commands;
     }, false, {}, false, round);
     givm::table table{ givm::table_state{ .round_number = 1, .max_rounds = 1, .self_player = givm::player_id{ 0 } },

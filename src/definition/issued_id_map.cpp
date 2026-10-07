@@ -2,7 +2,7 @@
 
 namespace givm
 {
-    template<class TDefinition>
+    template<definition_category TDefinition>
     std::vector<definition_id<TDefinition>> issued_id_map::query_by_tag(std::string_view expression) const
     {
         const auto terms = expression
@@ -46,14 +46,14 @@ namespace givm
         );
     }
 
-    template std::vector<definition_id<card_definition>> issued_id_map::query_by_tag<card_definition>(std::string_view) const;
-    template std::vector<definition_id<status_definition>> issued_id_map::query_by_tag<status_definition>(std::string_view) const;
-    template std::vector<definition_id<support_view>> issued_id_map::query_by_tag<support_view>(std::string_view) const;
-    template std::vector<definition_id<summon_view>> issued_id_map::query_by_tag<summon_view>(std::string_view) const;
-    template std::vector<definition_id<combat_status_view>> issued_id_map::query_by_tag<combat_status_view>(std::string_view) const;
-    template std::vector<definition_id<character_view>> issued_id_map::query_by_tag<character_view>(std::string_view) const;
-    template std::vector<definition_id<skill_view>> issued_id_map::query_by_tag<skill_view>(std::string_view) const;
-    template std::vector<definition_id<attachment_view>> issued_id_map::query_by_tag<attachment_view>(std::string_view) const;
-    template std::vector<definition_id<history_summary_definition>> issued_id_map::query_by_tag<history_summary_definition>(std::string_view) const;
-    template std::vector<definition_id<reaction_view>> issued_id_map::query_by_tag<reaction_view>(std::string_view) const;
+    template std::vector<definition_id<definition_category::card>> issued_id_map::query_by_tag<definition_category::card>(std::string_view) const;
+    template std::vector<definition_id<definition_category::card_status>> issued_id_map::query_by_tag<definition_category::card_status>(std::string_view) const;
+    template std::vector<definition_id<definition_category::support>> issued_id_map::query_by_tag<definition_category::support>(std::string_view) const;
+    template std::vector<definition_id<definition_category::summon>> issued_id_map::query_by_tag<definition_category::summon>(std::string_view) const;
+    template std::vector<definition_id<definition_category::combat_status>> issued_id_map::query_by_tag<definition_category::combat_status>(std::string_view) const;
+    template std::vector<definition_id<definition_category::character>> issued_id_map::query_by_tag<definition_category::character>(std::string_view) const;
+    template std::vector<definition_id<definition_category::skill>> issued_id_map::query_by_tag<definition_category::skill>(std::string_view) const;
+    template std::vector<definition_id<definition_category::attachment>> issued_id_map::query_by_tag<definition_category::attachment>(std::string_view) const;
+    template std::vector<definition_id<definition_category::history_summary>> issued_id_map::query_by_tag<definition_category::history_summary>(std::string_view) const;
+    template std::vector<definition_id<definition_category::reaction>> issued_id_map::query_by_tag<definition_category::reaction>(std::string_view) const;
 }

@@ -16,7 +16,7 @@ namespace
 {
     using namespace givm;
     constexpr character_id source{ player_id{ 0 }, 0 };
-    constexpr character_id target(std::size_t index) { return { player_id{ 1 }, index }; }
+    constexpr character_id target(std::size_t index) { return { player_id{ 1 }, static_cast<std::uint32_t>(index) }; }
     enum class scenario { aggregate, repeat_dying, enter_dying, revive };
 
     struct record_log
@@ -35,7 +35,7 @@ namespace
 
     struct observer_source
     {
-        using definition_category = character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             record_log* log;
@@ -49,7 +49,7 @@ namespace
         definition_type compile(definition_compile_context& context) const
         {
             const auto nested = log->kind == scenario::enter_dying
-                ? context.add_immediate_effect(enter_character{ player_id{ 1 }, context.resolve_id<character_view>("RecordVictim") },
+                ? context.add_immediate_effect(enter_character{ player_id{ 1 }, context.resolve_id<givm::definition_category::character>("RecordVictim") },
                     deal_damage{}, givm::heal{})
                 : context.add_immediate_effect(deal_damage{}, givm::heal{});
             return { log, context.add_normal_effect(givm::heal{}), context.add_immediate_effect(givm::heal{}), nested };
@@ -62,7 +62,7 @@ namespace
             handle_context<skill_view, event_category::immediate>& context, std::uint32_t = 0)
         {
             auto& log = *data.log;
-            log.dying.push_back(event.target.index);
+            log.dying.push_back(event.target.index());
             CHECK(context.table()[event.target].state().alive);
             CHECK(context.table()[event.target].state().health == 0);
             if(log.kind == scenario::repeat_dying)
@@ -112,7 +112,7 @@ namespace
         static normal_effect handle(const definition_type& data, after_damage& event,
             handle_context<skill_view>& context, std::uint32_t = 0)
         {
-            data.log->damage_targets.push_back(event.target.index);
+            data.log->damage_targets.push_back(event.target.index());
             data.log->damage_values.push_back(event.value);
             data.log->defeated.push_back(event.defeated);
             data.log->order.push_back(3);
@@ -146,7 +146,7 @@ namespace
 
     struct hand_log
     {
-        std::vector<definition_id<card_definition>> definitions;
+        std::vector<definition_id<givm::definition_category::card>> definitions;
         std::vector<bool> overflow;
         std::vector<bool> valid;
         std::vector<char> order;
@@ -155,7 +155,7 @@ namespace
     template<bool Gate>
     struct card_source
     {
-        using definition_category = card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { hand_log* log; normal_effect remove; };
         std::string_view source_name;
         hand_log* log;
@@ -169,7 +169,7 @@ namespace
         {
             if constexpr(Gate)
                 return { log, context.add_normal_effect(discard_hand_card{
-                    .definition = context.resolve_id<card_definition>("Retained") }) };
+                    .definition = context.resolve_id<givm::definition_category::card>("Retained") }) };
             else return { log, {} };
         }
         static normal_effect handle(const definition_type& data, this_hand_card_discard&,
@@ -187,7 +187,7 @@ namespace
 
     struct hand_observer_source
     {
-        using definition_category = character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { hand_log* log; normal_effect create; };
         hand_log* log;
         std::string_view name() const { return "HandRecordObserver"; }
@@ -197,11 +197,11 @@ namespace
         }
         definition_type compile(definition_compile_context& context) const
         {
-            const auto gate = context.resolve_id<card_definition>("Gate");
+            const auto gate = context.resolve_id<givm::definition_category::card>("Gate");
             return { log, context.add_normal_effect(create_hand_card{ .definition = gate },
                 discard_hand_card{ .definition = gate },
-                create_hand_card{ .definition = context.resolve_id<card_definition>("Retained") },
-                create_hand_card{ .definition = context.resolve_id<card_definition>("Overflow") }) };
+                create_hand_card{ .definition = context.resolve_id<givm::definition_category::card>("Retained") },
+                create_hand_card{ .definition = context.resolve_id<givm::definition_category::card>("Overflow") }) };
         }
         static normal_effect handle(const definition_type& data, round_started&,
             handle_context<skill_view>& context, std::uint32_t = 0)
@@ -242,9 +242,9 @@ TEST_CASE("damage records aggregate within a segment and dispatch nonfatal targe
             .flags = damage_flag_bits::elemental_skill },
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, victim, fragile);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = source }, { .active_character = target(0) } };
-    const auto id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
-        { .characters = { ids.get_id<character_view>(fragile.name()), id, id } });
+    const auto id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(fragile.name()), id, id } });
     executor_driver execution;
     execution.start(library, table);
     finish(execution, library, table);
@@ -264,8 +264,8 @@ TEST_CASE("segment sealing revisits saved characters killed by later dying respo
         deal_damage{ .target = { relative_player::opponent, 1 }, .value = 1, .type = damage_type::physical },
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, victim);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = source }, { .active_character = target(0) } };
-    const auto id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
+    const auto id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id, id } });
     executor_driver execution;
     execution.start(library, table);
@@ -289,8 +289,8 @@ TEST_CASE("characters entering during segment sealing can contribute new pending
         deal_damage{ .target = { relative_player::opponent, 0 }, .value = 1, .type = damage_type::physical },
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, victim);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = source }, { .active_character = target(0) } };
-    const auto id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
+    const auto id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id } });
     executor_driver execution;
     execution.start(library, table);
@@ -311,8 +311,8 @@ TEST_CASE("revival bypasses healing modifiers and preserves the segment defeat f
         heal{ .target = { relative_player::self, 0 }, .value = 1 },
         settle{}, end_game{ game_result::both_loss } }, std::tuple{}, observer, victim);
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = source }, { .active_character = target(0) } };
-    const auto id = ids.get_id<character_view>(victim.name());
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } },
+    const auto id = ids.get_id<givm::definition_category::character>(victim.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id } });
     executor_driver execution;
     execution.start(library, table);
@@ -334,11 +334,11 @@ TEST_CASE("hand entry retention freezes at segment sealing and distinguishes ove
         observer, card_source<true>{ "Gate", &log }, card_source<false>{ "Retained", &log },
         card_source<false>{ "Overflow", &log });
     givm::table table{ { .self_player = player_id{ 0 } }, { .active_character = source, .hand_limit = 1 }, {} };
-    load_deck(table, library, { .characters = { ids.get_id<character_view>(observer.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } }, {});
     executor_driver execution;
     execution.start(library, table);
     finish(execution, library, table);
-    CHECK(log.definitions == std::vector{ ids.get_id<card_definition>("Retained"), ids.get_id<card_definition>("Overflow") });
+    CHECK(log.definitions == std::vector{ ids.get_id<givm::definition_category::card>("Retained"), ids.get_id<givm::definition_category::card>("Overflow") });
     CHECK(log.overflow == std::vector<bool>{ false, true });
     CHECK(log.valid == std::vector<bool>{ false, false });
     CHECK(log.order == std::vector<char>{ 'G', 'D', 'D', 'A', 'O' });

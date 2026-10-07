@@ -30,7 +30,7 @@ constexpr player_id other_player(player_id player) noexcept;
 int main()
 {
     const givm::player_id self{ 0 };
-    std::println("对方玩家: {}", givm::other_player(self).index);
+    std::println("对方玩家: {}", givm::other_player(self).index());
 }
 ```
 

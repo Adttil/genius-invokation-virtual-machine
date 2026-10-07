@@ -79,8 +79,8 @@ namespace givm
         {
 #ifndef NDEBUG
             executor_->validate_view<execution_state::dice_selection>(version_);
-            if(player.index >= 2)
-                throw view_input_error{ "dice_selection.remaining", view_index_out_of_range{ "player", player.index, 2 } };
+            if(player.index() >= 2)
+                throw view_input_error{ "dice_selection.remaining", view_index_out_of_range{ "player", player.index(), 2 } };
 #endif
             const auto& phase = get<0>(
                 std::as_const(executor_->context_.stack()).top<detail::dice_reroll_phase, detail::dice_selector>()
@@ -115,7 +115,7 @@ namespace givm
 #ifndef NDEBUG
             executor_->validate_view<execution_state::dice_selection>(version_);
 #endif
-            if(player.index >= 2)
+            if(player.index() >= 2)
             {
                 return dice_selection_validation::invalid_player;
             }

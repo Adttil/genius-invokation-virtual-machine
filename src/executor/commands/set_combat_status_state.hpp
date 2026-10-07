@@ -19,7 +19,7 @@ namespace givm::detail
     struct combat_status_state_change_data
     {
         relative_player player;
-        definition_id<combat_status_view> definition;
+        definition_id<definition_category::combat_status> definition;
         combat_status_state state;
     };
 
@@ -31,7 +31,7 @@ namespace givm::detail
         table[input.status].state() = input.state;
         const auto status = std::as_const(table)[input.status];
         const auto definition = library[status.definition_id()];
-        if(not definition.can_handle<this_combat_status_state_change, combat_status_view>())
+        if(not definition.can_handle<this_combat_status_state_change, entity_category::combat_status>())
             return continue_execution;
         append_single_event_record(context, input.status, event);
         return continue_execution;
@@ -47,7 +47,7 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, combat_status_state_change_data>(library);
             const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
 #ifndef NDEBUG
             debug_validate_required_entity(table, player, command.definition, "set_combat_status_state", "status");
 #endif
@@ -85,7 +85,7 @@ namespace givm::detail
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_combat_status_state_change<true, true> }
                 : execute_fn{ execute_combat_status_state_change<true, false> });
-            writer.write(combat_status_state_change_data{ command.player, command.definition, command.state });
+            writer.write(combat_status_state_change_data{ command.player, command.definition.get<definition_category::combat_status>(), command.state });
         }
         else
             writer.write(command.ignore_limit
@@ -109,8 +109,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<combat_status_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<combat_status_view>() });
+        if(command.definition.get<definition_category::combat_status>().value() >= context.definition_count<definition_category::combat_status>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::combat_status>().value(), .limit = context.definition_count<definition_category::combat_status>() });
         return errors;
     }
 }

@@ -26,7 +26,7 @@ int main()
 {
     givm::table table{};
     const auto player = table[givm::player_id{ 1 }];
-    std::println("玩家: {}", player.id().index);
+    std::println("玩家: {}", player.id().index());
 }
 ```
 

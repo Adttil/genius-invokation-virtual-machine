@@ -86,23 +86,23 @@ namespace givm::detail
 
         constexpr character_id id() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
             return {
                 player().id(),
-                static_cast<size_t>(storage_.data - storage_.player->character_datas.data())
+                static_cast<std::uint32_t>(storage_.data - storage_.player->character_datas.data())
             };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
-            return detail::table_accessor::make_issued_id<character_view>(
-                storage_.data->definition_and_flags & ~erased_mask);
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
+            return givm::definition_id<definition_category::character>{
+                storage_.data->definition_and_flags & detail::definition_index_mask};
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
             return storage_.data->state;
         }
 
@@ -125,7 +125,7 @@ namespace givm::detail
         {
             if constexpr(SkipErased)
             {
-                GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+                GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
                 return skills<false>() | std::views::filter([](auto&& skill){ return skill.is_valid(); });
             }
             else
@@ -150,7 +150,7 @@ namespace givm::detail
         {
             if constexpr(SkipErased)
             {
-                GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+                GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
                 return attachments<false>() | std::views::filter([](auto&& attachment){ return attachment.is_valid(); });
             }
             else
@@ -170,7 +170,7 @@ namespace givm::detail
             }
         }
 
-        constexpr skill_handle<TStorage> add(givm::definition_id<skill_view> definition_id, const skill_state& state) const requires is_mutable
+        constexpr skill_handle<TStorage> add(givm::definition_id<definition_category::skill> definition_id, const skill_state& state) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
             storage_.data->skill_datas.emplace_back(definition_id.value(), state);
@@ -204,7 +204,7 @@ namespace givm::detail
             return result;
         }
 
-        constexpr attachment_handle<TStorage> add(givm::definition_id<attachment_view> definition_id, const attachment_state& state) const requires is_mutable
+        constexpr attachment_handle<TStorage> add(givm::definition_id<definition_category::attachment> definition_id, const attachment_state& state) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
             storage_.data->attachment_datas.emplace_back(definition_id.value(), state);
@@ -218,7 +218,7 @@ namespace givm::detail
             return result;
         }
 
-        constexpr attachment_handle<TStorage> add(givm::definition_id<attachment_view> definition_id, const attachment_state& state, equipment_type type) const requires is_mutable
+        constexpr attachment_handle<TStorage> add(givm::definition_id<definition_category::attachment> definition_id, const attachment_state& state, equipment_type type) const requires is_mutable
         {
             GIVM_ASSERT(is_valid());
             GIVM_ASSERT(static_cast<size_t>(type) < storage_.data->equipment_indices.size());
@@ -241,8 +241,7 @@ namespace givm::detail
         }
 
     private:
-        static constexpr size_t erased_mask =
-            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+        static constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
 
         constexpr basic_character_handle(detail::uninitialized_entity_t) noexcept {}
 
@@ -259,6 +258,8 @@ namespace givm
         using base_type = detail::basic_character_handle<const detail::unrestricted_table>;
 
     public:
+        static constexpr entity_category category = entity_category::character;
+
         using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;

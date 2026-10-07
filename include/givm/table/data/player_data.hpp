@@ -28,7 +28,7 @@ namespace givm
     struct player_state
     {
         dice_counts dice;
-        std::optional<character_id> active_character;
+        optional_entity_id<entity_category::character> active_character;
         std::uint32_t hand_limit = 10;
         std::uint32_t summon_limit = 4;
         std::uint32_t support_limit = 4;
@@ -42,7 +42,7 @@ namespace givm::detail
     {
         player_state state;
 
-        std::array<definition_id<reaction_view>, elemental_reaction_count> reactions{};
+        std::array<optional_definition_id<definition_category::reaction>, elemental_reaction_count> reactions{};
 
         std::vector<card_data> hand_card_datas;
         std::vector<card_data> deck_card_datas;
@@ -58,7 +58,7 @@ namespace givm::detail
             {
                 std::erase_if(datas, [](const auto& data)
                 {
-                    constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+                    constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
                     return (data.definition_and_flags & erased_mask) != 0;
                 });
                 if constexpr(requires{ (*datas.begin()).clean_up(); })
@@ -71,7 +71,7 @@ namespace givm::detail
             };
             clean_up_datas(hand_card_datas);
 
-            constexpr size_t deck_card_erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+            constexpr std::uint64_t deck_card_erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
             size_t front = 0;
             size_t back = deck_card_datas.size();
             while(true)

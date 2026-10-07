@@ -18,7 +18,7 @@ using attachment_target = std::variant<attachment_id, equipment_target>;
 struct relative_attachment_target
 {
     relative_character_target character{};
-    std::variant<definition_id<attachment_view>, equipment_type> selector{};
+    std::variant<optional_definition_id<givm::definition_category::attachment>, equipment_type> selector{};
 };
 ```
 
@@ -41,7 +41,7 @@ struct relative_attachment_target
 
 | `selector` 候选类型 | 含义 |
 | --- | --- |
-| `definition_id<attachment_view>` | 此角色上首个有效、定义相同的附属实体；该实体必须存在 |
+| `definition_id<givm::definition_category::attachment>` | 此角色上首个有效、定义相同的附属实体；该实体必须存在 |
 | `equipment_type` | 此角色当前的指定类别装备；该装备必须存在，类别不能是 `none` |
 
 使用这些定位对象的命令默认构造时采用动态输入。固定模式显式指定 `selector` 中的定义或装备类别；具体成员位置见各命令页面。

@@ -17,7 +17,7 @@ namespace givm::test
     template<class TSource>
     struct passive_skill_source : TSource
     {
-        using definition_category = skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         using definition_type = decltype(std::declval<const TSource&>().compile(std::declval<definition_compile_context&>()));
 
         explicit passive_skill_source(const TSource& source) : TSource{ source } {}
@@ -30,7 +30,7 @@ namespace givm::test
         struct definition_type
         {
             source_definition_type data;
-            definition_id<skill_view> passive;
+            optional_definition_id<givm::definition_category::skill> passive;
         };
 
         passive_skill_source<TSource> passive;
@@ -48,10 +48,10 @@ namespace givm::test
 
         definition_type compile(definition_compile_context& context) const
         {
-            return { TSource::compile(context), context.resolve_id<skill_view>(passive.name()) };
+            return { TSource::compile(context), context.resolve_id<givm::definition_category::skill>(passive.name()) };
         }
 
-        static definition_id<skill_view> query(const definition_type& data, const character_initial_skill& query)
+        static optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const character_initial_skill& query)
         {
             if(query.skill_index == 0) return data.passive;
             if constexpr(requires { TSource::query(data.data, query); })

@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_USE_SKILL_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "../../table.hpp"
@@ -20,7 +21,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -48,7 +49,7 @@ namespace givm
         using input_type = use_skill_input;
 
         relative_player player = relative_player::self;
-        definition_id<skill_view> definition{};
+        optional_definition_id<definition_category::skill> definition{};
     };
 }
 

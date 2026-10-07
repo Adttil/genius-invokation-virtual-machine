@@ -24,7 +24,7 @@ namespace
 
     struct technique_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type
         {
             technique_log* log;
@@ -47,8 +47,8 @@ namespace
         static givm::target_validation query(const definition_type&, const givm::technique_target_validation& query)
         {
             if(query.target_count == 0) return givm::target_validation::valid_incomplete;
-            const auto* target = std::get_if<givm::character_id>(&query.targets[0]);
-            return target && target->player_id != query.technique.player().id()
+            const auto target = query.targets[0].template get_if<givm::entity_category::character>();
+            return target && target.get().player_id() != query.technique.player().id()
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::preview_effect handle(const definition_type& data,
@@ -72,7 +72,7 @@ namespace
         {
             const auto self = context.entity();
             CHECK(event.technique == self.id());
-            CHECK(std::get<givm::character_id>(event.targets[0]).player_id == givm::player_id{ 1 });
+            CHECK(event.targets[0].template get<givm::entity_category::character>().player_id() == givm::player_id{ 1 });
             CHECK(self.state().count == 1);
             CHECK(context.table()[self.character().id()].state().energy == 2);
             data.log->events.push_back("effect");
@@ -89,14 +89,14 @@ namespace
 
     struct technique_owner
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { givm::normal_effect equip; };
         constexpr std::string_view name() const { return "TechniqueOwner"; }
         constexpr auto attachment_dependencies() const { return std::array{ std::string_view{ "Technique" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { context.add_normal_effect(std::tuple{ givm::add_attachment{
-                .definition = context.resolve_id<givm::attachment_view>("Technique"), .state = { 2 }
+                .definition = context.resolve_id<givm::definition_category::attachment>("Technique"), .state = { 2 }
             } }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -133,8 +133,8 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
         }, std::tuple{}, owner, plain, technique_source{ &log });
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(owner.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(plain.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(owner.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(plain.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
@@ -172,7 +172,7 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
     REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
     CHECK(table[technique].state().count == 1);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 3);
-    CHECK(table[technique.character_id].state().energy == 2);
+    CHECK(table[technique.character_id()].state().energy == 2);
     CHECK(log.events == (cancelled ? std::vector<std::string>{ "quote", "before", "after" }
         : std::vector<std::string>{ "quote", "before", "effect", "after" }));
     CHECK_FALSE(executor.view_in<givm::execution_state::action_selection>().has_technique());

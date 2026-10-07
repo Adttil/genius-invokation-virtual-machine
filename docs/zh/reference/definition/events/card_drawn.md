@@ -35,9 +35,9 @@ struct card_drawn;
 
 int main()
 {
-    givm::card_drawn event{ .card = { .player_id = givm::player_id{ 1 }, .index = 2 } };
-    std::println("玩家 1 的手牌: {}", event.card.player_id == givm::player_id{ 1 });
-    std::println("手牌槽位: {}", event.card.index);
+    givm::card_drawn event{ .card = { givm::player_id{ 1 }, 2 } };
+    std::println("玩家 1 的手牌: {}", event.card.player_id() == givm::player_id{ 1 });
+    std::println("手牌槽位: {}", event.card.index());
 }
 ```
 

@@ -60,7 +60,7 @@ struct defer_program
 
 struct delayed_dice_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     struct definition_type
     {
         givm::normal_effect first;
@@ -117,7 +117,7 @@ int main()
     const auto [library, ids] = std::move(*result);
     givm::table table{};
     load_deck(table, library,
-        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>(source.name()) } }, {});
+        givm::linked_deck{ .cards = { ids.get_id<givm::definition_category::card>(source.name()) } }, {});
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     const auto initialized = execution.start(library, table);

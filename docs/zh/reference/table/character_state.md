@@ -22,7 +22,7 @@ struct character_state;
 | `aura` | [`element_aura`](../enums/element_aura.md) | 当前元素附着，默认 none |
 | `allowed_weapon_types` | [`weapon_type_mask`](../enums/weapon_type_mask.md) | 允许装备的武器类别，默认全部为 false，表示不能装备武器 |
 | `alive` | `bool` | 默认 true；仍存活或濒死，确认击倒后为 false |
-| `energy_tag` | [`tag_id`](tag_id.md) | 充能类型；默认无效 ID 表示普通充能，有效 ID 表示对应标签的替代充能 |
+| `energy_tag` | [`optional_tag_id`](optional_tag_id.md) | 充能类型；默认空值表示普通充能，非空值表示对应标签的替代充能 |
 
 ## 注意
 

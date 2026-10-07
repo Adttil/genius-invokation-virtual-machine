@@ -20,7 +20,7 @@ namespace
 
     struct reaction_source
     {
-        using definition_category = givm::reaction_view;
+        static constexpr auto category = givm::definition_category::reaction;
         struct definition_type { std::uint32_t bonus; reaction_log* log; givm::immediate_effect effect; };
         std::string_view source_name;
         std::uint32_t bonus;
@@ -53,8 +53,8 @@ namespace
 
     struct character_source
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::character_state initial; givm::definition_id<givm::reaction_view> replacement; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::character_state initial; givm::optional_definition_id<givm::definition_category::reaction> replacement; };
         std::string_view source_name;
         std::string_view reaction_name;
         givm::character_state initial{ .max_health = 20, .max_energy = 3, .health = 20 };
@@ -62,17 +62,17 @@ namespace
         auto reaction_dependencies() const { return std::array{ reaction_name }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { initial, context.resolve_id<givm::reaction_view>(reaction_name) };
+            return { initial, context.resolve_id<givm::definition_category::reaction>(reaction_name) };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
         {
             return data.initial;
         }
-        static givm::definition_id<givm::reaction_view> query(const definition_type& data,
+        static givm::optional_definition_id<givm::definition_category::reaction> query(const definition_type& data,
             const givm::character_reaction_override& query)
         {
             return query.slot == givm::elemental_reaction::electro_charged ? data.replacement
-                : givm::definition_id<givm::reaction_view>{};
+                : nullptr;
         }
     };
 }
@@ -95,10 +95,10 @@ TEST_CASE("reaction maps persist after character death and distinguish origin fr
     const character_id target{ player_id{ 0 }, 0 };
     givm::table card_table{ { .self_player = player_id{ 0 } }, { .active_character = target }, {} };
     load_deck(card_table, library,
-        { .characters = { ids.get_id<character_view>(own.name()) } },
-        { .characters = { ids.get_id<character_view>(fallen.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(own.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(fallen.name()) } });
     CHECK(card_table[reaction_id{ player_id{ 1 }, elemental_reaction::electro_charged }].definition_id()
-        == ids.get_id<reaction_view>(lunar.name()));
+        == ids.get_id<givm::definition_category::reaction>(lunar.name()));
     givm::executor execution;
     REQUIRE(execution.start(library, card_table).resume(library, card_table, zero_random) == execution_state::finished);
     CHECK(card_table[target].state().health == 15);
@@ -119,17 +119,17 @@ TEST_CASE("deck reaction overrides follow character order and later definitions 
     REQUIRE(sources.add(ordinary, lunar, first, second));
     reaction_definition_names names{ ordinary.name() };
     const auto [library, ids] = require_success(compile(sources, names, std::tuple{}, std::tuple{}, compile_mode::normal));
-    const auto a = ids.get_id<character_view>(first.name());
-    const auto b = ids.get_id<character_view>(second.name());
+    const auto a = ids.get_id<givm::definition_category::character>(first.name());
+    const auto b = ids.get_id<givm::definition_category::character>(second.name());
     givm::table ordered;
     load_deck(ordered, library, { .characters = { b, b, a } }, { .characters = { a, a, b } });
     CHECK(ordered[reaction_id{ player_id{ 0 }, elemental_reaction::electro_charged }].definition_id()
-        == ids.get_id<reaction_view>(ordinary.name()));
+        == ids.get_id<givm::definition_category::reaction>(ordinary.name()));
     CHECK(ordered[reaction_id{ player_id{ 1 }, elemental_reaction::electro_charged }].definition_id()
-        == ids.get_id<reaction_view>(lunar.name()));
+        == ids.get_id<givm::definition_category::reaction>(lunar.name()));
     givm::table compatible;
     load_deck(compatible, library, { .characters = { b, b } }, { .characters = { a } });
     CHECK(compatible[reaction_id{ player_id{ 0 }, elemental_reaction::electro_charged }].definition_id()
-        == ids.get_id<reaction_view>(lunar.name()));
+        == ids.get_id<givm::definition_category::reaction>(lunar.name()));
 }
 }

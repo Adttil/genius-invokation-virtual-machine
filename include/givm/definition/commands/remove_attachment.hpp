@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_REMOVE_ATTACHMENT_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <variant>
 
@@ -22,7 +23,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 

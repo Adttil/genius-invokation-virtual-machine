@@ -39,7 +39,7 @@ namespace
 
     struct healing_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             healing_log* log;
@@ -80,7 +80,7 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::healing& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
-            CHECK(std::get<givm::character_id>(event.source) == patient);
+            CHECK(event.source.template get<givm::entity_category::character>() == patient);
             data.log->requested.push_back(event.value);
             data.log->healing_targets.push_back(event.target);
             event.value += data.log->bonus;
@@ -89,7 +89,7 @@ namespace
         static givm::normal_effect handle(const definition_type& data,
             givm::healed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            CHECK(std::get<givm::character_id>(event.source) == patient);
+            CHECK(event.source.template get<givm::entity_category::character>() == patient);
             data.log->actual.push_back(event.value);
             data.log->healed_targets.push_back(event.target);
             data.log->healed_snapshots.push_back({ context.table()[patient].state().health,
@@ -100,7 +100,7 @@ namespace
 
     struct bare_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { std::uint32_t initial_health; };
         std::uint32_t initial_health;
         std::string_view name() const { return "BareCharacter"; }
@@ -120,8 +120,8 @@ namespace
 
     void load_healing(givm::table& table, const givm::definition_library& library, const givm::issued_id_map& ids)
     {
-        load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("HealingSource"),
-            ids.get_id<givm::character_view>("BareCharacter") } }, {});
+        load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>("HealingSource"),
+            ids.get_id<givm::definition_category::character>("BareCharacter") } }, {});
     }
 }
 

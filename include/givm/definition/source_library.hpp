@@ -52,7 +52,7 @@ namespace givm
     class definition_source_library
     {
     public:
-        static constexpr size_t definition_count = definition_types::size();
+        static constexpr size_t definition_count = detail::definition_categories.size();
 
         definition_source_library() = default;
 
@@ -84,20 +84,20 @@ namespace givm
             return add_sources(first, second, others...);
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         bool has(std::string_view name) const
         {
             return bucket_for<TDefinitionType>().name_to_index.contains(name);
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         definition_source_view<TDefinitionType> get(std::string_view name) const
         {
             const auto& bucket = bucket_for<TDefinitionType>();
             return bucket.entries[bucket.name_to_index.at(name)].source;
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         auto source_views() const
         {
             return bucket_for<TDefinitionType>().entries
@@ -108,11 +108,10 @@ namespace givm
         }
 
     private:
-        using definition_type_list = definition_types;
         using pending_names_type = std::array<std::unordered_set<std::string_view>, definition_count>;
         using selection_mask = std::array<std::vector<bool>, definition_count>;
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         struct entry
         {
             definition_source_view<TDefinitionType> source;
@@ -120,7 +119,7 @@ namespace givm
             detail::definition_source_declarations declarations;
         };
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         struct pending_entry
         {
             definition_source_view<TDefinitionType> source;
@@ -129,7 +128,7 @@ namespace givm
             std::size_t input_index = 0;
         };
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         struct bucket
         {
             std::vector<entry<TDefinitionType>> entries;
@@ -142,24 +141,30 @@ namespace givm
             size_t source_index;
         };
 
-        template<class...TDefinition>
+        template<auto... TDefinition>
         using bucket_tuple_for = std::tuple<bucket<TDefinition>...>;
 
-        template<class...TDefinition>
+        template<auto... TDefinition>
         using pending_tuple_for = std::tuple<std::vector<pending_entry<TDefinition>>...>;
 
-        using bucket_tuple = definition_type_list::apply<bucket_tuple_for>;
-        using pending_tuple = definition_type_list::apply<pending_tuple_for>;
+        using bucket_tuple = decltype([]<std::size_t... I>(std::index_sequence<I...>)
+        {
+            return bucket_tuple_for<detail::definition_categories[I]...>{};
+        }(std::make_index_sequence<detail::definition_categories.size()>{}));
+        using pending_tuple = decltype([]<std::size_t... I>(std::index_sequence<I...>)
+        {
+            return pending_tuple_for<detail::definition_categories[I]...>{};
+        }(std::make_index_sequence<detail::definition_categories.size()>{}));
         using pending_sources_by_name = std::array<
             std::unordered_map<std::string_view, std::vector<std::size_t>>, definition_count>;
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         static consteval size_t index_of()
         {
-            return definition_type_list::template index_of<TDefinitionType>();
+            return static_cast<std::size_t>(TDefinitionType);
         }
 
-        template<class TDefinitionType>
+        template<definition_category TDefinitionType>
         decltype(auto) bucket_for(this auto& self)
         {
             return (std::get<index_of<TDefinitionType>()>(self.buckets_));
@@ -183,24 +188,24 @@ namespace givm
             std::size_t input_index = 0;
             const std::array indices{
                 prepare_add(pending, names, errors, input_index++,
-                    definition_source_view<typename TSources::definition_category>{ sources })...
+                    definition_source_view<TSources::category>{ sources })...
             };
             input_index = 0;
-            (collect_dependency_errors<typename TSources::definition_category>(
+            (collect_dependency_errors<TSources::category>(
                 pending, names, indices[input_index++], errors), ...);
             if(not errors.empty()) return std::unexpected{ std::move(errors) };
             commit_pending(pending);
             return {};
         }
 
-        template<class TCategory>
+        template<definition_category TCategory>
         std::optional<std::size_t> prepare_add(pending_tuple& pending, pending_sources_by_name& names,
             std::vector<source_add_error>& errors, std::size_t input_index, const definition_source_view<TCategory>& view) const;
 
         template<size_t I, class TPendingNames>
         bool dependency_exists(std::string_view name, const TPendingNames& pending_names) const;
 
-        template<class TCategory, class TPendingNames, class TError>
+        template<definition_category TCategory, class TPendingNames, class TError>
         void collect_dependency_errors(const pending_tuple& pending, const TPendingNames& names,
             std::optional<std::size_t> index, std::vector<TError>& errors) const;
 
@@ -213,7 +218,7 @@ namespace givm
 
         selection_mask make_full_selection() const;
 
-        selection_mask resolve_selection(const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
+        selection_mask resolve_selection(const std::array<std::span<const std::string_view>, detail::definition_categories.size()>& selection,
             const reaction_definition_names& basics, std::vector<source_preparation_error>& errors) const;
 
         template<size_t I>

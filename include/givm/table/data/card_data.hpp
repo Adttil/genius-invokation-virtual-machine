@@ -3,6 +3,8 @@
 
 #include <cstddef>
 
+#include "../definition_id.hpp"
+
 #include "../action_cost_requirement.hpp"
 #include "status_data.hpp"
 
@@ -19,7 +21,7 @@ namespace givm::detail
 {
     struct card_data
     {
-        size_t definition_and_flags = static_cast<size_t>(-1);
+        std::uint64_t definition_and_flags = static_cast<std::uint64_t>(-1);
         card_state state;
         size_t first_status = invalid_status_index;
         size_t last_status = invalid_status_index;

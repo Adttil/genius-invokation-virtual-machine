@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-bool is_control(definition_id<attachment_view> id) const noexcept;
+bool is_control(definition_id<givm::definition_category::attachment> id) const noexcept;
 ```
 
 检查一种角色附属定义是否属于控制效果。冻结、石化等限制角色使用技能的附属可通过 `control` 标签声明这一分类。

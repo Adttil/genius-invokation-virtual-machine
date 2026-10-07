@@ -31,7 +31,7 @@ namespace
 
     struct attack_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { attack_log* log; givm::normal_effect damage; };
         attack_log* log;
         bool normal;
@@ -75,7 +75,7 @@ namespace
                                          givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
-            if(const auto* id = std::get_if<givm::skill_id>(&event.source); id && *id == self.id())
+            if(const auto id = event.source.template get_if<givm::entity_category::skill>(); id && *id == self.id())
                 data.log->damage.push_back(event.flags);
             return {};
         }
@@ -90,27 +90,27 @@ namespace
 
     struct attack_character
     {
-        using definition_category = givm::character_view;
-        using definition_type = std::array<givm::definition_id<givm::skill_view>, 2>;
+        static constexpr auto category = givm::definition_category::character;
+        using definition_type = std::array<givm::optional_definition_id<givm::definition_category::skill>, 2>;
         constexpr std::string_view name() const { return "AttackCharacter"; }
         constexpr auto skill_dependencies() const { return std::array<std::string_view, 2>{ "Normal", "Elemental" }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>("Normal"), context.resolve_id<givm::skill_view>("Elemental") };
+            return { context.resolve_id<givm::definition_category::skill>("Normal"), context.resolve_id<givm::definition_category::skill>("Elemental") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .health = 10 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index < data.size() ? data[query.skill_index] : givm::definition_id<givm::skill_view>{};
+            return query.skill_index < data.size() ? data[query.skill_index] : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 
     struct attack_card
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { givm::card_state state; givm::normal_effect effect; };
         bool fast = true;
         bool switch_character = false;
@@ -143,8 +143,8 @@ namespace
     inline givm::table attack_table(const givm::definition_library& library, const givm::issued_id_map& ids)
     {
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
-        const auto character = ids.get_id<givm::character_view>("AttackCharacter");
-        load_deck(table, library, { .cards = { ids.get_id<givm::card_definition>("AttackCard") },
+        const auto character = ids.get_id<givm::definition_category::character>("AttackCharacter");
+        load_deck(table, library, { .cards = { ids.get_id<givm::definition_category::card>("AttackCard") },
             .characters = { character, character } }, { .characters = { character } });
         return table;
     }
@@ -293,7 +293,7 @@ TEST_CASE("initial character choices grant plunging opportunities and library co
         givm::begin_action{}
     }, std::tuple{}, attack_source{ &log, true }, attack_source{ &log, false }, attack_character{}, attack_card{});
     auto library = original;
-    CHECK(library.skill_flags(ids.get_id<givm::skill_view>("Normal")).contains(givm::skill_flag_bits::normal_attack));
+    CHECK(library.skill_flags(ids.get_id<givm::definition_category::skill>("Normal")).contains(givm::skill_flag_bits::normal_attack));
     auto table = attack_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);

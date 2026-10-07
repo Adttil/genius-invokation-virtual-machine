@@ -106,21 +106,22 @@ namespace givm
 namespace givm::detail
 {
     template<class TEvent>
-    using handler_id = decltype([]<class... TDefinition>(type_list<TDefinition...>)
+    using handler_id = decltype([]<std::size_t... I>(std::index_sequence<I...>)
     {
-        using views = type_list_cat<views_of_definition<TDefinition>...>;
+        using views = type_list_cat<detail::definition_views<detail::definition_categories[I]>...>;
         return []<class... TView>(type_list<TView...>)
         {
             using ids = type_list_cat<
                 std::conditional_t<
-                    requires { subscribed_events<TView>::template index_of<TEvent>(); },
+                    requires { subscribed_events<std::remove_cvref_t<TView>::category>::template index_of<TEvent>(); },
                     type_list<decltype(std::declval<TView>().id())>,
                     type_list<>
                 >...
             >;
-            return typename ids::template apply<std::variant>{};
+            return []<class... TId>(type_list<TId...>)
+            { return variant_entity_id<TId::category...>{}; }(ids{});
         }(views{});
-    }(definition_types{}));
+    }(std::make_index_sequence<detail::definition_categories.size()>{}));
 
     using switch_handler_id = handler_id<cost_of_switch>;
     using card_cost_handler_id = handler_id<cost_of_card>;
@@ -132,45 +133,50 @@ namespace givm::detail
     inline void debug_validate_entity(const TTable& table, TId id, std::string_view command,
         std::string_view field, bool allow_removed = false)
     {
-        if constexpr(requires { std::variant_size<TId>::value; })
-            std::visit([&](auto value) { debug_validate_entity(table, value, command, field, allow_removed); }, id);
-        else if constexpr(std::is_same_v<TId, std::monostate>)
+        if constexpr(requires { id.visit([](auto) {}); })
+            id.visit([&](auto value) { debug_validate_entity(table, value, command, field, allow_removed); });
+        else if constexpr(std::is_same_v<TId, std::nullptr_t>)
             return;
         else
         {
             bool in_range;
             if constexpr(std::is_same_v<TId, player_id>)
-                in_range = id.index < 2;
-            else if constexpr(requires { id.character_id; })
+                in_range = id.index() < 2;
+            else if constexpr(requires { id.character_id(); })
             {
-                debug_validate_entity(table, id.character_id, command, std::string{ field } + ".character", allow_removed);
-                const auto character = table[id.character_id];
+                debug_validate_entity(table, id.character_id(), command, std::string{ field } + ".character", allow_removed);
+                const auto character = table[id.character_id()];
                 if constexpr(std::is_same_v<TId, skill_id>)
-                    in_range = id.index < character.template skills<false>().size();
+                    in_range = id.index() < character.template skills<false>().size();
                 else
-                    in_range = id.index < character.template attachments<false>().size();
+                    in_range = id.index() < character.template attachments<false>().size();
             }
-            else if constexpr(requires { id.card_id; })
+            else if constexpr(requires { id.hand_card_id(); })
             {
-                debug_validate_entity(table, id.card_id, command, std::string{ field } + ".card", allow_removed);
+                debug_validate_entity(table, id.hand_card_id(), command, std::string{ field } + ".card", allow_removed);
+                in_range = table.debug_entity_in_range(id);
+            }
+            else if constexpr(requires { id.deck_card_id(); })
+            {
+                debug_validate_entity(table, id.deck_card_id(), command, std::string{ field } + ".card", allow_removed);
                 in_range = table.debug_entity_in_range(id);
             }
             else
             {
-                debug_validate_entity(table, id.player_id, command, std::string{ field } + ".player", allow_removed);
-                const auto player = table[id.player_id];
+                debug_validate_entity(table, id.player_id(), command, std::string{ field } + ".player", allow_removed);
+                const auto player = table[id.player_id()];
                 if constexpr(std::is_same_v<TId, character_id>)
-                    in_range = id.index < player.template characters<false>().size();
+                    in_range = id.index() < player.template characters<false>().size();
                 else if constexpr(std::is_same_v<TId, hand_card_id>)
-                    in_range = id.index < player.template hand_cards<false>().size();
+                    in_range = id.index() < player.template hand_cards<false>().size();
                 else if constexpr(std::is_same_v<TId, deck_card_id>)
                     in_range = table.debug_entity_in_range(id);
                 else if constexpr(std::is_same_v<TId, support_id>)
-                    in_range = id.index < player.template supports<false>().size();
+                    in_range = id.index() < player.template supports<false>().size();
                 else if constexpr(std::is_same_v<TId, summon_id>)
-                    in_range = id.index < player.template summons<false>().size();
+                    in_range = id.index() < player.template summons<false>().size();
                 else
-                    in_range = id.index < player.template combat_statuses<false>().size();
+                    in_range = id.index() < player.template combat_statuses<false>().size();
             }
             if(not in_range)
                 throw command_input_error{ command, invalid_entity_argument{
@@ -254,7 +260,7 @@ namespace givm::detail
         std::array<TTarget, 2> result{};
         for(std::size_t index = 0; index < std::min(targets.size(), result.size()); ++index)
         {
-            if(std::holds_alternative<std::monostate>(targets[index])) break;
+            if((not targets[index])) break;
             result[index] = targets[index];
         }
         return result;
@@ -263,8 +269,8 @@ namespace givm::detail
     template<class TTarget>
     constexpr std::span<const TTarget> action_targets(const std::array<TTarget, 2>& targets) noexcept
     {
-        const std::size_t size = std::holds_alternative<std::monostate>(targets[0]) ? 0
-            : std::holds_alternative<std::monostate>(targets[1]) ? 1 : 2;
+        const std::size_t size = (not targets[0]) ? 0
+            : (not targets[1]) ? 1 : 2;
         return std::span<const TTarget>{ targets }.first(size);
     }
 
@@ -296,14 +302,14 @@ namespace givm::detail
             const auto handler = get<type>(get<0>(stack.top<action_window_frame>()))[index];
             const auto initial_size = stack.size();
             player_id self{};
-            const auto entry = std::visit([&](auto id) -> preview_effect
+            const auto entry = handler.visit([&](auto id) -> preview_effect
             {
                 const auto entity = card_table[id];
                 self = entity.player().id();
                 if(not entity) return {};
                 auto response = execution_context::make_preview_context(stack, library, entity);
                 return library[entity.definition_id()].template handle<TCost>(event, response);
-            }, handler);
+            });
             const auto size = stack.size() - initial_size;
             std::size_t input_offset = 0;
             if(size != 0)
@@ -704,11 +710,11 @@ namespace givm
             {
                 return card_payment_validation::requirement_mismatch;
             }
-            if(not card_table[cost.card.player_id].state().dice.contains(paid_dice))
+            if(not card_table[cost.card.player_id()].state().dice.contains(paid_dice))
             {
                 return card_payment_validation::insufficient_dice;
             }
-            const auto active = *card_table[cost.card.player_id].state().active_character;
+            const auto active = *card_table[cost.card.player_id()].state().active_character;
             const auto& state = card_table[active].state();
             if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
             {
@@ -822,11 +828,11 @@ namespace givm
             {
                 return skill_payment_validation::requirement_mismatch;
             }
-            if(not card_table[cost.skill.character_id.player_id].state().dice.contains(paid_dice))
+            if(not card_table[cost.skill.character_id().player_id()].state().dice.contains(paid_dice))
             {
                 return skill_payment_validation::insufficient_dice;
             }
-            const auto active = *card_table[cost.skill.character_id.player_id].state().active_character;
+            const auto active = *card_table[cost.skill.character_id().player_id()].state().active_character;
             const auto& state = card_table[active].state();
             if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
             {
@@ -942,11 +948,11 @@ namespace givm
             {
                 return technique_payment_validation::requirement_mismatch;
             }
-            if(not card_table[cost.technique.character_id.player_id].state().dice.contains(paid_dice))
+            if(not card_table[cost.technique.character_id().player_id()].state().dice.contains(paid_dice))
             {
                 return technique_payment_validation::insufficient_dice;
             }
-            const auto active = *card_table[cost.technique.character_id.player_id].state().active_character;
+            const auto active = *card_table[cost.technique.character_id().player_id()].state().active_character;
             const auto& state = card_table[active].state();
             if(cost.requirement.energy != 0 && state.energy_tag != cost.requirement.energy_tag)
             {

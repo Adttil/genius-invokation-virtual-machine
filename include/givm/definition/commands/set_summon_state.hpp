@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_SET_SUMMON_STATE_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string>
 #include <tuple>
@@ -22,7 +23,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -59,7 +60,7 @@ namespace givm
         using input_type = set_summon_state_input;
 
         relative_player player = relative_player::self;
-        definition_id<summon_view> definition{};
+        optional_definition_id<definition_category::summon> definition{};
         summon_state state{};
         bool ignore_limit = false;
     };

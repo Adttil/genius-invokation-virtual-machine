@@ -132,10 +132,10 @@ namespace givm
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(energy_changed);
     };
 
-    // Action quotes. Empty target slots hold std::monostate.
-    using card_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
-    using skill_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
-    using technique_target_id = std::variant<std::monostate, character_id, support_id, summon_id>;
+    // Action quotes. Empty target slots hold the null category.
+    using card_target_id = variant_entity_id<entity_category::null, entity_category::character, entity_category::support, entity_category::summon>;
+    using skill_target_id = variant_entity_id<entity_category::null, entity_category::character, entity_category::support, entity_category::summon>;
+    using technique_target_id = variant_entity_id<entity_category::null, entity_category::character, entity_category::support, entity_category::summon>;
 
     struct cost_of_switch
     {
@@ -218,7 +218,7 @@ namespace givm
     {
         static constexpr event_category category = event_category::normal;
         const player_id player;
-        const definition_id<card_definition> definition_id;
+        const definition_id<definition_category::card> definition_id;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_candidate_chosen);
     };
 
@@ -255,7 +255,7 @@ namespace givm
     {
         static constexpr event_category category = event_category::immediate;
         const hand_card_id card;
-        const definition_id<card_definition> definition_id;
+        const definition_id<definition_category::card> definition_id;
         const std::array<card_target_id, 2> targets;
         const action_speed speed;
         bool effect_cancelled = false;
@@ -266,7 +266,7 @@ namespace givm
     {
         static constexpr event_category category = event_category::normal;
         const hand_card_id card;
-        const definition_id<card_definition> definition_id;
+        const definition_id<definition_category::card> definition_id;
         const std::array<card_target_id, 2> targets;
         const action_speed speed;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(card_played);
@@ -352,8 +352,7 @@ namespace givm
 
     // Damage events.
     using damage_source_id =
-        std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
-                     combat_status_id, character_id, skill_id, attachment_id>;
+        variant_entity_id<entity_category::hand_card, entity_category::deck_card, entity_category::hand_card_status, entity_category::deck_card_status, entity_category::support, entity_category::summon, entity_category::combat_status, entity_category::character, entity_category::skill, entity_category::attachment>;
 
     enum class character_selection : std::uint8_t
     {
@@ -395,7 +394,7 @@ namespace givm
         std::uint16_t multiplier_denominator = 1;
         const damage_type type;
         const damage_flags flags;
-        const reaction_id reaction{};
+        const optional_reaction_id reaction{};
         const element_aura reacted_aura = element_aura::none;
         bool cancel_reaction_bonus = false;
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_calculation);
@@ -409,7 +408,7 @@ namespace givm
         std::uint32_t value;
         const damage_type type;
         const damage_flags flags;
-        const reaction_id reaction{};
+        const optional_reaction_id reaction{};
         GIVM_CLANG22_TRIVIALLY_COPYABLE_WORKAROUND(damage_effect);
     };
 
@@ -426,9 +425,7 @@ namespace givm
     };
 
     // Healing events.
-    using effect_source_id = std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id,
-                                          support_id, summon_id, combat_status_id, character_id, skill_id,
-                                          attachment_id>;
+    using effect_source_id = variant_entity_id<entity_category::hand_card, entity_category::deck_card, entity_category::hand_card_status, entity_category::deck_card_status, entity_category::support, entity_category::summon, entity_category::combat_status, entity_category::character, entity_category::skill, entity_category::attachment>;
 
     using healing_target = std::variant<character_id, relative_character_target>;
 
@@ -460,17 +457,11 @@ namespace givm
 
     // Element application events.
     using element_application_source_id =
-        std::variant<hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id, support_id, summon_id,
-                                          combat_status_id, character_id, skill_id, attachment_id>;
+        variant_entity_id<entity_category::hand_card, entity_category::deck_card, entity_category::hand_card_status, entity_category::deck_card_status, entity_category::support, entity_category::summon, entity_category::combat_status, entity_category::character, entity_category::skill, entity_category::attachment>;
 
     inline player_id source_player(const element_application_source_id& source) noexcept
     {
-        return std::visit([](const auto& id)
-        {
-            if constexpr(requires { id.player_id; }) return id.player_id;
-            else if constexpr(requires { id.character_id; }) return id.character_id.player_id;
-            else return id.card_id.player_id;
-        }, source);
+        return source.player_id();
     }
 
     struct elemental_reaction_will_occur

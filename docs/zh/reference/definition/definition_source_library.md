@@ -58,7 +58,7 @@ class definition_source_library;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view source_name;
 
@@ -83,7 +83,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    std::println("可用卡牌: {}", library.name(ids.get_id<givm::card_definition>("恢复药剂")));
+    std::println("可用卡牌: {}", library.name(ids.get_id<givm::definition_category::card>("恢复药剂")));
 }
 ```
 

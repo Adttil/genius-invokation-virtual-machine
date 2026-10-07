@@ -43,7 +43,7 @@ namespace givm::detail
         damage_source_id source;
         character_id target;
         damage_type type;
-        reaction_id reaction;
+        optional_reaction_id reaction;
         element_aura reacted_aura;
     };
 
@@ -127,8 +127,10 @@ namespace givm::detail
             if(not character || not character.state().alive)
                 return advance_target(library, table, context, random);
             const auto aura = character.state().aura;
-            const reaction_id reaction{ other_player(event.target.player_id),
-                reaction_from_aura(aura, element_from_damage_type(event.type)) };
+            optional_reaction_id reaction;
+            const auto reaction_slot = reaction_from_aura(aura, element_from_damage_type(event.type));
+            if(reaction_slot != elemental_reaction::none)
+                reaction = reaction_id{ other_player(event.target.player_id()), reaction_slot };
             const auto position = get<0>(context.stack().top<damage_progress>()).instructions + damage_calculation_offset;
             prepare_broadcast(library, damage_calculation{ event.source, event.target, event.value,
                 event.multiplier_numerator, event.multiplier_denominator, event.type, event.flags, reaction, aura },
@@ -248,7 +250,7 @@ namespace givm::detail
                     throw command_input_error{ "deal_damage", invalid_enum_argument{ "selection", static_cast<std::size_t>(input.selection) } };
                 debug_validate_damage_values(input.type, input.multiplier_denominator);
 #endif
-                std::optional<character_id> anchor;
+                optional_entity_id<entity_category::character> anchor;
                 auto selection = input.selection;
                 if(const auto* id = std::get_if<character_id>(&input.target)) anchor = *id;
                 else

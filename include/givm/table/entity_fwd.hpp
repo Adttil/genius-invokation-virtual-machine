@@ -3,6 +3,9 @@
 
 #include <type_traits>
 
+#include "../enums/entity_category.hpp"
+#include "../utils/type_list.hpp"
+
 namespace givm
 {
     class table;
@@ -18,6 +21,16 @@ namespace givm
     class skill_view;
     class attachment_view;
     class reaction_view;
+
+    namespace detail
+    {
+        using entity_views = type_list<player_view, hand_card_view, deck_card_view,
+            hand_card_status_view, deck_card_status_view, support_view, summon_view,
+            combat_status_view, character_view, skill_view, attachment_view, reaction_view>;
+    }
+
+    template<entity_category Category> requires (Category < entity_category::null)
+    using entity_view = detail::entity_views::type_at<static_cast<std::size_t>(Category)>;
 
     namespace detail
     {

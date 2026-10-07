@@ -14,10 +14,10 @@
 
 namespace givm::test
 {
-    template<class TDefinition>
+    template<givm::definition_category TDefinition>
     struct named_definition_source
     {
-        using definition_category = TDefinition;
+        static constexpr auto category = TDefinition;
 
         struct definition_type{};
 

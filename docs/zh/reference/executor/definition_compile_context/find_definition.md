@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TCategory>
+template<definition_category TCategory>
 std::optional<definition_view<TCategory>> find_definition(std::string_view name) const;
 ```
 

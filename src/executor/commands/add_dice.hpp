@@ -26,10 +26,10 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, add_dice>(library);
 #ifndef NDEBUG
-            debug_validate_entity(table, table.state().self_player, "add_dice", "self_player");
+            debug_validate_entity(table, table.state().self_player.get(), "add_dice", "self_player");
 #endif
             player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
             dice = command.dice;
 #ifndef NDEBUG
             debug_validate_entity(table, player, "add_dice", "player");

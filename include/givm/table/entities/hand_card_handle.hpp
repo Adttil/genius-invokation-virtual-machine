@@ -82,29 +82,29 @@ namespace givm::detail
 
         constexpr hand_card_id id() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
             return {
                 player().id(),
-                static_cast<size_t>(storage_.data - storage_.player->hand_card_datas.data())
+                static_cast<std::uint32_t>(storage_.data - storage_.player->hand_card_datas.data())
             };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
-            return detail::table_accessor::make_issued_id<card_definition>(
-                storage_.data->definition_and_flags & ~erased_mask);
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
+            return givm::definition_id<definition_category::card>{
+                storage_.data->definition_and_flags & detail::definition_index_mask};
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
             return storage_.data->state;
         }
 
         constexpr auto statuses() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
             using status_entity_type = hand_card_status_handle<TStorage>;
             return card_status_range<TStorage, status_entity_type, hand_card_id>{
                 *storage_.table, id(), storage_.data->first_status
@@ -112,7 +112,7 @@ namespace givm::detail
         }
 
         constexpr hand_card_status_handle<TStorage> add(
-            givm::definition_id<status_definition> definition_id,
+            givm::definition_id<definition_category::card_status> definition_id,
             const status_state& state
         ) const requires is_mutable
         {
@@ -136,8 +136,7 @@ namespace givm::detail
         }
 
     private:
-        static constexpr size_t erased_mask =
-            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+        static constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
 
         constexpr basic_hand_card_handle(detail::uninitialized_entity_t) noexcept {}
 
@@ -154,6 +153,8 @@ namespace givm
         using base_type = detail::basic_hand_card_handle<const detail::unrestricted_table>;
 
     public:
+        static constexpr entity_category category = entity_category::hand_card;
+
         using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;

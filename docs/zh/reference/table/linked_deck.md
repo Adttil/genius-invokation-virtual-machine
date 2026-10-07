@@ -14,8 +14,8 @@ struct linked_deck;
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `cards` | `std::vector<definition_id<card_definition>>` | 卡牌定义序列 |
-| `characters` | `std::vector<definition_id<character_view>>` | 角色定义序列 |
+| `cards` | `std::vector<definition_id<givm::definition_category::card>>` | 卡牌定义序列 |
+| `characters` | `std::vector<definition_id<givm::definition_category::character>>` | 角色定义序列 |
 
 ## 示例
 
@@ -30,8 +30,8 @@ struct linked_deck;
 int main()
 {
     givm::issued_id_map ids{};
-    ids.add<givm::card_definition>("恢复药剂", {});
-    ids.add<givm::character_view>("测试角色", {});
+    ids.add<givm::definition_category::card>("恢复药剂", {});
+    ids.add<givm::definition_category::character>("测试角色", {});
     auto deck_result = link_deck(
         ids,
         std::array<std::string_view, 2>{ "恢复药剂", "恢复药剂" },

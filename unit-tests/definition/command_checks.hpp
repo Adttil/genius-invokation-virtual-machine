@@ -18,7 +18,7 @@ namespace
 {
     struct invalid_commands_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type { givm::normal_effect entry; };
         bool* finished;
 
@@ -96,7 +96,7 @@ TEST_CASE("variant command programs collect independent parameter errors with th
         CHECK(location.stage == givm::compile_stage::program);
         REQUIRE(location.source);
         CHECK(location.source->name == "Invalid command source");
-        CHECK(location.source->category_index == givm::definition_types::index_of<givm::support_view>());
+        CHECK(location.source->category == givm::definition_category::support);
         CHECK(location.program == givm::program_kind::response);
         CHECK(location.program_index == (index < 5 ? 1 : 2));
     }
@@ -131,13 +131,13 @@ TEST_CASE("variant command programs collect independent parameter errors with th
 
 TEST_CASE("fixed commands reject definition IDs outside the selected library", "[definition][compile][command_check]")
 {
-    const givm_test::reaction_source<givm::card_definition> card{ "Outside card" };
+    const givm_test::reaction_source<givm::definition_category::card> card{ "Outside card" };
     auto other_sources = givm_test::make_source_library();
     REQUIRE(other_sources.add(card));
     const auto compiled = givm::compile(other_sources, givm_test::basic_sources,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     REQUIRE(compiled);
-    const auto card_id = compiled->id_map.get_id<givm::card_definition>(card.name());
+    const auto card_id = compiled->id_map.get_id<givm::definition_category::card>(card.name());
     auto sources = givm_test::make_source_library();
     const auto result = givm::compile(sources, givm_test::basic_sources,
         std::tuple{ givm::insert_deck_card{ givm::player_id{ 0 }, card_id } },

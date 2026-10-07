@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
-template<class TDefinitionType>
+template<definition_category TDefinitionType>
 bool has(std::string_view name) const;
 ```
 
@@ -15,7 +15,7 @@ bool has(std::string_view name) const;
 
 |  |  |
 | --- | --- |
-| `TDefinitionType` | 定义类别，见 [`definition_types`](../definition_types.md) |
+| `TDefinitionType` | 定义类别，见 [`definition_category`](../../enums/definition_category.md) |
 
 ## 参数
 
@@ -37,7 +37,7 @@ bool has(std::string_view name) const;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view source_name;
 
@@ -50,8 +50,8 @@ int main()
     const card_source potion{ "恢复药剂" };
     givm::definition_source_library sources{};
     if(not sources.add(potion)) return 1;
-    std::println("包含恢复药剂: {}", sources.has<givm::card_definition>("恢复药剂"));
-    std::println("包含恢复料理: {}", sources.has<givm::card_definition>("恢复料理"));
+    std::println("包含恢复药剂: {}", sources.has<givm::definition_category::card>("恢复药剂"));
+    std::println("包含恢复料理: {}", sources.has<givm::definition_category::card>("恢复料理"));
 }
 ```
 

@@ -18,9 +18,10 @@
 
 |  |  |
 | --- | --- |
-| [`issued_id`](table/issued_id.md) | 按类别区分的已发行 ID |
-| [`card_definition`](table/card_definition.md) | 卡牌定义类别 |
-| [`status_definition`](table/status_definition.md) | 卡牌状态定义类别 |
+| [`tag_id`](table/tag_id.md) | 已取得的分类标签身份 |
+| [`optional_tag_id`](table/optional_tag_id.md) | 允许尚未取得标签的身份 |
+| [`definition_id`](table/definition_id.md) | 单一类别的定义身份 |
+| [`variant_definition_id`](table/variant_definition_id.md) | 多类别或可空的定义身份 |
 | [`linked_deck`](table/linked_deck.md) | 已确定卡牌与角色定义的牌组 |
 
 ### 实体视图
@@ -41,6 +42,8 @@
 | [`reaction_view`](table/reaction_view.md) | 玩家反应槽位对应定义的只读视图 |
 
 ### 实体 ID
+
+[`entity_id<Category>`](table/entity_id.md) 保存单一实体类别的身份；[`variant_entity_id`](table/variant_entity_id.md) 在同样一个 64 位字中保存多个可能类别。以下具名类型均为独立的 ID 类。
 
 |  |  |
 | --- | --- |
@@ -84,10 +87,12 @@
 
 |  |  |
 | --- | --- |
-| [`definition_id`](table/definition_id.md) | 实体采用的定义身份 |
+| [`optional_definition_id`](table/optional_definition_id.md) | 显式允许空值的定义身份 |
+| [`optional_entity_id`](table/optional_entity_id.md) | 显式允许空值的实体身份 |
+| [`entity_view`](table/entity_view.md) | 实体类别对应的只读视图类型 |
 | [`tag_id`](table/tag_id.md) | 分类标签的身份 |
 
-## 函数
+## 常量与函数
 
 |  |  |
 | --- | --- |

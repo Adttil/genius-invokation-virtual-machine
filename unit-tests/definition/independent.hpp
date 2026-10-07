@@ -18,10 +18,10 @@ namespace givm_test::definition::independent
 {
 namespace
 {
-    template<class TCategory>
+    template<givm::definition_category TCategory>
     struct named_source
     {
-        using definition_category = TCategory;
+        static constexpr auto category = TCategory;
 
         struct definition_type{};
 
@@ -38,7 +38,7 @@ namespace
         }
     };
 
-    template<class TCategory>
+    template<givm::definition_category TCategory>
     void check_sources(
         const givm::definition_source_library& sources,
         std::initializer_list<std::string_view> expected_names
@@ -84,40 +84,40 @@ TEST_CASE("query parameters expose their result types and defaults", "[definitio
 TEST_CASE("definition sources can be registered and enumerated by category", "[definition][source_library]")
 {
     STATIC_REQUIRE(std::is_default_constructible_v<givm::definition_source_library>);
-    const named_source<givm::card_definition> card{ "Card" };
-    const named_source<givm::card_definition> another_card{ "Another card" };
-    const named_source<givm::status_definition> status{ "Status" };
-    const named_source<givm::support_view> support{ "Support" };
-    const named_source<givm::summon_view> summon{ "Summon" };
-    const named_source<givm::combat_status_view> combat_status{ "Combat status" };
-    const named_source<givm::character_view> character{ "Character" };
-    const named_source<givm::skill_view> skill{ "Skill" };
-    const named_source<givm::attachment_view> attachment{ "Attachment" };
+    const named_source<givm::definition_category::card> card{ "Card" };
+    const named_source<givm::definition_category::card> another_card{ "Another card" };
+    const named_source<givm::definition_category::card_status> status{ "Status" };
+    const named_source<givm::definition_category::support> support{ "Support" };
+    const named_source<givm::definition_category::summon> summon{ "Summon" };
+    const named_source<givm::definition_category::combat_status> combat_status{ "Combat status" };
+    const named_source<givm::definition_category::character> character{ "Character" };
+    const named_source<givm::definition_category::skill> skill{ "Skill" };
+    const named_source<givm::definition_category::attachment> attachment{ "Attachment" };
 
     givm::definition_source_library sources;
-    check_sources<givm::card_definition>(sources, {});
+    check_sources<givm::definition_category::card>(sources, {});
     REQUIRE(sources.add(card, status, support, summon, combat_status, character, skill, attachment));
     REQUIRE(sources.add(another_card));
 
-    check_sources<givm::card_definition>(sources, { "Another card", "Card" });
-    check_sources<givm::status_definition>(sources, { "Status" });
-    check_sources<givm::support_view>(sources, { "Support" });
-    check_sources<givm::summon_view>(sources, { "Summon" });
-    check_sources<givm::combat_status_view>(sources, { "Combat status" });
-    check_sources<givm::character_view>(sources, { "Character" });
-    check_sources<givm::skill_view>(sources, { "Skill" });
-    check_sources<givm::attachment_view>(sources, { "Attachment" });
+    check_sources<givm::definition_category::card>(sources, { "Another card", "Card" });
+    check_sources<givm::definition_category::card_status>(sources, { "Status" });
+    check_sources<givm::definition_category::support>(sources, { "Support" });
+    check_sources<givm::definition_category::summon>(sources, { "Summon" });
+    check_sources<givm::definition_category::combat_status>(sources, { "Combat status" });
+    check_sources<givm::definition_category::character>(sources, { "Character" });
+    check_sources<givm::definition_category::skill>(sources, { "Skill" });
+    check_sources<givm::definition_category::attachment>(sources, { "Attachment" });
 }
 
 TEST_CASE("reaction selection reads a prepopulated collection", "[definition][source_library]")
 {
-    const named_source<givm::reaction_view> reaction{ "Custom reaction" };
+    const named_source<givm::definition_category::reaction> reaction{ "Custom reaction" };
     givm::definition_source_library sources;
     REQUIRE(sources.add(reaction));
     givm::reaction_definition_names names{ reaction.name() };
     const auto [library, ids] = givm_test::require_success(compile(sources, names, givm::definition_selection{},
         std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    CHECK(ids.has<givm::reaction_view>(reaction.name()));
-    check_sources<givm::reaction_view>(sources, { reaction.name() });
+    CHECK(ids.has<givm::definition_category::reaction>(reaction.name()));
+    check_sources<givm::definition_category::reaction>(sources, { reaction.name() });
 }
 }

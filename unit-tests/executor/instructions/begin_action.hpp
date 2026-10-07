@@ -36,7 +36,7 @@ namespace
 
     struct action_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             action_log* log;
@@ -89,7 +89,7 @@ namespace
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id()].state().active_character == event.current);
             data.log->switches.push_back(event.current);
             return {};
         }
@@ -121,7 +121,7 @@ namespace
 
     struct quote_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             quote_control* control;
@@ -173,13 +173,13 @@ namespace
             }
             if(control.add_target_index)
             {
-                event.requirement.dice_requirement.any += static_cast<std::uint8_t>(event.target.index);
+                event.requirement.dice_requirement.any += static_cast<std::uint8_t>(event.target.index());
             }
             if(not control.enable_payment)
             {
                 return {};
             }
-            return context.invoke(event.target.index == 1 ? data.first_payment : data.second_payment);
+            return context.invoke(event.target.index() == 1 ? data.first_payment : data.second_payment);
         }
     };
 
@@ -228,9 +228,9 @@ TEST_CASE("action and round observations precede their handlers and ended player
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto plain = ids.get_id<givm::character_view>(character.name());
+    const auto plain = ids.get_id<givm::definition_category::character>(character.name());
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } },
+        { .characters = { ids.get_id<givm::definition_category::character>(observer.name()), plain } },
         { .characters = { plain, plain } });
     givm_test::executor_driver target;
     target.start(library, table);
@@ -309,8 +309,8 @@ TEST_CASE("cost previews wait for confirmation before executing a terminal payme
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto plain = ids.get_id<givm::character_view>(character.name());
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain } }, { .characters = { plain } });
+    const auto plain = ids.get_id<givm::definition_category::character>(character.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()), plain } }, { .characters = { plain } });
     givm_test::executor_driver target;
     target.start(library, table);
     omni_random random;
@@ -361,9 +361,9 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
         givm::compile_mode::normal,
         std::tuple_cat(action_setup(4), std::tuple{ givm::begin_action{} }), std::tuple{}, living, defeated
     );
-    const auto alive = ids.get_id<givm::character_view>(living.name());
-    const auto dead = ids.get_id<givm::character_view>(defeated.name());
-    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, active_index } },
+    const auto alive = ids.get_id<givm::definition_category::character>(living.name());
+    const auto dead = ids.get_id<givm::definition_category::character>(defeated.name());
+    givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, static_cast<std::uint32_t>(active_index) } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .characters = { active_in_middle ? dead : alive, active_in_middle ? alive : dead, living_standby ? alive : dead }
@@ -374,7 +374,7 @@ TEST_CASE("switch choices include only living standby characters", "[begin_actio
     REQUIRE(target.advance(library, table, random) == givm::execution_state::action_selection);
     const auto action = target.view_in<givm::execution_state::action_selection>();
     REQUIRE(action.switch_target_count() == (living_standby ? 1 : 0));
-    CHECK(table[givm::character_id{ givm::player_id{ 0 }, 1 - active_index }].state().health == 0);
+    CHECK(table[givm::character_id{ givm::player_id{ 0 }, static_cast<std::uint32_t>(1 - active_index) }].state().health == 0);
     if(living_standby)
     {
         const givm::character_id next{ givm::player_id{ 0 }, 2 };
@@ -428,17 +428,17 @@ TEST_CASE("confirmed nonterminal payment responses return before dice payment an
     action_log log;
     const auto observer = givm::test::with_passive_skill(action_source{ &log, givm::action_speed::combat, false, true, free_switch });
     const givm::test::initialized_character_source character;
-    const givm::test::named_definition_source<givm::card_definition> card{ "PaymentCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "PaymentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, observer, character, card
     );
-    const auto plain = ids.get_id<givm::character_view>(character.name());
+    const auto plain = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(card.name()) },
-        .characters = { ids.get_id<givm::character_view>(observer.name()), plain }
+        .cards = { ids.get_id<givm::definition_category::card>(card.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(observer.name()), plain }
     }, { .characters = { plain } });
     givm_test::executor_driver target;
     target.start(library, table);
@@ -492,19 +492,19 @@ TEST_CASE("synchronous quotes are independent and copied executions commit only 
     const auto source = givm::test::with_passive_skill(quote_source{ &control });
     const auto empty_source = givm::test::with_passive_skill(quote_source{ &empty_control, "EmptyQuote" });
     const givm::test::initialized_character_source character;
-    const givm::test::named_definition_source<givm::card_definition> card{ "QuotePaymentCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "QuotePaymentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, source, empty_source, character, card
     );
-    const auto plain = ids.get_id<givm::character_view>(character.name());
-    const auto card_id = ids.get_id<givm::card_definition>(card.name());
+    const auto plain = ids.get_id<givm::definition_category::character>(character.name());
+    const auto card_id = ids.get_id<givm::definition_category::card>(card.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
-        .characters = { ids.get_id<givm::character_view>(source.name()), plain, plain }
-    }, { .characters = { ids.get_id<givm::character_view>(empty_source.name()) } });
+        .characters = { ids.get_id<givm::definition_category::character>(source.name()), plain, plain }
+    }, { .characters = { ids.get_id<givm::definition_category::character>(empty_source.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
@@ -592,17 +592,17 @@ TEST_CASE("payment checks match exact dice requirements before checking the play
     quote_control control{ .replace_requirement = true, .enable_payment = true };
     const auto source = givm::test::with_passive_skill(quote_source{ &control, "PaymentRequirements", inventory });
     const givm::test::initialized_character_source character;
-    const givm::test::named_definition_source<givm::card_definition> card{ "UncommittedPaymentCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "UncommittedPaymentCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple_cat(action_setup(inventory.total()), std::tuple{ givm::begin_action{} }), std::tuple{}, source, character, card
     );
-    const auto plain = ids.get_id<givm::character_view>(character.name());
+    const auto plain = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(card.name()) },
-        .characters = { ids.get_id<givm::character_view>(source.name()), plain }
+        .cards = { ids.get_id<givm::definition_category::card>(card.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(source.name()), plain }
     }, { .characters = { plain } });
     givm_test::executor_driver target;
     target.start(library, table);
@@ -680,17 +680,17 @@ TEST_CASE("repeated quote reads retain the cached payment response", "[begin_act
     quote_control control{ .enable_payment = true };
     const auto source = givm::test::with_passive_skill(quote_source{ &control });
     const givm::test::initialized_character_source character;
-    const givm::test::named_definition_source<givm::card_definition> card{ "DiscardedPaymentResponse" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "DiscardedPaymentResponse" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple_cat(action_setup(), std::tuple{ givm::begin_action{} }), std::tuple{}, source, character, card
     );
-    const auto plain = ids.get_id<givm::character_view>(character.name());
+    const auto plain = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(card.name()) },
-        .characters = { ids.get_id<givm::character_view>(source.name()), plain }
+        .cards = { ids.get_id<givm::definition_category::card>(card.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(source.name()), plain }
     }, { .characters = { plain } });
     givm_test::executor_driver target;
     target.start(library, table);
@@ -737,12 +737,12 @@ TEST_CASE("action input validates cache and payment before advancing and permits
     const givm::test::initialized_character_source plain;
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::begin_action{} }, std::tuple{}, observer, plain);
-    const auto plain_id = ids.get_id<givm::character_view>(plain.name());
+    const auto plain_id = ids.get_id<givm::definition_category::character>(plain.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .dice = dice({ { givm::elemental_dice::omni, 1 } }),
             .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()), plain_id } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()), plain_id } },
         { .characters = { plain_id } });
     givm::executor execution;
     counting_random random;

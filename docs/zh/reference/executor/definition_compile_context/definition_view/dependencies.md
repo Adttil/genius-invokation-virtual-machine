@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TDependencyCategory>
+template<definition_category TDependencyCategory>
 std::span<const std::string_view> dependencies() const noexcept;
 ```
 

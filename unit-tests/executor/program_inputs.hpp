@@ -31,7 +31,7 @@ namespace
 
     struct input_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             input_log* log;
@@ -83,9 +83,9 @@ namespace
         static givm::normal_effect handle(const definition_type& data, givm::active_character_changed& event,
                            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id()].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            if(event.current.index == 1)
+            if(event.current.index() == 1)
                 return context.invoke(data.nested, givm::set_active_character_input{ .current = { givm::player_id{ 0 }, 2 } });
             return {};
         }
@@ -93,7 +93,7 @@ namespace
 
     struct cached_input_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             input_log* log;
@@ -121,7 +121,7 @@ namespace
             const auto previous = *context.table()[self.player().id()].state().active_character;
             data.log->quote_active.push_back(previous);
             event.requirement.dice_requirement.any = 0;
-            const givm::set_active_character_input first{ .current = self.id().index == 0 ? event.target : self.id() };
+            const givm::set_active_character_input first{ .current = self.id().index() == 0 ? event.target : self.id() };
             const givm::set_active_character_input second{ .current = previous };
             return context.invoke(data.payment, first, second);
         }
@@ -129,7 +129,7 @@ namespace
                            givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
-            if(self.id().index == 0) data.log->active.push_back(event.current);
+            if(self.id().index() == 0) data.log->active.push_back(event.current);
             return {};
         }
     };
@@ -153,14 +153,14 @@ TEST_CASE("program inputs retain order across nested responses and copied input 
     input_log log;
     const auto source = givm::test::with_passive_skill(input_source{ &log, runtime_commands });
     const givm::test::initialized_character_source plain;
-    const givm::test::named_definition_source<givm::card_definition> card{ "InputCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "InputCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, plain, card);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    const auto plain_id = ids.get_id<givm::character_view>(plain.name());
+    const auto plain_id = ids.get_id<givm::definition_category::character>(plain.name());
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(card.name()) },
-        .characters = { ids.get_id<givm::character_view>(source.name()), plain_id, plain_id }
+        .cards = { ids.get_id<givm::definition_category::card>(card.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(source.name()), plain_id, plain_id }
     }, {});
     givm_test::executor_driver execution;
     execution.start(library, table);
@@ -198,8 +198,8 @@ TEST_CASE("cached payment inputs preserve quotation snapshots and candidate orde
         std::tuple{ givm::begin_action{} }, std::tuple{}, source, plain);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto source_id = ids.get_id<givm::character_view>(source.name());
-    const auto plain_id = ids.get_id<givm::character_view>(plain.name());
+    const auto source_id = ids.get_id<givm::definition_category::character>(source.name());
+    const auto plain_id = ids.get_id<givm::definition_category::character>(plain.name());
     load_deck(table, library, { .characters = { source_id, source_id, plain_id } }, { .characters = { plain_id } });
     givm_test::executor_driver execution;
     execution.start(library, table);
@@ -251,7 +251,7 @@ namespace
 {
     struct array_input_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             givm::normal_effect entry;
@@ -326,10 +326,10 @@ TEST_CASE("dynamic damage array inputs retain their contents through cached and 
     const givm::definition_library library = compiled_library;
     const givm::character_id owner{ givm::player_id{ 0 }, 0 };
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
-    givm::table table{ { .self_player = owner.player_id }, { .active_character = owner }, { .active_character = target } };
-    const auto plain_id = ids.get_id<givm::character_view>(plain.name());
+    givm::table table{ { .self_player = owner.player_id() }, { .active_character = owner }, { .active_character = target } };
+    const auto plain_id = ids.get_id<givm::definition_category::character>(plain.name());
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(source.name()), plain_id } }, { .characters = { plain_id } });
+        { .characters = { ids.get_id<givm::definition_category::character>(source.name()), plain_id } }, { .characters = { plain_id } });
     givm_test::executor_driver execution;
     execution.start(library, table);
     zero_random random;
@@ -389,7 +389,7 @@ namespace
 
     struct mismatched_input_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             input_mismatch error;
@@ -447,10 +447,10 @@ namespace
                     return context.invoke(data.foreign ? *data.foreign : data.entry, inputs...);
             };
             const givm::set_active_character_input active{ self.id() };
-            const std::array summon_ids{ givm::summon_id{ self.id().player_id, 0 } };
+            const std::array summon_ids{ givm::summon_id{ self.id().player_id(), 0 } };
             const givm::remove_summon_input summon{ summon_ids };
-            const givm::remove_support_input support{ { self.id().player_id, 0 } };
-            static_assert(sizeof(summon) == sizeof(support));
+            const givm::remove_support_input support{ { self.id().player_id(), 0 } };
+            static_assert(sizeof(active) == sizeof(support));
             switch(data.error)
             {
             case input_mismatch::null_entry:
@@ -506,11 +506,11 @@ TEST_CASE("debug invocation checks nominal input types count and order before ex
         : std::vector<givm::any_command>{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode, program, std::tuple{}, source, plain);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
-        { .active_character = cached ? std::optional{ givm::character_id{ givm::player_id{ 0 }, 0 } } : std::nullopt },
-        { .active_character = cached ? std::optional{ givm::character_id{ givm::player_id{ 1 }, 0 } } : std::nullopt } };
-    const auto plain_id = ids.get_id<givm::character_view>(plain.name());
+        { .active_character = cached ? givm::optional_character_id{ givm::character_id{ givm::player_id{ 0 }, 0 } } : nullptr },
+        { .active_character = cached ? givm::optional_character_id{ givm::character_id{ givm::player_id{ 1 }, 0 } } : nullptr } };
+    const auto plain_id = ids.get_id<givm::definition_category::character>(plain.name());
     load_deck(table, library, {
-        .characters = { ids.get_id<givm::character_view>(source.name()), plain_id }
+        .characters = { ids.get_id<givm::definition_category::character>(source.name()), plain_id }
     }, { .characters = { plain_id } });
     givm_test::executor_driver execution;
     execution.start(library, table);
@@ -578,8 +578,8 @@ TEST_CASE("debug entries reject foreign libraries and remain usable in library c
     const auto run = [&](const givm::definition_library& library, const givm::issued_id_map& ids)
     {
         const givm::character_id owner{ givm::player_id{0}, 0 };
-        givm::table table{ { .self_player = owner.player_id }, { .active_character = owner } };
-        load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } }, {});
+        givm::table table{ { .self_player = owner.player_id() }, { .active_character = owner } };
+        load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source.name()) } }, {});
         givm_test::executor_driver execution;
         execution.start(library, table);
         zero_random random;

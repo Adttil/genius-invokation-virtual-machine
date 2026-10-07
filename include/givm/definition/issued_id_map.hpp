@@ -19,7 +19,7 @@ namespace givm
     class issued_id_map
     {
     public:
-        template<class TDefinition>
+        template<definition_category TDefinition>
         using id_type = definition_id<TDefinition>;
 
         explicit issued_id_map(std::initializer_list<std::string_view> tags)
@@ -40,17 +40,17 @@ namespace givm
             }
         }
 
-        template<class TDefinition>
+        template<definition_category TDefinition>
         definition_id<TDefinition> add(std::string_view name, std::initializer_list<std::string_view> tags)
         {
             return add<TDefinition>(name, std::span<const std::string_view>{ tags.begin(), tags.size() });
         }
 
-        template<class TDefinition, std::ranges::input_range TTags>
+        template<definition_category TDefinition, std::ranges::input_range TTags>
             requires std::convertible_to<std::ranges::range_reference_t<TTags>, std::string_view>
         definition_id<TDefinition> add(std::string_view name, TTags&& tags)
         {
-            constexpr size_t index = definition_types::template index_of<TDefinition>();
+            constexpr size_t index = static_cast<std::size_t>(TDefinition);
             auto& tags_for_entity = tag_masks_[index];
             const size_t value = tags_for_entity.size();
             auto& mask = tags_for_entity.emplace_back(tag_to_id_.size());
@@ -62,16 +62,16 @@ namespace givm
             return definition_id<TDefinition>{ value };
         }
 
-        template<class TDefinition>
+        template<definition_category TDefinition>
         bool has(std::string_view name) const
         {
-            return name_to_ids_[definition_types::template index_of<TDefinition>()].contains(name);
+            return name_to_ids_[static_cast<std::size_t>(TDefinition)].contains(name);
         }
 
-        template<class TDefinition>
+        template<definition_category TDefinition>
         size_t definition_count() const noexcept
         {
-            return tag_masks_[definition_types::template index_of<TDefinition>()].size();
+            return tag_masks_[static_cast<std::size_t>(TDefinition)].size();
         }
 
         bool has_tag(std::string_view name) const
@@ -79,10 +79,10 @@ namespace givm
             return tag_to_id_.contains(name);
         }
 
-        template<class TDefinition>
+        template<definition_category TDefinition>
         definition_id<TDefinition> get_id(std::string_view name) const
         {
-            return definition_id<TDefinition>{ name_to_ids_[definition_types::template index_of<TDefinition>()].find(name)->second };
+            return definition_id<TDefinition>{ name_to_ids_[static_cast<std::size_t>(TDefinition)].find(name)->second };
         }
 
         tag_id get_tag_id(std::string_view name) const
@@ -100,7 +100,7 @@ namespace givm
             return tag_names_;
         }
 
-        template<class TDefinition>
+        template<definition_category TDefinition>
         std::vector<definition_id<TDefinition>> query_by_tag(std::string_view expression) const;
 
     private:
@@ -143,13 +143,13 @@ namespace givm
             return true;
         }
 
-        template<class TDefinition>
+        template<definition_category TDefinition>
         std::vector<definition_id<TDefinition>> query_by_tags(
             std::span<const tag_id> required_tags,
             std::span<const tag_id> excluded_tags = {}
         ) const
         {
-            constexpr size_t index = definition_types::template index_of<TDefinition>();
+            constexpr size_t index = static_cast<std::size_t>(TDefinition);
             const auto& tags = tag_masks_[index];
             std::vector<definition_id<TDefinition>> result;
             for(size_t value = 0; value < tags.size(); ++value)
@@ -162,8 +162,8 @@ namespace givm
             return result;
         }
 
-        std::array<std::vector<tag_mask>, definition_types::size()> tag_masks_;
-        std::array<name_map_type, definition_types::size()> name_to_ids_;
+        std::array<std::vector<tag_mask>, detail::definition_categories.size()> tag_masks_;
+        std::array<name_map_type, detail::definition_categories.size()> name_to_ids_;
         name_map_type tag_to_id_;
         std::vector<std::string_view> tag_names_;
     };

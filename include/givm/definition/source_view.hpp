@@ -47,7 +47,7 @@ namespace givm::detail
     struct history_source_functions
     {
         history_summary_layout(*layout)(const void*, const definition_compile_context&);
-        subscribed_events<history_summary_definition>::apply<history_handle_getters> handles;
+        history_subscribed_events::apply<history_handle_getters> handles;
     };
 
     template<class TQuery>
@@ -61,7 +61,7 @@ namespace givm::detail
     }
 
     using definition_dependency_lists =
-        std::array<std::vector<std::string_view>, definition_types::size()>;
+        std::array<std::vector<std::string_view>, detail::definition_categories.size()>;
 
     struct definition_source_declarations
     {
@@ -93,59 +93,59 @@ namespace givm::detail
         }
     }
 
-    template<class TCategory, class TSource>
+    template<definition_category TCategory, class TSource>
     constexpr decltype(auto) definition_dependencies(const TSource& source)
     {
-        if constexpr(std::same_as<TCategory, card_definition>)
+        if constexpr((TCategory == definition_category::card))
         {
             if constexpr(requires { source.card_dependencies(); }) return source.card_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, status_definition>)
+        else if constexpr((TCategory == definition_category::card_status))
         {
             if constexpr(requires { source.status_dependencies(); }) return source.status_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, support_view>)
+        else if constexpr((TCategory == definition_category::support))
         {
             if constexpr(requires { source.support_dependencies(); }) return source.support_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, summon_view>)
+        else if constexpr((TCategory == definition_category::summon))
         {
             if constexpr(requires { source.summon_dependencies(); }) return source.summon_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, combat_status_view>)
+        else if constexpr((TCategory == definition_category::combat_status))
         {
             if constexpr(requires { source.combat_status_dependencies(); })
                 return source.combat_status_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, character_view>)
+        else if constexpr((TCategory == definition_category::character))
         {
             if constexpr(requires { source.character_dependencies(); }) return source.character_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, skill_view>)
+        else if constexpr((TCategory == definition_category::skill))
         {
             if constexpr(requires { source.skill_dependencies(); }) return source.skill_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, history_summary_definition>)
+        else if constexpr((TCategory == definition_category::history_summary))
         {
             if constexpr(requires { source.history_summary_dependencies(); })
                 return source.history_summary_dependencies();
             else return std::array<std::string_view, 0>{};
         }
-        else if constexpr(std::same_as<TCategory, reaction_view>)
+        else if constexpr((TCategory == definition_category::reaction))
         {
             if constexpr(requires { source.reaction_dependencies(); }) return source.reaction_dependencies();
             else return std::array<std::string_view, 0>{};
         }
         else
         {
-            static_assert(std::same_as<TCategory, attachment_view>);
+            static_assert((TCategory == definition_category::attachment));
             if constexpr(requires { source.attachment_dependencies(); })
                 return source.attachment_dependencies();
             else return std::array<std::string_view, 0>{};
@@ -174,12 +174,12 @@ namespace givm::detail
 
 namespace givm
 {
-    template<class TCategory>
+    template<definition_category TCategory>
     class definition_source_view
     {
     public:
         template<class TSource>
-            requires std::same_as<typename TSource::definition_category, TCategory>
+            requires (TSource::category == TCategory)
         constexpr definition_source_view(const TSource& source)
         : source_{ &source }, rtti_{ &rtti_for<TSource> }
         {}
@@ -194,10 +194,10 @@ namespace givm
             return rtti_->tags(source_);
         }
 
-        template<class TDependencyCategory>
+        template<definition_category TDependencyCategory>
         std::vector<std::string_view> dependencies() const
         {
-            return rtti_->dependencies[definition_types::index_of<TDependencyCategory>()](source_);
+            return rtti_->dependencies[static_cast<std::size_t>(TDependencyCategory)](source_);
         }
 
     private:
@@ -211,14 +211,14 @@ namespace givm
         struct handle_fn_getter_tuple_for_view_impl<TView, std::index_sequence<I...>>
         {
             using type = std::tuple<
-                handle_fn_getter_t<TView, typename subscribed_events<TView>::template type_at<I>>...
+                handle_fn_getter_t<TView, typename subscribed_events<std::remove_cvref_t<TView>::category>::template type_at<I>>...
             >;
         };
 
         template<class TView>
         using handle_fn_getter_tuple_for_view_t = typename handle_fn_getter_tuple_for_view_impl<
             TView,
-            std::make_index_sequence<subscribed_events<TView>::size()>
+            std::make_index_sequence<subscribed_events<std::remove_cvref_t<TView>::category>::size()>
         >::type;
 
         template<class TSequence>
@@ -228,12 +228,12 @@ namespace givm
         struct handle_fn_getter_tuple_impl<std::index_sequence<I...>>
         {
             using type = std::tuple<
-                handle_fn_getter_tuple_for_view_t<typename views_of_definition<TCategory>::template type_at<I>>...
+                handle_fn_getter_tuple_for_view_t<typename detail::definition_views<TCategory>::template type_at<I>>...
             >;
         };
 
         using handle_fn_getter_tuple_t = typename handle_fn_getter_tuple_impl<
-            std::make_index_sequence<views_of_definition<TCategory>::size()>
+            std::make_index_sequence<detail::definition_views<TCategory>::size()>
         >::type;
 
         template<class TQuery>
@@ -248,7 +248,7 @@ namespace givm
         {
             std::string_view(*name)(const void*);
             std::vector<std::string_view>(*tags)(const void*);
-            std::array<std::vector<std::string_view>(*)(const void*), definition_types::size()> dependencies;
+            std::array<std::vector<std::string_view>(*)(const void*), detail::definition_categories.size()> dependencies;
             definition_data(*compile)(const void*, definition_compile_context&);
             handle_fn_getter_tuple_t handle_fn_getters;
 #ifdef _MSC_VER
@@ -262,7 +262,7 @@ namespace givm
 #else
             [[no_unique_address]]
 #endif
-            std::conditional_t<std::same_as<TCategory, history_summary_definition>,
+            std::conditional_t<(TCategory == definition_category::history_summary),
                 detail::history_source_functions, std::tuple<>> history;
         };
 
@@ -280,15 +280,15 @@ namespace givm
             {
                 ((result.dependencies[I] =
                     rtti_->dependencies[I](source_)), ...);
-            }(std::make_index_sequence<definition_types::size()>{});
+            }(std::make_index_sequence<detail::definition_categories.size()>{});
             return result;
         }
 
         template<class TView, class TEvent>
         handle_fn_t<TView, TEvent> get_handle_fn() const
         {
-            const auto getter = std::get<subscribed_events<TView>::template index_of<TEvent>()>(
-                std::get<views_of_definition<TCategory>::template index_of<TView>()>(
+            const auto getter = std::get<subscribed_events<std::remove_cvref_t<TView>::category>::template index_of<TEvent>()>(
+                std::get<detail::definition_views<TCategory>::template index_of<TView>()>(
                     rtti_->handle_fn_getters
                 )
             );
@@ -310,7 +310,7 @@ namespace givm
                     );
                 },
                 .dependencies = make_dependencies<TSource>(
-                    std::make_index_sequence<definition_types::size()>{}
+                    std::make_index_sequence<detail::definition_categories.size()>{}
                 ),
                 .compile = +[](const void* source, definition_compile_context& context)
                 {
@@ -320,7 +320,7 @@ namespace givm
                     return definition_data{ static_cast<const TSource*>(source)->compile(context) };
                 },
                 .handle_fn_getters = make_handle_fn_getters<TSource>(
-                    std::make_index_sequence<views_of_definition<TCategory>::size()>{}
+                    std::make_index_sequence<detail::definition_views<TCategory>::size()>{}
                 ),
                 .query_fn_getters = make_query_fn_getters<TSource>(
                     std::make_index_sequence<supported_queries<TCategory>::size()>{}
@@ -366,7 +366,7 @@ namespace givm
         template<class TSource>
         static constexpr auto make_history_functions()
         {
-            if constexpr(not std::same_as<TCategory, history_summary_definition>) return std::tuple<>{};
+            if constexpr(not (TCategory == definition_category::history_summary)) return std::tuple<>{};
             else
             {
                 return detail::history_source_functions{
@@ -382,7 +382,7 @@ namespace givm
                                 return make_history_handle<TSource, TEvents>(*static_cast<const TSource*>(source));
                             })...
                         };
-                    }(typename subscribed_events<history_summary_definition>::template apply<type_list>{})
+                    }(typename history_subscribed_events::template apply<type_list>{})
                 };
             }
         }
@@ -449,10 +449,10 @@ namespace givm
         template<class TSource, std::size_t... I>
         static constexpr auto make_dependencies(std::index_sequence<I...>)
         {
-            return std::array<std::vector<std::string_view>(*)(const void*), definition_types::size()>{
+            return std::array<std::vector<std::string_view>(*)(const void*), detail::definition_categories.size()>{
                 (+[](const void* source)
                 {
-                    using dependency_category = typename definition_types::template type_at<I>;
+                    constexpr auto dependency_category = static_cast<definition_category>(I);
                     return detail::collect_definition_strings(
                         detail::definition_dependencies<dependency_category>(
                             *static_cast<const TSource*>(source)
@@ -468,7 +468,7 @@ namespace givm
             return {
                 make_handle_fn_getters_for_view<
                     TSource,
-                    typename views_of_definition<TCategory>::template type_at<I>
+                    typename detail::definition_views<TCategory>::template type_at<I>
                 >()...
             };
         }
@@ -482,7 +482,7 @@ namespace givm
                 make_handle_fn_getter<
                     TSource,
                     TView,
-                    typename subscribed_events<TView>::template type_at<I>
+                    typename subscribed_events<std::remove_cvref_t<TView>::category>::template type_at<I>
                 >()...
             };
         }
@@ -491,7 +491,7 @@ namespace givm
         static constexpr handle_fn_getter_tuple_for_view_t<TView> make_handle_fn_getters_for_view()
         {
             return make_handle_fn_getters_for_view<TSource, TView>(
-                std::make_index_sequence<subscribed_events<TView>::size()>{}
+                std::make_index_sequence<subscribed_events<std::remove_cvref_t<TView>::category>::size()>{}
             );
         }
 
@@ -509,9 +509,9 @@ namespace givm
         {
             if constexpr(detail::is_dynamic_source<TSource>)
             {
-                static_assert(requires { { source.template can_handle<TView, TEvent>() } -> std::same_as<bool>; },
-                    "dynamic source must provide can_handle<View, Event>() returning bool for every subscribed view/event pair");
-                if(not source.template can_handle<TView, TEvent>())
+                static_assert(requires { { source.template can_handle<std::remove_cvref_t<TView>::category, TEvent>() } -> std::same_as<bool>; },
+                    "dynamic source must provide can_handle<Entity, Event>() returning bool for every subscribed view/event pair");
+                if(not source.template can_handle<std::remove_cvref_t<TView>::category, TEvent>())
                 {
                     return nullptr;
                 }

@@ -72,7 +72,7 @@ struct set_energy_error;
 
 struct character_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     std::string_view name() const { return "充能示例角色"; }
     int compile(givm::definition_compile_context&) const { return 0; }
 
@@ -104,7 +104,7 @@ int main()
     const auto [library, ids] = std::move(*library_result);
 
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    const auto definition = ids.get_id<givm::character_view>("充能示例角色");
+    const auto definition = ids.get_id<givm::definition_category::character>("充能示例角色");
     const givm::linked_deck deck{ .characters = { definition } };
     load_deck(table, library, deck, deck);
     const givm::character_id target{ givm::player_id{ 0 }, 0 };

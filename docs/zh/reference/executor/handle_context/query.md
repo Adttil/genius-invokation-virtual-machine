@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TCategory, class TQuery>
+template<definition_category TCategory, class TQuery>
 requires requires { supported_queries<TCategory>::template index_of<TQuery>(); }
 TQuery::result_t query(definition_id<TCategory> id, const TQuery& parameters) const;
 ```

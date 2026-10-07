@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TEvent, class TView = TCategory>
+template<class TEvent, entity_category Entity = /* 根据 TCategory 推导 */>
 bool can_handle() const noexcept;
 ```
 
@@ -16,7 +16,7 @@ bool can_handle() const noexcept;
 | | |
 | --- | --- |
 | `TEvent` | 要检查的事件类型 |
-| `TView` | 要检查的实体 view，默认等于定义类别 `TCategory` |
+| `Entity` | 要检查的实体类别；定义只有一种实体形态时默认采用该形态，否则默认 `null` |
 
 ## 返回值
 
@@ -24,6 +24,6 @@ bool can_handle() const noexcept;
 
 ## 注意
 
-卡牌和卡牌状态的定义类别与实体 view 不同，调用时应显式指定形态，例如 `can_handle<givm::this_card_play, givm::hand_card_view>()`。历史摘要使用自身的定义类别作为默认形态。
+卡牌和卡牌状态有两种实体形态，调用时应显式指定类别，例如 `can_handle<givm::this_card_play, givm::entity_category::hand_card>()`。历史摘要没有实体形态，默认的 `null` 参数用于查询摘要自身的订阅能力。
 
 本函数只报告响应能力，不执行响应，也不保证某次实际事件满足效果触发条件。动态定义源是否启用响应由其能力声明决定。

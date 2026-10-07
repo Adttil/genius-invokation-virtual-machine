@@ -15,7 +15,7 @@ struct cost_of_card;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `card` | `const hand_card_id` | 本次准备打出的手牌；只读。 |
-| `targets` | `const std::array<card_target_id, 2>` | 已选定的目标；`std::monostate` 为空槽。 |
+| `targets` | `const std::array<card_target_id, 2>` | 已选定的目标；``null` 空类别` 为空槽。 |
 | `requirement` | [`action_cost_requirement`](../../table/action_cost_requirement.md) | 出牌的骰子、充能费用与行动速度。 |
 
 ## 注意

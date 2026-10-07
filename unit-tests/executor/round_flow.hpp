@@ -24,7 +24,7 @@ namespace
     };
     struct round_observer
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { round_log* log; };
         round_log* log;
         std::string_view name() const { return "RoundObserver"; }
@@ -68,7 +68,7 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
         std::tuple{ givm::start_dice_roll_phase{ .count = 2, .reroll_count = { 0, 0 } },
             givm::start_round{}, givm::settle{}, givm::replace_cards{ givm::player_id{ 0 } } }, observer);
     givm::table table{ givm::table_state{ .max_rounds = 2 } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     counting_random random;
@@ -148,7 +148,7 @@ TEST_CASE("start round commands only broadcast and never count rounds clear dice
             givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::player_0_win } },
         std::tuple{}, observer);
     givm::table table{ givm::table_state{ .max_rounds = 0 } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     counting_random random;

@@ -34,7 +34,7 @@ namespace
 
     struct reaction_observer
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { reaction_log* log; givm::normal_effect nested; givm::tag_id replacement; };
         reaction_log* log;
         std::string_view name() const { return "ReactionObserver"; }
@@ -91,27 +91,27 @@ namespace
 
     struct source_character
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::definition_id<givm::skill_view> observer; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::optional_definition_id<givm::definition_category::skill> observer; };
         std::string_view name() const { return "ReactionSource"; }
         auto skill_dependencies() const { return std::array{ std::string_view{ "ReactionObserver" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>("ReactionObserver") };
+            return { context.resolve_id<givm::definition_category::skill>("ReactionObserver") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 30, .health = 30 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.observer : givm::definition_id<givm::skill_view>{};
+            return query.skill_index == 0 ? data.observer : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 
     struct pausing_field
     {
-        using definition_category = givm::combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
         struct definition_type { reaction_log* log; givm::normal_effect repeat; };
         reaction_log* log;
         std::string_view name() const { return "PausingField"; }
@@ -199,8 +199,8 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
     commands.emplace_back(givm::end_game{ givm::game_result::both_loss });
     const auto [library, ids] = givm_test::require_success(compile(sources, basics, commands, std::tuple{},
         observed ? givm::compile_mode::observed : givm::compile_mode::normal));
-    const givm::linked_deck source_deck{ .characters = { ids.get_id<givm::character_view>(source_definition.name()) } };
-    const auto target_id = ids.get_id<givm::character_view>(victim.name());
+    const givm::linked_deck source_deck{ .characters = { ids.get_id<givm::definition_category::character>(source_definition.name()) } };
+    const auto target_id = ids.get_id<givm::definition_category::character>(victim.name());
     const givm::linked_deck target_deck{ .characters = { target_id, target_id } };
     givm::table table{ { .self_player = player },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -225,7 +225,7 @@ TEST_CASE("quicken creates and refreshes its field between hits and empowers lat
         {
             REQUIRE(std::ranges::distance(statuses) == 1);
             const auto field = *statuses.begin();
-            CHECK(field.definition_id() == ids.get_id<givm::combat_status_view>(givm::genshin_impact::catalyzing_field_3_4_0.name()));
+            CHECK(field.definition_id() == ids.get_id<givm::definition_category::combat_status>(givm::genshin_impact::catalyzing_field_3_4_0.name()));
             counts_at_health_observation.push_back(field.state().count);
         }
     }
@@ -271,8 +271,8 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source_definition.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -283,14 +283,14 @@ TEST_CASE("bloom and burning repeat their official entities within their limits"
     {
         REQUIRE(std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses()) == 1);
         const auto core = *table[givm::player_id{ 0 }].combat_statuses().begin();
-        CHECK(core.definition_id() == ids.get_id<givm::combat_status_view>(givm::genshin_impact::dendro_core_3_3_0.name()));
+        CHECK(core.definition_id() == ids.get_id<givm::definition_category::combat_status>(givm::genshin_impact::dendro_core_3_3_0.name()));
         CHECK(core.state().count == 1);
     }
     else
     {
         REQUIRE(std::ranges::distance(table[givm::player_id{ 0 }].summons()) == 1);
         const auto flame = *table[givm::player_id{ 0 }].summons().begin();
-        CHECK(flame.definition_id() == ids.get_id<givm::summon_view>(givm::genshin_impact::burning_flame_3_3_0.name()));
+        CHECK(flame.definition_id() == ids.get_id<givm::definition_category::summon>(givm::genshin_impact::burning_flame_3_3_0.name()));
         CHECK(flame.state().value == 1);
         CHECK(flame.state().usages == 2);
     }
@@ -321,8 +321,8 @@ TEST_CASE("reaction replacement suppresses default numbers and entities while co
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source_definition.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -351,7 +351,7 @@ TEST_CASE("a self-applied reaction creates its entity for the affected player's 
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto target_id = ids.get_id<givm::character_view>(target_definition.name());
+    const auto target_id = ids.get_id<givm::definition_category::character>(target_definition.name());
     load_deck(table, library, { .characters = { target_id } }, { .characters = { target_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -361,7 +361,7 @@ TEST_CASE("a self-applied reaction creates its entity for the affected player's 
     CHECK(table[self].state().aura == givm::element_aura::none);
     CHECK(std::ranges::empty(table[givm::player_id{ 0 }].combat_statuses()));
     REQUIRE(std::ranges::distance(table[givm::player_id{ 1 }].combat_statuses()) == 1);
-    CHECK((*table[givm::player_id{ 1 }].combat_statuses().begin()).definition_id() == (reaction == givm::elemental_reaction::crystallize_cryo ? ids.get_id<givm::combat_status_view>(givm::genshin_impact::shield_3_3_0.name()) : ids.get_id<givm::combat_status_view>(givm::genshin_impact::dendro_core_3_3_0.name())));
+    CHECK((*table[givm::player_id{ 1 }].combat_statuses().begin()).definition_id() == (reaction == givm::elemental_reaction::crystallize_cryo ? ids.get_id<givm::definition_category::combat_status>(givm::genshin_impact::shield_3_3_0.name()) : ids.get_id<givm::definition_category::combat_status>(givm::genshin_impact::dendro_core_3_3_0.name())));
 }
 
 TEST_CASE("the first damage completion can use a field produced by a later hit", "[reaction-entities][nested]")
@@ -387,8 +387,8 @@ TEST_CASE("the first damage completion can use a field produced by a later hit",
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source_definition.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -423,8 +423,8 @@ TEST_CASE("burning flame finishes its damage before exhausting and broadcasting 
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source_definition.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -458,7 +458,7 @@ TEST_CASE("burning flame finishes its damage before exhausting and broadcasting 
     CHECK(log.health_at_removal == 29);
     CHECK(table[target].state().health == 29);
     CHECK(std::ranges::empty(table[givm::player_id{ 0 }].summons()));
-    CHECK(table[log.removed_summons.front()].definition_id() == ids.get_id<givm::summon_view>(givm::genshin_impact::burning_flame_3_3_0.name()));
+    CHECK(table[log.removed_summons.front()].definition_id() == ids.get_id<givm::definition_category::summon>(givm::genshin_impact::burning_flame_3_3_0.name()));
 }
 
 TEST_CASE("reaction regeneration resumes once before the next hit and copied groups finish independently", "[reaction-entities][observation]")
@@ -480,7 +480,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { context.add_immediate_effect(std::tuple{ givm::generate_combat_status{
-                .definition = context.resolve_id<givm::combat_status_view>("PausingField"), .state = { 2 } } }) };
+                .definition = context.resolve_id<givm::definition_category::combat_status>("PausingField"), .state = { 2 } } }) };
         }
     };
     REQUIRE(sources.add(source_definition, observer, victim, field, pausing_quicken{}));
@@ -494,11 +494,11 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     };
     const auto [library, ids] = givm_test::require_success(compile(sources, basics, std::tuple{ damages[0], damages[1], damages[2],
         givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, givm::compile_mode::observed));
-    const auto target_id = ids.get_id<givm::character_view>(victim.name());
+    const auto target_id = ids.get_id<givm::definition_category::character>(victim.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source_definition.name()) } },
         { .characters = { target_id, target_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -587,8 +587,8 @@ TEST_CASE("crystallize adds damage and stacks a shield that protects only the ac
     const givm::character_id back{ player, 1 };
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     givm::table table{ { .self_player = player }, { .active_character = front }, { .active_character = target } };
-    const auto other_id = ids.get_id<givm::character_view>(other.name());
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source_definition.name()), other_id } },
+    const auto other_id = ids.get_id<givm::definition_category::character>(other.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source_definition.name()), other_id } },
         { .characters = { other_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -606,7 +606,7 @@ TEST_CASE("crystallize adds damage and stacks a shield that protects only the ac
         {
             REQUIRE(std::ranges::distance(table[player].combat_statuses()) == 1);
             const auto shield = *table[player].combat_statuses().begin();
-            CHECK(shield.definition_id() == ids.get_id<givm::combat_status_view>(givm::genshin_impact::shield_3_3_0.name()));
+            CHECK(shield.definition_id() == ids.get_id<givm::definition_category::combat_status>(givm::genshin_impact::shield_3_3_0.name()));
             CHECK(shield.state().count == 2);
             CHECK(shield.state().round_usages == 0);
         }
@@ -632,8 +632,8 @@ TEST_CASE("crystallize preserves shield points above its accumulation limit", "[
     const givm::test::initialization_skill_source initialize{ [](givm::definition_compile_context& context)
     {
         return std::tuple{
-            givm::generate_combat_status{ .definition = context.resolve_id<givm::combat_status_view>(givm::genshin_impact::shield_3_3_0.name()), .state = { 2, 0 } },
-            givm::modify_combat_status_state{ .definition = context.resolve_id<givm::combat_status_view>(givm::genshin_impact::shield_3_3_0.name()), .count = 1, .ignore_limit = true },
+            givm::generate_combat_status{ .definition = context.resolve_id<givm::definition_category::combat_status>(givm::genshin_impact::shield_3_3_0.name()), .state = { 2, 0 } },
+            givm::modify_combat_status_state{ .definition = context.resolve_id<givm::definition_category::combat_status>(givm::genshin_impact::shield_3_3_0.name()), .count = 1, .ignore_limit = true },
             givm::apply_element{ .source = { givm::relative_player::self, 0 },
                 .target = { givm::relative_player::opponent, 0 }, .element = givm::element::geo }
         };
@@ -652,15 +652,15 @@ TEST_CASE("crystallize preserves shield points above its accumulation limit", "[
     givm::table table{ { .round_number = 1 },
         { .active_character = givm::character_id{ player, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(target.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(target.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     REQUIRE(std::ranges::distance(table[player].combat_statuses()) == 1);
     const auto shield = *table[player].combat_statuses().begin();
-    CHECK(shield.definition_id() == ids.get_id<givm::combat_status_view>(givm::genshin_impact::shield_3_3_0.name()));
+    CHECK(shield.definition_id() == ids.get_id<givm::definition_category::combat_status>(givm::genshin_impact::shield_3_3_0.name()));
     CHECK(shield.state().count == 3);
     CHECK(shield.state().round_usages == 0);
 }

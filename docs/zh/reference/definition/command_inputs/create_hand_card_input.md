@@ -8,7 +8,7 @@
 struct create_hand_card_input
 {
     player_id player;
-    definition_id<card_definition> definition;
+    definition_id<givm::definition_category::card> definition;
 };
 ```
 
@@ -19,7 +19,7 @@ struct create_hand_card_input
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 接收新牌的玩家 |
-| `definition` | `definition_id<card_definition>` | 新牌的定义 |
+| `definition` | `definition_id<givm::definition_category::card>` | 新牌的定义 |
 
 ## 注意
 

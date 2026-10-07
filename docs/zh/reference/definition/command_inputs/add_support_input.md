@@ -10,7 +10,7 @@
 struct add_support_input
 {
     player_id player;
-    definition_id<support_view> definition;
+    definition_id<givm::definition_category::support> definition;
     support_state state{
         std::numeric_limits<std::uint32_t>::max(),
         std::numeric_limits<std::uint32_t>::max()
@@ -23,7 +23,7 @@ struct add_support_input
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | `player_id` | 目标玩家 |
-| `definition` | `definition_id<support_view>` | 本次使用的定义 |
+| `definition` | `definition_id<givm::definition_category::support>` | 本次使用的定义 |
 | `state` | `support_state` | 本次请求的状态，各字段默认 `UINT32_MAX`；命令执行时裁剪至定义上限 |
 
 显式指定 `.state = {}` 时，两个字段均为零；部分初始化 `state` 时，省略的字段也会初始化为零。

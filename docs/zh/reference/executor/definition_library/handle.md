@@ -5,13 +5,13 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<class TEvent, class TDefinitionType, class TView>
+template<class TEvent, definition_category TDefinitionType, class TView>
     requires (TEvent::category != event_category::preview)
 effect<TEvent::category> handle(
     definition_id<TDefinitionType> id, TEvent& event,
     handle_context<TView, TEvent::category>& context, std::uint32_t response_index = 0) const;
 
-template<class TEvent, class TDefinitionType, class TView>
+template<class TEvent, definition_category TDefinitionType, class TView>
     requires (TEvent::category == event_category::preview)
 preview_effect handle(
     definition_id<TDefinitionType> id, TEvent& event,

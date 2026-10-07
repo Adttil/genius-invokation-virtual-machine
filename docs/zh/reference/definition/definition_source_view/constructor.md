@@ -6,7 +6,7 @@
 
 ```cpp
 template<class TSource>
-    requires std::same_as<typename TSource::definition_category, TCategory>
+    requires (TSource::category == TCategory)
 constexpr definition_source_view(const TSource& source);
 ```
 
@@ -45,7 +45,7 @@ constexpr definition_source_view(const TSource& source);
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "召唤卡"; }
     auto tags() const { return std::array<std::string_view, 1>{ "召唤" }; }
@@ -57,9 +57,9 @@ struct card_source
 int main()
 {
     const card_source source{};
-    const givm::definition_source_view<givm::card_definition> view{ source };
+    const givm::definition_source_view<givm::definition_category::card> view{ source };
     std::println("定义源名称: {}", view.name());
-    std::println("依赖的支援: {}", view.dependencies<givm::support_view>().front());
+    std::println("依赖的支援: {}", view.dependencies<givm::definition_category::support>().front());
 }
 ```
 

@@ -29,9 +29,9 @@ namespace givm::detail
     )
     {
         using entity_view = std::remove_cvref_t<TEntity>;
-        if constexpr(requires { subscribed_events<entity_view>::template index_of<TEvent>(); })
+        if constexpr(requires { subscribed_events<std::remove_cvref_t<entity_view>::category>::template index_of<TEvent>(); })
         {
-            if(not entity || not library[entity.definition_id()].template can_handle<TEvent, entity_view>())
+            if(not entity || not library[entity.definition_id()].template can_handle<TEvent, std::remove_cvref_t<entity_view>::category>())
             {
                 return;
             }
@@ -61,14 +61,14 @@ namespace givm::detail
                 if(character.has(type))
                 {
                     const auto attachment = character.get(type);
-                    equipment[equipment_count++] = attachment.id().index;
+                    equipment[equipment_count++] = attachment.id().index();
                     append_broadcast_target<TEvent>(library, attachment, targets);
                 }
             }
             for(auto attachment : character.attachments())
             {
                 const auto end = equipment.begin() + equipment_count;
-                if(std::find(equipment.begin(), end, attachment.id().index) == end)
+                if(std::find(equipment.begin(), end, attachment.id().index()) == end)
                     append_broadcast_target<TEvent>(library, attachment, targets);
             }
         };
@@ -80,14 +80,14 @@ namespace givm::detail
             const auto player = table[player_id];
             const auto characters = player.template characters<false>();
             const auto active_character = player.state().active_character;
-            if(active_character) append_character(characters[active_character->index]);
+            if(active_character) append_character(characters[active_character.get().index()]);
             for(auto combat_status : player.combat_statuses())
             {
                 append_broadcast_target<TEvent>(library, combat_status, targets);
             }
             if(active_character)
             {
-                auto index = active_character->index;
+                auto index = active_character.get().index();
                 for(std::size_t offset = 1; offset < characters.size(); ++offset)
                 {
                     if(++index == characters.size()) index = 0;
@@ -172,7 +172,7 @@ namespace givm::detail
                     else return givm::frame<response_return>; }()>();
             auto& event = get<2>(caller);
             player_id player{};
-            const auto entry = std::visit([&](auto id) -> effect<TEvent::category>
+            const auto entry = handler.visit([&](auto id) -> effect<TEvent::category>
             {
                 const auto entity = std::as_const(table)[id];
                 if(not entity) return {};
@@ -181,7 +181,7 @@ namespace givm::detail
                 player = entity.player().id();
                 auto response = context.make_handle_context<TEvent::category>(library, entity, random);
                 return library[entity.definition_id()].template handle<TEvent>(event, response, index);
-            }, handler);
+            });
             if(entry)
             {
                 table.state().self_player = player;
@@ -237,7 +237,7 @@ namespace givm::detail
         if constexpr(requires { entity.character(); })
             if(not progress.allow_removed && not entity.character().state().alive) return true;
         const auto definition = library[entity.definition_id()];
-        if(not definition.template can_handle<TEvent, std::remove_cvref_t<decltype(entity)>>()) return true;
+        if(not definition.template can_handle<TEvent, std::remove_cvref_t<decltype(entity)>::category>()) return true;
         const auto player = entity.player().id();
         const auto previous_player = get<2>(frame).previous_player;
         const auto return_position = get<2>(frame).position + sizeof(execute_fn);

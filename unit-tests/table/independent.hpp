@@ -22,7 +22,7 @@ namespace
     concept erases_entity = requires(T value) { value.erase(); };
 
     template<class T>
-    concept adds_hand_card = requires(T value, givm::definition_id<givm::card_definition> id)
+    concept adds_hand_card = requires(T value, givm::definition_id<givm::definition_category::card> id)
     {
         value.add_hand_card(id, givm::card_state{});
     };
@@ -39,11 +39,10 @@ namespace
 
 TEST_CASE("table constructs and copies without a definition library", "[table][definition-id]")
 {
-    STATIC_REQUIRE(std::same_as<givm::definition_id<givm::card_definition>, givm::issued_id<givm::card_definition>>);
-    STATIC_REQUIRE(std::same_as<givm::definition_id<givm::character_view>, givm::issued_id<givm::character_view>>);
-    STATIC_REQUIRE(not std::constructible_from<givm::definition_id<givm::card_definition>, std::size_t>);
-    STATIC_REQUIRE(not std::constructible_from<givm::definition_id<givm::character_view>, std::size_t>);
-    STATIC_REQUIRE(not givm::definition_id<givm::card_definition>{}.is_valid());
+    STATIC_REQUIRE(not std::same_as<givm::card_definition_id, givm::definition_id<givm::definition_category::character>>);
+    STATIC_REQUIRE(std::constructible_from<givm::card_definition_id, std::uint64_t>);
+    STATIC_REQUIRE(std::is_trivially_default_constructible_v<givm::card_definition_id>);
+    STATIC_REQUIRE(not givm::optional_card_definition_id{});
 
     givm::table table{ {}, { .hand_limit = 2 }, { .hand_limit = 2 } };
 

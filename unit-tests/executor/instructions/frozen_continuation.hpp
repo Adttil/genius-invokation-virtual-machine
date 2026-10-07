@@ -17,7 +17,7 @@ namespace
 {
     struct pausing_frozen
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { std::size_t* applications; givm::normal_effect pause; };
         std::size_t* applications;
         std::string_view name() const { return "PausingFrozen"; }
@@ -63,7 +63,7 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
         [&](givm::definition_compile_context& context)
         {
             return std::tuple{
-                givm::attach{ .player = givm::relative_player::opponent, .definition = context.resolve_id<givm::attachment_view>(frozen.name()) },
+                givm::attach{ .player = givm::relative_player::opponent, .definition = context.resolve_id<givm::definition_category::attachment>(frozen.name()) },
                 givm::apply_element{ .source = { givm::relative_player::self },
                     .target = { givm::relative_player::opponent }, .element = givm::element::hydro },
                 damages[0], damages[1] };
@@ -78,8 +78,8 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto character_id = ids.get_id<givm::character_view>(character.name());
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(driver.name()) } },
+    const auto character_id = ids.get_id<givm::definition_category::character>(character.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(driver.name()) } },
         { .characters = { character_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -101,13 +101,13 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
         const auto next = running.view_in<givm::execution_state::health_reduced>();
         CHECK(next.target() == target);
         CHECK(next.value() == 1);
-        CHECK(next.reaction().slot == givm::elemental_reaction::none);
+        CHECK_FALSE(next.reaction());
         REQUIRE(running.advance(library, current, random) == givm::execution_state::finished);
         CHECK(current[target].state().health == 17);
         CHECK(current.state().round_number == 1);
         CHECK(library.is_controlled(current[target]));
         REQUIRE(std::ranges::distance(current[target].attachments()) == 1);
-        CHECK((*current[target].attachments().begin()).definition_id() == ids.get_id<givm::attachment_view>(frozen.name()));
+        CHECK((*current[target].attachments().begin()).definition_id() == ids.get_id<givm::definition_category::attachment>(frozen.name()));
         CHECK(applications == 1);
     };
     finish(executor, table);

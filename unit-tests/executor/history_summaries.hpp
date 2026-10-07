@@ -30,7 +30,7 @@ namespace
 
     struct plain_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type {};
         std::string_view source_name;
 
@@ -45,7 +45,7 @@ namespace
 
     struct mixed_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         struct definition_type
         {
             std::size_t* initializations;
@@ -67,7 +67,7 @@ namespace
                 givm::history_field<std::uint64_t>("wide"),
                 givm::history_array<std::uint32_t>("counts", 2),
                 givm::history_array<std::uint64_t>("empty", 0),
-                givm::history_array<std::uint16_t>("cards", context.definition_count<givm::card_definition>())
+                givm::history_array<std::uint16_t>("cards", context.definition_count<givm::definition_category::card>())
             };
         }
         definition_type compile(givm::definition_compile_context& context) const
@@ -84,7 +84,7 @@ namespace
             state[data.small] = 7;
             state[data.wide] = 0xFEDCBA9876543210ull;
             for(const auto player : table.players())
-                state[data.counts][player.id().index] = static_cast<std::uint32_t>(player.deck_card_count());
+                state[data.counts][player.id().index()] = static_cast<std::uint32_t>(player.deck_card_count());
             for(auto& value : state[data.cards]) value = 31;
         }
         static void handle(const definition_type& data, givm::history_summary_state state,
@@ -97,7 +97,7 @@ namespace
 
     struct deferred_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         struct definition_type
         {
             givm::history_field_key<std::uint32_t> value;
@@ -124,7 +124,7 @@ namespace
 
     struct dependent_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { givm::history_value_key<std::uint64_t> value; };
         std::string_view source_name = "HistoryConsumer";
         std::string_view summary_name = mixed_name;
@@ -139,7 +139,7 @@ namespace
 
     struct dynamic_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         static constexpr bool is_dynamic = true;
         struct definition_type { givm::dynamic_history_field hits; };
 
@@ -180,7 +180,7 @@ namespace
 
     struct history_observer_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
             givm::history_value_key<std::uint32_t> hits;
@@ -208,7 +208,7 @@ namespace
     template<class T>
     struct scalar_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         struct definition_type
         {
             givm::history_field_key<T> field;
@@ -234,7 +234,7 @@ namespace
 
     struct distinct_card_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         struct definition_type
         {
             std::size_t words;
@@ -245,7 +245,7 @@ namespace
         std::string_view name() const { return magic_name; }
         auto layout(const givm::definition_compile_context& context) const
         {
-            const auto words = (context.definition_count<givm::card_definition>() + 63) / 64;
+            const auto words = (context.definition_count<givm::definition_category::card>() + 63) / 64;
             return givm::history_summary_layout{
                 givm::history_array<std::uint32_t>("counts", 2),
                 givm::history_array<std::uint64_t>("seen", words * 2)
@@ -253,7 +253,7 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { (context.definition_count<givm::card_definition>() + 63) / 64,
+            return { (context.definition_count<givm::definition_category::card>() + 63) / 64,
                 context.history_field<std::uint32_t[]>("counts"), context.history_field<std::uint64_t[]>("seen") };
         }
         static void handle(const definition_type& data, givm::history_summary_state state,
@@ -265,13 +265,13 @@ namespace
                 for(const auto card : player.deck_cards())
                 {
                     const auto index = card.definition_id().value();
-                    state[data.seen][player.id().index * data.words + index / 64] |= std::uint64_t{ 1 } << (index % 64);
+                    state[data.seen][player.id().index() * data.words + index / 64] |= std::uint64_t{ 1 } << (index % 64);
                 }
         }
         static void handle(const definition_type& data, givm::history_summary_state state,
             const givm::card_played& event, const givm::table&, const givm::definition_library&)
         {
-            const auto player = event.card.player_id.index;
+            const auto player = event.card.player_id().index();
             const auto index = event.definition_id.value();
             auto& word = state[data.seen][player * data.words + index / 64];
             const auto mask = std::uint64_t{ 1 } << (index % 64);
@@ -285,7 +285,7 @@ namespace
 
     struct future_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { givm::history_value_key<std::uint32_t[]> counts; };
 
         std::string_view name() const { return "FutureCard"; }
@@ -296,7 +296,7 @@ namespace
         }
         static givm::target_validation query(const definition_type& data, const givm::card_target_validation& query)
         {
-            return query.table[data.counts][query.card.id().player_id.index] != 0
+            return query.table[data.counts][query.card.id().player_id().index()] != 0
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::normal_effect handle(const definition_type&,
@@ -308,10 +308,10 @@ namespace
 
     struct generation_driver_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
-            givm::definition_id<givm::card_definition> first;
+            givm::optional_definition_id<givm::definition_category::card> first;
             givm::history_value_key<std::uint32_t[]> counts;
             givm::normal_effect generate;
             givm::normal_effect future;
@@ -328,9 +328,9 @@ namespace
         auto history_summary_dependencies() const { return std::array{ magic_name }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto first = context.resolve_id<givm::card_definition>("GeneratedA");
-            const auto second = context.resolve_id<givm::card_definition>("GeneratedB");
-            const auto future = context.resolve_id<givm::card_definition>("FutureCard");
+            const auto first = context.resolve_id<givm::definition_category::card>("GeneratedA");
+            const auto second = context.resolve_id<givm::definition_category::card>("GeneratedB");
+            const auto future = context.resolve_id<givm::definition_category::card>("FutureCard");
             return { first, context.resolve_history_field<std::uint32_t[]>(magic_name, "counts"),
                 context.add_normal_effect(std::tuple{
                     givm::create_hand_card{ .definition = first }, givm::create_hand_card{ .definition = first },
@@ -345,7 +345,7 @@ namespace
         static givm::normal_effect handle(const definition_type& data,
             givm::card_played& event, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
         {
-            data.observed->push_back(context.table()[data.counts][event.card.player_id.index]);
+            data.observed->push_back(context.table()[data.counts][event.card.player_id().index()]);
             return event.definition_id == data.first ? context.invoke(data.future) : givm::normal_effect{};
         }
     };
@@ -366,7 +366,7 @@ namespace
 
     struct invalid_consumer_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type {};
         field_error error;
         std::string_view name() const { return "InvalidHistoryConsumer"; }
@@ -392,7 +392,7 @@ namespace
 
     struct defeat_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         struct definition_type { givm::history_field_key<std::uint32_t[]> counts; };
 
         std::string_view name() const { return "DefeatHistory"; }
@@ -412,13 +412,13 @@ namespace
         static void handle(const definition_type& data, givm::history_summary_state state,
             const givm::after_damage& event, const givm::table&, const givm::definition_library&)
         {
-            if(event.defeated) ++state[data.counts][event.target.player_id.index];
+            if(event.defeated) ++state[data.counts][event.target.player_id().index()];
         }
     };
 
     struct defeat_observer_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             givm::history_value_key<std::uint32_t[]> counts;
@@ -444,14 +444,14 @@ namespace
             givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
-            CHECK(context.table()[data.counts][event.target.player_id.index] == 0);
+            CHECK(context.table()[data.counts][event.target.player_id().index()] == 0);
             if(not data.should_revive) return {};
             return context.invoke(data.revive, givm::heal_input{ std::array{ givm::heal_input::item{ .source = self.id(), .target = event.target, .value = 2 , .kind = givm::healing_kind::prevent_defeat} } });
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            if(event.defeated) data.observed->push_back(context.table()[data.counts][event.target.player_id.index]);
+            if(event.defeated) data.observed->push_back(context.table()[data.counts][event.target.player_id().index()]);
             return {};
         }
     };
@@ -467,15 +467,15 @@ TEST_CASE("starting initializes history after both decks and copies preserve ini
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, givm::compile_mode::normal));
-    const auto id = ids.get_id<givm::history_summary_definition>(mixed_name);
+    const auto id = ids.get_id<givm::definition_category::history_summary>(mixed_name);
     const auto small = library.history_field<std::uint8_t>(id, "small");
     const auto wide = library.history_field<std::uint64_t>(id, "wide");
     const auto counts = library.history_field<std::uint32_t[]>(id, "counts");
     const auto cards = library.history_field<std::uint16_t[]>(id, "cards");
     const auto empty = library.history_field<std::uint64_t[]>(id, "empty");
     givm::table table;
-    load_deck(table, library, { .cards = { ids.get_id<givm::card_definition>(first.name()) } },
-        { .cards = { ids.get_id<givm::card_definition>(second.name()), ids.get_id<givm::card_definition>(second.name()) } });
+    load_deck(table, library, { .cards = { ids.get_id<givm::definition_category::card>(first.name()) } },
+        { .cards = { ids.get_id<givm::definition_category::card>(second.name()), ids.get_id<givm::definition_category::card>(second.name()) } });
     CHECK(initializations == 0);
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -534,7 +534,7 @@ TEST_CASE("history without initialization writes fields before reading them", "[
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(recordings == 1);
     const auto value = library.history_field<std::uint32_t>(
-        ids.get_id<givm::history_summary_definition>(summary.name()), "value");
+        ids.get_id<givm::definition_category::history_summary>(summary.name()), "value");
     CHECK(table[value] == 37);
 }
 
@@ -548,12 +548,12 @@ TEST_CASE("history dependencies select only needed summaries and validate field 
     REQUIRE(sources.add(consumer, summary, unused, unrelated));
     const std::array roots{ consumer.name() };
     givm::definition_selection selection{};
-    selection[givm::definition_types::index_of<givm::card_definition>()] = roots;
+    selection[static_cast<std::size_t>(givm::definition_category::card)] = roots;
     const auto program = std::tuple{ givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, selection, program, std::tuple{}, givm::compile_mode::normal));
-    CHECK(ids.has<givm::history_summary_definition>(mixed_name));
-    CHECK_FALSE(ids.has<givm::history_summary_definition>(unused.name()));
-    CHECK_FALSE(ids.has<givm::card_definition>(unrelated.name()));
+    CHECK(ids.has<givm::definition_category::history_summary>(mixed_name));
+    CHECK_FALSE(ids.has<givm::definition_category::history_summary>(unused.name()));
+    CHECK_FALSE(ids.has<givm::definition_category::card>(unrelated.name()));
     givm::table table;
     load_deck(table, library, {}, {});
     CHECK(selected_initializations == 0);
@@ -561,7 +561,7 @@ TEST_CASE("history dependencies select only needed summaries and validate field 
     executor.start(library, table);
     CHECK(selected_initializations == 1);
     CHECK(unused_initializations == 0);
-    const auto id = ids.get_id<givm::history_summary_definition>(mixed_name);
+    const auto id = ids.get_id<givm::definition_category::history_summary>(mixed_name);
     CHECK(table[library.history_field<std::uint16_t[]>(id, "cards")].size() == 1);
 
     const auto error = GENERATE(field_error::missing, field_error::type, field_error::shape,
@@ -615,11 +615,11 @@ TEST_CASE("dynamic history adapters update once after resumable ordinary respons
         std::tuple{}, mode));
     REQUIRE(capability_checks != 0);
     const auto compiled_checks = capability_checks;
-    const auto enabled_id = ids.get_id<givm::history_summary_definition>(enabled.name());
-    const auto disabled_id = ids.get_id<givm::history_summary_definition>(disabled.name());
+    const auto enabled_id = ids.get_id<givm::definition_category::history_summary>(enabled.name());
+    const auto disabled_id = ids.get_id<givm::definition_category::history_summary>(disabled.name());
     const auto hits = library.history_field<std::uint32_t>(enabled_id, "hits");
     givm::table table;
-    load_deck(table, library, { .cards = { ids.get_id<givm::card_definition>(observer.name()) } }, {});
+    load_deck(table, library, { .cards = { ids.get_id<givm::definition_category::card>(observer.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     CHECK(table[hits] == 0);
@@ -653,8 +653,8 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
     };
     const auto [small_library, small_ids] = make_library(1);
     const auto [large_library, large_ids] = make_library(33);
-    const auto small_id = small_ids.get_id<givm::history_summary_definition>("DynamicHistory");
-    const auto large_id = large_ids.get_id<givm::history_summary_definition>("DynamicHistory");
+    const auto small_id = small_ids.get_id<givm::definition_category::history_summary>("DynamicHistory");
+    const auto large_id = large_ids.get_id<givm::definition_category::history_summary>("DynamicHistory");
     const auto small_hits = small_library.history_field<std::uint32_t>(small_id, "hits");
     const auto large_hits = large_library.history_field<std::uint32_t>(large_id, "hits");
     givm::table small, large;
@@ -703,9 +703,9 @@ TEST_CASE("history copy assignment and moves preserve different runtime layouts"
     const auto [double_library, double_ids] = make_scalar_library(1.25);
     const auto [integer_library, integer_ids] = make_scalar_library(std::int32_t{ 42 });
     const auto double_field = double_library.history_field<double>(
-        double_ids.get_id<givm::history_summary_definition>("ScalarHistory"), "value");
+        double_ids.get_id<givm::definition_category::history_summary>("ScalarHistory"), "value");
     const auto integer_field = integer_library.history_field<std::int32_t>(
-        integer_ids.get_id<givm::history_summary_definition>("ScalarHistory"), "value");
+        integer_ids.get_id<givm::definition_category::history_summary>("ScalarHistory"), "value");
     givm::table doubles, integers;
     givm_test::executor_driver double_executor, integer_executor;
     double_executor.start(double_library, doubles);
@@ -735,15 +735,15 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto initial_id = ids.get_id<givm::card_definition>(initial.name());
-    const auto first_id = ids.get_id<givm::card_definition>(first.name());
-    const auto second_id = ids.get_id<givm::card_definition>(second.name());
-    const auto future_id = ids.get_id<givm::card_definition>(future.name());
-    const auto character_id = ids.get_id<givm::character_view>(character.name());
+    const auto initial_id = ids.get_id<givm::definition_category::card>(initial.name());
+    const auto first_id = ids.get_id<givm::definition_category::card>(first.name());
+    const auto second_id = ids.get_id<givm::definition_category::card>(second.name());
+    const auto future_id = ids.get_id<givm::definition_category::card>(future.name());
+    const auto character_id = ids.get_id<givm::definition_category::character>(character.name());
     load_deck(table, library,
-        { .cards = { ids.get_id<givm::card_definition>(driver.name()), initial_id }, .characters = { character_id } },
+        { .cards = { ids.get_id<givm::definition_category::card>(driver.name()), initial_id }, .characters = { character_id } },
         { .cards = { first_id }, .characters = { character_id } });
-    const auto history_id = ids.get_id<givm::history_summary_definition>(magic_name);
+    const auto history_id = ids.get_id<givm::definition_category::history_summary>(magic_name);
     const auto counts = library.history_field<std::uint32_t[]>(history_id, "counts");
     const auto seen = library.history_field<std::uint64_t[]>(history_id, "seen");
     givm_test::executor_driver executor;
@@ -794,15 +794,15 @@ TEST_CASE("defeat history records confirmed nonterminal defeats before ordinary 
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources,
         std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, mode));
-    const auto victim_id = ids.get_id<givm::character_view>(victim.name());
+    const auto victim_id = ids.get_id<givm::definition_category::character>(victim.name());
     givm::linked_deck defenders{ .characters = { victim_id } };
     if(expected == outcome::defeated) defenders.characters.push_back(victim_id);
     const givm::character_id target{ givm::player_id{ 1 }, 0 };
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } }, { .active_character = target } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, defenders);
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } }, defenders);
     const auto counts = library.history_field<std::uint32_t[]>(
-        ids.get_id<givm::history_summary_definition>(summary.name()), "counts");
+        ids.get_id<givm::definition_category::history_summary>(summary.name()), "counts");
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto state = givm_test::advance_selecting_first_alive(executor, library, table, givm_test::zero_random);

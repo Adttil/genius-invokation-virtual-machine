@@ -33,8 +33,8 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, add_summon>(library);
             input = {
                 .player = command.player == relative_player::self
-                    ? table.state().self_player : other_player(table.state().self_player),
-                .definition = command.definition, .state = command.state
+                    ? table.state().self_player.get() : other_player(table.state().self_player.get()),
+                .definition = command.definition.get<definition_category::summon>(), .state = command.state
             };
             context.advance(instruction_extent<1, add_summon>);
         }
@@ -89,8 +89,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<summon_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<summon_view>() });
+        if(command.definition.get<definition_category::summon>().value() >= context.definition_count<definition_category::summon>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::summon>().value(), .limit = context.definition_count<definition_category::summon>() });
         return errors;
     }
 }

@@ -24,37 +24,38 @@ namespace givm::detail
         if(target.selection != character_selection::character && target.selection != character_selection::others
             && target.selection != character_selection::all && target.selection != character_selection::prioritized)
             throw command_input_error{ command, invalid_enum_argument{ std::string{ field } + ".selection", static_cast<std::size_t>(target.selection) } };
-        debug_validate_entity(table, table.state().self_player, command, "self_player");
-        const auto player = target.player == relative_player::self ? table.state().self_player : other_player(table.state().self_player);
+        debug_validate_entity(table, table.state().self_player.get(), command, "self_player");
+        const auto player = target.player == relative_player::self ? table.state().self_player.get() : other_player(table.state().self_player.get());
         if(const auto active = table[player].state().active_character)
         {
             debug_validate_entity(table, *active, command, "active_character", true);
-            if(active->player_id != player)
+            if(active.get().player_id() != player)
                 throw command_input_error{ command, invalid_entity_relation{ "active_character", invalid_entity_relation::reason::inactive_character } };
         }
     }
 #endif
 
     template<bool SkipDefeated>
-    inline std::optional<character_id> resolve_character_target(
+    inline optional_entity_id<entity_category::character> resolve_character_target(
         const unrestricted_table& table, relative_character_target target)
     {
 #ifndef NDEBUG
         debug_validate_relative_character_target(table, target, "relative_character_target", "target");
 #endif
-        const auto self = table.state().self_player;
-        GIVM_ASSERT(self.index < 2);
-        [[assume(self.index < 2)]];
+        const auto self = table.state().self_player.get();
+        GIVM_ASSERT(self.index() < 2);
+        const auto self_index = self.index();
+        [[assume(self_index < 2)]];
         const auto player = table[target.player == relative_player::self ? self : other_player(self)];
         const auto characters = player.template characters<false>();
         const auto count = characters.size();
-        if(count == 0) return std::nullopt;
+        if(count == 0) return nullptr;
 
-        if(not player.state().active_character) return std::nullopt;
+        if(not player.state().active_character) return nullptr;
         const auto shift = static_cast<std::int64_t>(target.offset) % static_cast<std::int64_t>(count);
         const auto normalized = shift < 0 ? count - static_cast<std::size_t>(-shift)
                                          : static_cast<std::size_t>(shift);
-        auto index = player.state().active_character->index + normalized;
+        auto index = player.state().active_character.get().index() + normalized;
         if(index >= count) index -= count;
         for(std::size_t visited = 0; visited != count; ++visited)
         {
@@ -69,10 +70,10 @@ namespace givm::detail
             }
             if(++index == count) index = 0;
         }
-        return std::nullopt;
+        return nullptr;
     }
 
-    inline std::optional<character_id> resolve_damage_target(
+    inline optional_entity_id<entity_category::character> resolve_damage_target(
         const unrestricted_table& table, relative_character_target target)
     {
         if(target.selection == character_selection::prioritized) return resolve_character_target<true>(table, target);
@@ -82,9 +83,9 @@ namespace givm::detail
     inline std::vector<character_id> collect_character_targets(const unrestricted_table& table,
         character_id anchor, character_selection selection, bool include_defeated = false)
     {
-        const auto characters = table[anchor.player_id].template characters<false>();
+        const auto characters = table[anchor.player_id()].template characters<false>();
         std::vector<character_id> targets;
-        auto index = anchor.index;
+        auto index = anchor.index();
         const auto count = characters.size();
         const auto remaining = selection == character_selection::character ? 1
             : selection == character_selection::prioritized ? count

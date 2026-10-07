@@ -18,7 +18,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -40,7 +40,7 @@ namespace givm
         using error_type = insert_deck_card_error;
 
         player_id player;
-        definition_id<card_definition> definition;
+        optional_definition_id<definition_category::card> definition{};
         std::int32_t position = -1;
     };
 }

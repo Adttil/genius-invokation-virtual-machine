@@ -6,14 +6,14 @@
 
 ```cpp
 using definition_selection =
-    std::array<std::span<const std::string_view>, definition_types::size()>;
+    std::array<std::span<const std::string_view>, detail::definition_categories::size()>;
 ```
 
 一场对局首先需要的定义名称集合，例如双方牌组中出现的卡牌和角色。[编译定义库](compile.md)时，会自动补入同次调用的 [`reaction_definition_names`](../definition/reaction_definition_names.md) 指定的17 个默认反应定义，以及这些定义和所选定义声明的依赖，无须调用方逐一列出。
 
 ## 注意
 
-使用 `definition_types::index_of<T>()` 选择类别。每个范围包含该类别的定义名称；默认初始化的选择为空。范围和名称的字符存储须在选择、编译调用期间有效。
+使用 `static_cast<std::size_t>(T)` 选择类别。每个范围包含该类别的定义名称；默认初始化的选择为空。范围和名称的字符存储须在选择、编译调用期间有效。
 
 ## 示例
 
@@ -28,7 +28,7 @@ using definition_selection =
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view source_name;
 
@@ -46,7 +46,7 @@ int main()
     if(not sources.add(potion, food)) return 1;
     const std::array<std::string_view, 1> names{ "恢复药剂" };
     givm::definition_selection selection{};
-    selection[givm::definition_types::index_of<givm::card_definition>()] = names;
+    selection[static_cast<std::size_t>(givm::definition_category::card)] = names;
     auto library_result = compile(sources, basics, selection, std::tuple{},
         std::tuple{ givm::settle{}, givm::end_game{ .result = givm::game_result::both_loss } },
         givm::compile_mode::normal);
@@ -56,8 +56,8 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    std::println("包含恢复药剂: {}", ids.has<givm::card_definition>("恢复药剂"));
-    std::println("包含恢复料理: {}", ids.has<givm::card_definition>("恢复料理"));
+    std::println("包含恢复药剂: {}", ids.has<givm::definition_category::card>("恢复药剂"));
+    std::println("包含恢复料理: {}", ids.has<givm::definition_category::card>("恢复料理"));
 }
 ```
 

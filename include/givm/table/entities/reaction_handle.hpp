@@ -21,7 +21,7 @@ namespace givm::detail
 
         constexpr bool is_valid() const noexcept
         {
-            return storage_.slot != elemental_reaction::none && static_cast<bool>(definition_id());
+            return storage_.slot != elemental_reaction::none && static_cast<bool>(storage_.player->reactions[static_cast<std::size_t>(storage_.slot) - 1]);
         }
 
         constexpr explicit operator bool() const noexcept { return is_valid(); }
@@ -36,10 +36,10 @@ namespace givm::detail
         constexpr reaction_id id() const { return { player().id(), storage_.slot }; }
         constexpr elemental_reaction slot() const noexcept { return storage_.slot; }
 
-        constexpr givm::definition_id<reaction_view> definition_id() const noexcept
+        constexpr givm::definition_id<definition_category::reaction> definition_id() const noexcept
         {
             GIVM_ASSERT(storage_.slot != elemental_reaction::none);
-            return storage_.player->reactions[static_cast<std::size_t>(storage_.slot) - 1];
+            return storage_.player->reactions[static_cast<std::size_t>(storage_.slot) - 1].template get<definition_category::reaction>();
         }
 
     private:
@@ -56,6 +56,8 @@ namespace givm
         using base_type = detail::basic_reaction_handle<const detail::unrestricted_table>;
 
     public:
+        static constexpr entity_category category = entity_category::reaction;
+
         using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;

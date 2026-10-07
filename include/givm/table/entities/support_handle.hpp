@@ -81,23 +81,23 @@ namespace givm::detail
 
         constexpr support_id id() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
             return {
                 player().id(),
-                static_cast<size_t>(storage_.data - storage_.player->support_datas.data())
+                static_cast<std::uint32_t>(storage_.data - storage_.player->support_datas.data())
             };
         }
 
         constexpr auto definition_id() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
-            return detail::table_accessor::make_issued_id<support_view>(
-                storage_.data->definition_and_flags & ~erased_mask);
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
+            return givm::definition_id<definition_category::support>{
+                storage_.data->definition_and_flags & detail::definition_index_mask};
         }
 
         constexpr auto& state() const
         {
-            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<size_t>(-1));
+            GIVM_ASSERT(storage_.data->definition_and_flags != static_cast<std::uint64_t>(-1));
             return storage_.data->state;
         }
 
@@ -107,8 +107,7 @@ namespace givm::detail
         }
 
     private:
-        static constexpr size_t erased_mask =
-            size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+        static constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
 
         constexpr basic_support_handle(detail::uninitialized_entity_t) noexcept {}
 
@@ -125,6 +124,8 @@ namespace givm
         using base_type = detail::basic_support_handle<const detail::unrestricted_table>;
 
     public:
+        static constexpr entity_category category = entity_category::support;
+
         using base_type::table;
         using base_type::is_valid;
         using base_type::operator bool;

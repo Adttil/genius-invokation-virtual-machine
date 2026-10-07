@@ -10,7 +10,7 @@ class table;
 
 一场游戏的牌桌。
 
-它记录双方玩家的手牌、牌库、角色、骰子，以及支援、召唤物等持续影响对局的实体和状态。牌桌不持有定义库，实体通过定义 ID 标识所采用的定义。公开访问提供只读视图，对局中的状态变化通过执行器完成。
+它记录双方玩家的手牌、牌库、角色、骰子，以及支援、召唤物等持续影响对局的实体和状态。牌桌还保存历史摘要的字段，供效果和上层读取对局中的累计信息。牌桌不持有定义库，实体通过定义 ID 标识所采用的定义。公开访问提供只读视图和历史字段，对局中的状态变化通过执行器完成。
 
 ## 成员类型
 
@@ -25,7 +25,7 @@ class table;
 | [`(构造函数)`](table/constructor.md) | 构造一个 `table` |
 | [`state`](table/state.md) | 访问对局的共同状态 |
 | [`players`](table/players.md) | 遍历双方玩家 |
-| [`operator[]`](table/operator_subscript.md) | 通过实体 ID 访问实体 |
+| [`operator[]`](table/operator_subscript.md) | 通过实体 ID 访问实体，或通过历史字段键读取记录 |
 | [`clean_up`](table/clean_up.md) | 清理已经移除的实体 |
 
 
@@ -41,7 +41,7 @@ int main()
     givm::table table{};
     for(const auto player : table.players())
     {
-        std::println("玩家 {} 的骰子数: {}", player.id().index, player.state().dice.total());
+        std::println("玩家 {} 的骰子数: {}", player.id().index(), player.state().dice.total());
     }
 }
 ```

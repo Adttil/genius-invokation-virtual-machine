@@ -145,7 +145,7 @@ namespace givm
       default_reactions_{}
     {
         for(std::size_t index = 0; index != elemental_reaction_count; ++index)
-            default_reactions_[index] = id_map.get_id<reaction_view>(basics[static_cast<elemental_reaction>(index + 1)]);
+            default_reactions_[index] = id_map.get_id<definition_category::reaction>(basics[static_cast<elemental_reaction>(index + 1)]);
         constexpr std::array<std::string_view, static_cast<size_t>(givm::equipment_type::none)> equipment_tag_names{
             "weapon", "artifact", "talent", "technique"
         };
@@ -165,7 +165,7 @@ namespace givm
             remove_at_zero_usages_tag_ = id_map.get_tag_id("remove_at_zero_usages");
     }
 
-    template<class TDefinitionType>
+    template<definition_category TDefinitionType>
     void definition_library::compile_source(
         const detail::compile_definition<TDefinitionType>& definition,
         const issued_id_map& id_map,
@@ -176,12 +176,12 @@ namespace givm
     )
     {
         auto& bucket = bucket_for<TDefinitionType>();
-        definition_id<history_summary_definition> own_history;
-        if constexpr(std::same_as<TDefinitionType, history_summary_definition>)
+        optional_definition_id<definition_category::history_summary> own_history;
+        if constexpr((TDefinitionType == definition_category::history_summary))
             own_history = definition.id;
         definition_compile_context context{ id_map, definitions, default_reactions_, program_, *definition.declarations,
             mode, history_layouts_, own_history, true, errors,
-            compile_stage::definition, definition_name{ definition_types::index_of<TDefinitionType>(), std::string{ bucket.names[definition.id.value()] } },
+            compile_stage::definition, definition_name{ TDefinitionType, std::string{ bucket.names[definition.id.value()] } },
             input_records
         };
         auto& data = bucket.data[definition.id.value()];
@@ -206,14 +206,14 @@ namespace givm
     void definition_library::prepare_history_layouts(const detail::compile_definitions& definitions, const issued_id_map& ids, compile_mode mode,
         std::vector<compile_error>& errors, detail::program_input_records& input_records)
     {
-        history_layouts_.resize(ids.definition_count<history_summary_definition>());
-        const auto& summaries = std::get<definition_types::index_of<history_summary_definition>()>(definitions);
+        history_layouts_.resize(ids.definition_count<definition_category::history_summary>());
+        const auto& summaries = std::get<static_cast<std::size_t>(definition_category::history_summary)>(definitions);
         for(const auto& definition : summaries)
         {
             const auto& source = *definition.source;
             const auto id = definition.id;
             definition_compile_context context{ ids, definitions, default_reactions_, program_, *definition.declarations, mode, history_layouts_, id, false,
-                errors, compile_stage::history_layout, definition_name{ definition_types::index_of<history_summary_definition>(),
+                errors, compile_stage::history_layout, definition_name{ definition_category::history_summary,
                     std::string{ definition.bucket->names[id.value()] } }, input_records
             };
             auto& layout = history_layouts_[id.value()];
@@ -266,7 +266,7 @@ namespace givm
             if(alignment_overflow || layout.size > maximum - offset)
             {
                 errors.push_back({ { compile_stage::history_layout,
-                    definition_name{ definition_types::index_of<history_summary_definition>(), std::string{ summaries[index].bucket->names[index] } }, {}, {}, {} },
+                    definition_name{ definition_category::history_summary, std::string{ summaries[index].bucket->names[index] } }, {}, {}, {} },
                     history_storage_layout_overflow{ history_size_, layout.size, alignment } });
                 layout.offset = 0;
             }
@@ -294,9 +294,12 @@ namespace givm
     detail::compile_definitions definition_library::prepare_definitions(const definition_source_library& sources, const issued_id_map& ids)
     {
         detail::compile_definitions result;
-        definition_types::each([&]<class TCategory>
+        []<std::size_t... I>(std::index_sequence<I...>, auto&& fn)
         {
-            auto& definitions = std::get<definition_types::index_of<TCategory>()>(result);
+            (fn.template operator()<detail::definition_categories[I]>(), ...);
+        }(std::make_index_sequence<detail::definition_categories.size()>{}, [&]<definition_category TCategory>
+        {
+            auto& definitions = std::get<static_cast<std::size_t>(TCategory)>(result);
             auto& bucket = bucket_for<TCategory>();
             const auto count = ids.definition_count<TCategory>();
             definitions.reserve(count);
@@ -312,16 +315,16 @@ namespace givm
                 bucket.tags[id.value()] = make_tag_mask(entry.declarations.tags, ids);
             }
             std::ranges::sort(definitions, {}, [](const auto& definition) { return definition.id.value(); });
-            if constexpr(views_of_definition<TCategory>::size() != 0)
+            if constexpr(detail::definition_views<TCategory>::size() != 0)
             {
-                views_of_definition<TCategory>::each([&]<class TView>
+                detail::definition_views<TCategory>::each([&]<class TView>
                 {
-                    if constexpr(subscribed_events<TView>::size() != 0)
+                    if constexpr(subscribed_events<std::remove_cvref_t<TView>::category>::size() != 0)
                     {
-                        auto& handles = std::get<views_of_definition<TCategory>::template index_of<TView>()>(bucket.handle_fns);
-                        subscribed_events<TView>::each([&]<class TEvent>
+                        auto& handles = std::get<detail::definition_views<TCategory>::template index_of<TView>()>(bucket.handle_fns);
+                        subscribed_events<std::remove_cvref_t<TView>::category>::each([&]<class TEvent>
                         {
-                            auto& functions = std::get<subscribed_events<TView>::template index_of<TEvent>()>(handles);
+                            auto& functions = std::get<subscribed_events<std::remove_cvref_t<TView>::category>::template index_of<TEvent>()>(handles);
                             functions.reserve(count);
                             for(const auto& definition : definitions)
                                 functions.push_back(definition.source->template get_handle_fn<TView, TEvent>());
@@ -346,18 +349,18 @@ namespace givm
                     }
                 });
             }
-            if constexpr(std::same_as<TCategory, history_summary_definition>)
+            if constexpr((TCategory == definition_category::history_summary))
             {
                 for(auto& definition : definitions) definition.history = &history_handlers_;
-                subscribed_events<TCategory>::each([&]<class TEvent>
+                history_subscribed_events::each([&]<class TEvent>
                 {
-                    constexpr auto index = subscribed_events<TCategory>::template index_of<TEvent>();
+                    constexpr auto index = history_subscribed_events::template index_of<TEvent>();
                     auto& handlers = std::get<index>(history_handlers_);
                     for(const auto& definition : definitions)
                     {
                         const auto& source = *definition.source;
                         if(const auto handler = std::get<index>(source.rtti_->history.handles)(source.source_))
-                            handlers.push_back({ definition.id.value(), handler });
+                            handlers.push_back({ static_cast<std::size_t>(definition.id.value()), handler });
                     }
                 });
             }
@@ -367,7 +370,10 @@ namespace givm
 
     void definition_library::complete_dynamic_queries()
     {
-        definition_types::each([&]<class TCategory>
+        []<std::size_t... I>(std::index_sequence<I...>, auto&& fn)
+        {
+            (fn.template operator()<detail::definition_categories[I]>(), ...);
+        }(std::make_index_sequence<detail::definition_categories.size()>{}, [&]<definition_category TCategory>
         {
             if constexpr(supported_queries<TCategory>::size() != 0)
             {
@@ -461,9 +467,12 @@ namespace givm
             context, program_kind::round, errors, { compile_stage::program, {}, program_kind::round, 0, {} }, input_records
         );
         detail::compile(writer, detail::round_program_repeat{ round_start, round_entry }, mode);
-        definition_types::each([&]<class TCategory>
+        []<std::size_t... I>(std::index_sequence<I...>, auto&& fn)
         {
-            for(const auto& definition : std::get<definition_types::index_of<TCategory>()>(definitions))
+            (fn.template operator()<detail::definition_categories[I]>(), ...);
+        }(std::make_index_sequence<detail::definition_categories.size()>{}, [&]<definition_category TCategory>
+        {
+            for(const auto& definition : std::get<static_cast<std::size_t>(TCategory)>(definitions))
                 library.compile_source(definition, id_map, definitions, mode, errors, input_records);
         });
         if(not errors.empty()) return result_type{ std::unexpected{ std::move(errors) } };

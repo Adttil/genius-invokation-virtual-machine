@@ -7,7 +7,7 @@
 
 namespace givm
 {
-    using definition_selection = std::array<std::span<const std::string_view>, definition_types::size()>;
+    using definition_selection = std::array<std::span<const std::string_view>, detail::definition_categories.size()>;
 
     struct definition_compile_result
     {

@@ -32,7 +32,7 @@ namespace
 
     struct revival_attachment
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { dying_log* log; givm::immediate_effect entry; };
         dying_log* log;
         std::string_view name() const { return "RevivalAttachment"; }
@@ -68,12 +68,12 @@ namespace
 
     struct dying_observer
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             dying_log* log;
             givm::normal_effect attach;
-            givm::definition_id<givm::attachment_view> attachment;
+            givm::optional_definition_id<givm::definition_category::attachment> attachment;
             givm::normal_effect defeat;
         };
         dying_log* log;
@@ -82,7 +82,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return { log, context.add_normal_effect(std::tuple{ givm::attach{} }),
-                context.resolve_id<givm::attachment_view>("RevivalAttachment"),
+                context.resolve_id<givm::definition_category::attachment>("RevivalAttachment"),
                 log->pause_defeat ? context.add_normal_effect(std::tuple{ givm::replace_cards{ givm::player_id{ 0 } } })
                     : givm::normal_effect{} };
         }
@@ -94,7 +94,7 @@ namespace
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             return context.invoke(data.attach, givm::attach_input{
-                .target = victim, .definition = data.attachment, .state = { 1 } });
+                .target = victim, .definition = data.attachment.get(), .state = { 1 } });
         }
         static givm::immediate_effect handle(const definition_type& data,
             givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
@@ -145,13 +145,13 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::start_round{}, givm::settle{}, damages[0],
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
-    const auto target_id = ids.get_id<givm::character_view>(target.name());
+    const auto target_id = ids.get_id<givm::definition_category::character>(target.name());
     givm::linked_deck defenders{ .characters = { target_id } };
     if(has_reserve) defenders.characters.push_back(target_id);
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, defenders);
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } }, defenders);
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -169,9 +169,9 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
     {
         REQUIRE(state == givm::execution_state::active_character_selection);
         const auto view = executor.view_in<givm::execution_state::active_character_selection>();
-        CHECK(view.player() == victim.player_id);
+        CHECK(view.player() == victim.player_id());
         CHECK(view.selection_validate(table, victim) == givm::active_character_selection_validation::defeated_character);
-        executor.submitted(view.select(library, table, random, { victim.player_id, 1 }));
+        executor.submitted(view.select(library, table, random, { victim.player_id(), 1 }));
         state = executor.advance(library, table, random);
     }
     REQUIRE(state == givm::execution_state::finished);
@@ -204,8 +204,8 @@ TEST_CASE("dying response inputs survive suspension and independent executor cop
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(target.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(target.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -251,10 +251,10 @@ TEST_CASE("confirmed defeat notifications follow cleanup and resume before damag
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::start_round{}, givm::settle{}, damages[0],
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, target, attachment);
-    const auto target_id = ids.get_id<givm::character_view>(target.name());
+    const auto target_id = ids.get_id<givm::definition_category::character>(target.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = attacker }, { .active_character = victim } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { target_id, target_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);

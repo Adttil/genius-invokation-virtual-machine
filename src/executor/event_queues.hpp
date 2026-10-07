@@ -62,7 +62,7 @@ namespace givm::detail
     {
         mixed_record_header header;
         normal_effect entry;
-        player_id player;
+        optional_player_id player;
         std::size_t input_size;
     };
 

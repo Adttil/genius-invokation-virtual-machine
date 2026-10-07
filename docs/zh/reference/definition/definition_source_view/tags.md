@@ -25,7 +25,7 @@ std::vector<std::string_view> tags() const;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "召唤卡"; }
     auto tags() const { return std::array<std::string_view, 1>{ "召唤" }; }
@@ -37,7 +37,7 @@ struct card_source
 int main()
 {
     const card_source source{};
-    const givm::definition_source_view<givm::card_definition> view{ source };
+    const givm::definition_source_view<givm::definition_category::card> view{ source };
     std::println("分类标签: {}", view.tags().front());
 }
 ```

@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-bool remove_at_zero_usages(definition_id<summon_view> id) const noexcept;
+bool remove_at_zero_usages(definition_id<givm::definition_category::summon> id) const noexcept;
 ```
 
 检查召唤物定义是否采用可用次数耗尽后离场的规则。

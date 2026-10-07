@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class EntityView>
+template<entity_category Entity>
 struct subscribed_events;
 ```
 
@@ -15,15 +15,15 @@ struct subscribed_events;
 
 |  |  |
 | --- | --- |
-| `EntityView` | 受支持的只读实体 view |
+| `Entity` | 受支持的实体类别，见 [`entity_category`](../enums/entity_category.md) |
 
 ## 注意
 
-这些特化提供 [`type_list`](../utils/type_list.md) 的操作。未列出的 view 没有定义通用订阅集合；订阅能力也不规定某次事件必须广播给所有可订阅实体。
+这些特化提供 [`type_list`](../utils/type_list.md) 的操作。未列出的类别没有定义通用订阅集合；订阅能力也不规定某次事件必须广播给所有可订阅实体。
 
 角色不订阅事件。角色定义提供初始状态、初始技能组和分类标签；被动能力应定义为角色持有的技能，由该技能响应事件。
 
-另外，`subscribed_events<history_summary_definition>` 提供[历史摘要](history_summary.md)的事件集合。它包含仅摘要响应的 [`history_summary_initialization`](events/history_summary_initialization.md) 和用于记录已发生事实的通知事件；摘要没有实体 view，其 `handle` 签名见历史摘要协议。
+另外，`history_subscribed_events` 提供[历史摘要](history_summary.md)的事件集合。它包含仅摘要响应的 [`history_summary_initialization`](events/history_summary_initialization.md) 和用于记录已发生事实的通知事件；摘要没有实体 view，其 `handle` 签名见历史摘要协议。
 
 
 ## 支持的实体形态
@@ -55,7 +55,7 @@ int main()
 {
     constexpr auto accepts_damage = []<class TView>()
     {
-        return requires { givm::subscribed_events<TView>::template index_of<givm::damage_effect>(); };
+        return requires { givm::subscribed_events<TView::category>::template index_of<givm::damage_effect>(); };
     };
     std::println("支援可订阅伤害生效: {}", accepts_damage.template operator()<givm::support_view>());
     std::println("手牌可订阅伤害生效: {}", accepts_damage.template operator()<givm::hand_card_view>());

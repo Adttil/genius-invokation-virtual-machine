@@ -136,6 +136,7 @@ namespace givm::detail
 
     inline void record_damage(execution_context& context, const damage_effect& result, bool pending_dying)
     {
+        const auto reaction = result.reaction ? result.reaction.get<entity_category::reaction>().slot() : elemental_reaction::none;
         const auto begin = current_segment(context).damage;
         auto& queue = context.damage_events();
         const auto end = queue.size() - substack_tail_size;
@@ -147,12 +148,12 @@ namespace givm::detail
             record.value = maximum - record.value < result.value ? maximum : record.value + result.value;
             record.type |= result.type;
             record.flags |= result.flags;
-            record.reaction |= result.reaction.slot;
+            record.reaction |= reaction;
             record.pending_dying |= pending_dying;
             return;
         }
         append_queue_record(queue, damage_notification_record{
-            result.target, result.value, result.type, result.flags, result.reaction.slot, false, pending_dying });
+            result.target, result.value, result.type, result.flags, reaction, false, pending_dying });
     }
 
     inline void record_hand_entry(execution_context& context, hand_card_id card, hand_entry_kind kind, bool overflow)
@@ -209,7 +210,7 @@ namespace givm::detail
     {
         execution_position resume;
         execution_position loop;
-        std::array<std::optional<character_id>, 2> selected{};
+        std::array<optional_entity_id<entity_category::character>, 2> selected{};
         player_id first_player;
         std::size_t cursor = 0;
     };
@@ -523,8 +524,8 @@ namespace givm::detail
             const auto player = get<0>(frame);
             const auto selected = get<1>(frame);
             context.stack().pop<player_id, character_id>();
-            get<0>(context.stack().top<active_selection_progress>()).selected[player.index] = selected;
-            for(std::uint8_t index = player.index + 1; index != 2; ++index)
+            get<0>(context.stack().top<active_selection_progress>()).selected[player.index()] = selected;
+            for(std::uint8_t index = player.index() + 1; index != 2; ++index)
             {
                 const player_id next{ index };
                 const auto active = table[next].state().active_character;
@@ -542,8 +543,8 @@ namespace givm::detail
             while(progress.cursor != 2)
             {
                 const auto player = progress.cursor++ == 0 ? progress.first_player : other_player(progress.first_player);
-                if(not progress.selected[player.index]) continue;
-                const auto selected = *progress.selected[player.index];
+                if(not progress.selected[player.index()]) continue;
+                const auto selected = *progress.selected[player.index()];
                 table[player].state().active_character = selected;
                 table[player].state().can_plunge = true;
                 using record = event_record<active_character_changed>;
@@ -590,7 +591,7 @@ namespace givm::detail
             record_extent(sizeof(record)) }, entity, event });
     }
 
-    inline void append_deferred_record(execution_context& context, normal_effect entry, player_id player,
+    inline void append_deferred_record(execution_context& context, normal_effect entry, optional_player_id player,
         std::span<const unsigned char> inputs)
     {
         const auto extent = record_extent(sizeof(deferred_record)) + record_extent(inputs.size());

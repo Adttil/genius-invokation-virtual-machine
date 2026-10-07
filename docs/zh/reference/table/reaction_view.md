@@ -6,6 +6,14 @@
 
 某位玩家一个反应槽位的只读视图，通过 `table[reaction_id{player, slot}]` 取得。它没有可变实体状态，具体定义由装载牌组后的反应映射决定，不因角色死亡而消失。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](reaction_view/category.md) | 此视图的实体类别 |
+
+## 成员
+
 | 成员 | 说明 |
 | --- | --- |
 | [`id`](reaction_view/id.md) | 返回玩家和槽位组成的 `reaction_id` |

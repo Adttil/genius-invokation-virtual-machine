@@ -28,10 +28,10 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, remove_dice>(library);
 #ifndef NDEBUG
-            debug_validate_entity(table, table.state().self_player, "remove_dice", "self_player");
+            debug_validate_entity(table, table.state().self_player.get(), "remove_dice", "self_player");
 #endif
             player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
             dice = command.dice;
 #ifndef NDEBUG
             debug_validate_entity(table, player, "remove_dice", "player");
@@ -56,7 +56,7 @@ namespace givm::detail
                 return continue_execution;
         }
 
-        GIVM_ASSERT(player.index < 2);
+        GIVM_ASSERT(player.index() < 2);
         auto& available = table[player].state().dice;
         GIVM_ASSERT(available.contains(dice));
         available -= dice;

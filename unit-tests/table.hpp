@@ -49,9 +49,9 @@ namespace
         }
     }
 
-    std::vector<givm::definition_id<givm::card_definition>> hand_definitions(givm::player_view player)
+    std::vector<givm::definition_id<givm::definition_category::card>> hand_definitions(givm::player_view player)
     {
-        std::vector<givm::definition_id<givm::card_definition>> result;
+        std::vector<givm::definition_id<givm::definition_category::card>> result;
         for(const auto card : player.hand_cards())
         {
             result.push_back(card.definition_id());
@@ -59,9 +59,9 @@ namespace
         return result;
     }
 
-    std::vector<givm::definition_id<givm::card_definition>> deck_definitions(givm::player_view player)
+    std::vector<givm::definition_id<givm::definition_category::card>> deck_definitions(givm::player_view player)
     {
-        std::vector<givm::definition_id<givm::card_definition>> result;
+        std::vector<givm::definition_id<givm::definition_category::card>> result;
         for(std::size_t index = 0; index < player.deck_card_count(); ++index)
         {
             result.push_back(player.deck_card_definition(index));
@@ -72,11 +72,11 @@ namespace
 
 TEST_CASE("table views track execution changes while copies own their state", "[table][public-interface]")
 {
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
-    const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::card> gamma{ "Gamma" };
     const auto character = givm::test::with_passive_skill(
-        givm::test::named_definition_source<givm::character_view>{ "Character" });
+        givm::test::named_definition_source<givm::definition_category::character>{ "Character" });
     const auto [library, id_map] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
@@ -87,10 +87,10 @@ TEST_CASE("table views track execution changes while copies own their state", "[
         std::tuple{ givm::end_game{ givm::game_result::both_loss } },
         alpha, beta, gamma, character
     );
-    const auto alpha_id = id_map.get_id<givm::card_definition>(alpha.name());
-    const auto beta_id = id_map.get_id<givm::card_definition>(beta.name());
-    const auto gamma_id = id_map.get_id<givm::card_definition>(gamma.name());
-    const auto character_id = id_map.get_id<givm::character_view>(character.name());
+    const auto alpha_id = id_map.get_id<givm::definition_category::card>(alpha.name());
+    const auto beta_id = id_map.get_id<givm::definition_category::card>(beta.name());
+    const auto gamma_id = id_map.get_id<givm::definition_category::card>(gamma.name());
+    const auto character_id = id_map.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .max_rounds = 3, .self_player = givm::player_id{ 0 } }, { .hand_limit = 2 }, { .hand_limit = 1 } };
     const givm::linked_deck deck{
         .cards = { alpha_id, beta_id, gamma_id }, .characters = { character_id }

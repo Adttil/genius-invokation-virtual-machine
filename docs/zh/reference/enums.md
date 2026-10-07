@@ -8,6 +8,8 @@
 
 |  |  |
 | --- | --- |
+| [`definition_category`](enums/definition_category.md) | 定义的类别，包括末尾的空类别 |
+| [`entity_category`](enums/entity_category.md) | 实体的类别，包括末尾的空类别 |
 | [`action_speed`](enums/action_speed.md) | 行动的速度类别 |
 | [`damage_flag_bits`](enums/damage_flag_bits.md) | 一次伤害可以附带的独立性质 |
 | [`damage_type`](enums/damage_type.md) | 伤害的元素或特殊类别 |
@@ -35,10 +37,12 @@
 | [`elemental_reaction_mask`](enums/elemental_reaction_mask.md) | 一段内触发的反应槽位集合 |
 | [`weapon_type_mask`](enums/weapon_type_mask.md) | 允许装备的武器类别集合 |
 
-## 函数
+## 常量与函数
 
 |  |  |
 | --- | --- |
+| [`definition_category_of`](enums/definition_category_of.md) | 实体类别对应的定义类别常量 |
+| [`entity_categories_of`](enums/entity_categories_of.md) | 定义类别对应的实体类别范围 |
 | [`element_from_damage_type`](enums/element_from_damage_type.md) | 取得伤害所带的元素 |
 | [`aura_from_element`](enums/aura_from_element.md) | 取得单元素附着 |
 | [`primary_element_from_aura`](enums/primary_element_from_aura.md) | 取得优先参与反应的附着元素 |

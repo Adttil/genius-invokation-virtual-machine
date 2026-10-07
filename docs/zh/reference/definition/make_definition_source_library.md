@@ -46,7 +46,7 @@ make_definition_source_library(const TSources&... sources);
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "恢复药剂"; }
     int compile(givm::definition_compile_context&) const { return 0; }
@@ -57,11 +57,11 @@ int main()
     const card_source potion{};
     auto result = givm::make_definition_source_library(potion);
     if(not result) return 1;
-    std::println("创建时登记恢复药剂: {}", result->has<givm::card_definition>("恢复药剂"));
+    std::println("创建时登记恢复药剂: {}", result->has<givm::definition_category::card>("恢复药剂"));
 
     auto empty = givm::make_definition_source_library();
     if(not empty) return 1;
-    std::println("空库包含恢复药剂: {}", empty->has<givm::card_definition>("恢复药剂"));
+    std::println("空库包含恢复药剂: {}", empty->has<givm::definition_category::card>("恢复药剂"));
 }
 ```
 

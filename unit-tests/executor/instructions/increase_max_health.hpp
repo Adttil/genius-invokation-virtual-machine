@@ -29,7 +29,7 @@ namespace
 
     struct increase_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             increase_log* log;
@@ -67,7 +67,7 @@ namespace
             givm::healed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             CHECK(event.target == target);
-            CHECK(std::get<givm::character_id>(event.source) == target);
+            CHECK(event.source.template get<givm::entity_category::character>() == target);
             const auto state = context.table()[target].state();
             CHECK(state.max_health == data.log->initial.max_health + event.value);
             CHECK(state.health == data.log->initial.health + event.value);
@@ -92,7 +92,7 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
         givm::test::with_passive_skill(increase_source{ &log }));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("HealthIncreaseSource") } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>("HealthIncreaseSource") } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };

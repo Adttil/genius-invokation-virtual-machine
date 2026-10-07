@@ -34,9 +34,9 @@ namespace
         }
     };
 
-    std::vector<givm::definition_id<givm::card_definition>> deck_definitions(givm::player_view player)
+    std::vector<givm::definition_id<givm::definition_category::card>> deck_definitions(givm::player_view player)
     {
-        std::vector<givm::definition_id<givm::card_definition>> result;
+        std::vector<givm::definition_id<givm::definition_category::card>> result;
         for(const auto card : player.deck_cards())
         {
             result.push_back(card.definition_id());
@@ -47,15 +47,15 @@ namespace
 
 TEST_CASE("shuffle maps the two halves of a random value to the two card positions", "[random][deck]")
 {
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{ givm::shuffle_deck{ givm::player_id{ 0 } }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, alpha, beta
     );
-    const auto a = ids.get_id<givm::card_definition>(alpha.name());
-    const auto b = ids.get_id<givm::card_definition>(beta.name());
+    const auto a = ids.get_id<givm::definition_category::card>(alpha.name());
+    const auto b = ids.get_id<givm::definition_category::card>(beta.name());
 
     for(const auto [value, changes_order] : std::array{
         std::pair{ 0u, true }, std::pair{ 0x7fffffffu, true },
@@ -74,7 +74,7 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
             == (changes_order ? std::vector{ b, a } : std::vector{ a, b }));
     }
 
-    for(const auto cards : { std::vector<givm::definition_id<givm::card_definition>>{}, std::vector{ a } })
+    for(const auto cards : { std::vector<givm::definition_id<givm::definition_category::card>>{}, std::vector{ a } })
     {
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, givm::linked_deck{ .cards = cards }, {});
@@ -89,11 +89,11 @@ TEST_CASE("shuffle maps the two halves of a random value to the two card positio
 
 TEST_CASE("initial replacements assign random values by player and selected card order", "[random][selection]")
 {
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
-    const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
-    const givm::test::named_definition_source<givm::card_definition> delta{ "Delta" };
-    const givm::test::named_definition_source<givm::card_definition> epsilon{ "Epsilon" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::card> gamma{ "Gamma" };
+    const givm::test::named_definition_source<givm::definition_category::card> delta{ "Delta" };
+    const givm::test::named_definition_source<givm::definition_category::card> epsilon{ "Epsilon" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
@@ -103,11 +103,11 @@ TEST_CASE("initial replacements assign random values by player and selected card
         },
         std::tuple{}, alpha, beta, gamma, delta, epsilon
     );
-    const auto a = ids.get_id<givm::card_definition>(alpha.name());
-    const auto b = ids.get_id<givm::card_definition>(beta.name());
-    const auto c = ids.get_id<givm::card_definition>(gamma.name());
-    const auto d = ids.get_id<givm::card_definition>(delta.name());
-    const auto e = ids.get_id<givm::card_definition>(epsilon.name());
+    const auto a = ids.get_id<givm::definition_category::card>(alpha.name());
+    const auto b = ids.get_id<givm::definition_category::card>(beta.name());
+    const auto c = ids.get_id<givm::definition_category::card>(gamma.name());
+    const auto d = ids.get_id<givm::definition_category::card>(delta.name());
+    const auto e = ids.get_id<givm::definition_category::card>(epsilon.name());
     givm::table initial_table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .cards = { a, b, c, d, e } };
     load_deck(initial_table, library, deck, deck);
@@ -133,7 +133,7 @@ TEST_CASE("initial replacements assign random values by player and selected card
         CHECK(deck_definitions(table[givm::player_id{ 1 }]) == std::vector{ a, c });
         for(const givm::player_id player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
         {
-            std::vector<givm::definition_id<givm::card_definition>> hand;
+            std::vector<givm::definition_id<givm::definition_category::card>> hand;
             for(const auto card : table[player].hand_cards())
             {
                 hand.push_back(card.definition_id());
@@ -145,11 +145,11 @@ TEST_CASE("initial replacements assign random values by player and selected card
 
 TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve the remaining cards", "[random][selection][replace_cards]")
 {
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
-    const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
-    const givm::test::named_definition_source<givm::card_definition> delta{ "Delta" };
-    const givm::test::named_definition_source<givm::card_definition> epsilon{ "Epsilon" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::card> gamma{ "Gamma" };
+    const givm::test::named_definition_source<givm::definition_category::card> delta{ "Delta" };
+    const givm::test::named_definition_source<givm::definition_category::card> epsilon{ "Epsilon" };
     for(const auto mode : { givm::compile_mode::normal, givm::compile_mode::observed })
     {
         const auto [library, ids] = givm::test::compile_definitions_with_program(
@@ -161,11 +161,11 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
             },
             std::tuple{}, alpha, beta, gamma, delta, epsilon
         );
-        const auto a = ids.get_id<givm::card_definition>(alpha.name());
-        const auto b = ids.get_id<givm::card_definition>(beta.name());
-        const auto c = ids.get_id<givm::card_definition>(gamma.name());
-        const auto d = ids.get_id<givm::card_definition>(delta.name());
-        const auto e = ids.get_id<givm::card_definition>(epsilon.name());
+        const auto a = ids.get_id<givm::definition_category::card>(alpha.name());
+        const auto b = ids.get_id<givm::definition_category::card>(beta.name());
+        const auto c = ids.get_id<givm::definition_category::card>(gamma.name());
+        const auto d = ids.get_id<givm::definition_category::card>(delta.name());
+        const auto e = ids.get_id<givm::definition_category::card>(epsilon.name());
         givm::table table{ { .self_player = givm::player_id{ 0 } } };
         load_deck(table, library, { .cards = { a, d, c, e, c, b, a } }, {});
         givm_test::executor_driver execution;
@@ -179,7 +179,7 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
 
         // A, B and C return at the bottom, top and middle. Only D avoids the
         // blacklist, so the top B and C also return to the hand before D.
-        std::vector<givm::definition_id<givm::card_definition>> hand;
+        std::vector<givm::definition_id<givm::definition_category::card>> hand;
         for(const auto card : table[givm::player_id{ 0 }].hand_cards())
             hand.push_back(card.definition_id());
         CHECK(hand == std::vector{ e, b, c, d });

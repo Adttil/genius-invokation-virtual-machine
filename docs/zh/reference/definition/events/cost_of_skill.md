@@ -15,7 +15,7 @@ struct cost_of_skill;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `skill` | `const skill_id` | 本次准备使用的技能；只读。 |
-| `targets` | `const std::array<skill_target_id, 2>` | 已选定的目标；`std::monostate` 为空槽。 |
+| `targets` | `const std::array<skill_target_id, 2>` | 已选定的目标；``null` 空类别` 为空槽。 |
 | `requirement` | [`action_cost_requirement`](../../table/action_cost_requirement.md) | 技能使用的骰子、充能费用与行动速度。 |
 | `flags` | `const skill_flags` | 本次行动的技能性质；在支付前报价时已确定，效果与通知沿用同一结果 |
 

@@ -15,7 +15,7 @@ struct player_state;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `dice` | [`dice_counts`](../enums/dice_counts.md) | 玩家持有的各类元素骰 |
-| `active_character` | `std::optional<character_id>` | 出战角色的 ID；没有出战角色时为空 |
+| `active_character` | [`optional_character_id`](optional_entity_id.md) | 出战角色的 ID；没有出战角色时为空 |
 | `hand_limit` | `std::uint32_t` | 该玩家的手牌上限，默认 10 |
 | `support_limit` | `std::uint32_t` | 该玩家当前可容纳的支援数量上限，默认 4 |
 | `summon_limit` | `std::uint32_t` | 该玩家当前可容纳的召唤物数量上限，默认 4 |

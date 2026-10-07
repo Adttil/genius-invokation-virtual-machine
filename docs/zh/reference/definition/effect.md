@@ -47,7 +47,7 @@ using preview_effect = effect<event_category::preview>;
 
 struct support_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
 
     std::string_view name() const { return "洗牌助手"; }
 

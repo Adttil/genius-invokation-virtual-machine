@@ -45,7 +45,7 @@ Debug 检查现场、候选或报价标识的有效性，并以结构化异常�
 
 如果直接接口在完成报价后抛出 Debug 支付异常，它不会返回报价标识，也不回滚报价；调用方不能在本窗口重算这个组合。
 
-目标最多两个，超过两项的内容忽略。`std::monostate` 表示空槽，遇到首个空槽即结束目标序列；报价无需额外保存目标数量。完整目标必须合法，分步检查仍由相应的 `*_targets_validate` 提供。
+目标最多两个，超过两项的内容忽略。``null` 空类别` 表示空槽，遇到首个空槽即结束目标序列；报价无需额外保存目标数量。完整目标必须合法，分步检查仍由相应的 `*_targets_validate` 提供。
 
 ## 示例
 
@@ -61,7 +61,7 @@ Debug 检查现场、候选或报价标识的有效性，并以结构化异常�
 
 struct skill_source
 {
-    using definition_category = givm::skill_view;
+    static constexpr auto category = givm::definition_category::skill;
     std::string_view name() const { return "example_skill"; }
     int compile(givm::definition_compile_context&) const { return 0; }
 
@@ -79,14 +79,14 @@ struct skill_source
 
 struct character_source
 {
-    using definition_category = givm::character_view;
-    using definition_type = givm::definition_id<givm::skill_view>;
+    static constexpr auto category = givm::definition_category::character;
+    using definition_type = givm::optional_definition_id<givm::definition_category::skill>;
 
     std::string_view name() const { return "example_character"; }
     auto skill_dependencies() const { return std::array{ "example_skill" }; }
     definition_type compile(givm::definition_compile_context& context) const
     {
-        return context.resolve_id<givm::skill_view>("example_skill");
+        return context.resolve_id<givm::definition_category::skill>("example_skill");
     }
 
     static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -122,7 +122,7 @@ int main()
     const auto [library, ids] = std::move(*library_result);
 
     givm::table table{};
-    const auto character_definition = ids.get_id<givm::character_view>("example_character");
+    const auto character_definition = ids.get_id<givm::definition_category::character>("example_character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { character_definition } },
         givm::linked_deck{ .characters = { character_definition } });
@@ -134,7 +134,7 @@ int main()
     auto state = execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     const auto action = execution.view_in<givm::execution_state::action_selection>();
     std::println("技能候选数量: {}", action.skill_count());
-    const auto user = action.skill_id(0).character_id;
+    const auto user = action.skill_id(0).character_id();
     const auto quote_1 = action.calculate_skill_cost(library, table, 0);
     std::println("支付合法: {}",
         action.skill_payment_validate(table, quote_1, {}) == givm::skill_payment_validation::valid);

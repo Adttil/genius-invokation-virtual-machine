@@ -14,12 +14,12 @@ struct definition_name;
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `category_index` | `std::size_t` | 类别在 [`definition_types`](definition_types.md) 中的索引 |
+| `category` | [`definition_category`](../enums/definition_category.md) | 定义所属的类别 |
 | `name` | `std::string` | 该类别内的定义名称 |
 
 ## 注意
 
-类别索引从零开始，例如 `givm::definition_types::index_of<givm::card_definition>()` 表示卡牌定义。`name` 保存字符串副本，不借用源对象的名称存储。
+例如 `definition_category::card` 表示卡牌定义。`name` 保存字符串副本，不借用源对象的名称存储。
 
 ## 参阅
 

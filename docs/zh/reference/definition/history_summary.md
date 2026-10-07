@@ -12,7 +12,7 @@
 
 | | |
 | --- | --- |
-| `history_summary_definition` | 历史摘要的定义类别 |
+| `definition_category::history_summary` | 历史摘要的定义类别 |
 | `history_scalar_field<T>` | 指定数值类型的标量字段描述，保存字段名称 |
 | `history_array_field<T>` | 指定数值类型的数组字段描述，保存字段名称和元素数量 |
 | `history_field_key<T>` | 摘要更新函数访问自身字段的键 |
@@ -52,7 +52,7 @@
 
 ## 定义源协议
 
-摘要源沿用普通[定义源协议](source_protocol.md)的名称、标签、依赖与 `compile`，定义类别为 `history_summary_definition`。此外必须提供字段描述：
+摘要源沿用普通[定义源协议](source_protocol.md)的名称、标签、依赖与 `compile`，定义类别为 `definition_category::history_summary`。此外必须提供字段描述：
 
 ```cpp
 givm::history_summary_layout layout(const givm::definition_compile_context& context) const;
@@ -69,7 +69,7 @@ static void handle(const D& definition, givm::history_summary_state state, const
     const givm::table& table, const givm::definition_library& library);
 ```
 
-`Event` 须属于 `subscribed_events<history_summary_definition>`。其中 [`history_summary_initialization`](events/history_summary_initialization.md) 仅供摘要初始化：[`executor::start`](../executor/executor/start.md) 准备好状态空间后同步发送一次，返回前完成全部初始化响应。通常先完成双方 [`load_deck`](../executor/load_deck.md)，让该响应可以读取完整初始牌桌。字段不保证清零，源须在读取前写入有效值；可接受后续首次写入的字段不必在此初始化。摘要之间不得依赖初始化先后；需要共同初始化的数据应放在同一摘要中。
+`Event` 须属于 `history_subscribed_events`。其中 [`history_summary_initialization`](events/history_summary_initialization.md) 仅供摘要初始化：[`executor::start`](../executor/executor/start.md) 准备好状态空间后同步发送一次，返回前完成全部初始化响应。通常先完成双方 [`load_deck`](../executor/load_deck.md)，让该响应可以读取完整初始牌桌。字段不保证清零，源须在读取前写入有效值；可接受后续首次写入的字段不必在此初始化。摘要之间不得依赖初始化先后；需要共同初始化的数据应放在同一摘要中。
 
 其余可订阅事件均为通知类事件，例如 [`round_started`](events/round_started.md)、[`after_damage`](events/after_damage.md)、[`skill_used`](events/skill_used.md)、[`card_played`](events/card_played.md)。报价、参数检查、伤害计算与濒死等可修改或尚未确认结果的时机不用于摘要更新。摘要不提供普通查询。
 
@@ -116,7 +116,7 @@ Lua 等适配器根据脚本的数值类型选择 `history_scalar_field<T>{ name
 
 struct defeats_source
 {
-    using definition_category = givm::history_summary_definition;
+    static constexpr auto category = givm::definition_category::history_summary;
 
     std::string_view name() const { return "角色击倒累计"; }
 
@@ -141,7 +141,7 @@ struct defeats_source
         givm::history_summary_state state, const givm::after_damage& event,
         const givm::table&, const givm::definition_library&)
     {
-        if(event.defeated) ++state[counts][event.target.player_id.index];
+        if(event.defeated) ++state[counts][event.target.player_id().index()];
     }
 };
 
@@ -163,7 +163,7 @@ int main()
     load_deck(table, library, {}, {});
     givm::executor execution;
     execution.start(library, table);
-    const auto id = ids.get_id<givm::history_summary_definition>(summary.name());
+    const auto id = ids.get_id<givm::definition_category::history_summary>(summary.name());
     const auto counts = library.history_field<std::uint32_t[]>(id, "次数");
     std::println("玩家0累计被击倒次数: {}", table[counts][0]);
 }

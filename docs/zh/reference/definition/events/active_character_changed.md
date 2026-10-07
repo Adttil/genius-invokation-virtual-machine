@@ -28,9 +28,9 @@ struct active_character_changed;
 
 int main()
 {
-    givm::active_character_changed event{ .current = { .player_id = givm::player_id{ 1 }, .index = 2 } };
-    std::println("玩家 1 更换出战角色: {}", event.current.player_id == givm::player_id{ 1 });
-    std::println("出战角色序号: {}", event.current.index);
+    givm::active_character_changed event{ .current = { givm::player_id{ 1 }, 2 } };
+    std::println("玩家 1 更换出战角色: {}", event.current.player_id() == givm::player_id{ 1 });
+    std::println("出战角色序号: {}", event.current.index());
 }
 ```
 

@@ -16,7 +16,7 @@ struct add_support
     using input_type = add_support_input;
 
     relative_player player = relative_player::self;
-    definition_id<support_view> definition{};
+    optional_definition_id<givm::definition_category::support> definition{};
     support_state state{
         std::numeric_limits<std::uint32_t>::max(),
         std::numeric_limits<std::uint32_t>::max()
@@ -71,7 +71,7 @@ struct add_support_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `value` | `std::uint64_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
 | `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。
@@ -91,7 +91,7 @@ struct add_support_error;
 
 struct support_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
     struct definition_type {};
     std::string_view name() const { return "support"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -104,14 +104,14 @@ struct support_source
 
 struct effect_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "effect"; }
     auto support_dependencies() const
     { return std::array<std::string_view, 1>{ "support" }; }
 
     givm::normal_effect compile(givm::definition_compile_context& context) const
     {
-        const auto id = context.resolve_id<givm::support_view>("support");
+        const auto id = context.resolve_id<givm::definition_category::support>("support");
         return context.add_normal_effect(
             givm::add_support{ .definition = id },
             givm::add_support{ .definition = id },
@@ -147,7 +147,7 @@ int main()
     const auto [library, ids] = std::move(*library_result);
     givm::table table{};
     load_deck(table, library,
-        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>("effect") } },
+        givm::linked_deck{ .cards = { ids.get_id<givm::definition_category::card>("effect") } },
         givm::linked_deck{});
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };

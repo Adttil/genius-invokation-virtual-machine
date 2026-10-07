@@ -36,7 +36,7 @@ namespace
 
     struct damage_bonus_source
     {
-        using definition_category = givm::combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
         struct definition_type { preparation_log* log; givm::immediate_effect change_aura; givm::tag_id replacement; };
         preparation_log* log;
         std::string_view name() const { return "DamageBonus"; }
@@ -51,7 +51,7 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::damage_calculation& event, givm::handle_context<givm::combat_status_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
-            data.log->calculated.push_back(event.reaction.slot);
+            data.log->calculated.push_back((event.reaction ? event.reaction.get().slot() : givm::elemental_reaction::none));
             data.log->reacted_auras.push_back(event.reacted_aura);
             if(event.type == givm::damage_type::cryo) ++event.value;
             if(event.flags.contains(givm::damage_flag_bits::normal_attack))
@@ -76,13 +76,13 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::damage_effect& event, givm::handle_context<givm::combat_status_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
-            data.log->applied.push_back(event.reaction.slot);
+            data.log->applied.push_back((event.reaction ? event.reaction.get().slot() : givm::elemental_reaction::none));
             return {};
         }
         static givm::immediate_effect handle(const definition_type& data,
             givm::elemental_reaction_will_occur& event, givm::handle_context<givm::combat_status_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
-            data.log->side_effects.push_back(event.reaction.slot);
+            data.log->side_effects.push_back(event.reaction.slot());
             CHECK_FALSE(event.cancel_default_effects);
             if(data.log->replace_reaction_bonus) event.cancel_default_effects = true;
             return {};
@@ -99,7 +99,7 @@ namespace
 
     struct infusion_source
     {
-        using definition_category = givm::combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
         struct definition_type { givm::immediate_effect pause; givm::damage_type type; bool classify; };
         givm::damage_type type;
         bool classify;
@@ -124,7 +124,7 @@ namespace
 
     struct preparation_driver
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { givm::normal_effect entry; };
         std::span<const givm::deal_damage> damages;
         std::string_view name() const { return "PreparationDriver"; }
@@ -135,8 +135,8 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             std::vector<givm::any_command> commands{
-                givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("DamageBonus") },
-                givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("Infusion") } };
+                givm::add_combat_status{ .definition = context.resolve_id<givm::definition_category::combat_status>("DamageBonus") },
+                givm::add_combat_status{ .definition = context.resolve_id<givm::definition_category::combat_status>("Infusion") } };
             for(const auto& item : damages) commands.emplace_back(item);
             return { context.add_normal_effect(commands) };
         }
@@ -150,21 +150,21 @@ namespace
 
     struct preparation_character
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::definition_id<givm::skill_view> driver; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::optional_definition_id<givm::definition_category::skill> driver; };
         std::string_view name() const { return "PreparationCharacter"; }
         auto skill_dependencies() const { return std::array{ std::string_view{ "PreparationDriver" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>("PreparationDriver") };
+            return { context.resolve_id<givm::definition_category::skill>("PreparationDriver") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 20, .health = 20 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.driver : givm::definition_id<givm::skill_view>{};
+            return query.skill_index == 0 ? data.driver : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 
@@ -196,8 +196,8 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(target.name()), ids.get_id<givm::character_view>(reserve.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(target.name()), ids.get_id<givm::definition_category::character>(reserve.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -217,7 +217,7 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
             REQUIRE(observed);
             REQUIRE(state == givm::execution_state::health_reduced);
             const auto damage = executor.view_in<givm::execution_state::health_reduced>();
-            observed_reactions.push_back(damage.reaction().slot);
+            observed_reactions.push_back((damage.reaction() ? damage.reaction().get().slot() : givm::elemental_reaction::none));
             CHECK(damage.value() == (damage.target() == front ? 12 : 5));
             CHECK(damage.type() == givm::damage_type::cryo);
             CHECK(damage.flags().contains(givm::damage_flag_bits::normal_attack));
@@ -260,8 +260,8 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto target_id = ids.get_id<givm::character_view>(target.name());
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } },
+    const auto target_id = ids.get_id<givm::definition_category::character>(target.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } },
         { .characters = { target_id, target_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);

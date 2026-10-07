@@ -9,19 +9,20 @@ namespace givm::detail
     {
         constexpr auto category_names = []
         {
-            std::array<std::string_view, definition_types::size()> names{};
-            names[definition_types::index_of<card_definition>()] = "card_definition";
-            names[definition_types::index_of<status_definition>()] = "status_definition";
-            names[definition_types::index_of<support_view>()] = "support_view";
-            names[definition_types::index_of<summon_view>()] = "summon_view";
-            names[definition_types::index_of<combat_status_view>()] = "combat_status_view";
-            names[definition_types::index_of<character_view>()] = "character_view";
-            names[definition_types::index_of<skill_view>()] = "skill_view";
-            names[definition_types::index_of<attachment_view>()] = "attachment_view";
-            names[definition_types::index_of<history_summary_definition>()] = "history_summary_definition";
+            std::array<std::string_view, detail::definition_categories.size()> names{};
+            names[static_cast<std::size_t>(definition_category::card)] = "card";
+            names[static_cast<std::size_t>(definition_category::card_status)] = "card_status";
+            names[static_cast<std::size_t>(definition_category::support)] = "support";
+            names[static_cast<std::size_t>(definition_category::summon)] = "summon";
+            names[static_cast<std::size_t>(definition_category::combat_status)] = "combat_status";
+            names[static_cast<std::size_t>(definition_category::character)] = "character";
+            names[static_cast<std::size_t>(definition_category::skill)] = "skill";
+            names[static_cast<std::size_t>(definition_category::attachment)] = "attachment";
+            names[static_cast<std::size_t>(definition_category::history_summary)] = "history_summary";
+            names[static_cast<std::size_t>(definition_category::reaction)] = "reaction";
             return names;
         }();
-        const auto category_index = definition.category_index;
+        const auto category_index = static_cast<std::size_t>(definition.category);
         std::string result = category_index < category_names.size() && not category_names[category_index].empty()
             ? std::string{ category_names[category_index] }
             : "category[" + std::to_string(category_index) + "]";
@@ -128,9 +129,12 @@ namespace givm
     {
         if(this == &library) return {};
         std::vector<source_conflict> errors;
-        definition_types::each([&]<class TCategory>
+        []<std::size_t... I>(std::index_sequence<I...>, auto&& fn)
         {
-            collect_bucket_conflicts<definition_types::index_of<TCategory>()>(library, errors);
+            (fn.template operator()<detail::definition_categories[I]>(), ...);
+        }(std::make_index_sequence<detail::definition_categories.size()>{}, [&]<definition_category TCategory>
+        {
+            collect_bucket_conflicts<static_cast<std::size_t>(TCategory)>(library, errors);
         });
         if(not errors.empty()) return std::unexpected{ std::move(errors) };
 
@@ -154,7 +158,7 @@ namespace givm
                     continue;
                 }
                 errors.push_back({
-                    .definition = { I, std::string{ entry.name } },
+                    .definition = { static_cast<definition_category>(I), std::string{ entry.name } },
                     .cause = existing.source.rtti_ != entry.source.rtti_
                         ? source_conflict::reason::different_type
                         : source_conflict::reason::different_object
@@ -187,7 +191,7 @@ namespace givm
         }(std::make_index_sequence<definition_count>{});
     }
 
-    template<class TCategory>
+    template<definition_category TCategory>
     std::optional<std::size_t> definition_source_library::prepare_add(pending_tuple& pending, pending_sources_by_name& names,
         std::vector<source_add_error>& errors, std::size_t input_index, const definition_source_view<TCategory>& view) const
     {
@@ -214,7 +218,7 @@ namespace givm
             const auto previous = existing != bucket.name_to_index.end()
                 ? bucket.entries[existing->second].source : entries[same_named.front()].source;
             errors.emplace_back(source_conflict{
-                .definition = { category_index, std::string{ name } },
+                .definition = { TCategory, std::string{ name } },
                 .cause = previous.rtti_ != view.rtti_
                     ? source_conflict::reason::different_type : source_conflict::reason::different_object,
                 .first_input_index = existing != bucket.name_to_index.end()
@@ -240,14 +244,17 @@ namespace givm
         return std::get<I>(buckets_).name_to_index.contains(name) || pending_names[I].contains(name);
     }
 
-    template<class TCategory, class TPendingNames, class TError>
+    template<definition_category TCategory, class TPendingNames, class TError>
     void definition_source_library::collect_dependency_errors(const pending_tuple& pending, const TPendingNames& names,
         std::optional<std::size_t> index, std::vector<TError>& errors) const
     {
         if(not index) return;
         constexpr auto category_index = index_of<TCategory>();
         const auto& entry = std::get<category_index>(pending)[*index];
-        definition_types::each([&]<class TDependency>
+        []<std::size_t... I>(std::index_sequence<I...>, auto&& fn)
+        {
+            (fn.template operator()<detail::definition_categories[I]>(), ...);
+        }(std::make_index_sequence<detail::definition_categories.size()>{}, [&]<definition_category TDependency>
         {
             constexpr auto dependency_index = index_of<TDependency>();
             std::unordered_set<std::string_view> reported;
@@ -256,9 +263,9 @@ namespace givm
                 if(not dependency_exists<dependency_index>(name, names) && reported.insert(name).second)
                 {
                     errors.emplace_back(source_missing_dependency{
-                        .source = { category_index, std::string{ entry.name } },
+                        .source = { TCategory, std::string{ entry.name } },
                         .input_index = entry.input_index,
-                        .dependency = { dependency_index, std::string{ name } }
+                        .dependency = { TDependency, std::string{ name } }
                     });
                 }
             }
@@ -309,14 +316,14 @@ namespace givm
     }
 
     definition_source_library::selection_mask definition_source_library::resolve_selection(
-        const std::array<std::span<const std::string_view>, definition_types::size()>& selection,
+        const std::array<std::span<const std::string_view>, detail::definition_categories.size()>& selection,
         const reaction_definition_names& basics, std::vector<source_preparation_error>& errors) const
     {
         auto selected = make_empty_selection();
         std::vector<queue_item> queue;
 
         for(std::size_t index = 0; index != elemental_reaction_count; ++index)
-            enqueue_name<index_of<reaction_view>()>(basics[static_cast<elemental_reaction>(index + 1)],
+            enqueue_name<index_of<definition_category::reaction>()>(basics[static_cast<elemental_reaction>(index + 1)],
                 selected, queue, errors);
 
         [&]<size_t...I>(std::index_sequence<I...>)
@@ -359,20 +366,20 @@ namespace givm
             {
                 const auto same_owner = [&](const definition_name& source)
                 {
-                    return required_by && source.category_index == required_by->category_index
+                    return required_by && source.category == required_by->category
                         && source.name == required_by->name;
                 };
                 if(const auto* missing = std::get_if<source_missing_dependency>(&error))
-                    return same_owner(missing->source) && missing->dependency.category_index == I
+                    return same_owner(missing->source) && missing->dependency.category == static_cast<definition_category>(I)
                         && missing->dependency.name == name;
                 if(const auto* missing = std::get_if<source_selection_error>(&error))
-                    return missing->definition.category_index == I && missing->definition.name == name
+                    return missing->definition.category == static_cast<definition_category>(I) && missing->definition.name == name
                         && (required_by ? missing->required_by && same_owner(*missing->required_by)
                             : not missing->required_by);
                 return false;
             });
             if(not already_reported)
-                errors.emplace_back(source_selection_error{ { I, std::string{ name } },
+                errors.emplace_back(source_selection_error{ { static_cast<definition_category>(I), std::string{ name } },
                     required_by ? std::optional{ *required_by } : std::nullopt });
             return;
         }
@@ -415,7 +422,7 @@ namespace givm
     ) const
     {
         const auto& entry = std::get<I>(buckets_).entries[source_index];
-        const definition_name required_by{ I, std::string{ entry.name } };
+        const definition_name required_by{ static_cast<definition_category>(I), std::string{ entry.name } };
         [&]<size_t...J>(std::index_sequence<J...>)
         {
             (enqueue_dependencies<J>(entry.declarations.dependencies[J], selected, queue, errors, required_by), ...);
@@ -475,11 +482,11 @@ namespace givm
     template<size_t I>
     void definition_source_library::add_selected_sources(const std::vector<bool>& selected, issued_id_map& id_map) const
     {
-        using definition_category = typename definition_type_list::template type_at<I>;
+        constexpr auto category = static_cast<definition_category>(I);
         const auto& entries = std::get<I>(buckets_).entries;
         for(size_t index : ordered_selected_indices<I>(selected))
         {
-            id_map.template add<definition_category>(
+            id_map.template add<category>(
                 entries[index].name,
                 entries[index].declarations.tags
             );
@@ -507,73 +514,73 @@ namespace givm
         return indices;
     }
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<card_definition>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::card>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<card_definition>&) const;
-    template void definition_source_library::collect_dependency_errors<card_definition>(
+        std::size_t, const definition_source_view<definition_category::card>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::card>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<status_definition>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::card_status>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<status_definition>&) const;
-    template void definition_source_library::collect_dependency_errors<status_definition>(
+        std::size_t, const definition_source_view<definition_category::card_status>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::card_status>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<support_view>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::support>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<support_view>&) const;
-    template void definition_source_library::collect_dependency_errors<support_view>(
+        std::size_t, const definition_source_view<definition_category::support>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::support>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<summon_view>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::summon>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<summon_view>&) const;
-    template void definition_source_library::collect_dependency_errors<summon_view>(
+        std::size_t, const definition_source_view<definition_category::summon>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::summon>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<combat_status_view>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::combat_status>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<combat_status_view>&) const;
-    template void definition_source_library::collect_dependency_errors<combat_status_view>(
+        std::size_t, const definition_source_view<definition_category::combat_status>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::combat_status>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<character_view>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::character>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<character_view>&) const;
-    template void definition_source_library::collect_dependency_errors<character_view>(
+        std::size_t, const definition_source_view<definition_category::character>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::character>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<skill_view>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::skill>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<skill_view>&) const;
-    template void definition_source_library::collect_dependency_errors<skill_view>(
+        std::size_t, const definition_source_view<definition_category::skill>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::skill>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<attachment_view>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::attachment>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<attachment_view>&) const;
-    template void definition_source_library::collect_dependency_errors<attachment_view>(
+        std::size_t, const definition_source_view<definition_category::attachment>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::attachment>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<history_summary_definition>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::history_summary>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<history_summary_definition>&) const;
-    template void definition_source_library::collect_dependency_errors<history_summary_definition>(
+        std::size_t, const definition_source_view<definition_category::history_summary>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::history_summary>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 
-    template std::optional<std::size_t> definition_source_library::prepare_add<reaction_view>(
+    template std::optional<std::size_t> definition_source_library::prepare_add<definition_category::reaction>(
         pending_tuple&, pending_sources_by_name&, std::vector<source_add_error>&,
-        std::size_t, const definition_source_view<reaction_view>&) const;
-    template void definition_source_library::collect_dependency_errors<reaction_view>(
+        std::size_t, const definition_source_view<definition_category::reaction>&) const;
+    template void definition_source_library::collect_dependency_errors<definition_category::reaction>(
         const pending_tuple&, const pending_sources_by_name&,
         std::optional<std::size_t>, std::vector<source_add_error>&) const;
 

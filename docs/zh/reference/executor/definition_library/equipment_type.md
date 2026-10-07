@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-givm::equipment_type equipment_type(definition_id<attachment_view> id) const noexcept;
+givm::equipment_type equipment_type(definition_id<givm::definition_category::attachment> id) const noexcept;
 ```
 
 取得附着实体定义的装备类别，用于区分武器、圣遗物、天赋、特技和普通附属实体。

@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TCategory>
+template<definition_category TCategory>
 auto definitions() const noexcept;
 ```
 
@@ -42,7 +42,7 @@ auto definitions() const noexcept;
 
 struct food_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "示例料理"; }
     auto tags() const { return std::array<std::string_view, 1>{ "料理" }; }
     int compile(givm::definition_compile_context&) const { return 0; }
@@ -53,23 +53,23 @@ struct food_source
 
 struct search_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "料理检索"; }
 
     int compile(givm::definition_compile_context& context) const
     {
-        const auto cards = context.definitions<givm::card_definition>();
+        const auto cards = context.definitions<givm::definition_category::card>();
         std::println("当前卡牌定义数: {}", std::ranges::size(cards));
         for(const auto card : cards)
         {
-            if(card.has_tag("料理") && card.can_handle<givm::this_card_play, givm::hand_card_view>())
+            if(card.has_tag("料理") && card.can_handle<givm::this_card_play, givm::entity_category::hand_card>())
             {
-                std::println("可打出的料理牌: {}", context[card.id()].name());
+                std::println("可打出的料理牌: {}", context[card.id().get()].name());
                 std::println("自定义初始状态查询: {}", card.has_query<givm::card_initial_state>());
             }
         }
         std::println("存在未选择的牌: {}",
-            context.find_definition<givm::card_definition>("未选择的牌").has_value());
+            context.find_definition<givm::definition_category::card>("未选择的牌").has_value());
         return 0;
     }
 };

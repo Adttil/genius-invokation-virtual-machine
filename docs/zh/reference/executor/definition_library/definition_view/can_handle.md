@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<class TEvent, class TView>
+template<class TEvent, entity_category Entity>
 bool can_handle() const noexcept;
 ```
 
@@ -16,7 +16,7 @@ bool can_handle() const noexcept;
 |  |  |
 | --- | --- |
 | `TEvent` | 属于该 view 可订阅范围的事件类型 |
-| `TView` | 属于该定义类别的只读实体 view |
+| `Entity` | 属于该定义类别的实体类别 |
 
 ## 返回值
 
@@ -39,7 +39,7 @@ bool can_handle() const noexcept;
 
 struct support_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
 
     std::string_view name() const { return "重投助手"; }
     int compile(givm::definition_compile_context&) const { return 1; }
@@ -71,10 +71,10 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto id = ids.get_id<givm::support_view>("重投助手");
+    const auto id = ids.get_id<givm::definition_category::support>("重投助手");
     const auto definition = library[id];
-    std::println("响应掷骰准备: {}", definition.can_handle<givm::dice_roll_preparation, givm::support_view>());
-    std::println("响应回合结束: {}", definition.can_handle<givm::round_ended, givm::support_view>());
+    std::println("响应掷骰准备: {}", definition.can_handle<givm::dice_roll_preparation, givm::entity_category::support>());
+    std::println("响应回合结束: {}", definition.can_handle<givm::round_ended, givm::entity_category::support>());
 }
 ```
 

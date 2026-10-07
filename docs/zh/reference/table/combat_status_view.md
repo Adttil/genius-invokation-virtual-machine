@@ -10,6 +10,12 @@ class combat_status_view;
 
 一方出战状态的只读视图。它属于玩家，可在出战角色变化后继续存在。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](combat_status_view/category.md) | 此视图的实体类别 |
+
 ## 成员函数
 
 |  |  |

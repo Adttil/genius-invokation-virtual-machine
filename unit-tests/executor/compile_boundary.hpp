@@ -22,13 +22,13 @@ TEST_CASE("command sequence wrappers compile and invoke across translation units
     }
     REQUIRE(compiled.has_value());
     const auto& [library, ids] = *compiled;
-    const auto card_a = ids.get_id<givm::card_definition>("CompileBoundaryCardA");
-    const auto card_b = ids.get_id<givm::card_definition>("CompileBoundaryCardB");
+    const auto card_a = ids.get_id<givm::definition_category::card>("CompileBoundaryCardA");
+    const auto card_b = ids.get_id<givm::definition_category::card>("CompileBoundaryCardB");
     const givm::character_id character{ givm::player_id{ 0 }, 0 };
     givm::table table{ {}, { .active_character = character } };
     load_deck(table, library, {
         .cards = { card_a, card_b },
-        .characters = { ids.get_id<givm::character_view>("CompileBoundaryCharacter") }
+        .characters = { ids.get_id<givm::definition_category::character>("CompileBoundaryCharacter") }
     }, {});
 
     givm::executor execution;
@@ -45,10 +45,10 @@ TEST_CASE("command sequence wrappers compile and invoke across translation units
     CHECK(execution.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
     CHECK(table.state().round_number == 1);
     CHECK(table[character].state().energy == 2);
-    const auto player = table[character.player_id];
+    const auto player = table[character.player_id()];
     CHECK(player.state().dice[givm::elemental_dice::pyro] == 3);
     CHECK(player.deck_card_count() == 0);
-    std::vector<givm::definition_id<givm::card_definition>> hand;
+    std::vector<givm::definition_id<givm::definition_category::card>> hand;
     for(const auto card : player.hand_cards()) hand.push_back(card.definition_id());
     CHECK(hand == std::vector{ card_a, card_b });
 }

@@ -33,7 +33,7 @@ namespace
 
     struct batch_summon_source
     {
-        using definition_category = givm::summon_view;
+        static constexpr auto category = givm::definition_category::summon;
         struct definition_type {};
         bool ordinary;
         std::string_view name() const { return ordinary ? "BatchOrdinary" : "BatchPersistent"; }
@@ -50,11 +50,11 @@ namespace
 
     struct batch_driver_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             batch_log* log;
-            givm::definition_id<givm::summon_view> ordinary;
+            givm::optional_definition_id<givm::definition_category::summon> ordinary;
             givm::normal_effect setup;
             givm::normal_effect action;
             givm::normal_effect nested;
@@ -68,8 +68,8 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto ordinary = context.resolve_id<givm::summon_view>("BatchOrdinary");
-            const auto persistent = context.resolve_id<givm::summon_view>("BatchPersistent");
+            const auto ordinary = context.resolve_id<givm::definition_category::summon>("BatchOrdinary");
+            const auto persistent = context.resolve_id<givm::definition_category::summon>("BatchPersistent");
             std::vector<givm::add_summon> setup;
             for(std::uint32_t index = 0; index != 8; ++index)
                 setup.push_back({ index < 6 ? givm::relative_player::self : givm::relative_player::opponent,
@@ -144,8 +144,8 @@ namespace
         const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
             std::tuple{ givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
             std::tuple{}, ordinary, persistent, driver);
-        const auto ordinary_id = ids.get_id<givm::summon_view>(ordinary.name());
-        const auto persistent_id = ids.get_id<givm::summon_view>(persistent.name());
+        const auto ordinary_id = ids.get_id<givm::definition_category::summon>(ordinary.name());
+        const auto persistent_id = ids.get_id<givm::definition_category::summon>(persistent.name());
         CHECK(library.remove_at_zero_usages(ordinary_id));
         CHECK_FALSE(library.remove_at_zero_usages(persistent_id));
         const auto copied_library = library;
@@ -154,7 +154,7 @@ namespace
         givm::table table{ { .self_player = givm::player_id{ 0 } },
             { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 }, .summon_limit = 8 },
             { .summon_limit = 8 } };
-        load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(driver.name()) } }, {});
+        load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(driver.name()) } }, {});
         givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };

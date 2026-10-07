@@ -29,7 +29,7 @@ namespace
 
     struct reaction_observer_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
 
         struct definition_type
         {
@@ -69,7 +69,7 @@ namespace
             data.log->order.push_back(1);
             data.log->incoming = event.incoming_element;
             data.log->reacted_aura = event.reacted_aura;
-            data.log->reaction = event.reaction.slot;
+            data.log->reaction = event.reaction.slot();
             data.log->cause = event.cause;
             if(data.log->take_over)
             {
@@ -142,8 +142,8 @@ TEST_CASE("apply_element exposes aura changes and both reaction events", "[apply
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(victim.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;

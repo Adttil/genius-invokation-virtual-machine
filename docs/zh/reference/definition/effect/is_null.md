@@ -27,7 +27,7 @@
 
 struct result_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
     using entry_type = givm::normal_effect;
 
     std::string_view name() const { return "终局判定"; }

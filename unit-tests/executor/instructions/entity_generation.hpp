@@ -102,7 +102,7 @@ namespace
 
         static id removed_id(const removed& event) { return event.attachment; }
 
-        static auto owner(givm::player_id player, std::size_t index = 0) { return givm::character_id{ player, index }; }
+        static auto owner(givm::player_id player, std::size_t index = 0) { return givm::character_id{ player, static_cast<std::uint32_t>(index) }; }
         static auto owner_of(const view& self) { return self.character().id(); }
         static auto entities(const givm::table& table, givm::player_id player, std::size_t index = 0)
         {
@@ -169,7 +169,7 @@ namespace
     template<class T>
     struct lifecycle_source
     {
-        using definition_category = typename T::view;
+        static constexpr auto category = givm::definition_category_of<std::remove_cvref_t<typename T::view>::category>;
         static constexpr bool is_dynamic = true;
 
         struct definition_type
@@ -188,7 +188,7 @@ namespace
                 return std::array<std::string_view, 1>{ log->erase_empty ? "remove_at_zero_usages" : "persistent" };
             else return std::array<std::string_view, 0>{};
         }
-        template<class TView, class TEvent>
+        template<givm::entity_category Entity, class TEvent>
         bool can_handle() const
         {
             return (std::is_same_v<TEvent, typename T::regeneration> && log->regeneration_handler_enabled)
@@ -271,13 +271,13 @@ namespace
     template<class T>
     struct lifecycle_driver
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             lifecycle_log<T>* log;
-            givm::definition_id<typename T::view> entity;
+            givm::optional_definition_id<givm::definition_category_of<std::remove_cvref_t<typename T::view>::category>> entity;
             std::vector<givm::normal_effect> entries;
-            givm::definition_id<givm::summon_view> other_summon;
+            givm::optional_definition_id<givm::definition_category::summon> other_summon;
 
         };
         lifecycle_log<T>* log;
@@ -301,15 +301,15 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto entity = context.resolve_id<typename T::view>("LifecycleEntity");
+            const auto entity = context.resolve_id<givm::definition_category_of<std::remove_cvref_t<typename T::view>::category>>("LifecycleEntity");
             definition_type result{ log, entity, {}, {} };
             if constexpr(std::is_same_v<T, summon_traits>)
-                result.other_summon = context.resolve_id<givm::summon_view>("OtherSummon");
+                result.other_summon = context.resolve_id<givm::definition_category::summon>("OtherSummon");
             for(const auto& action : log->actions)
             {
                 const auto player = action.player == givm::player_id{ 0 }
                     ? givm::relative_player::self : givm::relative_player::opponent;
-                auto definition = log->dynamic ? givm::definition_id<typename T::view>{} : entity;
+                auto definition = log->dynamic ? givm::optional_definition_id<givm::definition_category_of<std::remove_cvref_t<typename T::view>::category>>{} : entity;
                 if constexpr(std::is_same_v<T, summon_traits>)
                     if(action.other_summon && not log->dynamic) definition = result.other_summon;
                 const typename T::state state{ action.state[0], action.state[1] };
@@ -373,9 +373,9 @@ namespace
             if constexpr(std::is_same_v<T, summon_traits>)
                 if(action.other_summon) definition = data.other_summon;
             if(action.operation == operation::generate)
-                return context.invoke(entry, typename T::generation{ T::owner(action.player, action.character_index), definition, state });
+                return context.invoke(entry, typename T::generation{ T::owner(action.player, action.character_index), definition.get(), state });
             if(action.operation == operation::add)
-                return context.invoke(entry, typename T::addition{ T::owner(action.player, action.character_index), definition, state });
+                return context.invoke(entry, typename T::addition{ T::owner(action.player, action.character_index), definition.get(), state });
             auto entities = T::entities(context.table(), action.player, action.character_index);
             REQUIRE(std::ranges::distance(entities) > static_cast<std::ptrdiff_t>(action.target_index));
             const auto target = (*std::ranges::next(entities.begin(), action.target_index)).id();
@@ -427,7 +427,7 @@ namespace
     {
         const lifecycle_source<T> entity{ &log };
         const auto driver = givm::test::with_passive_skill(lifecycle_driver<T>{ &log });
-        struct target_source : givm::test::named_definition_source<givm::character_view>
+        struct target_source : givm::test::named_definition_source<givm::definition_category::character>
         {
             static givm::character_state query(const definition_type&, const givm::character_initial_state&)
             {
@@ -435,7 +435,7 @@ namespace
             }
         };
         const target_source character{ { "LifecycleTarget" } };
-        const givm::test::named_definition_source<givm::summon_view> other_summon{ "OtherSummon" };
+        const givm::test::named_definition_source<givm::definition_category::summon> other_summon{ "OtherSummon" };
         std::vector<givm::any_command> program;
         for(std::size_t index = 0; index < log.actions.size(); ++index) { program.emplace_back(givm::start_round{}); program.emplace_back(givm::settle{}); }
         program.emplace_back(givm::settle{});
@@ -445,9 +445,9 @@ namespace
         givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
             { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
         load_deck(table, library,
-            { .characters = { ids.template get_id<givm::character_view>(driver.name()) } },
-            { .characters = { ids.template get_id<givm::character_view>(character.name()),
-                ids.template get_id<givm::character_view>(character.name()) } });
+            { .characters = { ids.template get_id<givm::definition_category::character>(driver.name()) } },
+            { .characters = { ids.template get_id<givm::definition_category::character>(character.name()),
+                ids.template get_id<givm::definition_category::character>(character.name()) } });
         givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
@@ -804,17 +804,15 @@ TEMPLATE_TEST_CASE("repeated generation can accumulate or replenish without eras
     CHECK(T::values(table[log.created[0]].state()) == state_values{ 25, 35 });
 }
 
-TEST_CASE("official burning flame keeps extra usages when summoned again", "[summon][state-limit]")
-{
-    struct source
+    struct over_limit_flame_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
 
         std::string_view name() const { return "OverLimitFlameDriver"; }
         auto summon_dependencies() const { return std::array{ givm::genshin_impact::burning_flame_3_3_0.name() }; }
         givm::normal_effect compile(givm::definition_compile_context& context) const
         {
-            const auto flame = context.resolve_id<givm::summon_view>(givm::genshin_impact::burning_flame_3_3_0.name());
+            const auto flame = context.resolve_id<givm::definition_category::summon>(givm::genshin_impact::burning_flame_3_3_0.name());
             return context.add_normal_effect(std::tuple{
                 givm::summon{ .definition = flame, .state = { 1, 2 } },
                 givm::modify_summon_state{ .definition = flame, .usages = 1, .ignore_limit = true },
@@ -831,7 +829,11 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
             return context.invoke(entry);
         }
     };
-    const auto driver = givm::test::with_passive_skill(source{});
+
+TEST_CASE("official burning flame keeps extra usages when summoned again", "[summon][state-limit]")
+{
+
+    const auto driver = givm::test::with_passive_skill(over_limit_flame_source{});
     const auto reactions = givm_test::default_reactions((givm_test::dendro_core).name(), (givm_test::catalyzing_field).name(), (givm::genshin_impact::burning_flame_3_3_0).name(), (givm_test::frozen).name(), (givm_test::shield).name());
     givm::definition_source_library sources;
     REQUIRE(sources.add(givm_test::dendro_core, givm_test::catalyzing_field, givm::genshin_impact::burning_flame_3_3_0, givm_test::frozen, givm_test::shield));
@@ -843,14 +845,14 @@ TEST_CASE("official burning flame keeps extra usages when summoned again", "[sum
         compile(sources, basics, program, std::tuple{}, givm::compile_mode::normal));
     constexpr givm::player_id player{ 0 };
     givm::table table{ { .self_player = player }, { .active_character = givm::character_id{ player, 0 } }, {} };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(driver.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(driver.name()) } }, {});
     givm::executor executor;
     auto initialized = executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     REQUIRE(initialized.resume(library, table, random) == givm::execution_state::finished);
     auto summons = table[player].summons();
     REQUIRE(std::ranges::distance(summons) == 1);
-    CHECK((*summons.begin()).definition_id() == ids.get_id<givm::summon_view>(givm::genshin_impact::burning_flame_3_3_0.name()));
+    CHECK((*summons.begin()).definition_id() == ids.get_id<givm::definition_category::summon>(givm::genshin_impact::burning_flame_3_3_0.name()));
     CHECK((*summons.begin()).state().value == 1);
     CHECK((*summons.begin()).state().usages == 3);
 }
@@ -951,10 +953,10 @@ TEMPLATE_TEST_CASE("entity limit queries cache source results and default to the
     STATIC_REQUIRE(std::is_same_v<typename T::query::result_t, typename T::state>);
     lifecycle_log<T> log;
     const lifecycle_source<T> source{ &log };
-    const givm::test::named_definition_source<typename T::view> defaults{ "DefaultEntity" };
+    const givm::test::named_definition_source<givm::definition_category_of<std::remove_cvref_t<typename T::view>::category>> defaults{ "DefaultEntity" };
     const auto [library, ids] = givm::test::compile_definitions(source, defaults);
-    const auto id = ids.template get_id<typename T::view>(source.name());
-    const auto default_id = ids.template get_id<typename T::view>(defaults.name());
+    const auto id = ids.template get_id<givm::definition_category_of<std::remove_cvref_t<typename T::view>::category>>(source.name());
+    const auto default_id = ids.template get_id<givm::definition_category_of<std::remove_cvref_t<typename T::view>::category>>(defaults.name());
     REQUIRE(log.limit_queries == 1);
     CHECK(T::values(library.query(id, typename T::query{})) == log.limit);
     auto copied = library;

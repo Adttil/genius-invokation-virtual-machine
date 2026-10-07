@@ -38,7 +38,7 @@ namespace givm
 #ifndef NDEBUG
             executor_->validate_view<execution_state::initial_card_selection>(version_);
 #endif
-            if(player.index >= 2)
+            if(player.index() >= 2)
             {
                 return initial_card_selection_validation::invalid_player;
             }

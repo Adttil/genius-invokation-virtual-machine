@@ -16,7 +16,7 @@ namespace
 {
     struct failed_metadata_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type { std::size_t* query_calls; };
         bool* finished;
         std::size_t* query_calls;
@@ -26,18 +26,18 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto missing = context.resolve_id<givm::support_view>("Missing support");
+            const auto missing = context.resolve_id<givm::definition_category::support>("Missing support");
             CHECK_FALSE(missing);
-            const auto metadata = context[missing];
+            const auto metadata = context[givm::definition_id<givm::definition_category::support>{ 1 }];
             CHECK_FALSE(metadata.id());
             CHECK(metadata.name().empty());
             CHECK(metadata.tags().empty());
-            CHECK(metadata.dependencies<givm::card_definition>().empty());
+            CHECK(metadata.dependencies<givm::definition_category::card>().empty());
             CHECK_FALSE(metadata.has_tag("actual-source-tag"));
             CHECK_FALSE(metadata.can_handle<givm::round_started>());
             CHECK_FALSE(metadata.has_query<givm::support_state_limit>());
 
-            const auto subsequent = context.resolve_id<givm::skill_view>("Missing skill");
+            const auto subsequent = context.resolve_id<givm::definition_category::skill>("Missing skill");
             CHECK_FALSE(subsequent);
             *finished = true;
             return { query_calls };
@@ -79,8 +79,8 @@ TEST_CASE("failed hard resolution permits empty metadata inspection and subseque
     REQUIRE(subsequent);
     CHECK(first->definition.name == "Missing support");
     CHECK(first->cause == givm::definition_resolution_error::reason::undeclared_dependency);
-    CHECK(metadata->category_index == givm::definition_types::index_of<givm::support_view>());
-    CHECK(metadata->value == givm::definition_id<givm::support_view>::invalid_value);
+    CHECK(metadata->category == givm::definition_category::support);
+    CHECK(metadata->value == 1);
     CHECK(metadata->count == 1);
     CHECK(subsequent->definition.name == "Missing skill");
     CHECK(subsequent->cause == givm::definition_resolution_error::reason::undeclared_dependency);
@@ -89,7 +89,7 @@ TEST_CASE("failed hard resolution permits empty metadata inspection and subseque
         CHECK(error.location.stage == givm::compile_stage::definition);
         REQUIRE(error.location.source);
         CHECK(error.location.source->name == "Failed metadata lookup");
-        CHECK(error.location.source->category_index == givm::definition_types::index_of<givm::support_view>());
+        CHECK(error.location.source->category == givm::definition_category::support);
     }
 }
 }

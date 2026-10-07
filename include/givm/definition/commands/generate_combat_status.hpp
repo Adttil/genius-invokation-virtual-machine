@@ -21,7 +21,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -43,7 +43,7 @@ namespace givm
     struct generate_combat_status_input
     {
         player_id player;
-        definition_id<combat_status_view> definition;
+        definition_id<definition_category::combat_status> definition;
         combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
@@ -54,7 +54,7 @@ namespace givm
         using input_type = generate_combat_status_input;
 
         relative_player player = relative_player::self;
-        definition_id<combat_status_view> definition{};
+        optional_definition_id<definition_category::combat_status> definition{};
         combat_status_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 }

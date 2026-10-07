@@ -36,7 +36,7 @@ namespace
 
     struct initialized_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type {};
 
         constexpr std::string_view name() const noexcept { return "ObservedCharacter"; }
@@ -50,7 +50,7 @@ namespace
 
     struct creation_program_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { givm::normal_effect entry; };
 
         constexpr std::string_view name() const noexcept { return "CreationProgram"; }
@@ -65,9 +65,9 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto character = context.resolve_id<givm::character_view>("ObservedCharacter");
-            const auto card = context.resolve_id<givm::card_definition>("ObservedCard");
-            const auto other_card = context.resolve_id<givm::card_definition>("OtherObservedCard");
+            const auto character = context.resolve_id<givm::definition_category::character>("ObservedCharacter");
+            const auto card = context.resolve_id<givm::definition_category::card>("ObservedCard");
+            const auto other_card = context.resolve_id<givm::definition_category::card>("OtherObservedCard");
             return { context.add_normal_effect(std::tuple{
                 givm::enter_character{ .player = givm::player_id{ 1 }, .definition = character },
                 givm::insert_deck_card{ .player = givm::player_id{ 1 }, .definition = card },
@@ -92,7 +92,7 @@ namespace
 
     struct empty_program_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             givm::normal_effect entry;
@@ -119,7 +119,7 @@ namespace
 
     struct entity_observer_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             entity_event_log* log;
@@ -148,7 +148,7 @@ namespace
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             data.log->drawn.push_back(event.card);
-            const auto player = context.table()[event.card.player_id];
+            const auto player = context.table()[event.card.player_id()];
             data.log->card_counts_at_drawn.push_back({ player.hand_card_count(), player.deck_card_count() });
             if(data.draw_response) return context.invoke(data.draw_response);
             return {};
@@ -158,7 +158,7 @@ namespace
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id()].state().active_character == event.current);
             data.log->active.push_back(event.current);
             return {};
         }
@@ -166,7 +166,7 @@ namespace
 
     struct initial_switch_response_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             entity_event_log* log;
@@ -198,16 +198,16 @@ namespace
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id()].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            if(event.current.player_id == givm::player_id{ 0 } and data.entry) return context.invoke(data.entry);
+            if(event.current.player_id() == givm::player_id{ 0 } and data.entry) return context.invoke(data.entry);
             return {};
         }
     };
 
     struct switch_back_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             entity_event_log* log;
@@ -230,9 +230,9 @@ namespace
             const definition_type& data, givm::active_character_changed& event,
             givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            CHECK(context.table()[event.current.player_id].state().active_character == event.current);
+            CHECK(context.table()[event.current.player_id()].state().active_character == event.current);
             data.log->active.push_back(event.current);
-            if(event.current.index == 1 and data.entry) return context.invoke(data.entry);
+            if(event.current.index() == 1 and data.entry) return context.invoke(data.entry);
             return {};
         }
     };
@@ -242,8 +242,8 @@ namespace
 TEST_CASE("step passes through creation responses and preserves initialization", "[entity-observation]")
 {
     const initialized_character_source character_source;
-    const givm::test::named_definition_source<givm::card_definition> card_source{ "ObservedCard" };
-    const givm::test::named_definition_source<givm::card_definition> other_card_source{ "OtherObservedCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card_source{ "ObservedCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> other_card_source{ "OtherObservedCard" };
     const auto program_source = givm::test::with_passive_skill(creation_program_source{});
     const auto compile_program = [&](givm::compile_mode mode)
     {
@@ -256,7 +256,7 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(program_source.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(program_source.name()) } }, {});
     auto normal_table = table;
     counting_random normal_random;
     givm_test::executor_driver normal;
@@ -270,13 +270,13 @@ TEST_CASE("step passes through creation responses and preserves initialization",
     auto characters = table[givm::player_id{ 1 }].characters();
     REQUIRE(std::ranges::distance(characters) == 1);
     const auto character = (*characters.begin()).id();
-    CHECK(table[character].definition_id().value() == ids.get_id<givm::character_view>(character_source.name()).value());
+    CHECK(table[character].definition_id().value() == ids.get_id<givm::definition_category::character>(character_source.name()).value());
     CHECK(table[character].state().max_health == 12);
     CHECK(table[character].state().health == 12);
     CHECK(table[character].state().energy == 1);
     CHECK(table[givm::player_id{ 1 }].deck_card_count() == 2);
-    CHECK(table[givm::player_id{ 1 }].deck_card_definition(0) == ids.get_id<givm::card_definition>(other_card_source.name()));
-    CHECK(table[givm::player_id{ 1 }].deck_card_definition(1) == ids.get_id<givm::card_definition>(card_source.name()));
+    CHECK(table[givm::player_id{ 1 }].deck_card_definition(0) == ids.get_id<givm::definition_category::card>(other_card_source.name()));
+    CHECK(table[givm::player_id{ 1 }].deck_card_definition(1) == ids.get_id<givm::definition_category::card>(card_source.name()));
     CHECK(random.calls == normal_random.calls);
     CHECK(random.calls == 0);
     const auto normal_character = *normal_table[givm::player_id{ 1 }].characters().begin();
@@ -298,7 +298,7 @@ TEST_CASE("step passes through an empty response without an observation", "[enti
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(source.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(source.name()) } }, {});
     auto normal_table = table;
     counting_random random;
     givm_test::executor_driver normal;
@@ -322,7 +322,7 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
 
     entity_event_log log;
     const auto observer_source = givm::test::with_passive_skill(entity_observer_source{ &log });
-    const givm::test::named_definition_source<givm::card_definition> card_source{ "ObservedCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card_source{ "ObservedCard" };
     const auto compile_program = [&](givm::compile_mode mode)
     {
         return givm::test::compile_definitions_with_program(
@@ -339,10 +339,10 @@ TEST_CASE("step passes through draws and full-hand discards while preserving bro
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 2 }, { .hand_limit = 2 } };
-    const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
+    const auto card_definition = ids.get_id<givm::definition_category::card>(card_source.name());
     givm::linked_deck deck;
     deck.cards.assign(initial_hand_count + 3, card_definition);
-    load_deck(table, library, deck, { .characters = { ids.get_id<givm::character_view>(observer_source.name()) } });
+    load_deck(table, library, deck, { .characters = { ids.get_id<givm::definition_category::character>(observer_source.name()) } });
     const auto player = table[givm::player_id{ 0 }];
 
     auto normal_table = table;
@@ -375,8 +375,8 @@ TEST_CASE("single-player active-character observation precedes the table update 
     entity_event_log log;
     const auto observer_source = givm::test::with_passive_skill(entity_observer_source{ &log });
     const initialized_character_source character_source;
-    constexpr givm::character_id previous{ .player_id = givm::player_id{ 0 }, .index = 0 };
-    constexpr givm::character_id current{ .player_id = givm::player_id{ 0 }, .index = 1 };
+    constexpr givm::character_id previous{ givm::player_id{ 0 }, 0 };
+    constexpr givm::character_id current{ givm::player_id{ 0 }, 1 };
     const auto compile_program = [&](givm::compile_mode mode)
     {
         return givm::test::compile_definitions_with_program(
@@ -389,8 +389,8 @@ TEST_CASE("single-player active-character observation precedes the table update 
     const auto [library, ids] = compile_program(givm::compile_mode::observed);
     const auto normal_compilation = compile_program(givm::compile_mode::normal);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = previous } };
-    const auto definition = ids.get_id<givm::character_view>(character_source.name());
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer_source.name()), definition } }, {});
+    const auto definition = ids.get_id<givm::definition_category::character>(character_source.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer_source.name()), definition } }, {});
 
     auto normal_table = table;
     counting_random random;
@@ -428,9 +428,9 @@ TEST_CASE("initial active choices update both players before either response", "
         observer, character_source
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    const auto character = ids.get_id<givm::character_view>(character_source.name());
+    const auto character = ids.get_id<givm::definition_category::character>(character_source.name());
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(observer.name()), character } },
+        { .characters = { ids.get_id<givm::definition_category::character>(observer.name()), character } },
         { .characters = { character, character } });
 
     givm_test::executor_driver target;
@@ -511,8 +511,8 @@ TEST_CASE("resuming a switch applies it once before a nested switch response", "
         response, character_source
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = previous } };
-    const auto character = ids.get_id<givm::character_view>(character_source.name());
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(response.name()), character } }, {});
+    const auto character = ids.get_id<givm::definition_category::character>(character_source.name());
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(response.name()), character } }, {});
     auto normal_table = table;
     givm_test::executor_driver normal;
     normal.start(normal_compilation.library, normal_table);
@@ -553,8 +553,8 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     const bool respond_to_draws = GENERATE(false, true);
     entity_event_log log;
     const auto observer = givm::test::with_passive_skill(entity_observer_source{ &log, respond_to_draws });
-    const givm::test::named_definition_source<givm::card_definition> first{ "FirstCard" };
-    const givm::test::named_definition_source<givm::card_definition> second{ "SecondCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> first{ "FirstCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> second{ "SecondCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
@@ -564,12 +564,12 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
             givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, observer, first, second
     );
-    const auto first_id = ids.get_id<givm::card_definition>(first.name());
-    const auto second_id = ids.get_id<givm::card_definition>(second.name());
+    const auto first_id = ids.get_id<givm::definition_category::card>(first.name());
+    const auto second_id = ids.get_id<givm::definition_category::card>(second.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library,
         { .cards = { second_id, second_id, second_id, second_id, first_id, first_id } },
-        { .characters = { ids.get_id<givm::character_view>(observer.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } });
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;

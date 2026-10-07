@@ -25,10 +25,10 @@ namespace
 
     struct talent_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
-            givm::definition_id<givm::character_view> character;
+            givm::optional_definition_id<givm::definition_category::character> character;
             bool active_only;
             observation* log;
         };
@@ -41,7 +41,7 @@ namespace
         auto character_dependencies() const { return std::array{ character_name }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::character_view>(character_name), active_only, log };
+            return { context.resolve_id<givm::definition_category::character>(character_name), active_only, log };
         }
         static givm::card_state query(const definition_type&, const givm::card_initial_state&)
         {
@@ -58,7 +58,7 @@ namespace
         {
             if(parameters.target_count == 0) return givm::target_validation::valid_incomplete;
             if(parameters.target_count != 1) return givm::target_validation::invalid;
-            const auto target = std::get_if<givm::character_id>(&parameters.targets[0]);
+            const auto target = parameters.targets[0].template get_if<givm::entity_category::character>();
             return target && query(data, givm::card_equipment_target_validation{ parameters.card, parameters.table[*target] })
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
@@ -72,7 +72,7 @@ namespace
 
     struct artifact_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { observation* log; givm::preview_effect payment; };
         observation* log;
 
@@ -109,11 +109,11 @@ namespace
 
     struct setup_skill_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             observation* log;
-            givm::definition_id<givm::attachment_view> artifact;
+            givm::optional_definition_id<givm::definition_category::attachment> artifact;
             givm::normal_effect setup;
         };
         observation* log;
@@ -122,7 +122,7 @@ namespace
         auto attachment_dependencies() const { return std::array<std::string_view, 1>{ "TalentDiscountArtifact" }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.resolve_id<givm::attachment_view>("TalentDiscountArtifact"),
+            return { log, context.resolve_id<givm::definition_category::attachment>("TalentDiscountArtifact"),
                 context.add_normal_effect(std::tuple{ givm::add_attachment{}, givm::add_attachment{} }) };
         }
         static givm::normal_effect handle(const definition_type& data,
@@ -136,21 +136,21 @@ namespace
             const auto first = (*current++).id();
             const auto second = (*current).id();
             return context.invoke(data.setup,
-                givm::add_attachment_input{ first, data.artifact, { 1, 1 } },
-                givm::add_attachment_input{ second, data.artifact, { 1, 1 } });
+                givm::add_attachment_input{ first, data.artifact.get(), { 1, 1 } },
+                givm::add_attachment_input{ second, data.artifact.get(), { 1, 1 } });
         }
     };
 
     struct character_source
     {
-        using definition_category = givm::character_view;
-        using definition_type = givm::definition_id<givm::skill_view>;
+        static constexpr auto category = givm::definition_category::character;
+        using definition_type = givm::optional_definition_id<givm::definition_category::skill>;
 
         std::string_view name() const { return "TalentCharacter"; }
         auto skill_dependencies() const { return std::array<std::string_view, 1>{ "TalentQuerySetup" }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return context.resolve_id<givm::skill_view>("TalentQuerySetup");
+            return context.resolve_id<givm::definition_category::skill>("TalentQuerySetup");
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -181,7 +181,7 @@ TEST_CASE("equipment target queries discount only the uniquely applicable talent
     const givm::test::initialized_character_source absent{ "AbsentCharacter" };
     const talent_source talent{ "ApplicableTalent", character.name(), active_only, &log };
     const talent_source wrong{ "DifferentTalent", absent.name(), false, &log };
-    const givm::test::named_definition_source<givm::card_definition> plain{ "OrdinaryCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> plain{ "OrdinaryCard" };
     // Destroy the original library before executing: every context must use its supplied copy.
     auto [library, ids] = [&]
     {
@@ -191,14 +191,14 @@ TEST_CASE("equipment target queries discount only the uniquely applicable talent
             std::tuple{}, character, other, absent, talent, wrong, plain, artifact_source{ &log }, setup_skill_source{ &log });
         return std::pair{ original, map };
     }();
-    const auto character_id = ids.get_id<givm::character_view>(character.name());
-    const auto other_id = ids.get_id<givm::character_view>(other.name());
+    const auto character_id = ids.get_id<givm::definition_category::character>(character.name());
+    const auto other_id = ids.get_id<givm::definition_category::character>(other.name());
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(plain.name()), ids.get_id<givm::card_definition>(wrong.name()),
-            ids.get_id<givm::card_definition>(talent.name()) },
+        .cards = { ids.get_id<givm::definition_category::card>(plain.name()), ids.get_id<givm::definition_category::card>(wrong.name()),
+            ids.get_id<givm::definition_category::card>(talent.name()) },
         .characters = { active_only ? character_id : other_id, character_id }
     }, { .characters = { other_id } });
     executor_driver executor;

@@ -31,7 +31,7 @@ int main()
     givm::table table{};
     for(const auto player : table.players())
     {
-        std::println("玩家 {} 的骰子数: {}", player.id().index, player.state().dice.total());
+        std::println("玩家 {} 的骰子数: {}", player.id().index(), player.state().dice.total());
     }
 }
 ```

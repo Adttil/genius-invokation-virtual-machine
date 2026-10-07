@@ -42,7 +42,7 @@ enum class start_battle_error {};
 
 struct observer_source
 {
-    using definition_category = givm::skill_view;
+    static constexpr auto category = givm::definition_category::skill;
     struct definition_type { int* count; };
     int* count;
     std::string_view name() const { return "observer"; }
@@ -58,13 +58,13 @@ struct observer_source
 
 struct character_source
 {
-    using definition_category = givm::character_view;
-    using definition_type = givm::definition_id<givm::skill_view>;
+    static constexpr auto category = givm::definition_category::character;
+    using definition_type = givm::optional_definition_id<givm::definition_category::skill>;
     std::string_view name() const { return "character"; }
     auto skill_dependencies() const { return std::array<std::string_view, 1>{ "observer" }; }
     definition_type compile(givm::definition_compile_context& context) const
     {
-        return context.resolve_id<givm::skill_view>("observer");
+        return context.resolve_id<givm::definition_category::skill>("observer");
     }
     static givm::character_state query(const definition_type&, const givm::character_initial_state&)
     {
@@ -101,7 +101,7 @@ int main()
     const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 2 } };
     load_deck(table, library, givm::linked_deck{
-        .characters = { ids.get_id<givm::character_view>("character") }
+        .characters = { ids.get_id<givm::definition_category::character>("character") }
     }, {});
     auto random = []() -> std::uint32_t { return 0; };
     givm::executor execution{};

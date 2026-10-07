@@ -25,7 +25,6 @@
 | [`effect<Category>`](definition/effect.md) | 响应效果的入口 |
 | [`program_inputs`](definition/program_inputs.md) | 已准备并拥有的程序输入 |
 | [`fixed_defer_program_input`](definition/fixed_defer_program_input.md) | 固定延迟命令的编译用参数 |
-| [`history_summary_definition`](definition/history_summary.md) | 对局历史摘要的定义类别 |
 | [`history_scalar_field<T>`](definition/history_summary.md#类) | 历史摘要的标量字段描述 |
 | [`history_array_field<T>`](definition/history_summary.md#类) | 历史摘要的数组字段描述 |
 
@@ -40,7 +39,8 @@
 
 |  |  |
 | --- | --- |
-| [`views_of_definition`](definition/views_of_definition.md) | 定义对应的实体形态 |
+| [`definition_category`](enums/definition_category.md) | 定义所属的类别 |
+| [`entity_categories_of`](enums/entity_categories_of.md) | 定义对应的实体形态 |
 | [`subscribed_events`](definition/subscribed_events.md) | 实体形态可响应的事件 |
 | [`supported_queries`](definition/supported_queries.md) | 定义类别支持的查询 |
 
@@ -54,7 +54,6 @@
 | [`source_preparation_error`](definition/source_preparation_error.md) | 定义选择及 ID 准备诊断的 variant |
 | [`history_field_descriptor`](definition/history_summary.md#类型别名) | 历史摘要字段描述的 variant |
 | [`any_command`](definition/any_command.md) | 核心命令 variant |
-| [`definition_types`](definition/definition_types.md) | 全部定义类别 |
 | [`definition_data`](definition/definition_data.md) | 已编译定义的数据对象 |
 | [`handle_fn_t`](definition/handle_fn_t.md) | 统一的事件响应函数指针类型 |
 

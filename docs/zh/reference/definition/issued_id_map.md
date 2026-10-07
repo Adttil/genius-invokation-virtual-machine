@@ -44,11 +44,11 @@ class issued_id_map;
 int main()
 {
     givm::issued_id_map ids{ "治疗", "料理" };
-    ids.add<givm::card_definition>("恢复药剂", { "治疗" });
-    ids.add<givm::card_definition>("恢复料理", { "治疗", "料理" });
-    const auto cards = ids.query_by_tag<givm::card_definition>("治疗 & !料理");
+    ids.add<givm::definition_category::card>("恢复药剂", { "治疗" });
+    ids.add<givm::definition_category::card>("恢复料理", { "治疗", "料理" });
+    const auto cards = ids.query_by_tag<givm::definition_category::card>("治疗 & !料理");
     std::println("非料理治疗牌数量: {}", cards.size());
-    std::println("包含恢复药剂: {}", ids.has<givm::card_definition>("恢复药剂"));
+    std::println("包含恢复药剂: {}", ids.has<givm::definition_category::card>("恢复药剂"));
 }
 ```
 

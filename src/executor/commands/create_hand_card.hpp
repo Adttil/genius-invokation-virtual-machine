@@ -24,12 +24,12 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, create_hand_card>(library);
 #ifndef NDEBUG
-            debug_validate_entity(table, table.state().self_player, "create_hand_card", "self_player");
+            debug_validate_entity(table, table.state().self_player.get(), "create_hand_card", "self_player");
 #endif
             input = {
                 .player = command.player == relative_player::self
-                    ? table.state().self_player : other_player(table.state().self_player),
-                .definition = command.definition
+                    ? table.state().self_player.get() : other_player(table.state().self_player.get()),
+                .definition = command.definition.get<definition_category::card>()
             };
             context.advance(instruction_extent<1, create_hand_card>);
         }
@@ -81,8 +81,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<card_definition>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<card_definition>() });
+        if(command.definition.get<definition_category::card>().value() >= context.definition_count<definition_category::card>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::card>().value(), .limit = context.definition_count<definition_category::card>() });
         return errors;
     }
 }

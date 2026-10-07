@@ -28,7 +28,7 @@ namespace
 
     struct added_dice_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type
         {
             added_dice_log* log;
@@ -108,7 +108,7 @@ TEST_CASE("adding dice updates all types before notifying and resumes nested eff
         [](givm::definition_compile_context& context)
         {
             return std::tuple{ givm::add_support{ .player = givm::relative_player::self,
-                .definition = context.resolve_id<givm::support_view>("AddedDice") } };
+                .definition = context.resolve_id<givm::definition_category::support>("AddedDice") } };
         }, {}, support_names };
     const givm::test::initialization_character_source character;
     REQUIRE(sources.add(initialization, character));
@@ -117,7 +117,7 @@ TEST_CASE("adding dice updates all types before notifying and resumes nested eff
         std::tuple{}, mode));
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 1 } },
         { .dice = log.expected[0] }, { .dice = log.expected[1] } };
-    load_deck(table, library, {}, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
+    load_deck(table, library, {}, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };

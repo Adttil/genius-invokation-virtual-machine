@@ -50,7 +50,7 @@ namespace
 
     struct mutable_skill_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { mutation_log* log; givm::normal_effect effect; };
         mutation_log* log;
 
@@ -71,11 +71,11 @@ namespace
 
     struct mutation_observer_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             mutation_log* log;
-            givm::definition_id<givm::skill_view> skill;
+            givm::optional_definition_id<givm::definition_category::skill> skill;
             givm::normal_effect effect;
         };
         mutation_log* log;
@@ -84,7 +84,7 @@ namespace
         auto skill_dependencies() const { return std::array{ std::string_view{ "MutableSkill" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto skill = context.resolve_id<givm::skill_view>("MutableSkill");
+            const auto skill = context.resolve_id<givm::definition_category::skill>("MutableSkill");
             givm::normal_effect effect;
             switch(log->kind)
             {
@@ -184,19 +184,19 @@ namespace
         static givm::normal_effect handle(const definition_type& data,
             givm::skill_used& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            data.log->energy_after_skill.push_back(context.table()[event.skill.character_id].state().energy);
+            data.log->energy_after_skill.push_back(context.table()[event.skill.character_id()].state().energy);
             return {};
         }
     };
 
     struct mutable_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             givm::character_state state;
-            givm::definition_id<givm::skill_view> skill;
-            givm::definition_id<givm::skill_view> observer;
+            givm::optional_definition_id<givm::definition_category::skill> skill;
+            givm::optional_definition_id<givm::definition_category::skill> observer;
         };
         mutation_log* log;
         std::string_view source_name;
@@ -213,15 +213,15 @@ namespace
         {
             return { { .max_health = 10, .max_energy = log->max_energy, .health = health,
                 .energy = log->initial_energy, .energy_tag = *context.find_tag("special_energy") },
-                context.resolve_id<givm::skill_view>("MutableSkill"),
-                observe ? context.resolve_id<givm::skill_view>("MutationObserver")
-                    : givm::definition_id<givm::skill_view>{} };
+                context.resolve_id<givm::definition_category::skill>("MutableSkill"),
+                observe ? context.resolve_id<givm::definition_category::skill>("MutationObserver")
+                    : givm::optional_definition_id<givm::definition_category::skill>{} };
         }
         static givm::character_state query(const definition_type& data, const givm::character_initial_state&)
         {
             return data.state;
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
             if(query.skill_index == 0) return data.skill;
             if(query.skill_index == 1) return data.observer;
@@ -239,12 +239,12 @@ namespace
             mutable_character_source{ &log, "Standby", false, log.standby_health },
             mutable_character_source{ &log, "Opponent" });
         givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = active },
-            { .active_character = log.missing_target ? std::optional<givm::character_id>{} : opponent } };
+            { .active_character = log.missing_target ? givm::optional_character_id{} : opponent } };
         load_deck(table, library,
-            { .characters = { ids.get_id<givm::character_view>("Actor"), ids.get_id<givm::character_view>("Standby") } },
-            { .characters = { ids.get_id<givm::character_view>("Opponent") } });
+            { .characters = { ids.get_id<givm::definition_category::character>("Actor"), ids.get_id<givm::definition_category::character>("Standby") } },
+            { .characters = { ids.get_id<givm::definition_category::character>("Opponent") } });
         const auto energy_tag = table[active].state().energy_tag;
-        REQUIRE(energy_tag.is_valid());
+        REQUIRE(bool(energy_tag));
         givm_test::executor_driver executor;
         executor.start(library, table);
         auto random = [] { return std::uint32_t{ 0 }; };
@@ -262,7 +262,7 @@ namespace
             CHECK(table[character].state().energy_tag == energy_tag);
             CHECK(table[character].state().max_energy == log.max_energy);
         }
-        check(table, ids.get_id<givm::skill_view>("MutableSkill"));
+        check(table, ids.get_id<givm::definition_category::skill>("MutableSkill"));
     }
 
     template<class Check>
@@ -274,13 +274,13 @@ namespace
             mutable_character_source{ &log, "Actor", true },
             mutable_character_source{ &log, "Living" },
             mutable_character_source{ &log, "Defeated", false, 0 });
-        const auto actor = ids.get_id<givm::character_view>("Actor");
-        const auto living = ids.get_id<givm::character_view>("Living");
-        const auto defeated = ids.get_id<givm::character_view>("Defeated");
+        const auto actor = ids.get_id<givm::definition_category::character>("Actor");
+        const auto living = ids.get_id<givm::definition_category::character>("Living");
+        const auto defeated = ids.get_id<givm::definition_category::character>("Defeated");
         givm::linked_deck opponent_deck{ .characters = { living, living, defeated, living, living } };
         if(empty_opponent) opponent_deck.characters.clear();
         givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = active },
-            { .active_character = log.missing_target or empty_opponent ? std::optional<givm::character_id>{}
+            { .active_character = log.missing_target or empty_opponent ? givm::optional_character_id{}
                 : givm::character_id{ givm::player_id{ 1 }, 2 } } };
         load_deck(table, library, { .characters = { actor, living, living, defeated, living } }, opponent_deck);
         const auto energy_tag = table[active].state().energy_tag;
@@ -407,7 +407,7 @@ TEST_CASE("fixed modify_energy changes living range targets without moving the a
         for(const auto owner : { givm::player_id{ 0 }, givm::player_id{ 1 } })
             for(std::size_t index = 0; index != 5; ++index)
             {
-                const auto character = table[givm::character_id{ owner, index }];
+                const auto character = table[givm::character_id{ owner, static_cast<std::uint32_t>(index) }];
                 const auto selected = owner == selected_player and character.state().health != 0
                     and (selection == givm::character_selection::all or index != anchor_index);
                 CHECK(character.state().energy == (selected ? 2 : 1));
@@ -444,7 +444,7 @@ TEST_CASE("dynamic modify_energy batches consume distinct and empty inputs in pr
         for(const auto player : { givm::player_id{ 0 }, givm::player_id{ 1 } })
             for(std::size_t index = 0; index != 5; ++index)
             {
-                const auto character = givm::character_id{ player, index };
+                const auto character = givm::character_id{ player, static_cast<std::uint32_t>(index) };
                 const auto in_first = std::ranges::any_of(log.targets, [&](auto id) { return id == character; });
                 const auto in_second = std::ranges::any_of(log.second_targets, [&](auto id) { return id == character; });
                 CHECK(table[character].state().energy == (in_second ? 2 : in_first ? 0 : 1));

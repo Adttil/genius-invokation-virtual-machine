@@ -22,10 +22,10 @@ namespace givm_test
         return std::move(*result);
     }
 
-    template<class TCategory>
+    template<givm::definition_category TCategory>
     struct reaction_source
     {
-        using definition_category = TCategory;
+        static constexpr auto category = TCategory;
 
         struct definition_type{};
 
@@ -42,13 +42,13 @@ namespace givm_test
         }
     };
 
-    inline constexpr reaction_source<givm::combat_status_view> dendro_core{ "TestDendroCore" };
-    inline constexpr reaction_source<givm::combat_status_view> catalyzing_field{ "TestCatalyzingField" };
-    inline constexpr reaction_source<givm::summon_view> burning_flame{ "TestBurningFlame" };
+    inline constexpr reaction_source<givm::definition_category::combat_status> dendro_core{ "TestDendroCore" };
+    inline constexpr reaction_source<givm::definition_category::combat_status> catalyzing_field{ "TestCatalyzingField" };
+    inline constexpr reaction_source<givm::definition_category::summon> burning_flame{ "TestBurningFlame" };
 
-    inline constexpr reaction_source<givm::attachment_view> frozen{ "TestFrozen" };
+    inline constexpr reaction_source<givm::definition_category::attachment> frozen{ "TestFrozen" };
 
-    inline constexpr reaction_source<givm::combat_status_view> shield{ "TestShield" };
+    inline constexpr reaction_source<givm::definition_category::combat_status> shield{ "TestShield" };
 
     template<givm::elemental_reaction Slot>
     struct default_reaction_source : givm::genshin_impact::reaction_3_3_0_source<Slot>
@@ -85,16 +85,16 @@ namespace givm_test
             if constexpr(Slot == givm::elemental_reaction::bloom || Slot == givm::elemental_reaction::quicken
                 || Slot >= givm::elemental_reaction::crystallize_cryo)
                 return { context.add_immediate_effect(std::tuple{ givm::generate_combat_status{
-                    .definition = context.resolve_id<givm::combat_status_view>(generated_name),
+                    .definition = context.resolve_id<givm::definition_category::combat_status>(generated_name),
                     .state = Slot >= givm::elemental_reaction::crystallize_cryo
                         ? givm::combat_status_state{ 1, 0 }
                         : givm::combat_status_state{ Slot == givm::elemental_reaction::bloom ? 1u : 2u, 0 } } }), {} };
             else if constexpr(Slot == givm::elemental_reaction::burning)
                 return { context.add_immediate_effect(std::tuple{ givm::summon{
-                    .definition = context.resolve_id<givm::summon_view>(generated_name), .state = { 1, 1 } } }), {} };
+                    .definition = context.resolve_id<givm::definition_category::summon>(generated_name), .state = { 1, 1 } } }), {} };
             else if constexpr(Slot == givm::elemental_reaction::frozen)
                 return { context.add_immediate_effect(std::tuple{ givm::attach{} }),
-                    context.resolve_id<givm::attachment_view>(generated_name) };
+                    context.resolve_id<givm::definition_category::attachment>(generated_name) };
             else return base::compile(context);
         }
     };

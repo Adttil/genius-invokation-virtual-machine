@@ -137,7 +137,7 @@ namespace givm
 
         std::uint32_t random() const requires (Category != event_category::preview) { return (*random_)(); }
 
-        template<class TCategory, class TQuery>
+        template<definition_category TCategory, class TQuery>
             requires requires { supported_queries<TCategory>::template index_of<TQuery>(); }
         TQuery::result_t query(definition_id<TCategory> id, const TQuery& parameters) const
         {

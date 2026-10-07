@@ -33,7 +33,7 @@ namespace
 
     struct payment_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             payment_log* log;
@@ -68,7 +68,7 @@ namespace
             data.log->quote_indices.push_back(0);
             event.requirement.dice_requirement.any = 0;
             const auto self = context.entity().character().id();
-            const auto original = *context.table()[self.player_id].state().active_character;
+            const auto original = *context.table()[self.player_id()].state().active_character;
             const std::vector<givm::character_id> targets(target_count, self);
             const auto target = givm::set_active_character_input{ .current = self == first ? event.target : original };
             const auto leaf = data.error == input_error::nested_type
@@ -114,9 +114,9 @@ namespace
     {
         givm::table result{ { .self_player = givm::player_id{ 0 } }, { .active_character = first },
             { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-        const auto source = ids.get_id<givm::character_view>("DeferredPayment");
+        const auto source = ids.get_id<givm::definition_category::character>("DeferredPayment");
         load_deck(result, library, { .characters = { source, source } },
-            { .characters = { ids.get_id<givm::character_view>("Character") } });
+            { .characters = { ids.get_id<givm::definition_category::character>("Character") } });
         return result;
     }
 }

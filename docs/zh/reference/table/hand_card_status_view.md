@@ -10,6 +10,12 @@ class hand_card_status_view;
 
 附着在一张手牌上的状态，例如跟随该卡牌生效的持续影响。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](hand_card_status_view/category.md) | 此视图的实体类别 |
+
 ## 成员函数
 
 |  |  |

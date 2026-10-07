@@ -46,7 +46,7 @@ class definition_library;
 
 通过 [`compile`](compile.md) 创建。配套 ID 与程序入口应始终用于产生它们的定义库或其副本，不能混用于独立重新编译的库；定义视图的使用期不能超出所属定义库的生命期。牌桌不持有定义库，执行时由调用方显式传入配套的库。名称和标签的字符存储仍须保持有效。
 
-`history_field<T>` 的摘要 ID 为 `definition_id<history_summary_definition>`；返回 `history_value_key<T>`，可通过配套牌桌的 `table[key]` 读取。数组使用 `T[]`。省略模板参数时返回各强类型键的 variant `dynamic_history_value`。摘要 ID、字段名称、类型和数组形态须匹配；未定义 `NDEBUG` 时，不符会抛出 [`history_access_error`](history_access_error.md)，发布构建中违反约定属于未定义行为。编译上下文的同名查询则将错误记录到编译结果中。详见[历史摘要](../definition/history_summary.md)。
+`history_field<T>` 的摘要 ID 为 `definition_id<givm::definition_category::history_summary>`；返回 `history_value_key<T>`，可通过配套牌桌的 `table[key]` 读取。数组使用 `T[]`。省略模板参数时返回各强类型键的 variant `dynamic_history_value`。摘要 ID、字段名称、类型和数组形态须匹配；未定义 `NDEBUG` 时，不符会抛出 [`history_access_error`](history_access_error.md)，发布构建中违反约定属于未定义行为。编译上下文的同名查询则将错误记录到编译结果中。详见[历史摘要](../definition/history_summary.md)。
 
 ## 示例
 
@@ -61,7 +61,7 @@ class definition_library;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "恢复药剂"; }
     auto tags() const { return std::array<std::string_view, 1>{ "治疗" }; }
@@ -85,7 +85,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto card = ids.get_id<givm::card_definition>("恢复药剂");
+    const auto card = ids.get_id<givm::definition_category::card>("恢复药剂");
     std::println("卡牌名称: {}", library.name(card));
     std::println("具有治疗标签: {}", library.has_tag(card, ids.get_tag_id("治疗")));
 }

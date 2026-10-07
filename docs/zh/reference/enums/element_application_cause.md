@@ -31,8 +31,8 @@ enum class element_application_cause : std::uint8_t
 int main()
 {
     const givm::after_elemental_reaction event{
-        .source = givm::character_id{ { 0 }, 0 },
-        .target = { { 1 }, 0 },
+        .source = givm::character_id{ givm::player_id{ 0 }, 0 },
+        .target = { givm::player_id{ 1 }, 0 },
         .incoming_element = givm::element::pyro,
         .reacted_aura = givm::element_aura::cryo,
         .reaction = { givm::player_id{ 0 }, givm::elemental_reaction::melt },

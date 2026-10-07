@@ -42,7 +42,7 @@ namespace givm
         std::uint32_t value() const noexcept(detail::view_checks_disabled) { return observation().value; }
         damage_type type() const noexcept(detail::view_checks_disabled) { return observation().type; }
         damage_flags flags() const noexcept(detail::view_checks_disabled) { return observation().flags; }
-        reaction_id reaction() const noexcept(detail::view_checks_disabled) { return observation().reaction; }
+        optional_reaction_id reaction() const noexcept(detail::view_checks_disabled) { return observation().reaction; }
 
         template<class TRandom>
         execution_state resume(const definition_library& library, table& card_table, TRandom& random) const

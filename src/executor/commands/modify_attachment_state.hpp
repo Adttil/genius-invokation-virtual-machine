@@ -85,8 +85,9 @@ namespace givm::detail
     {
         std::visit([&](auto selector)
         {
-            using selector_type = decltype(selector);
-            if constexpr(std::is_same_v<selector_type, definition_id<attachment_view>>)
+            using selector_type = std::conditional_t<std::is_same_v<decltype(selector), optional_definition_id<definition_category::attachment>>,
+                definition_id<definition_category::attachment>, decltype(selector)>;
+            if constexpr(std::is_same_v<decltype(selector), optional_definition_id<definition_category::attachment>>)
             {
                 if(not selector)
                 {
@@ -97,12 +98,17 @@ namespace givm::detail
                 }
             }
             else GIVM_ASSERT(selector != equipment_type::none);
+            const auto fixed_selector = [&]
+            {
+                if constexpr(std::is_same_v<decltype(selector), equipment_type>) return selector;
+                else return selector.template get<definition_category::attachment>();
+            }();
             GIVM_ASSERT(command.target.character.selection == character_selection::character);
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_attachment_state_modification<true, selector_type> }
                 : execute_fn{ execute_attachment_state_modification<false, selector_type> });
             writer.write(attachment_state_modification_data<selector_type>{
-                { command.target.character, selector }, command.count, command.round_usages });
+                { command.target.character, fixed_selector }, command.count, command.round_usages });
         }, command.target.selector);
 
     }
@@ -115,7 +121,7 @@ namespace givm::detail
     {
         using reason = modify_attachment_state::error_type::reason;
         std::vector<modify_attachment_state::error_type> errors;
-        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        const auto* definition = std::get_if<optional_definition_id<definition_category::attachment>>(&command.target.selector);
         if(definition && not *definition)
         {
             if(kind != program_kind::response)
@@ -124,8 +130,8 @@ namespace givm::detail
         }
         if(definition)
         {
-            if(definition->value() >= context.definition_count<attachment_view>())
-                errors.push_back({ .cause = reason::invalid_definition, .value = definition->value(), .limit = context.definition_count<attachment_view>() });
+            if(definition->get<definition_category::attachment>().value() >= context.definition_count<definition_category::attachment>())
+                errors.push_back({ .cause = reason::invalid_definition, .value = definition->get<definition_category::attachment>().value(), .limit = context.definition_count<definition_category::attachment>() });
         }
         else
         {
@@ -148,7 +154,7 @@ namespace givm::detail
     template<class TInputTypes>
     constexpr std::size_t input_marker(const modify_attachment_state& command) noexcept
     {
-        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        const auto* definition = std::get_if<optional_definition_id<definition_category::attachment>>(&command.target.selector);
         return definition && not *definition ? TInputTypes::template index_of<modify_attachment_state::input_type>() : std::size_t(-1);
     }
 }

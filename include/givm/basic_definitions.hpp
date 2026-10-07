@@ -15,7 +15,7 @@ namespace givm::genshin_impact
 {
     struct shield_3_3_0_source
     {
-        using definition_category = combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
 
         struct definition_type
         {
@@ -79,7 +79,7 @@ namespace givm::genshin_impact
 
     struct frozen_3_3_0_source
     {
-        using definition_category = attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
 
         struct definition_type
         {
@@ -132,7 +132,7 @@ namespace givm::genshin_impact
 
     struct dendro_core_3_3_0_source
     {
-        using definition_category = combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
 
         struct definition_type
         {
@@ -171,18 +171,10 @@ namespace givm::genshin_impact
                 return {};
             const auto player = status.player().id();
             const auto opponent = other_player(player);
-            if(event.target.player_id != opponent
+            if(event.target.player_id() != opponent
                 || context.table()[opponent].state().active_character != event.target)
                 return {};
-            const auto source_player = std::visit([](const auto source)
-            {
-                if constexpr(requires { source.player_id; })
-                    return source.player_id;
-                else if constexpr(requires { source.character_id; })
-                    return source.character_id.player_id;
-                else
-                    return source.card_id.player_id;
-            }, event.source);
+            const auto source_player = event.source.player_id();
             if(source_player != player)
                 return {};
 
@@ -214,7 +206,7 @@ namespace givm::genshin_impact
 
     struct catalyzing_field_3_3_0_source
     {
-        using definition_category = combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
 
         struct definition_type
         {
@@ -253,18 +245,10 @@ namespace givm::genshin_impact
                 return {};
             const auto player = status.player().id();
             const auto opponent = other_player(player);
-            if(event.target.player_id != opponent
+            if(event.target.player_id() != opponent
                 || context.table()[opponent].state().active_character != event.target)
                 return {};
-            const auto source_player = std::visit([](const auto source)
-            {
-                if constexpr(requires { source.player_id; })
-                    return source.player_id;
-                else if constexpr(requires { source.character_id; })
-                    return source.character_id.player_id;
-                else
-                    return source.card_id.player_id;
-            }, event.source);
+            const auto source_player = event.source.player_id();
             if(source_player != player)
                 return {};
 
@@ -296,7 +280,7 @@ namespace givm::genshin_impact
 
     struct catalyzing_field_3_4_0_source
     {
-        using definition_category = combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
 
         struct definition_type
         {
@@ -335,18 +319,10 @@ namespace givm::genshin_impact
                 return {};
             const auto player = status.player().id();
             const auto opponent = other_player(player);
-            if(event.target.player_id != opponent
+            if(event.target.player_id() != opponent
                 || context.table()[opponent].state().active_character != event.target)
                 return {};
-            const auto source_player = std::visit([](const auto source)
-            {
-                if constexpr(requires { source.player_id; })
-                    return source.player_id;
-                else if constexpr(requires { source.character_id; })
-                    return source.character_id.player_id;
-                else
-                    return source.card_id.player_id;
-            }, event.source);
+            const auto source_player = event.source.player_id();
             if(source_player != player)
                 return {};
 
@@ -378,7 +354,7 @@ namespace givm::genshin_impact
 
     struct burning_flame_3_3_0_source
     {
-        using definition_category = summon_view;
+        static constexpr auto category = givm::definition_category::summon;
 
         struct definition_type
         {
@@ -448,12 +424,12 @@ namespace givm::genshin_impact
     template<elemental_reaction Slot>
     struct reaction_3_3_0_source
     {
-        using definition_category = reaction_view;
+        static constexpr auto category = givm::definition_category::reaction;
 
         struct definition_type
         {
             immediate_effect effect;
-            definition_id<attachment_view> frozen;
+            optional_definition_id<givm::definition_category::attachment> frozen;
         };
 
         std::string_view source_name;
@@ -483,22 +459,22 @@ namespace givm::genshin_impact
         {
             if constexpr(Slot == elemental_reaction::bloom || Slot == elemental_reaction::quicken)
             {
-                const auto definition = context.resolve_id<combat_status_view>(combat_status_dependencies()[0]);
+                const auto definition = context.resolve_id<givm::definition_category::combat_status>(combat_status_dependencies()[0]);
                 return { context.add_immediate_effect(std::tuple{ generate_combat_status{ .definition = definition,
                     .state = { Slot == elemental_reaction::bloom ? 1u : 2u, 0 } } }), {} };
             }
             else if constexpr(Slot == elemental_reaction::burning)
             {
-                const auto definition = context.resolve_id<summon_view>(burning_flame_3_3_0.name());
+                const auto definition = context.resolve_id<givm::definition_category::summon>(burning_flame_3_3_0.name());
                 return { context.add_immediate_effect(std::tuple{ summon{ .definition = definition, .state = { 1, 1 } } }), {} };
             }
             else if constexpr(Slot >= elemental_reaction::crystallize_cryo)
             {
-                const auto definition = context.resolve_id<combat_status_view>(shield_3_3_0.name());
+                const auto definition = context.resolve_id<givm::definition_category::combat_status>(shield_3_3_0.name());
                 return { context.add_immediate_effect(std::tuple{ generate_combat_status{ .definition = definition, .state = { 1, 0 } } }), {} };
             }
             else if constexpr(Slot == elemental_reaction::frozen)
-                return { context.add_immediate_effect(std::tuple{ attach{} }), context.resolve_id<attachment_view>(frozen_3_3_0.name()) };
+                return { context.add_immediate_effect(std::tuple{ attach{} }), context.resolve_id<givm::definition_category::attachment>(frozen_3_3_0.name()) };
             else if constexpr(Slot == elemental_reaction::overloaded)
                 return { context.add_immediate_effect(std::tuple{ set_active_character{} }), {} };
             else if constexpr(Slot == elemental_reaction::superconduct || Slot == elemental_reaction::electro_charged
@@ -534,16 +510,16 @@ namespace givm::genshin_impact
             else if constexpr(Slot == elemental_reaction::frozen)
             {
                 if(context.table()[event.target].state().health == 0) return {};
-                return context.invoke(definition.effect, attach_input{ event.target, definition.frozen });
+                return context.invoke(definition.effect, attach_input{ event.target, definition.frozen.template get<givm::definition_category::attachment>() });
             }
             else if constexpr(Slot == elemental_reaction::overloaded)
             {
-                const auto player = context.table()[event.target.player_id];
+                const auto player = context.table()[event.target.player_id()];
                 if(player.state().active_character != event.target) return {};
                 const auto all = player.characters<false>();
                 for(std::size_t offset = 1; offset < all.size(); ++offset)
                 {
-                    const auto target = all[(event.target.index + offset) % all.size()];
+                    const auto target = all[(event.target.index() + offset) % all.size()];
                     if(target && target.state().alive && target.state().health != 0)
                         return context.invoke(definition.effect, set_active_character_input{ target.id() });
                 }

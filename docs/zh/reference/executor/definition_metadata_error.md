@@ -14,7 +14,7 @@ struct definition_metadata_error;
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| `category_index` | `std::size_t` | 待查询类别在 [`definition_types`](../definition/definition_types.md) 中的索引 |
+| `category` | `definition_category` | 待查询类别在 [`definition_category`](../enums/definition_category.md) 中的索引 |
 | `value` | `std::size_t` | 输入定义 ID 的数值 |
 | `count` | `std::size_t` | 本次编译集合中该类别的定义数量，即有效 ID 数值范围的上界（不含） |
 

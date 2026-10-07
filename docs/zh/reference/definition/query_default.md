@@ -10,7 +10,7 @@ constexpr support_state query_default(const support_state_limit&) noexcept;
 constexpr summon_state query_default(const summon_state_limit&) noexcept;
 constexpr combat_status_state query_default(const combat_status_state_limit&) noexcept;
 constexpr attachment_state query_default(const attachment_state_limit&) noexcept;
-constexpr definition_id<skill_view> query_default(const character_initial_skill&) noexcept;
+constexpr optional_definition_id<givm::definition_category::skill> query_default(const character_initial_skill&) noexcept;
 constexpr action_cost_requirement query_default(const skill_initial_cost&) noexcept;
 constexpr target_validation query_default(const skill_target_validation& query) noexcept;
 constexpr action_cost_requirement query_default(const technique_initial_cost&) noexcept;

@@ -48,13 +48,13 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, add_attachment>(library);
             const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
 #ifndef NDEBUG
             debug_validate_active_character(table, player, "add_attachment");
 #endif
             input = {
                 .target = *table[player].state().active_character,
-                .definition = command.definition, .state = command.state
+                .definition = command.definition.get<definition_category::attachment>(), .state = command.state
             };
             context.advance(instruction_extent<1, add_attachment>);
         }
@@ -102,8 +102,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<attachment_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<attachment_view>() });
+        if(command.definition.get<definition_category::attachment>().value() >= context.definition_count<definition_category::attachment>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::attachment>().value(), .limit = context.definition_count<definition_category::attachment>() });
         return errors;
     }
 }

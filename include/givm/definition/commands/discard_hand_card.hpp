@@ -23,7 +23,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -54,7 +54,7 @@ namespace givm
         using input_type = discard_hand_card_input;
 
         relative_player player = relative_player::self;
-        definition_id<card_definition> definition{};
+        optional_definition_id<definition_category::card> definition{};
         std::uint32_t count = 1;
     };
 }

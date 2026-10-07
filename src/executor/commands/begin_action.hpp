@@ -187,7 +187,7 @@ namespace givm::detail
         std::vector<action_skill_candidate> skills;
         for(auto skill : active.skills())
         {
-            if(not library[skill.definition_id()].can_handle<this_skill_use, skill_view>()) continue;
+            if(not library[skill.definition_id()].can_handle<this_skill_use, entity_category::skill>()) continue;
             auto flags = library.skill_flags(skill.definition_id());
             if(flags.contains(skill_flag_bits::normal_attack))
             {
@@ -198,7 +198,7 @@ namespace givm::detail
         }
         std::vector<attachment_id> techniques;
         if(active.has(equipment_type::technique)
-            && library[active.get(equipment_type::technique).definition_id()].can_handle<this_technique_use, attachment_view>())
+            && library[active.get(equipment_type::technique).definition_id()].can_handle<this_technique_use, entity_category::attachment>())
             techniques.push_back(active.get(equipment_type::technique).id());
         context.stack().push(
             dynamic_array<switch_handler_id>(collect_all_broadcast_targets<cost_of_switch>(library, table)),
@@ -262,10 +262,10 @@ namespace givm::detail
         // Keep the action's speed across input packing before entering its effect.
         *reinterpret_cast<action_speed*>(stack.data() + speed_offset) = effect.speed;
         if(effect.speed == action_speed::combat)
-            table[effect.attachment.character_id.player_id].state().can_plunge = false;
+            table[effect.attachment.character_id().player_id()].state().can_plunge = false;
         if(entry)
         {
-            table.state().self_player = effect.attachment.character_id.player_id;
+            table.state().self_player = effect.attachment.character_id().player_id();
             return context.enter(entry);
         }
         return complete_single_response<this_prepared_skill_use, attachment_id>(library, table, context, random);
@@ -279,7 +279,7 @@ namespace givm::detail
     {
         end_response<true>(context);
         const auto active = *table[table.state().active_player].state().active_character;
-        std::optional<attachment_id> prepared;
+        optional_entity_id<entity_category::attachment> prepared;
         for(auto attachment : table[active].attachments())
         {
             const auto definition = attachment.definition_id();
@@ -288,7 +288,7 @@ namespace givm::detail
                 context.enter_next();
                 return prepare_action_selection(library, table, context);
             }
-            if(not prepared && library[definition].can_handle<this_prepared_skill_use, attachment_view>())
+            if(not prepared && library[definition].can_handle<this_prepared_skill_use, entity_category::attachment>())
                 prepared = attachment.id();
         }
         if(prepared)
@@ -340,7 +340,7 @@ namespace givm::detail
         if(const auto* selected = std::get_if<elemental_tuning_selection>(&selection))
         {
             const auto card = get<5>(get<0>(context.stack().top<action_window_frame>()))[selected->card_index];
-            const auto active = *table[card.player_id].state().active_character;
+            const auto active = *table[card.player_id()].state().active_character;
             const elemental_tuning_modification event{
                 .card = card, .from = selected->from,
                 .to = static_cast<elemental_dice>(table[active].state().element)
@@ -389,7 +389,7 @@ namespace givm::detail
     inline execution_state pay_action_cost(const definition_library&, unrestricted_table& table,
         execution_context& context, character_id payer, const dice_counts& paid_dice, std::uint32_t energy)
     {
-        const auto player = payer.player_id;
+        const auto player = payer.player_id();
         auto& available = table[player].state().dice;
         dice_counts actual;
         for(std::uint8_t index = 0; index <= std::to_underlying(elemental_dice::omni); ++index)
@@ -546,7 +546,7 @@ namespace givm::detail
         const auto event = get<0>(context.stack().top<
             card_will_be_played, response_return>());
         pop_broadcast<card_will_be_played>(context);
-        if(event.speed == action_speed::combat) table[event.card.player_id].state().can_plunge = false;
+        if(event.speed == action_speed::combat) table[event.card.player_id()].state().can_plunge = false;
         context.advance(response_extent<card_will_be_played>);
         // The played card is already out of hand, but retains its definition and state.
         prepare_single_response(this_card_play{ .card = event.card, .targets = event.targets },
@@ -659,7 +659,7 @@ namespace givm::detail
         }
         const auto event = get<0>(context.stack().top<technique_will_be_used, response_return>());
         pop_broadcast<technique_will_be_used>(context);
-        if(event.speed == action_speed::combat) table[event.technique.character_id.player_id].state().can_plunge = false;
+        if(event.speed == action_speed::combat) table[event.technique.character_id().player_id()].state().can_plunge = false;
         context.advance(response_extent<technique_will_be_used>);
         context.stack().push(technique_used{
             .technique = event.technique, .targets = event.targets, .speed = event.speed,
@@ -697,7 +697,7 @@ namespace givm::detail
         const auto event = get<0>(context.stack().top<elemental_tuning_modification, response_return>());
         pop_broadcast<elemental_tuning_modification>(context);
         table[event.card].erase();
-        auto& dice = table[event.card.player_id].state().dice;
+        auto& dice = table[event.card.player_id()].state().dice;
         --dice[event.from];
         ++dice[event.to];
         append_event_record(context, elemental_tuning_completed{

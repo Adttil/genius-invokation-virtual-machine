@@ -24,7 +24,7 @@ namespace givm::detail
     {
         const auto command = context.instruction_data<1, draw_cards>(library);
         const auto player = table[command.player == relative_player::self
-            ? table.state().self_player : other_player(table.state().self_player)];
+            ? table.state().self_player.get() : other_player(table.state().self_player.get())];
         context.advance(instruction_extent<1, draw_cards>);
         if(command.position == 0)
         {
@@ -54,12 +54,12 @@ namespace givm::detail
         std::array<bool, 2> changed{};
         for(const auto card : cards)
         {
-            const auto player = table[card.player_id];
+            const auto player = table[card.player_id()];
             add_drawn_card(context, player, player.take_deck_card(card));
-            changed[card.player_id.index] = true;
+            changed[card.player_id().index()] = true;
         }
         for(std::size_t index = 0; index != changed.size(); ++index)
-            if(changed[index]) table[player_id{ index }].compact_deck_card_order();
+            if(changed[index]) table[player_id{ static_cast<std::uint32_t>(index) }].compact_deck_card_order();
         context.stack().pop<deck_card_id[]>();
         return context.enter_next();
     }

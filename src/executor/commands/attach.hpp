@@ -30,7 +30,7 @@ namespace givm::detail
         for(const auto attachment : std::as_const(table)[input.target].attachments())
         {
             if(attachment.definition_id() != input.definition) continue;
-            if(not definition.can_handle<this_attachment_reapply, attachment_view>()) return std::nullopt;
+            if(not definition.can_handle<this_attachment_reapply, entity_category::attachment>()) return std::nullopt;
             this_attachment_reapply event{ input.state };
             prepare_single_response(event, attachment.id(), table, context, reapplication_resume);
             if(not continue_single_response<this_attachment_reapply, attachment_id>(library, table, context, random)) return continue_execution;
@@ -59,11 +59,11 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, attach>(library);
             const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
 #ifndef NDEBUG
             debug_validate_active_character(table, player, "attach");
 #endif
-            input = { *table[player].state().active_character, command.definition, command.state };
+            input = { *table[player].state().active_character, command.definition.get<definition_category::attachment>(), command.state };
             context.advance(instruction_extent<1, attach>);
         }
         else
@@ -104,8 +104,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<attachment_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<attachment_view>() });
+        if(command.definition.get<definition_category::attachment>().value() >= context.definition_count<definition_category::attachment>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::attachment>().value(), .limit = context.definition_count<definition_category::attachment>() });
         return errors;
     }
 }

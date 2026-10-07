@@ -11,7 +11,7 @@ namespace givm_test::definition::source_library_linkage
     template<int Identity>
     struct card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type {};
 
         std::string_view source_name;

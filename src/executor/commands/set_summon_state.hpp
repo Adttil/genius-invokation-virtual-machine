@@ -19,7 +19,7 @@ namespace givm::detail
     struct summon_state_change_data
     {
         relative_player player;
-        definition_id<summon_view> definition;
+        definition_id<definition_category::summon> definition;
         summon_state state;
     };
 
@@ -49,7 +49,7 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, summon_state_change_data>(library);
             const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
 #ifndef NDEBUG
             debug_validate_required_entity(table, player, command.definition, "set_summon_state", "summon");
 #endif
@@ -83,7 +83,7 @@ namespace givm::detail
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_summon_state_change<true, true> }
                 : execute_fn{ execute_summon_state_change<true, false> });
-            writer.write(summon_state_change_data{ command.player, command.definition, command.state });
+            writer.write(summon_state_change_data{ command.player, command.definition.get<definition_category::summon>(), command.state });
         }
         else
             writer.write(command.ignore_limit
@@ -107,8 +107,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<summon_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<summon_view>() });
+        if(command.definition.get<definition_category::summon>().value() >= context.definition_count<definition_category::summon>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::summon>().value(), .limit = context.definition_count<definition_category::summon>() });
         return errors;
     }
 }

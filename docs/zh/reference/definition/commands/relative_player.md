@@ -27,7 +27,7 @@ enum class relative_player : std::uint8_t
 
 `handle` 函数本身仍读取外层的本方值，不因为正在调用哪个响应而改变。响应需要知道自身所属玩家时，使用 `context.entity().player().id()`。
 
-根流程默认没有本方，`self_player` 初始为 `player_id{ 2 }`。根流程需要使用这些相对命令时，调用方须显式为牌桌设置有效本方，例如构造 `table{ { .self_player = player_id{ 0 } } }`。没有有效本方时执行相对命令属于未定义行为，不回退到 `active_player`。动态输入中的精确玩家或实体 ID 不依赖此基准。
+根流程默认没有本方，`self_player` 初始为空。根流程需要使用这些相对命令时，调用方须显式为牌桌设置有效本方，例如构造 `table{ { .self_player = player_id{ 0 } } }`。没有本方时执行相对命令属于未定义行为，不回退到 `active_player`。动态输入中的精确玩家或实体 ID 不依赖此基准。
 
 ## 示例
 

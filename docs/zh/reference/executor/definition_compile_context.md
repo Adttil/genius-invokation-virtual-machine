@@ -57,22 +57,22 @@ class definition_compile_context;
 
 struct support_source
 {
-    using definition_category = givm::support_view;
+    static constexpr auto category = givm::definition_category::support;
     std::string_view name() const { return "协助者"; }
     int compile(givm::definition_compile_context&) const { return 0; }
 };
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "召唤卡"; }
     auto support_dependencies() const
     { return std::array<std::string_view, 1>{ "协助者" }; }
 
-    givm::definition_id<givm::support_view> compile(givm::definition_compile_context& context) const
+    givm::optional_definition_id<givm::definition_category::support> compile(givm::definition_compile_context& context) const
     {
-        const auto support = context.resolve_id<givm::support_view>("协助者");
-        std::println("已找到依赖的支援: {}", support.is_valid());
+        const auto support = context.resolve_id<givm::definition_category::support>("协助者");
+        std::println("已找到依赖的支援: {}", bool(support));
         return support;
     }
 };

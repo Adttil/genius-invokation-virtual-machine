@@ -30,7 +30,7 @@ definition_source_library();
 int main()
 {
     givm::definition_source_library sources{};
-    std::println("已登记恢复药剂: {}", sources.has<givm::card_definition>("恢复药剂"));
+    std::println("已登记恢复药剂: {}", sources.has<givm::definition_category::card>("恢复药剂"));
 }
 ```
 

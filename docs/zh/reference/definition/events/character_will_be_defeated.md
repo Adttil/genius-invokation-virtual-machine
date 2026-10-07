@@ -31,7 +31,7 @@ struct character_will_be_defeated;
 int main()
 {
     givm::character_will_be_defeated event{ .target = { givm::player_id{ 1 }, 0 } };
-    std::println("濒死角色位置: {}", event.target.index);
+    std::println("濒死角色位置: {}", event.target.index());
 }
 ```
 

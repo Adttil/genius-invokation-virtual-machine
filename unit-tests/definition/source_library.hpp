@@ -22,10 +22,10 @@ namespace givm_test::definition::source_library
 {
 namespace
 {
-    template<class TDefinition>
+    template<givm::definition_category TDefinition>
     struct plain_source
     {
-        using definition_category = TDefinition;
+        static constexpr auto category = TDefinition;
 
         struct definition_type{};
 
@@ -51,11 +51,11 @@ namespace
 
     struct card_with_support_dependency
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
 
         struct definition_type
         {
-            givm::definition_id<givm::support_view> support;
+            givm::optional_definition_id<givm::definition_category::support> support;
         };
 
         std::string_view source_name;
@@ -73,22 +73,22 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { .support = context.resolve_id<givm::support_view>(support_name) };
+            return { .support = context.resolve_id<givm::definition_category::support>(support_name) };
         }
     };
 
     struct card_with_soft_filter
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
 
         struct definition_type
         {
-            std::vector<givm::definition_id<givm::card_definition>> cards;
+            std::vector<givm::definition_id<givm::definition_category::card>> cards;
         };
 
         std::string_view source_name;
         std::string_view filter;
-        std::vector<givm::definition_id<givm::card_definition>>* matches;
+        std::vector<givm::definition_id<givm::definition_category::card>>* matches;
 
         constexpr std::string_view name() const noexcept
         {
@@ -102,21 +102,21 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            *matches = context.find_ids_by_tag<givm::card_definition>(filter);
-            CHECK(context.find_definition<givm::card_definition>("Alpha").has_value() == not matches->empty());
-            CHECK_FALSE(context.find_definition<givm::card_definition>("Gamma"));
-            CHECK(context.definitions<givm::card_definition>().size() == (matches->empty() ? 1 : 3));
+            *matches = context.find_ids_by_tag<givm::definition_category::card>(filter);
+            CHECK(context.find_definition<givm::definition_category::card>("Alpha").has_value() == not matches->empty());
+            CHECK_FALSE(context.find_definition<givm::definition_category::card>("Gamma"));
+            CHECK(context.definitions<givm::definition_category::card>().size() == (matches->empty() ? 1 : 3));
             return { .cards = *matches };
         }
     };
 
     struct core_with_support_dependency
     {
-        using definition_category = givm::reaction_view;
+        static constexpr auto category = givm::definition_category::reaction;
 
         struct definition_type
         {
-            givm::definition_id<givm::support_view> support;
+            givm::optional_definition_id<givm::definition_category::support> support;
         };
 
         std::string_view source_name;
@@ -134,17 +134,17 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::support_view>(support_name) };
+            return { context.resolve_id<givm::definition_category::support>(support_name) };
         }
     };
     struct reaction_bindings
     {
-        std::array<givm::definition_id<givm::reaction_view>, givm::elemental_reaction_count> ids;
+        std::array<givm::definition_id<givm::definition_category::reaction>, givm::elemental_reaction_count> ids;
     };
 
     struct card_with_reaction_bindings
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         reaction_bindings* bindings;
         constexpr std::string_view name() const noexcept { return "Reaction-aware card"; }
         reaction_bindings compile(givm::definition_compile_context& context) const
@@ -155,11 +155,11 @@ namespace
         }
     };
 
-    struct dynamic_card_source : plain_source<givm::card_definition>
+    struct dynamic_card_source : plain_source<givm::definition_category::card>
     {
         static constexpr bool is_dynamic = true;
 
-        template<class TView, class TEvent>
+        template<givm::entity_category Entity, class TEvent>
         constexpr bool can_handle() const noexcept { return false; }
 
         template<class TQuery>
@@ -181,10 +181,10 @@ namespace
         }
     };
 
-    template<class TCategory>
+    template<givm::definition_category TCategory>
     struct source_with_dependencies
     {
-        using definition_category = TCategory;
+        static constexpr auto category = TCategory;
         struct definition_type {};
 
         std::string_view source_name;
@@ -209,85 +209,85 @@ namespace
 TEST_CASE("definition_source_library adds a dependent batch atomically", "[source_library]")
 {
     const card_with_support_dependency card{ "Card", "Support" };
-    const plain_source<givm::support_view> support{ .source_name = "Support" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Support" };
 
     givm::definition_source_library library;
     CHECK_FALSE(library.add(card));
     CHECK(library.empty());
-    CHECK_FALSE(library.has<givm::card_definition>("Card"));
+    CHECK_FALSE(library.has<givm::definition_category::card>("Card"));
 
     REQUIRE(library.add(card, support));
     CHECK_FALSE(library.empty());
-    CHECK(library.has<givm::card_definition>("Card"));
-    CHECK(library.has<givm::support_view>("Support"));
+    CHECK(library.has<givm::definition_category::card>("Card"));
+    CHECK(library.has<givm::definition_category::support>("Support"));
 
     givm::definition_source_library duplicate_batch;
-    const plain_source<givm::card_definition> duplicate{ .source_name = "Card" };
+    const plain_source<givm::definition_category::card> duplicate{ .source_name = "Card" };
     CHECK_FALSE(duplicate_batch.add(card, duplicate, support));
     CHECK(duplicate_batch.empty());
-    CHECK_FALSE(duplicate_batch.has<givm::card_definition>("Card"));
-    CHECK_FALSE(duplicate_batch.has<givm::support_view>("Support"));
+    CHECK_FALSE(duplicate_batch.has<givm::definition_category::card>("Card"));
+    CHECK_FALSE(duplicate_batch.has<givm::definition_category::support>("Support"));
 }
 
 TEST_CASE("definition_source_library rejects a conflicting library without partial merge", "[source_library]")
 {
-    const plain_source<givm::card_definition> card{ .source_name = "Card" };
-    const plain_source<givm::support_view> support{ .source_name = "Support" };
-    const plain_source<givm::summon_view> summon{ .source_name = "Summon" };
+    const plain_source<givm::definition_category::card> card{ .source_name = "Card" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Support" };
+    const plain_source<givm::definition_category::summon> summon{ .source_name = "Summon" };
 
     auto base = givm_test::make_source_library();
     REQUIRE(base.add(card, support));
 
-    const plain_source<givm::card_definition> conflicting_card{ .source_name = "Card" };
+    const plain_source<givm::definition_category::card> conflicting_card{ .source_name = "Card" };
     auto extension = givm_test::make_source_library();
     REQUIRE(extension.add(conflicting_card, summon));
 
     CHECK_FALSE(base.add(extension));
-    CHECK(base.has<givm::card_definition>("Card"));
-    CHECK(base.has<givm::support_view>("Support"));
-    CHECK_FALSE(base.has<givm::summon_view>("Summon"));
+    CHECK(base.has<givm::definition_category::card>("Card"));
+    CHECK(base.has<givm::definition_category::support>("Support"));
+    CHECK_FALSE(base.has<givm::definition_category::summon>("Summon"));
 }
 
 TEST_CASE("selected definitions include transitive named dependencies", "[source_library]")
 {
     const card_with_support_dependency selected_card{ "Root", "Support" };
-    const plain_source<givm::support_view> support{ .source_name = "Support" };
-    const plain_source<givm::card_definition> unused{ .source_name = "Unused" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Support" };
+    const plain_source<givm::definition_category::card> unused{ .source_name = "Unused" };
 
     auto sources = givm_test::make_source_library();
     REQUIRE(sources.add(selected_card, support, unused));
 
     const std::array card_roots{ std::string_view{ "Root" } };
     givm::definition_selection selection{};
-    selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
+    selection[static_cast<std::size_t>(givm::definition_category::card)] = card_roots;
 
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, selection, program, program, givm::compile_mode::normal));
-    CHECK(id_map.has<givm::card_definition>("Root"));
-    CHECK(id_map.has<givm::support_view>("Support"));
-    CHECK_FALSE(id_map.has<givm::card_definition>("Unused"));
+    CHECK(id_map.has<givm::definition_category::card>("Root"));
+    CHECK(id_map.has<givm::definition_category::support>("Support"));
+    CHECK_FALSE(id_map.has<givm::definition_category::card>("Unused"));
 
-    const auto root_id = id_map.get_id<givm::card_definition>("Root");
-    const auto support_id = id_map.get_id<givm::support_view>("Support");
+    const auto root_id = id_map.get_id<givm::definition_category::card>("Root");
+    const auto support_id = id_map.get_id<givm::definition_category::support>("Support");
     CHECK(bool(library.name(root_id) == "Root"));
     CHECK(bool(library.name(support_id) == "Support"));
 }
 
 TEST_CASE("soft tag filters query selected definitions without expanding the closure", "[source_library]")
 {
-    std::vector<givm::definition_id<givm::card_definition>> matches;
+    std::vector<givm::definition_id<givm::definition_category::card>> matches;
     const card_with_soft_filter selected_card{ "Root", "selected & !excluded", &matches };
-    const plain_source<givm::card_definition> alpha{
+    const plain_source<givm::definition_category::card> alpha{
         .source_name = "Alpha",
         .source_tags = { "selected", "ordinary" },
         .tag_count = 2
     };
-    const plain_source<givm::card_definition> beta{
+    const plain_source<givm::definition_category::card> beta{
         .source_name = "Beta",
         .source_tags = { "selected", "excluded" },
         .tag_count = 2
     };
-    const plain_source<givm::card_definition> gamma{
+    const plain_source<givm::definition_category::card> gamma{
         .source_name = "Gamma",
         .source_tags = { "ordinary", {} },
         .tag_count = 1
@@ -303,14 +303,14 @@ TEST_CASE("soft tag filters query selected definitions without expanding the clo
         card_roots.insert(card_roots.end(), { "Alpha", "Beta" });
     }
     givm::definition_selection selection{};
-    selection[givm::definition_types::index_of<givm::card_definition>()] = card_roots;
+    selection[static_cast<std::size_t>(givm::definition_category::card)] = card_roots;
 
     const auto [compiled, compiled_ids] = givm_test::require_success(compile(library, givm_test::basic_sources, selection,
         std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    CHECK(compiled_ids.has<givm::card_definition>("Root"));
-    CHECK(compiled_ids.has<givm::card_definition>("Alpha") == (card_roots.size() > 1));
-    CHECK(compiled_ids.has<givm::card_definition>("Beta") == (card_roots.size() > 1));
-    CHECK_FALSE(compiled_ids.has<givm::card_definition>("Gamma"));
+    CHECK(compiled_ids.has<givm::definition_category::card>("Root"));
+    CHECK(compiled_ids.has<givm::definition_category::card>("Alpha") == (card_roots.size() > 1));
+    CHECK(compiled_ids.has<givm::definition_category::card>("Beta") == (card_roots.size() > 1));
+    CHECK_FALSE(compiled_ids.has<givm::definition_category::card>("Gamma"));
     if(card_roots.size() == 1)
     {
         CHECK(matches.empty());
@@ -318,18 +318,18 @@ TEST_CASE("soft tag filters query selected definitions without expanding the clo
     else
     {
         REQUIRE(matches.size() == 1);
-        CHECK(matches.front() == compiled_ids.get_id<givm::card_definition>("Alpha"));
+        CHECK(matches.front() == compiled_ids.get_id<givm::definition_category::card>("Alpha"));
     }
 }
 
 TEST_CASE("issued ids address the definitions produced by compilation", "[source_library]")
 {
-    const plain_source<givm::card_definition> zulu{
+    const plain_source<givm::definition_category::card> zulu{
         .source_name = "Zulu",
         .source_tags = { "zeta", {} },
         .tag_count = 1
     };
-    const plain_source<givm::card_definition> alpha{
+    const plain_source<givm::definition_category::card> alpha{
         .source_name = "Alpha",
         .source_tags = { "alpha", {} },
         .tag_count = 1
@@ -343,8 +343,8 @@ TEST_CASE("issued ids address the definitions produced by compilation", "[source
 
         const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
         const auto [library, id_map] = givm_test::require_success(compile(sources, givm_test::basic_sources, program, program, givm::compile_mode::normal));
-        const auto alpha_id = id_map.get_id<givm::card_definition>("Alpha");
-        const auto zulu_id = id_map.get_id<givm::card_definition>("Zulu");
+        const auto alpha_id = id_map.get_id<givm::definition_category::card>("Alpha");
+        const auto zulu_id = id_map.get_id<givm::definition_category::card>("Zulu");
         const auto alpha_tag = id_map.get_tag_id("alpha");
         const auto zeta_tag = id_map.get_tag_id("zeta");
 
@@ -365,7 +365,7 @@ TEST_CASE("issued ids address the definitions produced by compilation", "[source
 
 TEST_CASE("source library merging reuses ordinary shared dependencies and permits self merge", "[source_library]")
 {
-    const plain_source<givm::support_view> support{ .source_name = "Shared support" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Shared support" };
     const card_with_support_dependency first{ "First card", support.name() };
     const card_with_support_dependency second{ "Second card", support.name() };
     givm::definition_source_library base;
@@ -377,10 +377,10 @@ TEST_CASE("source library merging reuses ordinary shared dependencies and permit
     REQUIRE(base.add(base));
     REQUIRE(base.add(givm_test::make_source_library()));
     const auto [library, ids] = givm_test::require_success(compile(base, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    CHECK(ids.definition_count<givm::support_view>() == 1);
-    CHECK(ids.definition_count<givm::card_definition>() == 2);
-    CHECK(bool(library.name(ids.get_id<givm::card_definition>(first.name())) == first.name()));
-    CHECK(bool(library.name(ids.get_id<givm::card_definition>(second.name())) == second.name()));
+    CHECK(ids.definition_count<givm::definition_category::support>() == 1);
+    CHECK(ids.definition_count<givm::definition_category::card>() == 2);
+    CHECK(bool(library.name(ids.get_id<givm::definition_category::card>(first.name())) == first.name()));
+    CHECK(bool(library.name(ids.get_id<givm::definition_category::card>(second.name())) == second.name()));
 }
 
 
@@ -389,7 +389,7 @@ TEST_CASE("dynamic source instances can be shared but same-named distinct instan
 {
     const dynamic_card_source dynamic{ { .source_name = "Dynamic card" } };
     const dynamic_card_source other_dynamic{ { .source_name = "Dynamic card" } };
-    const plain_source<givm::summon_view> summon{ .source_name = "Unmerged summon" };
+    const plain_source<givm::definition_category::summon> summon{ .source_name = "Unmerged summon" };
     givm::definition_source_library sources;
     REQUIRE(sources.add(dynamic));
     REQUIRE(sources.add(dynamic, dynamic));
@@ -400,19 +400,19 @@ TEST_CASE("dynamic source instances can be shared but same-named distinct instan
     REQUIRE(sources.add(shared));
     REQUIRE(sources.add(givm_test::make_source_library()));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    CHECK(ids.definition_count<givm::card_definition>() == 1);
-    CHECK(bool(library.name(ids.get_id<givm::card_definition>(dynamic.name())) == dynamic.name()));
+    CHECK(ids.definition_count<givm::definition_category::card>() == 1);
+    CHECK(bool(library.name(ids.get_id<givm::definition_category::card>(dynamic.name())) == dynamic.name()));
     const auto object_result = sources.add(conflicting);
     REQUIRE_FALSE(object_result);
     REQUIRE(object_result.error().size() == 1);
     CHECK(object_result.error()[0].cause == givm::source_conflict::reason::different_object);
-    CHECK(object_result.error()[0].definition.category_index == givm::definition_types::index_of<givm::card_definition>());
+    CHECK(object_result.error()[0].definition.category == givm::definition_category::card);
     CHECK(object_result.error()[0].definition.name == std::string{ dynamic.name() });
     CHECK_FALSE(object_result.error()[0].first_input_index);
     CHECK_FALSE(object_result.error()[0].second_input_index);
-    CHECK_FALSE(sources.has<givm::summon_view>(summon.name()));
+    CHECK_FALSE(sources.has<givm::definition_category::summon>(summon.name()));
     givm::definition_source_library different_source_type;
-    REQUIRE(different_source_type.add(static_cast<const plain_source<givm::card_definition>&>(dynamic)));
+    REQUIRE(different_source_type.add(static_cast<const plain_source<givm::definition_category::card>&>(dynamic)));
     const auto type_result = sources.add(different_source_type);
     REQUIRE_FALSE(type_result);
     REQUIRE(type_result.error().size() == 1);
@@ -423,28 +423,28 @@ TEST_CASE("dynamic source instances can be shared but same-named distinct instan
 
 TEST_CASE("source addition reports all conflicts then unique missing dependencies without mutation", "[source_library]")
 {
-    constexpr auto card_category = givm::definition_types::index_of<givm::card_definition>();
-    constexpr auto status_category = givm::definition_types::index_of<givm::combat_status_view>();
-    constexpr auto support_category = givm::definition_types::index_of<givm::support_view>();
-    constexpr auto summon_category = givm::definition_types::index_of<givm::summon_view>();
-    const plain_source<givm::card_definition> existing{ .source_name = "Existing card" };
-    const plain_source<givm::card_definition> conflicting_existing{ .source_name = "Existing card" };
+    constexpr auto card_category = givm::definition_category::card;
+    constexpr auto status_category = givm::definition_category::combat_status;
+    constexpr auto support_category = givm::definition_category::support;
+    constexpr auto summon_category = givm::definition_category::summon;
+    const plain_source<givm::definition_category::card> existing{ .source_name = "Existing card" };
+    const plain_source<givm::definition_category::card> conflicting_existing{ .source_name = "Existing card" };
     const std::array missing_cards{ std::string_view{ "Missing card A" }, std::string_view{ "Missing card A" },
         std::string_view{ "Missing card B" } };
     const std::array missing_supports{ std::string_view{ "Missing support" } };
     const std::array missing_summons{ std::string_view{ "Missing summon" } };
     const std::array conflicting_missing{ std::string_view{ "Conflict missing" } };
     std::size_t reads = 0;
-    const source_with_dependencies<givm::combat_status_view> first{
+    const source_with_dependencies<givm::definition_category::combat_status> first{
         .source_name = "First source", .cards = missing_cards, .supports = missing_supports, .declaration_reads = &reads };
-    const source_with_dependencies<givm::card_definition> second{
+    const source_with_dependencies<givm::definition_category::card> second{
         .source_name = "Second source", .summons = missing_summons };
-    const plain_source<givm::support_view> batch_support{ .source_name = "Batch support" };
-    const source_with_dependencies<givm::support_view> conflicting_support{
+    const plain_source<givm::definition_category::support> batch_support{ .source_name = "Batch support" };
+    const source_with_dependencies<givm::definition_category::support> conflicting_support{
         .source_name = "Batch support", .summons = conflicting_missing };
     const std::array named_card{ existing.name() };
     const std::array named_support{ batch_support.name() };
-    const source_with_dependencies<givm::summon_view> names_exist{
+    const source_with_dependencies<givm::definition_category::summon> names_exist{
         .source_name = "Names exist", .cards = named_card, .supports = named_support };
     givm::definition_source_library library;
     REQUIRE(library.add(existing));
@@ -454,14 +454,14 @@ TEST_CASE("source addition reports all conflicts then unique missing dependencie
     REQUIRE(errors.size() == 7);
     const auto* existing_conflict = std::get_if<givm::source_conflict>(&errors[0]);
     REQUIRE(existing_conflict);
-    CHECK(existing_conflict->definition.category_index == card_category);
+    CHECK(existing_conflict->definition.category == card_category);
     CHECK(existing_conflict->definition.name == std::string{ existing.name() });
     CHECK(existing_conflict->cause == givm::source_conflict::reason::different_object);
     CHECK_FALSE(existing_conflict->first_input_index);
     CHECK(existing_conflict->second_input_index == 1);
     const auto* batch_conflict = std::get_if<givm::source_conflict>(&errors[1]);
     REQUIRE(batch_conflict);
-    CHECK(batch_conflict->definition.category_index == support_category);
+    CHECK(batch_conflict->definition.category == support_category);
     CHECK(batch_conflict->definition.name == std::string{ batch_support.name() });
     CHECK(batch_conflict->cause == givm::source_conflict::reason::different_type);
     CHECK(batch_conflict->first_input_index == 3);
@@ -475,26 +475,26 @@ TEST_CASE("source addition reports all conflicts then unique missing dependencie
     {
         const auto* missing = std::get_if<givm::source_missing_dependency>(&errors[index + 2]);
         REQUIRE(missing);
-        CHECK(missing->source.category_index == expected_sources[index]);
+        CHECK(missing->source.category == expected_sources[index]);
         CHECK(missing->source.name == expected_source_names[index]);
         CHECK(missing->input_index == expected_inputs[index]);
-        CHECK(missing->dependency.category_index == expected_categories[index]);
+        CHECK(missing->dependency.category == expected_categories[index]);
         CHECK(missing->dependency.name == expected_names[index]);
     }
     CHECK(reads == 1);
-    CHECK(library.has<givm::card_definition>(existing.name()));
-    CHECK_FALSE(library.has<givm::card_definition>(second.name()));
-    CHECK_FALSE(library.has<givm::combat_status_view>(first.name()));
-    CHECK_FALSE(library.has<givm::support_view>(batch_support.name()));
-    CHECK_FALSE(library.has<givm::summon_view>(names_exist.name()));
+    CHECK(library.has<givm::definition_category::card>(existing.name()));
+    CHECK_FALSE(library.has<givm::definition_category::card>(second.name()));
+    CHECK_FALSE(library.has<givm::definition_category::combat_status>(first.name()));
+    CHECK_FALSE(library.has<givm::definition_category::support>(batch_support.name()));
+    CHECK_FALSE(library.has<givm::definition_category::summon>(names_exist.name()));
 }
 
 TEST_CASE("identical input sources are reused without rereading their declarations", "[source_library]")
 {
-    const plain_source<givm::support_view> support{ .source_name = "Support" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Support" };
     const std::array dependency{ support.name() };
     std::size_t reads = 0;
-    const source_with_dependencies<givm::card_definition> source{
+    const source_with_dependencies<givm::definition_category::card> source{
         .source_name = "Card", .supports = dependency, .declaration_reads = &reads };
     givm::definition_source_library library;
     REQUIRE(library.add());
@@ -503,35 +503,35 @@ TEST_CASE("identical input sources are reused without rereading their declaratio
     REQUIRE(library.add(source));
     REQUIRE(library.add(source, source, support));
     CHECK(reads == 1);
-    CHECK(std::ranges::distance(library.source_views<givm::card_definition>()) == 1);
-    CHECK(std::ranges::distance(library.source_views<givm::support_view>()) == 1);
+    CHECK(std::ranges::distance(library.source_views<givm::definition_category::card>()) == 1);
+    CHECK(std::ranges::distance(library.source_views<givm::definition_category::support>()) == 1);
 }
 
 TEST_CASE("named dependencies allow self references and cycles in one batch", "[source_library]")
 {
     const std::array self_name{ std::string_view{ "Self" } };
-    const source_with_dependencies<givm::card_definition> self{ .source_name = "Self", .cards = self_name };
+    const source_with_dependencies<givm::definition_category::card> self{ .source_name = "Self", .cards = self_name };
     const std::array first_dependencies{ std::string_view{ "Second" } };
     const std::array second_dependencies{ std::string_view{ "First" } };
-    const source_with_dependencies<givm::card_definition> first{ .source_name = "First", .cards = first_dependencies };
-    const source_with_dependencies<givm::card_definition> second{ .source_name = "Second", .cards = second_dependencies };
+    const source_with_dependencies<givm::definition_category::card> first{ .source_name = "First", .cards = first_dependencies };
+    const source_with_dependencies<givm::definition_category::card> second{ .source_name = "Second", .cards = second_dependencies };
     givm::definition_source_library library;
     REQUIRE(library.add(self));
     REQUIRE(library.add(first, second));
-    CHECK(std::ranges::distance(library.source_views<givm::card_definition>()) == 3);
+    CHECK(std::ranges::distance(library.source_views<givm::definition_category::card>()) == 3);
 }
 
 TEST_CASE("merge returns every conflict in category and registration order without dependency checks", "[source_library]")
 {
-    const plain_source<givm::card_definition> first{ .source_name = "First" };
-    const plain_source<givm::card_definition> second{ .source_name = "Second" };
-    const plain_source<givm::support_view> support{ .source_name = "Support" };
-    const plain_source<givm::card_definition> other_first{ .source_name = "First" };
-    const plain_source<givm::card_definition> other_second{ .source_name = "Second" };
-    const plain_source<givm::support_view> other_support{ .source_name = "Support" };
+    const plain_source<givm::definition_category::card> first{ .source_name = "First" };
+    const plain_source<givm::definition_category::card> second{ .source_name = "Second" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Support" };
+    const plain_source<givm::definition_category::card> other_first{ .source_name = "First" };
+    const plain_source<givm::definition_category::card> other_second{ .source_name = "Second" };
+    const plain_source<givm::definition_category::support> other_support{ .source_name = "Support" };
     const std::array dependency{ support.name() };
     std::size_t reads = 0;
-    const source_with_dependencies<givm::summon_view> fresh{
+    const source_with_dependencies<givm::definition_category::summon> fresh{
         .source_name = "Fresh", .supports = dependency, .declaration_reads = &reads };
     givm::definition_source_library library;
     givm::definition_source_library extension;
@@ -544,19 +544,19 @@ TEST_CASE("merge returns every conflict in category and registration order witho
     REQUIRE(errors.size() == 3);
     const std::array expected_names{ "Second", "First", "Support" };
     const std::array expected_categories{
-        givm::definition_types::index_of<givm::card_definition>(),
-        givm::definition_types::index_of<givm::card_definition>(),
-        givm::definition_types::index_of<givm::support_view>() };
+        givm::definition_category::card,
+        givm::definition_category::card,
+        givm::definition_category::support };
     for(std::size_t index = 0; index != errors.size(); ++index)
     {
         CHECK(errors[index].definition.name == expected_names[index]);
-        CHECK(errors[index].definition.category_index == expected_categories[index]);
+        CHECK(errors[index].definition.category == expected_categories[index]);
         CHECK(errors[index].cause == givm::source_conflict::reason::different_object);
         CHECK_FALSE(errors[index].first_input_index);
         CHECK_FALSE(errors[index].second_input_index);
     }
     CHECK(reads == 1);
-    CHECK_FALSE(library.has<givm::summon_view>(fresh.name()));
+    CHECK_FALSE(library.has<givm::definition_category::summon>(fresh.name()));
 }
 
 TEST_CASE("source addition errors own names from rejected sources and their dependencies", "[source_library]")
@@ -568,9 +568,9 @@ TEST_CASE("source addition errors own names from rejected sources and their depe
         std::string second_name = first_name;
         std::string missing_name = "Missing dependency";
         const std::array dependency{ std::string_view{ missing_name } };
-        const source_with_dependencies<givm::card_definition> first{
+        const source_with_dependencies<givm::definition_category::card> first{
             .source_name = first_name, .supports = dependency };
-        const plain_source<givm::card_definition> second{ .source_name = second_name };
+        const plain_source<givm::definition_category::card> second{ .source_name = second_name };
         auto failure = library.add(first, second);
         first_name.assign(first_name.size(), 'x');
         second_name.assign(second_name.size(), 'y');
@@ -586,34 +586,34 @@ TEST_CASE("source addition errors own names from rejected sources and their depe
     CHECK(conflict->definition.name == "Duplicated source");
     CHECK(missing->source.name == "Duplicated source");
     CHECK(missing->dependency.name == "Missing dependency");
-    CHECK_FALSE(library.has<givm::card_definition>("Duplicated source"));
+    CHECK_FALSE(library.has<givm::definition_category::card>("Duplicated source"));
 }
 
 TEST_CASE("source library factory accepts empty input and builds deduplicated dependency batches", "[source_library]")
 {
     const auto empty = givm::make_definition_source_library();
     REQUIRE(empty);
-    CHECK(std::ranges::distance(empty->source_views<givm::card_definition>()) == 0);
-    CHECK(std::ranges::distance(empty->source_views<givm::support_view>()) == 0);
+    CHECK(std::ranges::distance(empty->source_views<givm::definition_category::card>()) == 0);
+    CHECK(std::ranges::distance(empty->source_views<givm::definition_category::support>()) == 0);
 
     const card_with_support_dependency card{ "Factory card", "Factory support" };
-    const plain_source<givm::support_view> support{ .source_name = "Factory support" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Factory support" };
     const auto result = givm::make_definition_source_library(card, support, card, support);
     REQUIRE(result);
-    CHECK(result->has<givm::card_definition>(card.name()));
-    CHECK(result->has<givm::support_view>(support.name()));
-    CHECK(std::ranges::distance(result->source_views<givm::card_definition>()) == 1);
-    CHECK(std::ranges::distance(result->source_views<givm::support_view>()) == 1);
+    CHECK(result->has<givm::definition_category::card>(card.name()));
+    CHECK(result->has<givm::definition_category::support>(support.name()));
+    CHECK(std::ranges::distance(result->source_views<givm::definition_category::card>()) == 1);
+    CHECK(std::ranges::distance(result->source_views<givm::definition_category::support>()) == 1);
 }
 
 TEST_CASE("source library factory returns all batch errors without a partial library", "[source_library]")
 {
     const card_with_support_dependency card{ "Factory conflict", "Missing support" };
-    const plain_source<givm::card_definition> conflicting_card{ .source_name = "Factory conflict" };
+    const plain_source<givm::definition_category::card> conflicting_card{ .source_name = "Factory conflict" };
     const std::array dependencies{ std::string_view{ "Missing card" } };
-    const source_with_dependencies<givm::summon_view> summon{
+    const source_with_dependencies<givm::definition_category::summon> summon{
         .source_name = "Factory summon", .cards = dependencies };
-    const plain_source<givm::support_view> accepted_support{ .source_name = "Accepted support" };
+    const plain_source<givm::definition_category::support> accepted_support{ .source_name = "Accepted support" };
     const auto result = givm::make_definition_source_library(card, conflicting_card, summon, accepted_support);
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().size() == 3);
@@ -645,24 +645,24 @@ TEST_CASE("source addition errors format reasons categories names and input posi
 {
     const std::vector<givm::source_add_error> errors{
         givm::source_conflict{
-            .definition = { givm::definition_types::index_of<givm::card_definition>(), "Repeated card" },
+            .definition = { givm::definition_category::card, "Repeated card" },
             .cause = givm::source_conflict::reason::different_object,
             .second_input_index = 0 },
         givm::source_conflict{
-            .definition = { givm::definition_types::index_of<givm::support_view>(), "Repeated support" },
+            .definition = { givm::definition_category::support, "Repeated support" },
             .cause = givm::source_conflict::reason::different_type,
             .first_input_index = 1,
             .second_input_index = 2 },
         givm::source_missing_dependency{
-            .source = { givm::definition_types::index_of<givm::combat_status_view>(), "Dependent status" },
+            .source = { givm::definition_category::combat_status, "Dependent status" },
             .input_index = 3,
-            .dependency = { givm::definition_types::index_of<givm::skill_view>(), "Needed skill" } }
+            .dependency = { givm::definition_category::skill, "Needed skill" } }
     };
     const auto message = givm::error_string(errors);
     REQUIRE_FALSE(message.empty());
-    const auto first = message.find(R"(source conflict (different_object): card_definition "Repeated card")");
-    const auto second = message.find(R"(source conflict (different_type): support_view "Repeated support")");
-    const auto third = message.find(R"(missing dependency: combat_status_view "Dependent status")");
+    const auto first = message.find(R"(source conflict (different_object): card "Repeated card")");
+    const auto second = message.find(R"(source conflict (different_type): support "Repeated support")");
+    const auto third = message.find(R"(missing dependency: combat_status "Dependent status")");
     REQUIRE(first != std::string::npos);
     REQUIRE(second != std::string::npos);
     REQUIRE(third != std::string::npos);
@@ -670,7 +670,7 @@ TEST_CASE("source addition errors format reasons categories names and input posi
     CHECK(second < third);
     CHECK(message.find("first: receiver library; second: input[0]") != std::string::npos);
     CHECK(message.find("first: input[1]; second: input[2]") != std::string::npos);
-    CHECK(message.find(R"((input[3]) requires skill_view "Needed skill")") != std::string::npos);
+    CHECK(message.find(R"((input[3]) requires skill "Needed skill")") != std::string::npos);
     CHECK(std::ranges::count(message, '\n') == 2);
     CHECK(message.back() != '\n');
 
@@ -684,22 +684,22 @@ TEST_CASE("source merge errors format receiving and incoming library positions",
 {
     const std::vector<givm::source_conflict> errors{
         {
-            .definition = { givm::definition_types::index_of<givm::summon_view>(), "First summon" },
+            .definition = { givm::definition_category::summon, "First summon" },
             .cause = givm::source_conflict::reason::different_object },
         {
-            .definition = { givm::definition_types::index_of<givm::attachment_view>(), "Second attachment" },
+            .definition = { givm::definition_category::attachment, "Second attachment" },
             .cause = givm::source_conflict::reason::different_type }
     };
     const auto single = givm::error_string(std::vector<givm::source_conflict>{ errors[0] });
-    CHECK(single.find(R"(summon_view "First summon")") != std::string::npos);
+    CHECK(single.find(R"(summon "First summon")") != std::string::npos);
     CHECK(single.find("different_object") != std::string::npos);
     CHECK(single.find("first: receiver library; second: incoming library") != std::string::npos);
     CHECK(single.find("input[") == std::string::npos);
     CHECK(single.find('\n') == std::string::npos);
     const auto message = givm::error_string(errors);
     REQUIRE_FALSE(message.empty());
-    const auto first = message.find(R"(summon_view "First summon")");
-    const auto second = message.find(R"(attachment_view "Second attachment")");
+    const auto first = message.find(R"(summon "First summon")");
+    const auto second = message.find(R"(attachment "Second attachment")");
     REQUIRE(first != std::string::npos);
     REQUIRE(second != std::string::npos);
     CHECK(first < second);
@@ -713,7 +713,7 @@ TEST_CASE("source error formatting keeps escaped definition names on one line", 
     const std::string name = "First\"\\\n\r\tLast";
     const std::vector<givm::source_conflict> errors{
         {
-            .definition = { givm::definition_types::index_of<givm::card_definition>(), name },
+            .definition = { givm::definition_category::card, name },
             .cause = givm::source_conflict::reason::different_object }
     };
     const auto message = givm::error_string(errors);
@@ -725,8 +725,8 @@ TEST_CASE("source error formatting keeps escaped definition names on one line", 
 
 TEST_CASE("default reaction names resolve existing sources and survive compiled copies", "[source_library][reactions]")
 {
-    const plain_source<givm::reaction_view> ordinary{ .source_name = "Ordinary reaction" };
-    const plain_source<givm::reaction_view> alternative{ .source_name = "Alternative reaction" };
+    const plain_source<givm::definition_category::reaction> ordinary{ .source_name = "Ordinary reaction" };
+    const plain_source<givm::definition_category::reaction> alternative{ .source_name = "Alternative reaction" };
     reaction_bindings observed;
     const card_with_reaction_bindings card{ &observed };
     givm::definition_source_library sources;
@@ -738,21 +738,21 @@ TEST_CASE("default reaction names resolve existing sources and survive compiled 
     for(std::size_t i = 0; i != givm::elemental_reaction_count; ++i)
     {
         const auto slot = static_cast<givm::elemental_reaction>(i + 1);
-        CHECK(library.default_reaction_id(slot) == ids.get_id<givm::reaction_view>(names[slot]));
+        CHECK(library.default_reaction_id(slot) == ids.get_id<givm::definition_category::reaction>(names[slot]));
         CHECK(observed.ids[i] == library.default_reaction_id(slot));
     }
     auto copied = library;
     auto moved = std::move(copied);
     CHECK(moved.default_reaction_id(givm::elemental_reaction::bloom)
-        == ids.get_id<givm::reaction_view>(alternative.name()));
-    CHECK(std::ranges::distance(sources.source_views<givm::reaction_view>()) == 2);
+        == ids.get_id<givm::definition_category::reaction>(alternative.name()));
+    CHECK(std::ranges::distance(sources.source_views<givm::definition_category::reaction>()) == 2);
 }
 
 TEST_CASE("reaction selection requires registered names and dependency closure", "[source_library][reactions]")
 {
     const core_with_support_dependency reaction{ "Dependent reaction", "Reaction support" };
-    const plain_source<givm::support_view> support{ .source_name = "Reaction support" };
-    const plain_source<givm::card_definition> unused{ .source_name = "Unused card" };
+    const plain_source<givm::definition_category::support> support{ .source_name = "Reaction support" };
+    const plain_source<givm::definition_category::card> unused{ .source_name = "Unused card" };
     givm::reaction_definition_names names{ reaction.name() };
     givm::definition_source_library missing;
     REQUIRE_FALSE(compile(missing, names, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
@@ -764,15 +764,15 @@ TEST_CASE("reaction selection requires registered names and dependency closure",
     REQUIRE(missing.add(reaction, support, unused));
     const auto [library, ids] = givm_test::require_success(compile(missing, names, givm::definition_selection{},
         std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    CHECK(ids.has<givm::reaction_view>(reaction.name()));
-    CHECK(ids.has<givm::support_view>(support.name()));
-    CHECK_FALSE(ids.has<givm::card_definition>(unused.name()));
+    CHECK(ids.has<givm::definition_category::reaction>(reaction.name()));
+    CHECK(ids.has<givm::definition_category::support>(support.name()));
+    CHECK_FALSE(ids.has<givm::definition_category::card>(unused.name()));
 }
 
 TEST_CASE("one source collection selects different registered reaction versions", "[source_library][reactions]")
 {
-    const plain_source<givm::reaction_view> first{ .source_name = "Reaction 1" };
-    const plain_source<givm::reaction_view> second{ .source_name = "Reaction 2" };
+    const plain_source<givm::definition_category::reaction> first{ .source_name = "Reaction 1" };
+    const plain_source<givm::definition_category::reaction> second{ .source_name = "Reaction 2" };
     givm::definition_source_library sources;
     REQUIRE(sources.add(first, second));
     for(const bool use_second : { false, true, false })
@@ -781,9 +781,9 @@ TEST_CASE("one source collection selects different registered reaction versions"
         const auto [library, ids] = givm_test::require_success(compile(sources, names, givm::definition_selection{},
             std::tuple{}, std::tuple{}, givm::compile_mode::normal));
         CHECK(bool(library.name(library.default_reaction_id(givm::elemental_reaction::melt)) == names[givm::elemental_reaction::melt]));
-        CHECK_FALSE(ids.has<givm::reaction_view>(use_second ? first.name() : second.name()));
+        CHECK_FALSE(ids.has<givm::definition_category::reaction>(use_second ? first.name() : second.name()));
     }
-    CHECK(std::ranges::distance(sources.source_views<givm::reaction_view>()) == 2);
+    CHECK(std::ranges::distance(sources.source_views<givm::definition_category::reaction>()) == 2);
 }
 
 }

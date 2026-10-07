@@ -45,7 +45,7 @@ namespace
 
     struct card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         using definition_type = payment_log*;
         payment_log* log;
         std::string_view name() const { return "QuotedCard"; }
@@ -67,7 +67,7 @@ namespace
 
     struct payment_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             payment_log* log;
@@ -104,10 +104,10 @@ namespace
             data.log->quoted.push_back(event.targets);
             if(data.target_prices)
             {
-                const auto target = std::get<givm::character_id>(event.targets[0]);
-                event.requirement.dice_requirement.any = static_cast<std::uint8_t>(target.index + 1);
+                const auto target = event.targets[0].template get<givm::entity_category::character>();
+                event.requirement.dice_requirement.any = static_cast<std::uint8_t>(target.index() + 1);
                 return context.invoke(data.mark,
-                    givm::set_energy_input{ original, static_cast<std::uint32_t>(target.index + 1) });
+                    givm::set_energy_input{ original, static_cast<std::uint32_t>(target.index() + 1) });
             }
             event.requirement.dice_requirement.any = 3;
             event.requirement.energy = 3;
@@ -177,8 +177,8 @@ namespace
     {
         givm::table result{ { .self_player = player }, { .dice = initial, .active_character = original },
             { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-        const auto owner = ids.get_id<givm::character_view>("QuotedPayment");
-        load_deck(result, library, { .cards = { ids.get_id<givm::card_definition>("Token"), ids.get_id<givm::card_definition>("QuotedCard") },
+        const auto owner = ids.get_id<givm::definition_category::character>("QuotedPayment");
+        load_deck(result, library, { .cards = { ids.get_id<givm::definition_category::card>("Token"), ids.get_id<givm::definition_category::card>("QuotedCard") },
             .characters = { owner, owner } }, { .characters = { owner } });
         return result;
     }
@@ -189,7 +189,7 @@ TEST_CASE("target quotations retain distinct costs and inputs in copied action w
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     payment_log log;
     const auto owner = givm::test::with_passive_skill(payment_source{ &log, true });
-    const givm::test::named_definition_source<givm::card_definition> token{ "Token" };
+    const givm::test::named_definition_source<givm::definition_category::card> token{ "Token" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::draw_cards{ .position = 0, .count = 2 }, givm::settle{}, givm::begin_action{} },
         std::tuple{}, owner, card_source{ &log }, token);
@@ -248,7 +248,7 @@ TEST_CASE("payment settles discard chains before saturating selected colors and 
     const auto extra = GENERATE(std::uint8_t{ 0 }, std::uint8_t{ 2 });
     payment_log log;
     const auto owner = givm::test::with_passive_skill(payment_source{ &log, false, false, extra });
-    const givm::test::named_definition_source<givm::card_definition> token{ "Token" };
+    const givm::test::named_definition_source<givm::definition_category::card> token{ "Token" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::draw_cards{ .position = 0, .count = 2 }, givm::settle{}, givm::begin_action{} },
         std::tuple{}, owner, card_source{ &log }, token);
@@ -290,7 +290,7 @@ TEST_CASE("a terminal cached fee stops before payment and the selected card effe
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     payment_log log;
     const auto owner = givm::test::with_passive_skill(payment_source{ &log, false, true });
-    const givm::test::named_definition_source<givm::card_definition> token{ "Token" };
+    const givm::test::named_definition_source<givm::definition_category::card> token{ "Token" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::draw_cards{ .position = 0, .count = 2 }, givm::settle{}, givm::begin_action{} },
         std::tuple{}, owner, card_source{ &log }, token);

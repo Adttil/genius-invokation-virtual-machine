@@ -23,7 +23,7 @@ struct battle_started;
 
 struct observer_source
 {
-    using definition_category = givm::skill_view;
+    static constexpr auto category = givm::definition_category::skill;
     struct definition_type { int* count; };
     int* count;
 
@@ -56,8 +56,8 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto id = ids.get_id<givm::skill_view>("observer");
-    std::println("提供此事件的响应: {}", library.can_handle<givm::battle_started, givm::skill_view>(id));
+    const auto id = ids.get_id<givm::definition_category::skill>("observer");
+    std::println("提供此事件的响应: {}", library.can_handle<givm::battle_started, givm::entity_category::skill>(id));
 }
 ```
 

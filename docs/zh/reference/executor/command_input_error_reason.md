@@ -40,7 +40,7 @@ struct invalid_definition_argument;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `field` | `std::string` | 出错字段路径 |
-| `category_index` | `std::size_t` | 定义类别在 `definition_types` 中的索引 |
+| `category` | `definition_category` | 定义类别在 `detail::definition_categories` 中的索引 |
 | `value` | `std::size_t` | 输入定义 ID 的数值 |
 | `count` | `std::size_t` | 此类别的定义数量，即有效 ID 上界（不含） |
 
@@ -83,7 +83,7 @@ struct missing_entity_argument;
 | --- | --- | --- |
 | `field` | `std::string` | 目标字段路径 |
 | `owner` | `std::optional<command_entity_id>` | 可确定时的所属实体 |
-| `definition` | `std::optional<std::size_t>` | 按定义定位时使用的定义 ID 数值 |
+| `definition` | `std::optional<std::uint64_t>` | 按定义定位时使用的定义 ID 数值 |
 | `equipment` | `std::optional<equipment_type>` | 按装备类型定位时使用的类别 |
 
 ### `invalid_numeric_argument`
@@ -133,9 +133,7 @@ struct insufficient_dice_argument;
 ### `command_entity_id`
 
 ```cpp
-using command_entity_id = std::variant<player_id, character_id, skill_id,
-    attachment_id, hand_card_id, deck_card_id, hand_card_status_id,
-    deck_card_status_id, support_id, summon_id, combat_status_id>;
+using command_entity_id = variant_entity_id<entity_category::player, entity_category::character, entity_category::skill, entity_category::attachment, entity_category::hand_card, entity_category::deck_card, entity_category::hand_card_status, entity_category::deck_card_status, entity_category::support, entity_category::summon, entity_category::combat_status>;
 ```
 
 命令诊断使用的实体 ID variant，保留参数原本的实体类别，供调用方通过 `std::get_if` 或 `std::visit` 读取。

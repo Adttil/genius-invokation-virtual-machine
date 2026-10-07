@@ -25,7 +25,7 @@ namespace
 
     struct fixed_error_source
     {
-        using definition_category = givm::combat_status_view;
+        static constexpr auto category = givm::definition_category::combat_status;
         fixed_error error;
         std::string_view name() const { return "FixedInputDiagnostics"; }
         givm::normal_effect compile(givm::definition_compile_context& context) const
@@ -69,7 +69,7 @@ namespace
 
     struct input_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             preparation mode;
@@ -91,12 +91,12 @@ namespace
                     : make_owned_deferred<true>(relay, leaf);
                 const auto main = context.add_normal_effect(
                     set_energy{ .target = { relative_player::self, 0 }, .value = 2 },
-                    defer_program{ invocation }, replace_cards{ .player = actor.player_id },
+                    defer_program{ invocation }, replace_cards{ .player = actor.player_id() },
                     modify_energy{ .target = { relative_player::self, 0 }, .delta = 3 });
                 return { mode, main, relay, leaf };
             }
             return { mode, context.add_normal_effect(set_energy{}, defer_program{},
-                replace_cards{ .player = actor.player_id }, modify_energy{}), relay, leaf };
+                replace_cards{ .player = actor.player_id() }, modify_energy{}), relay, leaf };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -143,10 +143,10 @@ namespace
 
     givm::table make_table(const givm::definition_library& library, const givm::issued_id_map& ids)
     {
-        givm::table table{ { .self_player = actor.player_id },
+        givm::table table{ { .self_player = actor.player_id() },
             { .active_character = actor }, { .active_character = opponent } };
-        load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("OwnedProgramInputs") } },
-            { .characters = { ids.get_id<givm::character_view>("OwnedInputOpponent") } });
+        load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>("OwnedProgramInputs") } },
+            { .characters = { ids.get_id<givm::definition_category::character>("OwnedInputOpponent") } });
         return table;
     }
 }

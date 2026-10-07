@@ -21,7 +21,7 @@ namespace givm_test::executor_instructions::damage_preparation_group
 namespace
 {
     constexpr givm::character_id source{ givm::player_id{ 0 }, 0 };
-    constexpr givm::character_id target(std::size_t index) { return { givm::player_id{ 1 }, index }; }
+    constexpr givm::character_id target(std::size_t index) { return { givm::player_id{ 1 }, static_cast<std::uint32_t>(index) }; }
     constexpr givm::relative_character_target fixed_source{ givm::relative_player::self, 0 };
     constexpr givm::relative_character_target fixed_target(std::int32_t index) { return { givm::relative_player::opponent, index }; }
 
@@ -44,7 +44,7 @@ namespace
 
     struct preparation_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             preparation_log* log;
@@ -80,7 +80,7 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::damage_preparation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::preparation, event.target.index);
+            data.log->order.emplace_back(phase::preparation, event.target.index());
             if(data.log->infuse_anemo && event.type == givm::damage_type::physical)
                 event.type = givm::damage_type::anemo;
             return {};
@@ -88,14 +88,14 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::reaction, event.target.index);
-            data.log->reactions.push_back(event.reaction.slot);
+            data.log->order.emplace_back(phase::reaction, event.target.index());
+            data.log->reactions.push_back(event.reaction.slot());
             return {};
         }
         static givm::immediate_effect handle(const definition_type& data,
             givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::calculation, event.target.index);
+            data.log->order.emplace_back(phase::calculation, event.target.index());
             data.log->original_auras.push_back(event.reacted_aura);
             data.log->current_auras.push_back(context.table()[event.target].state().aura);
             if(data.log->bonus_on_existing_pyro && event.reacted_aura == givm::element_aura::pyro)
@@ -105,7 +105,7 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::effect, event.target.index);
+            data.log->order.emplace_back(phase::effect, event.target.index());
             data.log->types.push_back(event.type);
             data.log->values.push_back(event.value);
             return invoke_nested(data, event.target, phase::effect, context);
@@ -121,13 +121,13 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::character_will_be_defeated& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
-            data.log->dying.push_back(event.target.index);
+            data.log->dying.push_back(event.target.index());
             return {};
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::completion, event.target.index);
+            data.log->order.emplace_back(phase::completion, event.target.index());
             std::vector<std::uint32_t> health;
             for(const auto character : context.table()[givm::player_id{ 1 }].characters())
                 health.push_back(character.state().health);
@@ -181,7 +181,7 @@ namespace
             }
             REQUIRE(observed);
             REQUIRE(state == givm::execution_state::health_reduced);
-            targets.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index);
+            targets.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index());
         }
     }
 
@@ -207,8 +207,8 @@ TEST_CASE("numeric conditions read each hit aura before its element is applied",
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, bare, burning);
     auto table = active_table();
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(bare.name()), ids.get_id<givm::character_view>(burning.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(bare.name()), ids.get_id<givm::definition_category::character>(burning.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
@@ -237,9 +237,9 @@ TEST_CASE("reaction damage still reacts on a target reduced to zero by an earlie
         std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, water, electro, fragile);
     auto table = active_table();
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(water.name()), ids.get_id<givm::character_view>(electro.name()),
-            ids.get_id<givm::character_view>(fragile.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(water.name()), ids.get_id<givm::definition_category::character>(electro.name()),
+            ids.get_id<givm::definition_category::character>(fragile.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
@@ -293,10 +293,10 @@ TEST_CASE("each range and reaction hit receives its own damage preparation", "[d
     program.emplace_back(givm::end_game{ givm::game_result::both_loss });
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         observed ? givm::compile_mode::observed : givm::compile_mode::normal, program, std::tuple{}, observer, water, bare);
-    const auto water_id = ids.get_id<givm::character_view>(water.name());
-    const auto other_id = range ? water_id : ids.get_id<givm::character_view>(bare.name());
+    const auto water_id = ids.get_id<givm::definition_category::character>(water.name());
+    const auto other_id = range ? water_id : ids.get_id<givm::definition_category::character>(bare.name());
     auto table = active_table();
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { water_id, other_id, other_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -332,8 +332,8 @@ TEST_CASE("an explicitly prioritized later hit resolves past a dying character",
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, fragile, reserve);
     auto table = active_table();
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(fragile.name()), ids.get_id<givm::character_view>(reserve.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(fragile.name()), ids.get_id<givm::definition_category::character>(reserve.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);
@@ -365,8 +365,8 @@ TEST_CASE("damage resumes past a target defeated by its own numeric or shield re
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, fragile, reserve);
     auto table = active_table();
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(fragile.name()), ids.get_id<givm::character_view>(reserve.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(fragile.name()), ids.get_id<givm::definition_category::character>(reserve.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     const auto observations = run(executor, library, table, observed);

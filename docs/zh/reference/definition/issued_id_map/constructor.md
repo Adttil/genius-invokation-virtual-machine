@@ -45,7 +45,7 @@ int main()
 {
     givm::issued_id_map ids{ "治疗", "治疗", "料理" };
     std::println("标签数量: {}", ids.tag_names().size());
-    std::println("已有卡牌定义: {}", ids.has<givm::card_definition>("恢复药剂"));
+    std::println("已有卡牌定义: {}", ids.has<givm::definition_category::card>("恢复药剂"));
 }
 ```
 

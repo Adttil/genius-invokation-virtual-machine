@@ -36,7 +36,7 @@ namespace
 
     struct draw_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { std::uint32_t value; };
         std::string_view source_name;
         std::uint32_t value;
@@ -52,7 +52,7 @@ namespace
 
     struct draw_driver_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             draw_log* log;
@@ -91,7 +91,7 @@ namespace
             CHECK(card.state().cost.speed == givm::action_speed::fast);
             CHECK_FALSE(card.state().elemental_tuning_allowed);
             data.log->drawn.push_back(card.state().cost.energy);
-            data.log->owners.push_back(card.player().id().index);
+            data.log->owners.push_back(card.player().id().index());
             const auto first = context.table()[givm::player_id{ 0 }];
             const auto second = context.table()[givm::player_id{ 1 }];
             data.log->deck_counts.push_back({ first.deck_card_count(), second.deck_card_count() });
@@ -118,18 +118,18 @@ namespace
             std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
             driver, draw_card_source{ "A", 1 }, draw_card_source{ "B", 2 }, draw_card_source{ "C", 3 },
             draw_card_source{ "D", 4 }, draw_card_source{ "E", 5 });
-        const auto a = ids.get_id<givm::card_definition>("A");
-        const auto b = ids.get_id<givm::card_definition>("B");
-        const auto c = ids.get_id<givm::card_definition>("C");
-        const auto d = ids.get_id<givm::card_definition>("D");
-        const auto e = ids.get_id<givm::card_definition>("E");
+        const auto a = ids.get_id<givm::definition_category::card>("A");
+        const auto b = ids.get_id<givm::definition_category::card>("B");
+        const auto c = ids.get_id<givm::definition_category::card>("C");
+        const auto d = ids.get_id<givm::definition_category::card>("D");
+        const auto e = ids.get_id<givm::definition_category::card>("E");
         givm::table table{ {}, { .hand_limit = hand_limits[0] }, { .hand_limit = hand_limits[1] } };
         load_deck(table, library,
-            { .cards = { a, b, c, d, e }, .characters = { ids.get_id<givm::character_view>(driver.name()) } },
+            { .cards = { a, b, c, d, e }, .characters = { ids.get_id<givm::definition_category::character>(driver.name()) } },
             { .cards = { a, b, c, d, e } });
         std::array<std::vector<givm::deck_card_id>, 2> decks;
         for(std::size_t player = 0; player != decks.size(); ++player)
-            for(const auto card : table[givm::player_id{ player }].deck_cards()) decks[player].push_back(card.id());
+            for(const auto card : table[givm::player_id{ static_cast<std::uint32_t>(player) }].deck_cards()) decks[player].push_back(card.id());
         for(const auto& [player, index] : log.selections) log.input.push_back(decks[player][index]);
         givm_test::executor_driver executor;
         executor.start(library, table);
@@ -181,13 +181,13 @@ TEST_CASE("fixed draw commands resolve positions in order and preserve remaining
     const std::vector<std::uint32_t> expected = reverse ? std::vector<std::uint32_t>{ 2, 4 }
         : std::vector<std::uint32_t>{ 4, 2 };
     CHECK(log.drawn == expected);
-    CHECK(log.owners == std::vector<std::size_t>(2, target.index));
+    CHECK(log.owners == std::vector<std::size_t>(2, target.index()));
     CHECK(hand_values(table, target) == expected);
     CHECK(deck_values(table, target) == std::vector<std::uint32_t>{ 1, 3, 5 });
     CHECK(deck_values(table, other_player(target)) == std::vector<std::uint32_t>{ 1, 2, 3, 4, 5 });
-    const std::array<std::size_t, 2> deck_counts = target.index == 0
+    const std::array<std::size_t, 2> deck_counts = target.index() == 0
         ? std::array<std::size_t, 2>{ 3, 5 } : std::array<std::size_t, 2>{ 5, 3 };
-    const std::array<std::size_t, 2> hand_counts = target.index == 0
+    const std::array<std::size_t, 2> hand_counts = target.index() == 0
         ? std::array<std::size_t, 2>{ 2, 0 } : std::array<std::size_t, 2>{ 0, 2 };
     CHECK(log.deck_counts == std::vector(2, deck_counts));
     CHECK(log.hand_counts == std::vector(2, hand_counts));

@@ -45,7 +45,7 @@ namespace
 
     struct preparation_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type
         {
             prepared_log* log;
@@ -67,7 +67,7 @@ namespace
             const auto self = context.entity();
             CHECK(event.attachment == self.id());
             CHECK_FALSE(self.is_valid());
-            CHECK(self.definition_id().is_valid());
+            STATIC_REQUIRE(std::same_as<decltype(self.definition_id()), givm::definition_id<givm::definition_category::attachment>>);
             CHECK(self.character().id() == actor);
             CHECK(self.state().count != 0);
             data.log->events.push_back("effect:" + std::string{ data.name });
@@ -82,7 +82,7 @@ namespace
 
     struct tagged_attachment
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type {};
         std::string_view source_name;
         std::string_view tag;
@@ -94,7 +94,7 @@ namespace
     template<class TProgram>
     struct observer_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { prepared_log* log; givm::normal_effect pause; givm::normal_effect initialization; };
         prepared_log* log;
         TProgram program;
@@ -125,13 +125,13 @@ namespace
         {
             const auto removed = context.table()[event.attachment];
             const auto definition = (*data.log->library)[removed.definition_id()];
-            if(not definition.template can_handle<givm::this_prepared_skill_use, givm::attachment_view>()) return {};
+            if(not definition.template can_handle<givm::this_prepared_skill_use, givm::entity_category::attachment>()) return {};
             CHECK_FALSE(removed.is_valid());
             data.log->events.push_back("removed:" + std::string{ definition.name() });
             data.log->removed.push_back(event.attachment);
             std::size_t remaining = 0;
             for(const auto attachment : removed.character().attachments())
-                if((*data.log->library)[attachment.definition_id()].template can_handle<givm::this_prepared_skill_use, givm::attachment_view>())
+                if((*data.log->library)[attachment.definition_id()].template can_handle<givm::this_prepared_skill_use, givm::entity_category::attachment>())
                     ++remaining;
             data.log->remaining_at_removal.push_back(remaining);
             if(data.log->pause_removal)
@@ -145,8 +145,8 @@ namespace
             givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>&, std::uint32_t = 0)
         {
             if(not event.flags.contains(givm::damage_flag_bits::prepared_skill)) return {};
-            REQUIRE(std::holds_alternative<givm::attachment_id>(event.source));
-            CHECK(std::get<givm::attachment_id>(event.source) == data.log->effects.back());
+            REQUIRE(event.source.template holds<givm::entity_category::attachment>());
+            CHECK(event.source.template get<givm::entity_category::attachment>() == data.log->effects.back());
             return {};
         }
         static givm::normal_effect handle(const definition_type& data,
@@ -214,21 +214,21 @@ namespace
 
     struct observer_character
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::definition_id<givm::skill_view> observer; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::optional_definition_id<givm::definition_category::skill> observer; };
         std::string_view name() const { return "PreparedCharacter"; }
         auto skill_dependencies() const { return std::array{ std::string_view{ "PreparedObserver" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>("PreparedObserver") };
+            return { context.resolve_id<givm::definition_category::skill>("PreparedObserver") };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 20, .max_energy = 3, .health = 20, .energy = 3 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.observer : givm::definition_id<givm::skill_view>{};
+            return query.skill_index == 0 ? data.observer : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 
@@ -261,16 +261,16 @@ namespace
         givm::table table{ { .round_number = 1, .self_player = owner },
             { .dice = dice, .active_character = actor, .can_plunge = true },
             { .active_character = target } };
-        const auto ordinary = ids.get_id<givm::character_view>("PlainCharacter");
+        const auto ordinary = ids.get_id<givm::definition_category::character>("PlainCharacter");
         load_deck(table, library,
-            { .characters = { ids.get_id<givm::character_view>("PreparedCharacter"), ordinary } },
+            { .characters = { ids.get_id<givm::definition_category::character>("PreparedCharacter"), ordinary } },
             { .characters = { ordinary, ordinary } });
         return table;
     }
 
     givm::add_attachment add(givm::definition_compile_context& context, std::string_view name, std::uint32_t count = 1)
     {
-        return { .definition = context.resolve_id<givm::attachment_view>(name), .state = { count } };
+        return { .definition = context.resolve_id<givm::definition_category::attachment>(name), .state = { count } };
     }
 
     struct zero_random { std::uint32_t operator()() const { return 0; } };
@@ -327,7 +327,7 @@ TEST_CASE("prepared attachments consume consecutive action opportunities in orde
     CHECK(table.state().active_player == opponent);
     CHECK(table.state().self_player == owner);
     REQUIRE(std::ranges::distance(table[actor].attachments()) == 1);
-    CHECK((*table[actor].attachments().begin()).definition_id() == ids.get_id<givm::attachment_view>("LaterPreparation"));
+    CHECK((*table[actor].attachments().begin()).definition_id() == ids.get_id<givm::definition_category::attachment>("LaterPreparation"));
 }
 
 TEST_CASE("control preserves a prepared attachment through declarations until the next round", "[prepared-skill][control]")
@@ -420,7 +420,7 @@ TEST_CASE("only successful character changes cancel prepared attachments", "[pre
     if(cancelled) CHECK(log.remaining_at_removal == std::vector<std::size_t>{ 0, 0 });
     CHECK(log.switches == (cancelled ? 1 : 0));
     CHECK(table[owner].state().active_character == (cancelled ? ally : actor));
-    const auto plain = ids.get_id<givm::attachment_view>("PlainAttachment");
+    const auto plain = ids.get_id<givm::definition_category::attachment>("PlainAttachment");
     CHECK(std::ranges::any_of(table[actor].attachments(), [&](auto attachment) { return attachment.definition_id() == plain; }));
 }
 
@@ -495,7 +495,7 @@ TEST_CASE("switch cancellation resumes remaining removal notifications independe
         CHECK(current[owner].state().active_character == ally);
         CHECK(current.state().self_player == owner);
         REQUIRE(std::ranges::distance(current[actor].attachments()) == 1);
-        CHECK((*current[actor].attachments().begin()).definition_id() == ids.get_id<givm::attachment_view>("PlainAttachment"));
+        CHECK((*current[actor].attachments().begin()).definition_id() == ids.get_id<givm::definition_category::attachment>("PlainAttachment"));
         CHECK(current[target].state().health == 20);
     };
     finish(executor, table);

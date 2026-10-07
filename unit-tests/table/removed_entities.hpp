@@ -21,7 +21,7 @@ namespace
     void check_removed_card(
         const givm::table& table,
         givm::hand_card_id card_id,
-        givm::definition_id<givm::card_definition> definition
+        givm::definition_id<givm::definition_category::card> definition
     )
     {
         const auto card = table[card_id];
@@ -29,7 +29,7 @@ namespace
         CHECK_FALSE(static_cast<bool>(card));
         CHECK(card.id() == card_id);
         CHECK(card.definition_id() == definition);
-        CHECK(card.player().id() == card_id.player_id);
+        CHECK(card.player().id() == card_id.player_id());
         CHECK(card.statuses().begin() == card.statuses().end());
         // Historical card state remains readable after removal.
         (void)card.state();
@@ -39,12 +39,12 @@ namespace
     {
         std::vector<givm::deck_card_id> handlers;
         givm::hand_card_id removed;
-        givm::definition_id<givm::card_definition> removed_definition;
+        givm::definition_id<givm::definition_category::card> removed_definition;
     };
 
     struct overflow_response_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
             overflow_log* log;
@@ -89,9 +89,9 @@ namespace
         }
     };
 
-    std::vector<givm::definition_id<givm::card_definition>> deck_definitions(givm::player_view player)
+    std::vector<givm::definition_id<givm::definition_category::card>> deck_definitions(givm::player_view player)
     {
-        std::vector<givm::definition_id<givm::card_definition>> result;
+        std::vector<givm::definition_id<givm::definition_category::card>> result;
         for(const auto card : player.deck_cards())
             result.push_back(card.definition_id());
         return result;
@@ -105,7 +105,7 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
     const overflow_response_source first{ "OverflowFirst", &log, true };
     const overflow_response_source second{ "OverflowSecond", &log, false };
     const overflow_response_source discarded{ "OverflowDiscarded", &log, false };
-    const givm::test::named_definition_source<givm::card_definition> drawn{ "OverflowDrawn" };
+    const givm::test::named_definition_source<givm::definition_category::card> drawn{ "OverflowDrawn" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
@@ -115,10 +115,10 @@ TEST_CASE("overflow discards retain readable card information and leave broadcas
             givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, first, second, discarded, drawn
     );
-    const auto first_definition = ids.get_id<givm::card_definition>(first.name());
-    const auto second_definition = ids.get_id<givm::card_definition>(second.name());
-    const auto discarded_definition = ids.get_id<givm::card_definition>(discarded.name());
-    const auto drawn_definition = ids.get_id<givm::card_definition>(drawn.name());
+    const auto first_definition = ids.get_id<givm::definition_category::card>(first.name());
+    const auto second_definition = ids.get_id<givm::definition_category::card>(second.name());
+    const auto discarded_definition = ids.get_id<givm::definition_category::card>(discarded.name());
+    const auto drawn_definition = ids.get_id<givm::definition_category::card>(drawn.name());
     const givm::player_id player{ 0 };
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .hand_limit = 1 }, { .hand_limit = 1 } };
     load_deck(table, library, {

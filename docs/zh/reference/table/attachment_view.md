@@ -10,6 +10,12 @@ class attachment_view;
 
 角色身上一个附属实体的只读视图，例如随角色持续存在的效果或装备。具体用途由定义决定。
 
+## 静态成员
+
+| | |
+| --- | --- |
+| [`category`](attachment_view/category.md) | 此视图的实体类别 |
+
 ## 成员函数
 
 |  |  |

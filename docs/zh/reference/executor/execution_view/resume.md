@@ -61,7 +61,7 @@ execution_state resume(
 
 struct character_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     struct definition_type {};
     std::string_view name() const { return "character"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -99,7 +99,7 @@ int main()
     }
     const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
-    const auto definition = ids.get_id<givm::character_view>("character");
+    const auto definition = ids.get_id<givm::definition_category::character>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition, definition } },
         givm::linked_deck{ .characters = { definition } });
@@ -115,7 +115,7 @@ int main()
     execution.view_in<givm::execution_state::initial_active_characters_selected>().resume(library, table, random);
     const auto switch_view = execution.view_in<givm::execution_state::active_character_changed>();
     std::println("切人现场指向新角色: {}", switch_view.character() == attacker);
-    std::println("牌桌仍为原出战角色: {}", table[switch_view.character().player_id].state().active_character == original);
+    std::println("牌桌仍为原出战角色: {}", table[switch_view.character().player_id()].state().active_character == original);
     const auto state = switch_view.resume(library, table, random);
     std::println("切人后到达伤害现场: {}", state == givm::execution_state::health_reduced);
     std::println("新出战角色已写入牌桌: {}", table[givm::player_id{ 0 }].state().active_character == attacker);

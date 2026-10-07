@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_ENTER_CHARACTER_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "../../table.hpp"
@@ -17,7 +18,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -39,7 +40,7 @@ namespace givm
         using error_type = enter_character_error;
 
         player_id player;
-        definition_id<character_view> definition;
+        optional_definition_id<definition_category::character> definition{};
     };
 }
 

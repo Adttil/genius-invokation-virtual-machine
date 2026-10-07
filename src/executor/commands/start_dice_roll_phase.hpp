@@ -84,7 +84,7 @@ namespace givm::detail
 
         for(size_t player_index = 0; player_index < 2; ++player_index)
         {
-            const player_id player{ player_index };
+            const player_id player{ static_cast<std::uint32_t>(player_index) };
             const auto fixed_count = event.fixed_dice[player_index].total();
             GIVM_ASSERT(fixed_count <= event.count);
 

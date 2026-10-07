@@ -18,7 +18,7 @@ namespace givm_test::executor::compile_boundary
     {
         struct skill_source
         {
-            using definition_category = givm::skill_view;
+            static constexpr auto category = givm::definition_category::skill;
             struct definition_type { givm::normal_effect entry; };
             sequence_form form;
 
@@ -68,8 +68,8 @@ namespace givm_test::executor::compile_boundary
 
         struct character_source
         {
-            using definition_category = givm::character_view;
-            struct definition_type { givm::definition_id<givm::skill_view> skill; };
+            static constexpr auto category = givm::definition_category::character;
+            struct definition_type { givm::optional_definition_id<givm::definition_category::skill> skill; };
 
             constexpr std::string_view name() const noexcept { return "CompileBoundaryCharacter"; }
             constexpr auto skill_dependencies() const noexcept
@@ -78,16 +78,16 @@ namespace givm_test::executor::compile_boundary
             }
             definition_type compile(givm::definition_compile_context& context) const
             {
-                return { context.resolve_id<givm::skill_view>("CompileBoundarySkill") };
+                return { context.resolve_id<givm::definition_category::skill>("CompileBoundarySkill") };
             }
             static givm::character_state query(const definition_type&, const givm::character_initial_state&)
             {
                 return { .max_health = 10, .max_energy = 3, .health = 10 };
             }
-            static givm::definition_id<givm::skill_view> query(const definition_type& definition,
+            static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& definition,
                 const givm::character_initial_skill& query)
             {
-                return query.skill_index == 0 ? definition.skill : givm::definition_id<givm::skill_view>{};
+                return query.skill_index == 0 ? definition.skill : givm::optional_definition_id<givm::definition_category::skill>{};
             }
         };
     }
@@ -97,8 +97,8 @@ namespace givm_test::executor::compile_boundary
     {
         const character_source character;
         const skill_source skill{ form };
-        const givm_test::reaction_source<givm::card_definition> card_a{ "CompileBoundaryCardA" };
-        const givm_test::reaction_source<givm::card_definition> card_b{ "CompileBoundaryCardB" };
+        const givm_test::reaction_source<givm::definition_category::card> card_a{ "CompileBoundaryCardA" };
+        const givm_test::reaction_source<givm::definition_category::card> card_b{ "CompileBoundaryCardB" };
         auto sources = givm::make_definition_source_library(character, skill, card_a, card_b);
         if(not sources) throw std::logic_error{ givm::error_string(sources.error()) };
         if(not sources->add(givm_test::dendro_core, givm_test::catalyzing_field,
@@ -112,8 +112,8 @@ namespace givm_test::executor::compile_boundary
             const std::array<std::string_view, 1> character_names{ character.name() };
             const std::array<std::string_view, 2> card_names{ card_a.name(), card_b.name() };
             givm::definition_selection selection{};
-            selection[givm::definition_types::index_of<givm::character_view>()] = character_names;
-            selection[givm::definition_types::index_of<givm::card_definition>()] = card_names;
+            selection[static_cast<std::size_t>(givm::definition_category::character)] = character_names;
+            selection[static_cast<std::size_t>(givm::definition_category::card)] = card_names;
             const std::array<givm::any_command, 0> initialization{};
             const std::vector<givm::any_command> round_commands(round.begin(), round.end());
             return givm::compile(*sources, givm_test::basic_sources, selection, initialization, round_commands, mode);

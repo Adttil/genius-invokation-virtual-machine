@@ -14,7 +14,7 @@ namespace givm_test::interface_layers
     {
         struct skill_source
         {
-            using definition_category = givm::skill_view;
+            static constexpr auto category = givm::definition_category::skill;
             struct definition_type { givm::normal_effect entry; };
 
             constexpr std::string_view name() const noexcept { return "LayeredSkill"; }
@@ -51,8 +51,8 @@ namespace givm_test::interface_layers
 
         struct character_source
         {
-            using definition_category = givm::character_view;
-            struct definition_type { givm::definition_id<givm::skill_view> skill; };
+            static constexpr auto category = givm::definition_category::character;
+            struct definition_type { givm::optional_definition_id<givm::definition_category::skill> skill; };
 
             constexpr std::string_view name() const noexcept { return "LayeredCharacter"; }
             constexpr auto skill_dependencies() const noexcept
@@ -62,7 +62,7 @@ namespace givm_test::interface_layers
 
             definition_type compile(givm::definition_compile_context& context) const
             {
-                return { context.resolve_id<givm::skill_view>("LayeredSkill") };
+                return { context.resolve_id<givm::definition_category::skill>("LayeredSkill") };
             }
 
             static givm::character_state query(const definition_type&, const givm::character_initial_state&)
@@ -70,10 +70,10 @@ namespace givm_test::interface_layers
                 return { .max_health = 10, .max_energy = 3, .health = 10 };
             }
 
-            static givm::definition_id<givm::skill_view> query(const definition_type& definition,
+            static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& definition,
                 const givm::character_initial_skill& query)
             {
-                return query.skill_index == 0 ? definition.skill : givm::definition_id<givm::skill_view>{};
+                return query.skill_index == 0 ? definition.skill : givm::optional_definition_id<givm::definition_category::skill>{};
             }
         };
 

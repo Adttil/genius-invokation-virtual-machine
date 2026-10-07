@@ -84,11 +84,11 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, reroll_dice>(library);
 #ifndef NDEBUG
-            debug_validate_entity(table, table.state().self_player, "reroll_dice", "self_player");
+            debug_validate_entity(table, table.state().self_player.get(), "reroll_dice", "self_player");
 #endif
             input = {
                 .player = command.player == relative_player::self
-                    ? table.state().self_player : other_player(table.state().self_player),
+                    ? table.state().self_player.get() : other_player(table.state().self_player.get()),
                 .reroll_count = command.reroll_count
             };
 #ifndef NDEBUG
@@ -108,7 +108,7 @@ namespace givm::detail
 
         if(input.reroll_count == 0)
             return context.enter_next();
-        GIVM_ASSERT(input.player.index < 2);
+        GIVM_ASSERT(input.player.index() < 2);
         const auto dice_count = table[input.player].state().dice.total();
         if(dice_count == 0)
             return context.enter_next();

@@ -16,7 +16,7 @@ struct remove_combat_status
     using input_type = remove_combat_status_input;
 
     relative_player player = relative_player::self;
-    definition_id<combat_status_view> definition{};
+    optional_definition_id<givm::definition_category::combat_status> definition{};
 };
 ```
 
@@ -59,7 +59,7 @@ struct remove_combat_status_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
+| `value` | `std::uint64_t` | 出错字段的数值；定义 ID 使用其 `value()`，枚举使用其底层数值 |
 | `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。`dynamic_input_in_root` 不使用附加成员；动态模式不检查未使用的固定参数。

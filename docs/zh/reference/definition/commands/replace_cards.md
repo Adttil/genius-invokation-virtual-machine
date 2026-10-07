@@ -34,14 +34,14 @@ struct replace_cards_error;
 
 | | |
 | --- | --- |
-| `invalid_player` | `player.index` 不是固定席位 `0` 或 `1` |
+| `invalid_player` | `player.index()` 不是固定席位 `0` 或 `1` |
 
 ### `replace_cards_error` 的成员对象
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | 出错的 `player.index` |
+| `value` | `std::size_t` | 出错的 `player.index()` |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。
 
@@ -79,7 +79,7 @@ struct replace_cards_error;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     struct definition_type {};
     std::string_view source_name;
     std::string_view name() const { return source_name; }
@@ -105,8 +105,8 @@ int main()
     }
     const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
-    const auto a = ids.get_id<givm::card_definition>("first");
-    const auto b = ids.get_id<givm::card_definition>("second");
+    const auto a = ids.get_id<givm::definition_category::card>("first");
+    const auto b = ids.get_id<givm::definition_category::card>("second");
     load_deck(table, library,
         givm::linked_deck{ .cards = { b, a } },
         givm::linked_deck{ .cards = { b, a } });

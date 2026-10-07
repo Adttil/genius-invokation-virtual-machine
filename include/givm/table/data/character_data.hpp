@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+
+#include "../definition_id.hpp"
 #include <cstdint>
 #include <limits>
 #include <utility>
@@ -13,7 +15,7 @@
 #include "../../enums/element_aura.hpp"
 #include "../../enums/equipment_type.hpp"
 #include "../../enums/weapon_type.hpp"
-#include "../issued_id.hpp"
+#include "../tag_id.hpp"
 #include "attachment_data.hpp"
 #include "skill_data.hpp"
 
@@ -27,7 +29,7 @@ namespace givm
         std::uint32_t energy;
         element_aura aura = element_aura::none;
         weapon_type_mask allowed_weapon_types;
-        tag_id energy_tag{};
+        optional_tag_id energy_tag{};
         givm::element element = givm::element::none;
         bool alive = true;
     };
@@ -37,7 +39,7 @@ namespace givm::detail
 {
     struct character_data
     {
-        size_t definition_and_flags = static_cast<size_t>(-1);
+        std::uint64_t definition_and_flags = static_cast<std::uint64_t>(-1);
         character_state state;
         std::vector<skill_data> skill_datas;
         std::vector<attachment_data> attachment_datas;
@@ -54,7 +56,7 @@ namespace givm::detail
             {
                 std::erase_if(datas, [](const auto& data)
                 {
-                    constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+                    constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
                     return (data.definition_and_flags & erased_mask) != 0;
                 });
                 if constexpr(requires{ (*datas.begin()).clean_up(); })
@@ -69,7 +71,7 @@ namespace givm::detail
             size_t next_index = 0;
             for(size_t index = 0; index != attachment_datas.size(); ++index)
             {
-                constexpr size_t erased_mask = size_t{ 1 } << (std::numeric_limits<size_t>::digits - 1);
+                constexpr std::uint64_t erased_mask = std::uint64_t{ 1 } << detail::definition_id_bit_width;
                 if((attachment_datas[index].definition_and_flags & erased_mask) != 0)
                 {
                     continue;

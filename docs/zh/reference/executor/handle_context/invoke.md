@@ -75,7 +75,7 @@ effect<Category> invoke(effect<Category> entry, const program_inputs& inputs);
 
 struct passive_skill_source
 {
-    using definition_category = givm::skill_view;
+    static constexpr auto category = givm::definition_category::skill;
 
     std::string_view name() const { return "响应选择出战"; }
 
@@ -102,13 +102,13 @@ struct passive_skill_source
 
 struct character_source
 {
-    using definition_category = givm::character_view;
-    using definition_type = givm::definition_id<givm::skill_view>;
+    static constexpr auto category = givm::definition_category::character;
+    using definition_type = givm::optional_definition_id<givm::definition_category::skill>;
     std::string_view name() const { return "角色"; }
     auto skill_dependencies() const { return std::array<std::string_view, 1>{ "响应选择出战" }; }
     definition_type compile(givm::definition_compile_context& context) const
     {
-        return context.resolve_id<givm::skill_view>("响应选择出战");
+        return context.resolve_id<givm::definition_category::skill>("响应选择出战");
     }
     static givm::character_state query(const definition_type&, const givm::character_initial_state&)
     {
@@ -140,7 +140,7 @@ int main()
     const auto [library, ids] = std::move(*library_result);
     givm::table table{};
     load_deck(table, library, givm::linked_deck{
-        .characters = { ids.get_id<givm::character_view>("角色") }
+        .characters = { ids.get_id<givm::definition_category::character>("角色") }
     }, {});
 
     givm::executor execution{};

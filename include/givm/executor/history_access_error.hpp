@@ -15,8 +15,8 @@ namespace givm
 {
     struct definition_metadata_error
     {
-        std::size_t category_index;
-        std::size_t value;
+        definition_category category;
+        std::uint64_t value;
         std::size_t count;
     };
 
@@ -31,7 +31,7 @@ namespace givm
 
     inline std::string error_string(const definition_metadata_error& error)
     {
-        return "definition metadata ID out of range: category[" + std::to_string(error.category_index)
+        return "definition metadata ID out of range: category[" + std::to_string(static_cast<unsigned>(error.category))
             + "], value=" + std::to_string(error.value) + ", definition_count=" + std::to_string(error.count);
     }
     inline std::string error_string(const history_field_not_found& error)

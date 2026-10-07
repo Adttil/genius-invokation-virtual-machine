@@ -21,7 +21,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -43,7 +43,7 @@ namespace givm
     struct attach_input
     {
         character_id target;
-        definition_id<attachment_view> definition;
+        definition_id<definition_category::attachment> definition;
         attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 
@@ -54,7 +54,7 @@ namespace givm
         using input_type = attach_input;
 
         relative_player player = relative_player::self;
-        definition_id<attachment_view> definition{};
+        optional_definition_id<definition_category::attachment> definition{};
         attachment_state state{ std::numeric_limits<std::uint32_t>::max(), std::numeric_limits<std::uint32_t>::max() };
     };
 }

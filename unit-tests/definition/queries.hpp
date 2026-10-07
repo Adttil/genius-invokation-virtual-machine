@@ -31,7 +31,7 @@ namespace
 
     struct queried_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
 
         struct definition_type
         {
@@ -58,7 +58,7 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto self = context.find_definition<givm::card_definition>(source_name);
+            const auto self = context.find_definition<givm::definition_category::card>(source_name);
             REQUIRE(self);
             CHECK(self->has_query<givm::card_initial_state>());
             CHECK(self->has_query<givm::card_target_validation>());
@@ -78,7 +78,7 @@ namespace
         static givm::target_validation query(const definition_type& definition, const givm::card_target_validation& parameters)
         {
             ++definition.counts->target_validation;
-            const auto player = parameters.table[parameters.card.id().player_id];
+            const auto player = parameters.table[parameters.card.id().player_id()];
             return parameters.target_count == 0 && player.deck_card_count() >= definition.minimum_remaining_cards
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
@@ -100,7 +100,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto capability_checks = counts->capability_checks;
-            const auto self = context.find_definition<givm::card_definition>(source_name);
+            const auto self = context.find_definition<givm::definition_category::card>(source_name);
             REQUIRE(self);
             CHECK(self->has_query<givm::card_initial_state>() == initial_state_enabled);
             CHECK(self->has_query<givm::card_target_validation>() == target_validation_enabled);
@@ -110,7 +110,7 @@ namespace
                 elemental_tuning_allowed };
         }
 
-        template<class TView, class TEvent>
+        template<givm::entity_category Entity, class TEvent>
         bool can_handle() const noexcept { return false; }
 
         template<class TQuery>
@@ -144,7 +144,7 @@ namespace
 
     struct modifying_status_source
     {
-        using definition_category = givm::status_definition;
+        static constexpr auto category = givm::definition_category::card_status;
 
         struct definition_type
         {
@@ -159,7 +159,7 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto self = context.find_definition<givm::status_definition>("ModifyingStatus");
+            const auto self = context.find_definition<givm::definition_category::card_status>("ModifyingStatus");
             REQUIRE(self);
             CHECK(self->has_query<givm::card_state_modification>());
             return { calls, cost_per_count };
@@ -187,14 +187,14 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             const auto previous_capability_checks = *capability_checks;
-            const auto self = context.find_definition<givm::status_definition>(source_name);
+            const auto self = context.find_definition<givm::definition_category::card_status>(source_name);
             REQUIRE(self);
             CHECK(self->has_query<givm::card_state_modification>() == enabled);
             CHECK(*capability_checks == previous_capability_checks);
             return { calls, cost_per_count };
         }
 
-        template<class TView, class TEvent>
+        template<givm::entity_category Entity, class TEvent>
         bool can_handle() const noexcept { return false; }
 
         template<class TQuery>
@@ -227,8 +227,8 @@ TEST_CASE("empty queries cache each compiled definition and survive library copi
     REQUIRE(sources.add(first, second));
     CHECK(counts.initial_cost == 0);
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
-    const auto first_id = ids.get_id<givm::card_definition>(first.name());
-    const auto second_id = ids.get_id<givm::card_definition>(second.name());
+    const auto first_id = ids.get_id<givm::definition_category::card>(first.name());
+    const auto second_id = ids.get_id<givm::definition_category::card>(second.name());
     REQUIRE(counts.initial_cost == 2);
     CHECK(counts.target_validation == 0);
 
@@ -260,8 +260,8 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
         givm::compile_mode::normal,
         std::tuple{ givm::draw_cards{ .position = 0, .count = 2 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, initial_source, validation_source, character);
-    const auto initial_id = ids.get_id<givm::card_definition>(initial_source.name());
-    const auto validation_id = ids.get_id<givm::card_definition>(validation_source.name());
+    const auto initial_id = ids.get_id<givm::definition_category::card>(initial_source.name());
+    const auto validation_id = ids.get_id<givm::definition_category::card>(validation_source.name());
     REQUIRE(counts.initial_cost == 1);
     REQUIRE(counts.target_validation == 0);
     REQUIRE(counts.capability_checks > 0);
@@ -271,7 +271,7 @@ TEST_CASE("dynamic card query availability is selected per source before runtime
     CHECK(library[validation_id].query(givm::card_initial_state{}).cost.dice_requirement.any == 0);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { initial_id, validation_id },
-        .characters = { ids.get_id<givm::character_view>(character.name()) } }, {});
+        .characters = { ids.get_id<givm::definition_category::character>(character.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = []() -> std::uint32_t { return 0; };
@@ -301,8 +301,8 @@ TEST_CASE("dynamic void queries select a source implementation or the no-op defa
     const dynamic_status_source enabled{ { &calls, 2 }, "EnabledStatus", true, &capability_checks };
     const dynamic_status_source disabled{ { &calls, 2 }, "DisabledStatus", false, &capability_checks };
     const auto [library, ids] = givm::test::compile_definitions(enabled, disabled);
-    const auto enabled_id = ids.get_id<givm::status_definition>(enabled.name());
-    const auto disabled_id = ids.get_id<givm::status_definition>(disabled.name());
+    const auto enabled_id = ids.get_id<givm::definition_category::card_status>(enabled.name());
+    const auto disabled_id = ids.get_id<givm::definition_category::card_status>(disabled.name());
     REQUIRE(capability_checks > 0);
     const auto build_capability_checks = capability_checks;
     CHECK(calls == 0);
@@ -320,12 +320,12 @@ TEST_CASE("dynamic void queries select a source implementation or the no-op defa
 
 TEST_CASE("card state modifications use status state and survive library copies", "[definition][query]")
 {
-    const givm::test::named_definition_source<givm::status_definition> default_source{ "DefaultStatus" };
+    const givm::test::named_definition_source<givm::definition_category::card_status> default_source{ "DefaultStatus" };
     std::uint32_t calls = 0;
     const modifying_status_source modifying_source{ &calls, 2 };
     const auto [library, ids] = givm::test::compile_definitions(default_source, modifying_source);
-    const auto default_id = ids.get_id<givm::status_definition>(default_source.name());
-    const auto modifying_id = ids.get_id<givm::status_definition>(modifying_source.name());
+    const auto default_id = ids.get_id<givm::definition_category::card_status>(default_source.name());
+    const auto modifying_id = ids.get_id<givm::definition_category::card_status>(modifying_source.name());
     givm::card_state state{
         .cost = { .dice_requirement = { .same = 1, .any = 3 },
             .speed = givm::action_speed::combat, .energy = 2 },
@@ -370,9 +370,9 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
         {
             return std::tuple{
                 givm::insert_deck_card{ .player = givm::player_id{ 0 },
-                    .definition = context.resolve_id<givm::card_definition>("UntunableCard") },
+                    .definition = context.resolve_id<givm::definition_category::card>("UntunableCard") },
                 givm::insert_deck_card{ .player = givm::player_id{ 1 },
-                    .definition = context.resolve_id<givm::card_definition>("TunableCard") } };
+                    .definition = context.resolve_id<givm::definition_category::card>("TunableCard") } };
         }, card_names };
     const givm::test::initialization_character_source character;
     REQUIRE(sources.add(initialization, character));
@@ -382,8 +382,8 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
         givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 },
         givm::settle{}, givm::end_game{ givm::game_result::both_loss }
     }, std::tuple{}, givm::compile_mode::normal));
-    const auto first_id = ids.get_id<givm::card_definition>(first.name());
-    const auto second_id = ids.get_id<givm::card_definition>(second.name());
+    const auto first_id = ids.get_id<givm::definition_category::card>(first.name());
+    const auto second_id = ids.get_id<givm::definition_category::card>(second.name());
     REQUIRE(counts.initial_cost == 2);
 
     const auto check_state = [&](const auto card)
@@ -395,7 +395,7 @@ TEST_CASE("deck loading and card insertion use cached initial card states", "[de
     };
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { first_id, second_id },
-        .characters = { ids.get_id<givm::character_view>(character.name()) } }, { .cards = { second_id, first_id } });
+        .characters = { ids.get_id<givm::definition_category::character>(character.name()) } }, { .cards = { second_id, first_id } });
     for(const auto player : table.players())
     {
         REQUIRE(player.deck_card_count() == 2);
@@ -427,7 +427,7 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
         givm::compile_mode::normal,
         std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, source);
-    const auto id = ids.get_id<givm::card_definition>(source.name());
+    const auto id = ids.get_id<givm::definition_category::card>(source.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .cards = { id, id, id } }, {});
     auto random = []() -> std::uint32_t { return 0; };
@@ -451,14 +451,14 @@ TEST_CASE("nonempty queries use current table state and compiled definition data
 
 TEST_CASE("missing queries use their operation specific defaults", "[definition][query]")
 {
-    const givm::test::named_definition_source<givm::card_definition> card_source{ "DefaultQueryCard" };
-    const givm::test::named_definition_source<givm::character_view> character_source{ "DefaultQueryCharacter" };
+    const givm::test::named_definition_source<givm::definition_category::card> card_source{ "DefaultQueryCard" };
+    const givm::test::named_definition_source<givm::definition_category::character> character_source{ "DefaultQueryCharacter" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, card_source, character_source);
-    const auto card_definition = ids.get_id<givm::card_definition>(card_source.name());
-    const auto character_definition = ids.get_id<givm::character_view>(character_source.name());
+    const auto card_definition = ids.get_id<givm::definition_category::card>(card_source.name());
+    const auto character_definition = ids.get_id<givm::definition_category::character>(character_source.name());
     const auto state = library[character_definition].query(givm::character_initial_state{});
     CHECK(state.max_health == 0);
     CHECK(state.max_energy == 0);

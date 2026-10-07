@@ -21,7 +21,7 @@ namespace givm::detail
     struct combat_status_state_modification_data
     {
         relative_player player;
-        definition_id<combat_status_view> definition;
+        definition_id<definition_category::combat_status> definition;
         std::int64_t count;
         std::int64_t round_usages;
     };
@@ -36,7 +36,7 @@ namespace givm::detail
         {
             const auto& command = context.instruction_data<1, combat_status_state_modification_data>(library);
             const auto player = command.player == relative_player::self
-                ? table.state().self_player : other_player(table.state().self_player);
+                ? table.state().self_player.get() : other_player(table.state().self_player.get());
 #ifndef NDEBUG
             debug_validate_required_entity(table, player, command.definition, "modify_combat_status_state", "status");
 #endif
@@ -92,7 +92,7 @@ namespace givm::detail
             writer.write(command.ignore_limit
                 ? execute_fn{ execute_combat_status_state_modification<true, true> }
                 : execute_fn{ execute_combat_status_state_modification<true, false> });
-            writer.write(combat_status_state_modification_data{ command.player, command.definition, command.count, command.round_usages });
+            writer.write(combat_status_state_modification_data{ command.player, command.definition.get<definition_category::combat_status>(), command.count, command.round_usages });
         }
         else
             writer.write(command.ignore_limit
@@ -117,8 +117,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<combat_status_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<combat_status_view>() });
+        if(command.definition.get<definition_category::combat_status>().value() >= context.definition_count<definition_category::combat_status>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::combat_status>().value(), .limit = context.definition_count<definition_category::combat_status>() });
         return errors;
     }
 }

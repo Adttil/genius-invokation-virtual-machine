@@ -23,7 +23,7 @@ struct technique_target_validation;
 | `technique` | [`attachment_view`](../../table/attachment_view.md) | 准备使用的特技。 |
 | `table` | `const givm::table&` | 当前行动发生的牌桌。 |
 | `library` | `const definition_library&` | 与牌桌配套的定义库，用于查询目标等实体的定义标签和其他定义信息。 |
-| `targets` | `std::array<technique_target_id, 2>` | 两个目标位置；未提供的位置为 `std::monostate`。 |
+| `targets` | `std::array<technique_target_id, 2>` | 两个目标位置；未提供的位置为 `null` 空类别。 |
 | `target_count` | `std::size_t` | 采用的目标数量：`0` 检查空选择，`1` 检查第一目标，`2` 检查第二目标。 |
 
 ## 注意

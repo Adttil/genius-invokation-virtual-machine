@@ -69,13 +69,13 @@ namespace givm::detail
         if(table[target_id].state().health == 0)
             throw command_input_error{ "transfer_attachment", invalid_entity_relation{
                 "target", invalid_entity_relation::reason::defeated_character } };
-        if(id.character_id == target_id)
+        if(id.character_id() == target_id)
             throw command_input_error{ "transfer_attachment", invalid_entity_relation{
                 "target", invalid_entity_relation::reason::same_character } };
 #endif
         GIVM_ASSERT(table[id].is_valid());
         GIVM_ASSERT(table[target_id].is_valid() && table[target_id].state().health != 0);
-        GIVM_ASSERT(id.character_id != target_id);
+        GIVM_ASSERT(id.character_id() != target_id);
 
         const auto attachment = table[id];
         const auto target = table[target_id];
@@ -88,7 +88,7 @@ namespace givm::detail
             state.round_usages = library[definition].query(attachment_state_limit{}).round_usages;
         const auto type = library.equipment_type(definition);
 
-        std::optional<attachment_id> removed;
+        optional_entity_id<entity_category::attachment> removed;
         if(type != equipment_type::none && target.has(type))
         {
             removed = target.get(type).id();
@@ -109,8 +109,9 @@ namespace givm::detail
     {
         std::visit([&](auto selector)
         {
-            using selector_type = decltype(selector);
-            if constexpr(std::is_same_v<selector_type, definition_id<attachment_view>>)
+            using selector_type = std::conditional_t<std::is_same_v<decltype(selector), optional_definition_id<definition_category::attachment>>,
+                definition_id<definition_category::attachment>, decltype(selector)>;
+            if constexpr(std::is_same_v<decltype(selector), optional_definition_id<definition_category::attachment>>)
             {
                 if(not selector)
                 {
@@ -119,13 +120,18 @@ namespace givm::detail
                 }
             }
             else GIVM_ASSERT(selector != equipment_type::none);
+            const auto fixed_selector = [&]
+            {
+                if constexpr(std::is_same_v<decltype(selector), equipment_type>) return selector;
+                else return selector.template get<definition_category::attachment>();
+            }();
             GIVM_ASSERT(command.source.character.selection == character_selection::character);
             GIVM_ASSERT(command.target.selection == character_selection::character);
             writer.write(command.reset_round_usages
                 ? execute_fn{ execute_attachment_transfer<selector_type, true> }
                 : execute_fn{ execute_attachment_transfer<selector_type, false> });
             writer.write(attachment_transfer_data<selector_type>{
-                { command.source.character, selector }, command.target });
+                { command.source.character, fixed_selector }, command.target });
         }, command.source.selector);
     }
 }
@@ -137,7 +143,7 @@ namespace givm::detail
     {
         using reason = transfer_attachment::error_type::reason;
         std::vector<transfer_attachment::error_type> errors;
-        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.source.selector);
+        const auto* definition = std::get_if<optional_definition_id<definition_category::attachment>>(&command.source.selector);
         if(definition && not *definition)
         {
             if(kind != program_kind::response)
@@ -146,8 +152,8 @@ namespace givm::detail
         }
         if(definition)
         {
-            if(definition->value() >= context.definition_count<attachment_view>())
-                errors.push_back({ .cause = reason::invalid_definition, .value = definition->value(), .limit = context.definition_count<attachment_view>() });
+            if(definition->get<definition_category::attachment>().value() >= context.definition_count<definition_category::attachment>())
+                errors.push_back({ .cause = reason::invalid_definition, .value = definition->get<definition_category::attachment>().value(), .limit = context.definition_count<definition_category::attachment>() });
         }
         else
         {
@@ -174,7 +180,7 @@ namespace givm::detail
     template<class TInputTypes>
     constexpr std::size_t input_marker(const transfer_attachment& command) noexcept
     {
-        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.source.selector);
+        const auto* definition = std::get_if<optional_definition_id<definition_category::attachment>>(&command.source.selector);
         return definition && not *definition ? TInputTypes::template index_of<transfer_attachment::input_type>() : std::size_t(-1);
     }
 }

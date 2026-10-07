@@ -18,9 +18,7 @@
 
 namespace givm
 {
-    using command_entity_id = std::variant<player_id, character_id, skill_id, attachment_id,
-        hand_card_id, deck_card_id, hand_card_status_id, deck_card_status_id,
-        support_id, summon_id, combat_status_id>;
+    using command_entity_id = variant_entity_id<entity_category::player, entity_category::character, entity_category::skill, entity_category::attachment, entity_category::hand_card, entity_category::deck_card, entity_category::hand_card_status, entity_category::deck_card_status, entity_category::support, entity_category::summon, entity_category::combat_status>;
 
     struct invalid_entity_argument
     {
@@ -33,8 +31,8 @@ namespace givm
     struct invalid_definition_argument
     {
         std::string field;
-        std::size_t category_index;
-        std::size_t value;
+        definition_category category;
+        std::uint64_t value;
         std::size_t count;
     };
 
@@ -55,7 +53,7 @@ namespace givm
     {
         std::string field;
         std::optional<command_entity_id> owner{};
-        std::optional<std::size_t> definition{};
+        std::optional<std::uint64_t> definition{};
         std::optional<equipment_type> equipment{};
     };
 
@@ -91,7 +89,7 @@ namespace givm::detail
 {
     inline std::string command_entity_string(const command_entity_id& entity)
     {
-        return std::visit([](const auto& id)
+        return entity.visit([](const auto& id)
         {
             using id_type = std::remove_cvref_t<decltype(id)>;
             std::string name;
@@ -107,16 +105,19 @@ namespace givm::detail
             else if constexpr(std::is_same_v<id_type, summon_id>) name = "summon";
             else name = "combat status";
             name += "{";
-            if constexpr(requires { id.character_id; })
-                name += "player=" + std::to_string(id.character_id.player_id.index)
-                    + ", character=" + std::to_string(id.character_id.index) + ", ";
-            else if constexpr(requires { id.card_id; })
-                name += "player=" + std::to_string(id.card_id.player_id.index)
-                    + ", card=" + std::to_string(id.card_id.index) + ", ";
-            else if constexpr(requires { id.player_id; })
-                name += "player=" + std::to_string(id.player_id.index) + ", ";
-            return name + "index=" + std::to_string(id.index) + "}";
-        }, entity);
+            if constexpr(requires { id.character_id(); })
+                name += "player=" + std::to_string(id.character_id().player_id().index())
+                    + ", character=" + std::to_string(id.character_id().index()) + ", ";
+            else if constexpr(requires { id.hand_card_id(); })
+                name += "player=" + std::to_string(id.hand_card_id().player_id().index())
+                    + ", card=" + std::to_string(id.hand_card_id().index()) + ", ";
+            else if constexpr(requires { id.deck_card_id(); })
+                name += "player=" + std::to_string(id.deck_card_id().player_id().index())
+                    + ", card=" + std::to_string(id.deck_card_id().index()) + ", ";
+            else if constexpr(not std::is_same_v<id_type, player_id>)
+                name += "player=" + std::to_string(id.player_id().index()) + ", ";
+            return name + "index=" + std::to_string(id.index()) + "}";
+        });
     }
 }
 
@@ -131,7 +132,7 @@ namespace givm
                 return reason.field + ": " + detail::command_entity_string(reason.entity)
                     + (reason.cause == reason_type::reason::out_of_range ? " is out of range" : " has been removed");
             else if constexpr(std::is_same_v<reason_type, invalid_definition_argument>)
-                return reason.field + ": " + detail::source_definition_name_text({ reason.category_index, std::to_string(reason.value) })
+                return reason.field + ": " + detail::source_definition_name_text({ reason.category, std::to_string(reason.value) })
                     + " is outside [0, " + std::to_string(reason.count) + ")";
             else if constexpr(std::is_same_v<reason_type, invalid_enum_argument>)
                 return reason.field + ": invalid enum value " + std::to_string(reason.value);
@@ -162,7 +163,7 @@ namespace givm
             }
             else
             {
-                std::string message = "player[" + std::to_string(reason.player.index) + "]: insufficient dice; requested/available {";
+                std::string message = "player[" + std::to_string(reason.player.index()) + "]: insufficient dice; requested/available {";
                 constexpr std::string_view names[]{ "cryo", "hydro", "pyro", "electro", "geo", "dendro", "anemo", "omni" };
                 for(std::size_t index = 0; index != std::size(names); ++index)
                 {

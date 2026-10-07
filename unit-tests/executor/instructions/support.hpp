@@ -51,7 +51,7 @@ namespace
 
     struct support_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type { support_log* log; givm::normal_effect remove; };
         std::string_view source_name;
         support_log* log;
@@ -83,11 +83,11 @@ namespace
 
     struct support_driver
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             support_log* log;
-            givm::definition_id<givm::support_view> support;
+            givm::optional_definition_id<givm::definition_category::support> support;
             std::vector<givm::normal_effect> actions;
             givm::normal_effect refill;
         };
@@ -96,14 +96,14 @@ namespace
         auto support_dependencies() const { return std::array<std::string_view, 2>{ "SupportA", "SupportB" }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto support = context.resolve_id<givm::support_view>("SupportA");
-            const auto replacement = context.resolve_id<givm::support_view>("SupportB");
+            const auto support = context.resolve_id<givm::definition_category::support>("SupportA");
+            const auto replacement = context.resolve_id<givm::definition_category::support>("SupportB");
             definition_type result{ log, support, {}, {} };
             for(const auto& action : log->actions)
             {
                 const auto player = action.player == givm::player_id{ 0 }
                     ? givm::relative_player::self : givm::relative_player::opponent;
-                const auto definition = log->dynamic ? givm::definition_id<givm::support_view>{} : support;
+                const auto definition = log->dynamic ? givm::optional_definition_id<givm::definition_category::support>{} : support;
                 switch(action.kind)
                 {
                 case operation::add:
@@ -141,7 +141,7 @@ namespace
             const auto& action = data.log->actions[index];
             if(not data.log->dynamic) return context.invoke(data.actions[index]);
             if(action.kind == operation::add)
-                return context.invoke(data.actions[index], givm::add_support_input{ action.player, data.support, action.state });
+                return context.invoke(data.actions[index], givm::add_support_input{ action.player, data.support.get(), action.state });
             auto supports = context.table()[action.player].supports();
             REQUIRE(std::ranges::distance(supports) > static_cast<std::ptrdiff_t>(action.target_index));
             const auto target = (*std::ranges::next(supports.begin(), action.target_index)).id();
@@ -160,7 +160,7 @@ namespace
             CHECK(removed.definition_id() == data.support);
             data.log->removed.push_back(event.support);
             data.log->removal_observers.push_back(self.player().id());
-            data.log->remaining_on_removal.push_back(std::ranges::distance(context.table()[event.support.player_id].supports()));
+            data.log->remaining_on_removal.push_back(std::ranges::distance(context.table()[event.support.player_id()].supports()));
             if(data.refill && self.player().id() == givm::player_id{ 0 })
                 return context.invoke(data.refill);
             return {};
@@ -169,13 +169,13 @@ namespace
 
     struct support_card
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { givm::normal_effect add; givm::normal_effect replace; };
         std::string_view name() const { return "SupportCard"; }
         auto support_dependencies() const { return std::array{ std::string_view{ "SupportB" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const givm::add_support add{ .definition = context.resolve_id<givm::support_view>("SupportB"), .state = { 17, 1 } };
+            const givm::add_support add{ .definition = context.resolve_id<givm::definition_category::support>("SupportB"), .state = { 17, 1 } };
             return { context.add_normal_effect(std::tuple{ add }), context.add_normal_effect(std::tuple{ givm::remove_support{}, add }) };
         }
         static givm::card_state query(const definition_type&, const givm::card_initial_state&)
@@ -188,8 +188,8 @@ namespace
             const bool full = std::ranges::distance(query.table[player].supports()) >= query.table[player].state().support_limit;
             if(query.target_count == 0)
                 return full ? givm::target_validation::valid_incomplete : givm::target_validation::valid_complete;
-            const auto* support = std::get_if<givm::support_id>(&query.targets[0]);
-            return full && query.target_count == 1 && support && support->player_id == player && query.table[*support].is_valid()
+            const auto support = query.targets[0].template get_if<givm::entity_category::support>();
+            return full && query.target_count == 1 && support && support.get().player_id() == player && query.table[*support].is_valid()
                 ? givm::target_validation::valid_complete : givm::target_validation::invalid;
         }
         static givm::normal_effect handle(const definition_type& data,
@@ -198,7 +198,7 @@ namespace
             const auto self = context.entity();
             const auto player = self.player().id();
             if(std::ranges::distance(context.table()[player].supports()) >= context.table()[player].state().support_limit)
-                return context.invoke(data.replace, givm::remove_support_input{ std::get<givm::support_id>(event.targets[0]) });
+                return context.invoke(data.replace, givm::remove_support_input{ event.targets[0].template get<givm::entity_category::support>() });
             return context.invoke(data.add);
         }
     };
@@ -221,9 +221,9 @@ namespace
 
     void load_scenario(givm::table& table, const givm::definition_library& library, const givm::issued_id_map& ids)
     {
-        const auto character = ids.get_id<givm::character_view>("SupportDriver");
+        const auto character = ids.get_id<givm::definition_category::character>("SupportDriver");
         load_deck(table, library,
-            { .cards = { ids.get_id<givm::card_definition>("SupportCard") }, .characters = { character } },
+            { .cards = { ids.get_id<givm::definition_category::card>("SupportCard") }, .characters = { character } },
             { .characters = { character } });
     }
     givm::execution_state advance(givm_test::executor_driver& executor, const givm::definition_library& library, givm::table& table)
@@ -295,7 +295,7 @@ TEST_CASE("support state changes preserve packed dice and saturate without delet
             .count = std::numeric_limits<std::int64_t>::min(), .round_usages = std::numeric_limits<std::int64_t>::min() } };
     const auto [library, ids] = compile_scenario(log, mode);
     REQUIRE(log.limit_queries == 2);
-    const auto limit = library.query(ids.get_id<givm::support_view>("SupportA"), givm::support_state_limit{});
+    const auto limit = library.query(ids.get_id<givm::definition_category::support>("SupportA"), givm::support_state_limit{});
     CHECK(limit.count == 255);
     CHECK(limit.round_usages == 3);
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
@@ -351,7 +351,7 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
     {
         const auto after = support_ids(current);
         REQUIRE(after.size() == 4);
-        CHECK(current[after.back()].definition_id() == ids.get_id<givm::support_view>("SupportB"));
+        CHECK(current[after.back()].definition_id() == ids.get_id<givm::definition_category::support>("SupportB"));
         CHECK(current[after.back()].state().count == 17);
         CHECK(current[before[1]].is_valid() == not full);
         CHECK(current[givm::player_id{ 0 }].hand_card_count() == 0);

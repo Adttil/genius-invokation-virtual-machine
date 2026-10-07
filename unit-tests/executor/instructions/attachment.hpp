@@ -37,7 +37,7 @@ namespace
 
     struct attachment_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type
         {
             attachment_log* log;
@@ -70,7 +70,7 @@ namespace
 
     struct equipment_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             attachment_log* log;
@@ -93,7 +93,7 @@ namespace
             const auto add = [&](std::string_view name, std::uint32_t count)
             {
                 return givm::add_attachment{
-                    .definition = context.resolve_id<givm::attachment_view>(name), .state = { count }
+                    .definition = context.resolve_id<givm::definition_category::attachment>(name), .state = { count }
                 };
             };
             return {
@@ -121,7 +121,7 @@ namespace
             const auto id = event.attachment;
             const auto attachment = context.table()[id];
             CHECK_FALSE(attachment.is_valid());
-            CHECK(attachment.definition_id().is_valid());
+            STATIC_REQUIRE(std::same_as<decltype(attachment.definition_id()), givm::definition_id<givm::definition_category::attachment>>);
             CHECK(attachment.character().id() == equipped_character);
             if(attachment.character().has(givm::equipment_type::weapon)) CHECK(attachment.character().get(givm::equipment_type::weapon).id() != id);
             data.log->events.push_back("left:" + std::to_string(attachment.state().count));
@@ -142,14 +142,14 @@ namespace
 
     struct equipment_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
             bool remove;
             givm::normal_effect effect;
-            givm::definition_id<givm::attachment_view> equipment;
-            givm::tag_id target_tag;
-            std::array<givm::tag_id, 5> weapon_types;
+            givm::optional_definition_id<givm::definition_category::attachment> equipment;
+            givm::optional_tag_id target_tag;
+            std::array<givm::optional_tag_id, 5> weapon_types;
         };
         bool remove = false;
 
@@ -161,46 +161,46 @@ namespace
                 remove,
                 remove ? context.add_normal_effect(std::tuple{ givm::remove_attachment{} })
                     : context.add_normal_effect(std::tuple{ givm::add_attachment{} }),
-                context.resolve_id<givm::attachment_view>("NewWeapon"),
-                context.find_tag("equipment_target").value_or(givm::tag_id{}),
-                { context.find_tag("sword").value_or(givm::tag_id{}),
-                    context.find_tag("claymore").value_or(givm::tag_id{}),
-                    context.find_tag("polearm").value_or(givm::tag_id{}),
-                    context.find_tag("bow").value_or(givm::tag_id{}),
-                    context.find_tag("catalyst").value_or(givm::tag_id{}) }
+                context.resolve_id<givm::definition_category::attachment>("NewWeapon"),
+                context.find_tag("equipment_target"),
+                { context.find_tag("sword"),
+                    context.find_tag("claymore"),
+                    context.find_tag("polearm"),
+                    context.find_tag("bow"),
+                    context.find_tag("catalyst") }
             };
         }
         static givm::target_validation query(const definition_type& data, const givm::card_target_validation& parameters)
         {
             if(parameters.target_count == 0) return givm::target_validation::valid_incomplete;
             if(parameters.target_count != 1) return givm::target_validation::invalid;
-            const auto target = std::get_if<givm::character_id>(&parameters.targets[0]);
-            if(target == nullptr || target->player_id != parameters.card.player().id()) return givm::target_validation::invalid;
+            const auto target = parameters.targets[0].template get_if<givm::entity_category::character>();
+            if(target == nullptr || target.get().player_id() != parameters.card.player().id()) return givm::target_validation::invalid;
             const auto character = parameters.table[*target];
             if(not character.is_valid() || character.state().health == 0) return givm::target_validation::invalid;
             if(data.remove) return character.has(givm::equipment_type::weapon) ? givm::target_validation::valid_complete : givm::target_validation::invalid;
-            if(not data.target_tag || not parameters.library[character.definition_id()].has_tag(data.target_tag)) return givm::target_validation::invalid;
+            if(not data.target_tag || not parameters.library[character.definition_id()].has_tag(data.target_tag.get())) return givm::target_validation::invalid;
             constexpr std::array weapon_types{ givm::weapon_type::sword, givm::weapon_type::claymore,
                 givm::weapon_type::polearm, givm::weapon_type::bow, givm::weapon_type::catalyst };
             for(std::size_t index = 0; index < weapon_types.size(); ++index)
-                if(data.weapon_types[index] && parameters.library[data.equipment].has_tag(data.weapon_types[index]))
+                if(data.weapon_types[index] && parameters.library[data.equipment.get()].has_tag(data.weapon_types[index].get()))
                     return character.state().allowed_weapon_types[weapon_types[index]]
                         ? givm::target_validation::valid_complete : givm::target_validation::invalid;
             return givm::target_validation::invalid;
         }
         static givm::normal_effect handle(const definition_type& data, givm::this_card_play& event, givm::handle_context<givm::hand_card_view>& context, std::uint32_t = 0)
         {
-            const auto target = std::get<givm::character_id>(event.targets[0]);
+            const auto target = event.targets[0].template get<givm::entity_category::character>();
             if(data.remove) return context.invoke(data.effect, givm::remove_attachment_input{ context.table()[target].get(givm::equipment_type::weapon).id() });
             return context.invoke(data.effect, givm::add_attachment_input{
-                .target = target, .definition = data.equipment, .state = { 9 }
+                .target = target, .definition = data.equipment.get(), .state = { 9 }
             });
         }
     };
 
     struct tagged_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { bool allowed; };
         std::string_view source_name;
         bool allowed;
@@ -248,14 +248,14 @@ namespace
         givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
             { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
         load_deck(table, library, {
-            .cards = { ids.get_id<givm::card_definition>("RemoveWeaponCard"), ids.get_id<givm::card_definition>("EquipWeaponCard") },
-            .characters = { ids.get_id<givm::character_view>("EquippableCharacter"), ids.get_id<givm::character_view>("Reserve"),
-                ids.get_id<givm::character_view>("Blocked"), ids.get_id<givm::character_view>("Untagged") }
-        }, { .characters = { ids.get_id<givm::character_view>("Reserve") } });
+            .cards = { ids.get_id<givm::definition_category::card>("RemoveWeaponCard"), ids.get_id<givm::definition_category::card>("EquipWeaponCard") },
+            .characters = { ids.get_id<givm::definition_category::character>("EquippableCharacter"), ids.get_id<givm::definition_category::character>("Reserve"),
+                ids.get_id<givm::definition_category::character>("Blocked"), ids.get_id<givm::definition_category::character>("Untagged") }
+        }, { .characters = { ids.get_id<givm::definition_category::character>("Reserve") } });
         return table;
     }
 
-    std::size_t card_index(const givm::execution_view<givm::execution_state::action_selection>& action, const givm::table& table, givm::definition_id<givm::card_definition> definition)
+    std::size_t card_index(const givm::execution_view<givm::execution_state::action_selection>& action, const givm::table& table, givm::definition_id<givm::definition_category::card> definition)
     {
         for(std::size_t index = 0; index < action.card_count(); ++index)
             if(table[action.card_id(index)].definition_id() == definition) return index;
@@ -272,11 +272,11 @@ namespace
 
     struct dynamic_attachment_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             dynamic_attachment_log* log;
-            givm::definition_id<givm::attachment_view> attachment;
+            givm::optional_definition_id<givm::definition_category::attachment> attachment;
             givm::normal_effect add;
             givm::normal_effect remove;
         };
@@ -286,10 +286,10 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             return {
-                log, context.resolve_id<givm::attachment_view>("DynamicAttachment"),
+                log, context.resolve_id<givm::definition_category::attachment>("DynamicAttachment"),
                 context.add_normal_effect(std::tuple{
                     givm::add_attachment{
-                        .definition = context.resolve_id<givm::attachment_view>("DynamicWeapon"),
+                        .definition = context.resolve_id<givm::definition_category::attachment>("DynamicWeapon"),
                         .state = { 17 }
                     }, givm::add_attachment{}, givm::add_attachment{}
                 }),
@@ -318,8 +318,8 @@ namespace
             if(data.log->calls++ == 0)
             {
                 return context.invoke(data.add,
-                    givm::add_attachment_input{ .target = target, .definition = data.attachment, .state = { 3 } },
-                    givm::add_attachment_input{ .target = target, .definition = data.attachment, .state = { 5 } });
+                    givm::add_attachment_input{ .target = target, .definition = data.attachment.get(), .state = { 3 } },
+                    givm::add_attachment_input{ .target = target, .definition = data.attachment.get(), .state = { 5 } });
             }
             for(const auto attachment : table[equipped_character].attachments())
                 data.log->added.push_back(attachment.id());
@@ -363,7 +363,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     CHECK(character.get(givm::equipment_type::technique).state().count == 6);
     const auto old_weapon = character.get(givm::equipment_type::weapon).id();
     const auto action = execution.view_in<givm::execution_state::action_selection>();
-    const auto equipment_index = card_index(action, table, ids.get_id<givm::card_definition>("EquipWeaponCard"));
+    const auto equipment_index = card_index(action, table, ids.get_id<givm::definition_category::card>("EquipWeaponCard"));
     CHECK(action.card_targets_validate(library, table, equipment_index) == givm::target_validation::valid_incomplete);
     const std::array<givm::card_target_id, 1> targets{ equipped_character };
     CHECK(action.card_targets_validate(library, table, equipment_index, targets) == givm::target_validation::valid_complete);
@@ -397,13 +397,13 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
         CHECK(log.events == std::vector<std::string>{ "left:7" });
         CHECK(log.responders == std::vector<std::string>{ "NewWeapon", "Artifact", "Talent", "Technique", "OrdinaryA", "OrdinaryB" });
         CHECK_FALSE(branch_table[old_weapon].is_valid());
-        CHECK(branch_table[old_weapon].definition_id() == ids.get_id<givm::attachment_view>("Weapon"));
+        CHECK(branch_table[old_weapon].definition_id() == ids.get_id<givm::definition_category::attachment>("Weapon"));
         CHECK(branch_table[old_weapon].state().count == 7);
         const auto new_weapon = branch_table[equipped_character].get(givm::equipment_type::weapon).id();
         CHECK(new_weapon != old_weapon);
-        CHECK(branch_table[new_weapon].definition_id() == ids.get_id<givm::attachment_view>("NewWeapon"));
+        CHECK(branch_table[new_weapon].definition_id() == ids.get_id<givm::definition_category::attachment>("NewWeapon"));
         const auto next_action = branch.view_in<givm::execution_state::action_selection>();
-        const auto removal_index = card_index(next_action, branch_table, ids.get_id<givm::card_definition>("RemoveWeaponCard"));
+        const auto removal_index = card_index(next_action, branch_table, ids.get_id<givm::definition_category::card>("RemoveWeaponCard"));
         CHECK(next_action.card_targets_validate(library, branch_table, removal_index, targets) == givm::target_validation::valid_complete);
         log.events.clear();
         branch.submitted(next_action.play_card(library, branch_table, zero_random, removal_index, {}, targets));
@@ -418,7 +418,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::finished);
         branch_table.clean_up();
         CHECK_FALSE(branch_table[equipped_character].has(givm::equipment_type::weapon));
-        CHECK(branch_table[equipped_character].get(givm::equipment_type::artifact).definition_id() == ids.get_id<givm::attachment_view>("Artifact"));
+        CHECK(branch_table[equipped_character].get(givm::equipment_type::artifact).definition_id() == ids.get_id<givm::definition_category::attachment>("Artifact"));
         CHECK(branch_table[equipped_character].get(givm::equipment_type::talent).state().count == 5);
         CHECK(branch_table[equipped_character].get(givm::equipment_type::technique).state().count == 6);
         std::size_t count = 0;
@@ -445,7 +445,7 @@ TEST_CASE("equipment replacement handles a nested replacement in the removal bro
     log.events.clear();
     log.add_during_removal = true;
     const auto action = execution.view_in<givm::execution_state::action_selection>();
-    const auto index = card_index(action, table, ids.get_id<givm::card_definition>("EquipWeaponCard"));
+    const auto index = card_index(action, table, ids.get_id<givm::definition_category::card>("EquipWeaponCard"));
     const std::array<givm::card_target_id, 1> targets{ equipped_character };
     execution.submitted(action.play_card(library, table, zero_random, index, {}, targets));
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
@@ -453,8 +453,8 @@ TEST_CASE("equipment replacement handles a nested replacement in the removal bro
     REQUIRE(log.removed.size() == 2);
     CHECK_FALSE(table[log.removed[0]].is_valid());
     CHECK_FALSE(table[log.removed[1]].is_valid());
-    CHECK(table[log.removed[1]].definition_id() == ids.get_id<givm::attachment_view>("NewWeapon"));
-    CHECK(table[equipped_character].get(givm::equipment_type::weapon).definition_id() == ids.get_id<givm::attachment_view>("NestedWeapon"));
+    CHECK(table[log.removed[1]].definition_id() == ids.get_id<givm::definition_category::attachment>("NewWeapon"));
+    CHECK(table[equipped_character].get(givm::equipment_type::weapon).definition_id() == ids.get_id<givm::definition_category::attachment>("NestedWeapon"));
     std::size_t weapons = 0;
     for(const auto attachment : table[equipped_character].attachments())
         weapons += library[attachment.definition_id()].has_tag(ids.get_tag_id("weapon"));
@@ -471,7 +471,7 @@ TEST_CASE("equipment card input selects a reserve character without changing the
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
     const auto action = execution.view_in<givm::execution_state::action_selection>();
-    const auto index = card_index(action, table, ids.get_id<givm::card_definition>("EquipWeaponCard"));
+    const auto index = card_index(action, table, ids.get_id<givm::definition_category::card>("EquipWeaponCard"));
     const givm::character_id reserve{ givm::player_id{ 0 }, 1 };
     const std::array<givm::card_target_id, 1> targets{ reserve };
     CHECK(action.card_targets_validate(library, table, index, targets) == givm::target_validation::valid_complete);
@@ -495,12 +495,12 @@ TEST_CASE("a non-card response supplies multiple attachment inputs and removes o
         }, std::tuple{}, givm::test::with_passive_skill(dynamic_attachment_character_source{ &log }),
         givm::test::initialized_character_source{ "LowerHealth", { .max_health = 10, .health = 3 } },
         givm::test::initialized_character_source{ "HigherHealth", { .max_health = 10, .health = 9 } },
-        givm::test::named_definition_source<givm::attachment_view>{ "DynamicAttachment" },
+        givm::test::named_definition_source<givm::definition_category::attachment>{ "DynamicAttachment" },
         attachment_source{ &equipment_log, "DynamicWeapon", { "weapon", "sword" } });
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("DynamicAttachmentCharacter") } },
-        { .characters = { ids.get_id<givm::character_view>("LowerHealth"), ids.get_id<givm::character_view>("HigherHealth") } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>("DynamicAttachmentCharacter") } },
+        { .characters = { ids.get_id<givm::definition_category::character>("LowerHealth"), ids.get_id<givm::definition_category::character>("HigherHealth") } });
     givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::finished);

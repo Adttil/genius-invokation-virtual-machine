@@ -53,20 +53,20 @@ namespace givm
         for(auto&& item : card_names)
         {
             const std::string_view name{ item };
-            if(not id_map.has<card_definition>(name))
+            if(not id_map.has<definition_category::card>(name))
                 errors.push_back({ deck_link_error::definition_kind::card, index, std::string{ name } });
             else
-                result.cards.push_back(id_map.get_id<card_definition>(name));
+                result.cards.push_back(id_map.get_id<definition_category::card>(name));
             ++index;
         }
         index = 0;
         for(auto&& item : character_names)
         {
             const std::string_view name{ item };
-            if(not id_map.has<character_view>(name))
+            if(not id_map.has<definition_category::character>(name))
                 errors.push_back({ deck_link_error::definition_kind::character, index, std::string{ name } });
             else
-                result.characters.push_back(id_map.get_id<character_view>(name));
+                result.characters.push_back(id_map.get_id<definition_category::character>(name));
             ++index;
         }
         if(not errors.empty()) return std::unexpected{ std::move(errors) };

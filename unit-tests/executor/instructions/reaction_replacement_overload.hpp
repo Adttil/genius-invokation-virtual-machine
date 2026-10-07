@@ -17,7 +17,7 @@ namespace givm_test::executor_instructions::reaction_replacement_overload
 namespace
 {
     constexpr givm::character_id attacker{ givm::player_id{ 0 }, 0 };
-    constexpr givm::character_id target(std::size_t index) { return { givm::player_id{ 1 }, index }; }
+    constexpr givm::character_id target(std::size_t index) { return { givm::player_id{ 1 }, static_cast<std::uint32_t>(index) }; }
     enum class replacement { none, first, second, clear };
 
     struct reaction_log
@@ -41,7 +41,7 @@ namespace
 
     struct reacting_skill
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             reaction_log* log;
@@ -84,8 +84,8 @@ namespace
             if(data.first) return {};
             event.cancel_reaction_bonus = data.log->mode == replacement::first || data.log->mode == replacement::second;
             data.log->calculated_tags.push_back(event.cancel_reaction_bonus);
-            data.log->original_reactions.push_back(event.reaction.slot);
-            data.log->active_at_calculation.push_back(context.table()[givm::player_id{ 1 }].state().active_character->index);
+            data.log->original_reactions.push_back((event.reaction ? event.reaction.get().slot() : givm::elemental_reaction::none));
+            data.log->active_at_calculation.push_back(context.table()[givm::player_id{ 1 }].state().active_character.get().index());
             if(not data.log->action_taken && (data.log->change_current || data.log->nested_damage))
             {
                 data.log->action_taken = true;
@@ -112,14 +112,14 @@ namespace
         {
             if(data.first) return {};
             data.log->values.push_back(event.value);
-            data.log->active_at_completion.push_back(context.table()[givm::player_id{ 1 }].state().active_character->index);
+            data.log->active_at_completion.push_back(context.table()[givm::player_id{ 1 }].state().active_character.get().index());
             return {};
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::active_character_changed& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             if(data.first || not data.log->recording) return {};
-            data.log->switches.push_back(event.current.index);
+            data.log->switches.push_back(event.current.index());
             if(data.log->pause_switch && not data.log->paused)
             {
                 data.log->paused = true;
@@ -131,8 +131,8 @@ namespace
 
     struct reacting_character
     {
-        using definition_category = givm::character_view;
-        struct definition_type { std::array<givm::definition_id<givm::skill_view>, 2> skills; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { std::array<givm::optional_definition_id<givm::definition_category::skill>, 2> skills; };
         std::string_view name() const { return "OverloadSource"; }
         auto skill_dependencies() const
         {
@@ -140,22 +140,22 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { { context.resolve_id<givm::skill_view>("FirstReactionWriter"),
-                context.resolve_id<givm::skill_view>("LastReactionWriter") } };
+            return { { context.resolve_id<givm::definition_category::skill>("FirstReactionWriter"),
+                context.resolve_id<givm::definition_category::skill>("LastReactionWriter") } };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 20, .health = 20 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index < data.skills.size() ? data.skills[query.skill_index] : givm::definition_id<givm::skill_view>{};
+            return query.skill_index < data.skills.size() ? data.skills[query.skill_index] : givm::optional_definition_id<givm::definition_category::skill>{};
         }
     };
 
     struct switch_observer_character
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { reaction_log* log; givm::character_state state; };
         reaction_log* log;
         std::string_view source_name;
@@ -172,7 +172,7 @@ namespace
             const auto self = context.entity().character();
             if(data.log->recording)
             {
-                data.log->switch_responder_order.push_back(self.id().index);
+                data.log->switch_responder_order.push_back(self.id().index());
             }
             return {};
         }
@@ -195,8 +195,8 @@ namespace
         const givm::issued_id_map& ids, std::initializer_list<std::string_view> characters)
     {
         givm::linked_deck opponents;
-        for(const auto name : characters) opponents.characters.push_back(ids.get_id<givm::character_view>(name));
-        load_deck(table, library, { .characters = { ids.get_id<givm::character_view>("OverloadSource") } }, opponents);
+        for(const auto name : characters) opponents.characters.push_back(ids.get_id<givm::definition_category::character>(name));
+        load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>("OverloadSource") } }, opponents);
     }
 
     auto damage_program(std::span<const givm::deal_damage> damages)
@@ -237,7 +237,7 @@ TEST_CASE("reaction bonus and default effects can be cancelled without erasing t
         REQUIRE(state == givm::execution_state::health_reduced);
         ++observed_damage;
         const auto damage = executor.view_in<givm::execution_state::health_reduced>();
-        CHECK(damage.reaction().slot == givm::elemental_reaction::overloaded);
+        CHECK((damage.reaction() ? damage.reaction().get().slot() : givm::elemental_reaction::none) == givm::elemental_reaction::overloaded);
         CHECK(damage.value() == (mode == replacement::clear ? 3 : 1));
     }
     CHECK(observed_damage == (observed ? 1 : 0));

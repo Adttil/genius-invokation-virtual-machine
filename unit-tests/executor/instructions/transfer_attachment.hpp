@@ -44,7 +44,7 @@ namespace
 
     struct attachment_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { transfer_log* log; };
 
         transfer_log* log;
@@ -83,13 +83,13 @@ namespace
 
     struct transfer_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type
         {
             transfer_log* log;
-            givm::definition_id<givm::attachment_view> moving;
-            givm::definition_id<givm::attachment_view> old;
-            givm::definition_id<givm::attachment_view> replacement;
+            givm::optional_definition_id<givm::definition_category::attachment> moving;
+            givm::optional_definition_id<givm::definition_category::attachment> old;
+            givm::optional_definition_id<givm::definition_category::attachment> replacement;
             givm::normal_effect prepare;
             givm::normal_effect transfer;
             givm::normal_effect change;
@@ -105,8 +105,8 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto moving = context.resolve_id<givm::attachment_view>("Moving");
-            const auto replacement = context.resolve_id<givm::attachment_view>("Replacement");
+            const auto moving = context.resolve_id<givm::definition_category::attachment>("Moving");
+            const auto replacement = context.resolve_id<givm::definition_category::attachment>("Replacement");
             givm::relative_attachment_target source{
                 .character = { .player = givm::relative_player::self, .offset = 1 }, .selector = moving };
             if(log->followup) source.selector = givm::equipment_type::artifact;
@@ -128,7 +128,7 @@ namespace
                     givm::replace_cards{ givm::player_id{ 0 } }, remove, givm::set_support_state{} });
             }
             else transfer = context.add_normal_effect(std::tuple{ givm::set_support_state{}, command, givm::set_support_state{} });
-            return { log, moving, context.resolve_id<givm::attachment_view>("Old"),
+            return { log, moving, context.resolve_id<givm::definition_category::attachment>("Old"),
                 replacement,
                 log->occupied ? context.add_normal_effect(std::tuple{ givm::add_attachment{}, givm::add_attachment{} })
                     : context.add_normal_effect(std::tuple{ givm::add_attachment{} }),
@@ -143,10 +143,10 @@ namespace
             const auto self = context.entity();
             if(data.log->rounds++ == 0)
             {
-                const givm::add_attachment_input first{ source_character, data.moving, { 3, 1 } };
+                const givm::add_attachment_input first{ source_character, data.moving.get(), { 3, 1 } };
                 if(data.log->occupied)
                     return context.invoke(data.prepare, first, givm::add_attachment_input{
-                        target_character, data.log->equipment ? data.old : data.moving, { 5, 2 } });
+                        target_character, (data.log->equipment ? data.old : data.moving).get(), { 5, 2 } });
                 return context.invoke(data.prepare, first);
             }
             for(const auto attachment : context.table()[source_character].attachments())
@@ -159,7 +159,7 @@ namespace
             if(data.log->followup)
             {
                 const givm::equipment_target destination{ target_character, givm::equipment_type::artifact };
-                const givm::add_attachment_input replacement{ target_character, data.replacement, { 11, 3 } };
+                const givm::add_attachment_input replacement{ target_character, data.replacement.get(), { 11, 3 } };
                 if(data.log->dynamic)
                     return context.invoke(data.transfer,
                         givm::transfer_attachment_input{ givm::equipment_target{ source_character, givm::equipment_type::artifact },
@@ -199,7 +199,7 @@ namespace
                 case removal_response::remove:
                     return context.invoke(data.remove, givm::remove_attachment_input{ moved.id() });
                 case removal_response::replace:
-                    return context.invoke(data.replace, givm::add_attachment_input{ target_character, data.replacement, { 11, 4 } });
+                    return context.invoke(data.replace, givm::add_attachment_input{ target_character, data.replacement.get(), { 11, 4 } });
                 default:
                     return {};
             }
@@ -220,7 +220,7 @@ namespace
             [](givm::definition_compile_context& context)
             {
                 return std::tuple{ givm::add_support{
-                    .definition = context.resolve_id<givm::support_view>("TransferController"), .state = {} } };
+                    .definition = context.resolve_id<givm::definition_category::support>("TransferController"), .state = {} } };
             }, {}, support_names };
         const givm::test::initialization_character_source driver;
         REQUIRE(sources.add(initialization, driver));
@@ -234,9 +234,9 @@ namespace
         givm::table table{ { .round_number = 1, .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
             { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
             { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-        const auto character = ids.get_id<givm::character_view>("Character");
+        const auto character = ids.get_id<givm::definition_category::character>("Character");
         load_deck(table, library, { .characters = { character, character } },
-            { .characters = { ids.get_id<givm::character_view>("InitializationCharacter"), character } });
+            { .characters = { ids.get_id<givm::definition_category::character>("InitializationCharacter"), character } });
         return table;
     }
 
@@ -254,11 +254,11 @@ namespace
 
     struct zero_health_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type
         {
             std::vector<givm::attachment_id>* removed;
-            givm::definition_id<givm::attachment_view> attachment;
+            givm::optional_definition_id<givm::definition_category::attachment> attachment;
             givm::normal_effect entry;
         };
         std::vector<givm::attachment_id>* removed;
@@ -266,7 +266,7 @@ namespace
         auto attachment_dependencies() const { return std::array<std::string_view, 1>{ "RetainedAttachment" }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto attachment = context.resolve_id<givm::attachment_view>("RetainedAttachment");
+            const auto attachment = context.resolve_id<givm::definition_category::attachment>("RetainedAttachment");
             const givm::relative_attachment_target target{ .selector = attachment };
             return { removed, attachment, context.add_normal_effect(std::tuple{
                 givm::add_attachment{}, givm::add_attachment{}, givm::set_attachment_state{ target, { 10, 3 } },
@@ -278,15 +278,15 @@ namespace
         {
             const auto self = context.entity();
             return context.invoke(data.entry,
-                givm::add_attachment_input{ { self.player().id(), 0 }, data.attachment, { 3, 1 } },
-                givm::add_attachment_input{ { self.player().id(), 1 }, data.attachment, { 5, 4 } });
+                givm::add_attachment_input{ { self.player().id(), 0 }, data.attachment.get(), { 3, 1 } },
+                givm::add_attachment_input{ { self.player().id(), 1 }, data.attachment.get(), { 5, 4 } });
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::attachment_removed& event, givm::handle_context<givm::support_view>& context, std::uint32_t = 0)
         {
             data.removed->push_back(event.attachment);
             const auto attachment = context.table()[event.attachment];
-            CHECK(attachment.character().id().index == 0);
+            CHECK(attachment.character().id().index() == 0);
             CHECK(attachment.character().state().health == 0);
             CHECK(attachment.state().count == 9);
             CHECK(attachment.state().round_usages == 2);
@@ -326,7 +326,7 @@ TEST_CASE("attachment transfer preserves state or resets only round usages witho
         }
         ++transferred;
         CHECK(attachment.id() != log.source);
-        CHECK(attachment.definition_id() == ids.get_id<givm::attachment_view>("Moving"));
+        CHECK(attachment.definition_id() == ids.get_id<givm::definition_category::attachment>("Moving"));
         CHECK(attachment.state().count == 3);
         CHECK(attachment.state().round_usages == (log.reset ? 6u : 1u));
     }
@@ -335,7 +335,7 @@ TEST_CASE("attachment transfer preserves state or resets only round usages witho
     {
         CHECK_FALSE(table[source_character].has(givm::equipment_type::artifact));
         REQUIRE(table[target_character].has(givm::equipment_type::artifact));
-        CHECK(table[target_character].get(givm::equipment_type::artifact).definition_id() == ids.get_id<givm::attachment_view>("Moving"));
+        CHECK(table[target_character].get(givm::equipment_type::artifact).definition_id() == ids.get_id<givm::definition_category::attachment>("Moving"));
     }
     for(const auto support : table[givm::player_id{ 1 }].supports()) CHECK(support.state().count == 2);
 }
@@ -397,7 +397,7 @@ TEST_CASE("displaced equipment may remove or replace the transferred equipment p
     if(log.response == removal_response::replace)
     {
         const auto replacement = target.get(givm::equipment_type::artifact);
-        CHECK(replacement.definition_id() == ids.get_id<givm::attachment_view>("Replacement"));
+        CHECK(replacement.definition_id() == ids.get_id<givm::definition_category::attachment>("Replacement"));
         CHECK(replacement.state().count == 11);
         CHECK(replacement.state().round_usages == 4);
     }
@@ -427,7 +427,7 @@ TEST_CASE("equipment targets resolve the current slot when each command executes
     const auto replacement = table[target_character].get(givm::equipment_type::artifact);
     CHECK(replacement.id() == log.changed[1]);
     CHECK(replacement.id() != log.transferred);
-    CHECK(replacement.definition_id() == ids.get_id<givm::attachment_view>("Replacement"));
+    CHECK(replacement.definition_id() == ids.get_id<givm::definition_category::attachment>("Replacement"));
     CHECK(log.states[1].count == 9);
     CHECK(log.states[1].round_usages == 2);
     CHECK(replacement.state().count == 9);
@@ -458,7 +458,7 @@ TEST_CASE("fixed attachment state and removal commands retain a zero-health char
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
     std::vector<givm::attachment_id> removed;
     const zero_health_source controller{ &removed };
-    const givm_test::reaction_source<givm::attachment_view> attachment{ "RetainedAttachment" };
+    const givm_test::reaction_source<givm::definition_category::attachment> attachment{ "RetainedAttachment" };
     const givm::test::initialized_character_source zero_health{ "ZeroHealth", { .max_health = 10, .health = 0 } };
     const givm::test::initialized_character_source living;
     auto sources = givm_test::make_source_library();
@@ -468,7 +468,7 @@ TEST_CASE("fixed attachment state and removal commands retain a zero-health char
         [](givm::definition_compile_context& context)
         {
             return std::tuple{ givm::add_support{
-                .definition = context.resolve_id<givm::support_view>("ZeroHealthController") } };
+                .definition = context.resolve_id<givm::definition_category::support>("ZeroHealthController") } };
         }, {}, support_names };
     const givm::test::initialization_character_source driver;
     REQUIRE(sources.add(initialization, driver));
@@ -477,8 +477,8 @@ TEST_CASE("fixed attachment state and removal commands retain a zero-health char
     }, std::tuple{}, mode));
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } }, {} };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(zero_health.name()),
-        ids.get_id<givm::character_view>(driver.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(zero_health.name()),
+        ids.get_id<givm::definition_category::character>(driver.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);

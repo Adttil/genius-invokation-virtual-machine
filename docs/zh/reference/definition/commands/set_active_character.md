@@ -82,7 +82,7 @@ struct set_active_character_error;
 
 struct character_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     struct definition_type {};
     std::string_view name() const { return "character"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -111,7 +111,7 @@ int main()
     }
     const auto [library, ids] = std::move(*library_result);
     givm::table table{ { .max_rounds = 0, .self_player = givm::player_id{ 0 } } };
-    const auto definition = ids.get_id<givm::character_view>("character");
+    const auto definition = ids.get_id<givm::definition_category::character>("character");
     load_deck(table, library,
         givm::linked_deck{ .characters = { definition } },
         givm::linked_deck{ .characters = { definition, definition } });
@@ -127,7 +127,7 @@ int main()
     execution.view_in<givm::execution_state::initial_active_characters_selected>().resume(library, table, random);
     const auto view = execution.view_in<givm::execution_state::active_character_changed>();
     std::println("本次将设置为目标角色: {}", view.character() == target);
-    std::println("牌桌仍保留原出战角色: {}", table[view.character().player_id].state().active_character == original);
+    std::println("牌桌仍保留原出战角色: {}", table[view.character().player_id()].state().active_character == original);
     view.resume(library, table, random);
     std::println("出战角色设置成功: {}", table[givm::player_id{ 1 }].state().active_character == target);
 }

@@ -84,7 +84,7 @@ namespace givm::detail
 
     inline attachment_id require_attachment(
         const definition_library& library, const unrestricted_table& table,
-        character_id character, definition_id<attachment_view> definition)
+        character_id character, definition_id<definition_category::attachment> definition)
     {
         const auto type = library.equipment_type(definition);
         if(type != equipment_type::none)
@@ -163,8 +163,9 @@ namespace givm::detail
     {
         std::visit([&](auto selector)
         {
-            using selector_type = decltype(selector);
-            if constexpr(std::is_same_v<selector_type, definition_id<attachment_view>>)
+            using selector_type = std::conditional_t<std::is_same_v<decltype(selector), optional_definition_id<definition_category::attachment>>,
+                definition_id<definition_category::attachment>, decltype(selector)>;
+            if constexpr(std::is_same_v<decltype(selector), optional_definition_id<definition_category::attachment>>)
             {
                 if(not selector)
                 {
@@ -173,9 +174,14 @@ namespace givm::detail
                 }
             }
             else GIVM_ASSERT(selector != equipment_type::none);
+            const auto fixed_selector = [&]
+            {
+                if constexpr(std::is_same_v<decltype(selector), equipment_type>) return selector;
+                else return selector.template get<definition_category::attachment>();
+            }();
             GIVM_ASSERT(command.target.character.selection == character_selection::character);
             writer.write(execute_fn{ execute_attachment_removal<selector_type> });
-            writer.write(fixed_attachment_target<selector_type>{ command.target.character, selector });
+            writer.write(fixed_attachment_target<selector_type>{ command.target.character, fixed_selector });
         }, command.target.selector);
     }
 }
@@ -187,7 +193,7 @@ namespace givm::detail
     {
         using reason = remove_attachment::error_type::reason;
         std::vector<remove_attachment::error_type> errors;
-        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        const auto* definition = std::get_if<optional_definition_id<definition_category::attachment>>(&command.target.selector);
         if(definition && not *definition)
         {
             if(kind != program_kind::response)
@@ -196,8 +202,8 @@ namespace givm::detail
         }
         if(definition)
         {
-            if(definition->value() >= context.definition_count<attachment_view>())
-                errors.push_back({ .cause = reason::invalid_definition, .value = definition->value(), .limit = context.definition_count<attachment_view>() });
+            if(definition->get<definition_category::attachment>().value() >= context.definition_count<definition_category::attachment>())
+                errors.push_back({ .cause = reason::invalid_definition, .value = definition->get<definition_category::attachment>().value(), .limit = context.definition_count<definition_category::attachment>() });
         }
         else
         {
@@ -220,7 +226,7 @@ namespace givm::detail
     template<class TInputTypes>
     constexpr std::size_t input_marker(const remove_attachment& command) noexcept
     {
-        const auto* definition = std::get_if<definition_id<attachment_view>>(&command.target.selector);
+        const auto* definition = std::get_if<optional_definition_id<definition_category::attachment>>(&command.target.selector);
         return definition && not *definition ? TInputTypes::template index_of<remove_attachment::input_type>() : std::size_t(-1);
     }
 }

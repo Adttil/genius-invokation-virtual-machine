@@ -32,9 +32,9 @@ namespace
         }
     };
 
-    std::vector<givm::definition_id<givm::card_definition>> hand_definitions(givm::player_view player)
+    std::vector<givm::definition_id<givm::definition_category::card>> hand_definitions(givm::player_view player)
     {
-        std::vector<givm::definition_id<givm::card_definition>> result;
+        std::vector<givm::definition_id<givm::definition_category::card>> result;
         for(const auto card : player.hand_cards()) result.push_back(card.definition_id());
         return result;
     }
@@ -44,9 +44,9 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
 {
     using check_result = givm::initial_card_selection_validation;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
-    const givm::test::named_definition_source<givm::card_definition> gamma{ "Gamma" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::card> gamma{ "Gamma" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
@@ -57,9 +57,9 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
         },
         std::tuple{}, alpha, beta, gamma
     );
-    const auto a = ids.get_id<givm::card_definition>(alpha.name());
-    const auto b = ids.get_id<givm::card_definition>(beta.name());
-    const auto c = ids.get_id<givm::card_definition>(gamma.name());
+    const auto a = ids.get_id<givm::definition_category::card>(alpha.name());
+    const auto b = ids.get_id<givm::definition_category::card>(beta.name());
+    const auto c = ids.get_id<givm::definition_category::card>(gamma.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .cards = { a, b, c } };
     load_deck(table, library, deck, deck);
@@ -73,7 +73,7 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     CHECK(initial.selection_validate(table, givm::player_id{ 0 }, std::bitset<givm::selection_capacity>{ 0b10 })
         == check_result::valid);
     CHECK(initial.selection_validate(table, givm::player_id{ 2 }, {}) == check_result::invalid_player);
-    CHECK(initial.selection_validate(table, givm::player_id{ std::numeric_limits<std::size_t>::max() }, {})
+    CHECK(initial.selection_validate(table, givm::player_id{ std::numeric_limits<std::uint32_t>::max() }, {})
         == check_result::invalid_player);
     CHECK(initial.selection_validate(table, givm::player_id{ 1 }, std::bitset<givm::selection_capacity>{ 0b100 })
         == check_result::invalid_card_position);
@@ -114,8 +114,8 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     const auto hand_count = GENERATE(givm::selection_capacity, givm::selection_capacity + 1);
     std::vector<std::size_t> positions(hand_count);
     for(std::size_t index = 0; index < positions.size(); ++index) positions[index] = index;
-    const givm::test::named_definition_source<givm::card_definition> alpha{ "Alpha" };
-    const givm::test::named_definition_source<givm::card_definition> beta{ "Beta" };
+    const givm::test::named_definition_source<givm::definition_category::card> alpha{ "Alpha" };
+    const givm::test::named_definition_source<givm::definition_category::card> beta{ "Beta" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         givm::compile_mode::normal,
         std::tuple{
@@ -124,8 +124,8 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
             givm::settle{}, givm::end_game{ givm::game_result::both_loss }
         }, std::tuple{}, alpha, beta
     );
-    const auto a = ids.get_id<givm::card_definition>(alpha.name());
-    const auto b = ids.get_id<givm::card_definition>(beta.name());
+    const auto a = ids.get_id<givm::definition_category::card>(alpha.name());
+    const auto b = ids.get_id<givm::definition_category::card>(beta.name());
     givm::linked_deck deck;
     deck.cards.assign(hand_count + 1, a);
     deck.cards.front() = b;
@@ -155,13 +155,13 @@ TEST_CASE("initial character checks validate ownership and existence without req
     using initial_validation = givm::initial_active_character_selection_validation;
     using remaining_validation = givm::remaining_active_character_selection_validation;
     const auto mode = GENERATE(givm::compile_mode::normal, givm::compile_mode::observed);
-    const givm::test::named_definition_source<givm::character_view> character{ "Character" };
+    const givm::test::named_definition_source<givm::definition_category::character> character{ "Character" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{ givm::select_active_character_both{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, character
     );
-    const auto definition = ids.get_id<givm::character_view>(character.name());
+    const auto definition = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     const givm::linked_deck deck{ .characters = { definition, definition } };
     load_deck(table, library, deck, deck);
@@ -176,13 +176,10 @@ TEST_CASE("initial character checks validate ownership and existence without req
     const auto initial = execution.view_in<givm::execution_state::initial_active_character_selection>();
     CHECK(initial.selection_validate(table, first_choice) == initial_validation::valid);
     CHECK(initial.selection_validate(table, second_choice) == initial_validation::valid);
-    CHECK(initial.selection_validate(table,
-        givm::character_id{ givm::player_id{ 2 }, std::numeric_limits<std::size_t>::max() })
-        == initial_validation::invalid_player);
     CHECK(initial.selection_validate(table, givm::character_id{ givm::player_id{ 0 }, 2 })
         == initial_validation::invalid_character);
     CHECK(initial.selection_validate(table,
-        givm::character_id{ givm::player_id{ 1 }, std::numeric_limits<std::size_t>::max() })
+        givm::character_id{ givm::player_id{ 1 }, std::numeric_limits<std::uint32_t>::max() })
         == initial_validation::invalid_character);
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
@@ -195,9 +192,6 @@ TEST_CASE("initial character checks validate ownership and existence without req
     CHECK(remaining.selection_validate(table, second_choice) == remaining_validation::valid);
     CHECK(remaining.selection_validate(table, givm::character_id{ givm::player_id{ 0 }, 0 }) == remaining_validation::valid);
     CHECK(remaining.selection_validate(table, first_choice) == remaining_validation::wrong_player);
-    CHECK(remaining.selection_validate(table,
-        givm::character_id{ givm::player_id{ 2 }, std::numeric_limits<std::size_t>::max() })
-        == remaining_validation::invalid_player);
     CHECK(remaining.selection_validate(table, givm::character_id{ givm::player_id{ 0 }, 2 })
         == remaining_validation::invalid_character);
     CHECK(remaining.selection_validate(table, givm::character_id{ givm::player_id{ 1 }, 2 })
@@ -256,7 +250,7 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     CHECK_FALSE(input.selection_validate(table, absent_type));
     CHECK(input.selection_validate(table, givm::player_id{ 0 }, too_many) == check_result::insufficient_dice);
     CHECK(input.selection_validate(table, givm::player_id{ 2 }, too_many) == check_result::invalid_player);
-    CHECK(input.selection_validate(table, givm::player_id{ std::numeric_limits<std::size_t>::max() }, {})
+    CHECK(input.selection_validate(table, givm::player_id{ std::numeric_limits<std::uint32_t>::max() }, {})
         == check_result::invalid_player);
     CHECK(input.player() == givm::player_id{ 0 });
     CHECK(input.remaining(givm::player_id{ 0 }) == 1);

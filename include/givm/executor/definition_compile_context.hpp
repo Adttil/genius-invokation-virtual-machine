@@ -11,7 +11,7 @@ namespace givm::detail
     using static_query_functions = std::tuple<std::conditional_t<
         std::is_empty_v<TQueries>, query_fn_t<TQueries>, std::monostate>...>;
 
-    template<class TCategory>
+    template<definition_category TCategory>
     struct compile_definition
     {
         const definition_source_view<TCategory>* source;
@@ -19,7 +19,7 @@ namespace givm::detail
         const definition_source_declarations* declarations;
         const definition_bucket<TCategory>* bucket;
         supported_queries<TCategory>::template apply<static_query_functions> static_queries{};
-        std::conditional_t<std::same_as<TCategory, history_summary_definition>,
+        std::conditional_t<(TCategory == definition_category::history_summary),
             const definition_history_handlers*, std::monostate> history{};
     };
 
@@ -30,13 +30,13 @@ namespace givm
     class definition_compile_context
     {
     public:
-        template<class TCategory>
+        template<definition_category TCategory>
         class definition_view
         {
         public:
-            definition_id<TCategory> id() const noexcept
+            optional_definition_id<TCategory> id() const noexcept
             {
-                return definition_ ? definition_->id : definition_id<TCategory>{};
+                return definition_ ? optional_definition_id<TCategory>{ definition_->id } : nullptr;
             }
 
             std::string_view name() const noexcept
@@ -54,31 +54,32 @@ namespace givm
                 return std::ranges::find(tags(), name) != tags().end();
             }
 
-            template<class TDependencyCategory>
+            template<definition_category TDependencyCategory>
             std::span<const std::string_view> dependencies() const noexcept
             {
                 if(not definition_) return {};
-                return definition_->declarations->dependencies[definition_types::index_of<TDependencyCategory>()];
+                return definition_->declarations->dependencies[static_cast<std::size_t>(TDependencyCategory)];
             }
 
-            template<class TEvent, class TView = TCategory>
+            template<class TEvent, entity_category Entity = entity_categories_of<TCategory>.size() == 1
+                ? entity_categories_of<TCategory>.front() : entity_category::null>
             bool can_handle() const noexcept
             {
                 if(not definition_) return false;
-                if constexpr(std::same_as<TCategory, history_summary_definition>
-                    && std::same_as<TView, history_summary_definition>)
+                if constexpr(TCategory == definition_category::history_summary && Entity == entity_category::null)
                 {
-                    if constexpr(requires { subscribed_events<TCategory>::template index_of<TEvent>(); })
+                    if constexpr(requires { history_subscribed_events::template index_of<TEvent>(); })
                         return std::ranges::binary_search(
-                            std::get<subscribed_events<TCategory>::template index_of<TEvent>()>(*definition_->history),
+                            std::get<history_subscribed_events::template index_of<TEvent>()>(*definition_->history),
                             definition_->id.value(), {}, &detail::history_handler<TEvent>::index);
                     else return false;
                 }
-                else if constexpr(requires { views_of_definition<TCategory>::template index_of<TView>(); })
+                else if constexpr(Entity != entity_category::null && definition_category_of<Entity> == TCategory)
                 {
-                    if constexpr(requires { subscribed_events<TView>::template index_of<TEvent>(); })
-                        return std::get<subscribed_events<TView>::template index_of<TEvent>()>(
-                            std::get<views_of_definition<TCategory>::template index_of<TView>()>(definition_->bucket->handle_fns))
+                    using TView = entity_view<Entity>;
+                    if constexpr(requires { subscribed_events<Entity>::template index_of<TEvent>(); })
+                        return std::get<subscribed_events<Entity>::template index_of<TEvent>()>(
+                            std::get<detail::definition_views<TCategory>::template index_of<TView>()>(definition_->bucket->handle_fns))
                             [definition_->id.value()] != nullptr;
                     else return false;
                 }
@@ -111,38 +112,38 @@ namespace givm
             friend class definition_compile_context;
         };
 
-        template<class TCategory>
+        template<definition_category TCategory>
         auto definitions() const noexcept
         {
-            return std::span{ std::get<definition_types::index_of<TCategory>()>(definitions_) }
+            return std::span{ std::get<static_cast<std::size_t>(TCategory)>(definitions_) }
                 | std::views::transform([](const auto& definition) { return definition_view<TCategory>{ definition }; });
         }
 
-        template<class TCategory>
+        template<definition_category TCategory>
         definition_view<TCategory> operator[](definition_id<TCategory> id) const
         {
-            const auto& definitions = std::get<definition_types::index_of<TCategory>()>(definitions_);
+            const auto& definitions = std::get<static_cast<std::size_t>(TCategory)>(definitions_);
             if(id.value() >= definitions.size())
             {
-                report(definition_metadata_error{ definition_types::index_of<TCategory>(), id.value(), definitions.size() });
+                report(definition_metadata_error{ TCategory, id.value(), definitions.size() });
                 return {};
             }
             return { definitions[id.value()] };
         }
 
-        template<class TCategory>
+        template<definition_category TCategory>
         std::optional<definition_view<TCategory>> find_definition(std::string_view name) const
         {
             if(not id_map_.has<TCategory>(name)) return std::nullopt;
             return (*this)[id_map_.get_id<TCategory>(name)];
         }
 
-        definition_id<reaction_view> default_reaction_id(elemental_reaction slot) const noexcept
+        definition_id<definition_category::reaction> default_reaction_id(elemental_reaction slot) const noexcept
         {
             return default_reactions_[static_cast<std::size_t>(slot) - 1];
         }
 
-        template<class TCategory>
+        template<definition_category TCategory>
         std::size_t definition_count() const noexcept
         {
             return id_map_.definition_count<TCategory>();
@@ -191,19 +192,20 @@ namespace givm
             return history_value_key<T>{ 0, std::is_unbounded_array_v<T> ? 0 : 1 };
         }
 
-        template<class TCategory>
-        definition_id<TCategory> resolve_id(std::string_view name) const
+        template<definition_category TCategory>
+        optional_definition_id<TCategory> resolve_id(std::string_view name) const
         {
-            return resolve_definition<TCategory>(name).value_or(definition_id<TCategory>{});
+            const auto id = resolve_definition<TCategory>(name);
+            return id ? optional_definition_id<TCategory>{ *id } : nullptr;
         }
 
-        std::optional<tag_id> find_tag(std::string_view name) const
+        optional_tag_id find_tag(std::string_view name) const
         {
-            if(not id_map_.has_tag(name)) return std::nullopt;
+            if(not id_map_.has_tag(name)) return nullptr;
             return id_map_.get_tag_id(name);
         }
 
-        template<class TCategory>
+        template<definition_category TCategory>
         std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) const
         {
             return id_map_.query_by_tag<TCategory>(filter);
@@ -284,19 +286,19 @@ namespace givm
             return source_ ? source_->name : std::string{};
         }
 
-        template<class TCategory>
+        template<definition_category TCategory>
         std::optional<definition_id<TCategory>> resolve_definition(std::string_view name) const
         {
-            const auto& declared = declarations_.dependencies[definition_types::index_of<TCategory>()];
+            const auto& declared = declarations_.dependencies[static_cast<std::size_t>(TCategory)];
             if(not contains(declared, name))
             {
-                report(definition_resolution_error{ { definition_types::index_of<TCategory>(), std::string{ name } },
+                report(definition_resolution_error{ { TCategory, std::string{ name } },
                     definition_resolution_error::reason::undeclared_dependency });
                 return std::nullopt;
             }
             if(not id_map_.has<TCategory>(name))
             {
-                report(definition_resolution_error{ { definition_types::index_of<TCategory>(), std::string{ name } },
+                report(definition_resolution_error{ { TCategory, std::string{ name } },
                     definition_resolution_error::reason::not_found });
                 return std::nullopt;
             }
@@ -311,7 +313,7 @@ namespace givm
                     ? history_field_access_error::reason::layouts_unavailable : history_field_access_error::reason::no_current_summary });
                 return nullptr;
             }
-            const auto* field = history_layouts_[own_history_.value()].find(name);
+            const auto* field = history_layouts_[own_history_.get<definition_category::history_summary>().value()].find(name);
             if(not field) report(history_field_not_found{ current_summary_name(), std::string{ name } });
             return field;
         }
@@ -323,7 +325,7 @@ namespace givm
                 report(history_field_access_error{ std::string{ summary }, std::string{ name }, history_field_access_error::reason::layouts_unavailable });
                 return {};
             }
-            const auto id = resolve_definition<history_summary_definition>(summary);
+            const auto id = resolve_definition<definition_category::history_summary>(summary);
             if(not id) return {};
             const auto& layout = history_layouts_[id->value()];
             const auto* field = layout.find(name);
@@ -339,7 +341,7 @@ namespace givm
             const detail::definition_source_declarations& declarations,
             compile_mode mode,
             std::span<const detail::compiled_history_summary> history_layouts,
-            definition_id<history_summary_definition> own_history,
+            optional_definition_id<definition_category::history_summary> own_history,
             bool history_layouts_ready,
             std::vector<compile_error>& errors,
             compile_stage stage,
@@ -364,7 +366,7 @@ namespace givm
 
         compile_mode mode_;
         std::span<const detail::compiled_history_summary> history_layouts_;
-        definition_id<history_summary_definition> own_history_;
+        optional_definition_id<definition_category::history_summary> own_history_;
         bool history_layouts_ready_;
         std::vector<compile_error>& errors_;
         compile_stage stage_;

@@ -63,7 +63,7 @@ namespace givm::detail
         std::ranges::sort(blacklist);
         const auto unique_end = std::ranges::unique(blacklist).begin();
         blacklist.erase(unique_end, blacklist.end());
-        const auto is_blacklisted = [&](definition_id<card_definition> definition)
+        const auto is_blacklisted = [&](definition_id<definition_category::card> definition)
         { return std::ranges::binary_search(blacklist, definition.value()); };
 
         for(hand_card_id card_id : selected_cards)
@@ -166,8 +166,8 @@ namespace givm::detail
     {
         using reason = replace_cards::error_type::reason;
         std::vector<replace_cards::error_type> errors;
-        if(command.player.index >= 2)
-            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index });
+        if(command.player.index() >= 2)
+            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index() });
         return errors;
     }
 }

@@ -33,7 +33,7 @@ std::string_view tag_name(tag_id id) const;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "恢复药剂"; }
     auto tags() const { return std::array<std::string_view, 1>{ "治疗" }; }

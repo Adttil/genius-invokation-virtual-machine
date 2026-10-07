@@ -3,39 +3,23 @@
 
 #include "../table.hpp"
 #include "../utils/type_list.hpp"
+#include <array>
 
-namespace givm
+namespace givm::detail
 {
-    template<class TDefinition>
-    struct views_of_definition : type_list<TDefinition>{};
+    inline constexpr auto definition_categories = []
+    {
+        std::array<definition_category, static_cast<std::size_t>(definition_category::null)> result{};
+        for(std::size_t i = 0; i != result.size(); ++i)
+            result[i] = static_cast<definition_category>(i);
+        return result;
+    }();
 
-    template<>
-    struct views_of_definition<card_definition> : type_list<
-        hand_card_view,
-        deck_card_view
-    >{};
-
-    template<>
-    struct views_of_definition<status_definition> : type_list<
-        hand_card_status_view,
-        deck_card_status_view
-    >{};
-
-    template<>
-    struct views_of_definition<history_summary_definition> : type_list<>{};
-
-    using definition_types = type_list<
-        card_definition,
-        status_definition,
-        support_view,
-        summon_view,
-        combat_status_view,
-        character_view,
-        skill_view,
-        attachment_view,
-        history_summary_definition,
-        reaction_view
-    >;
+    template<definition_category Category>
+    using definition_views = decltype([]<std::size_t... I>(std::index_sequence<I...>)
+    {
+        return type_list<entity_view<entity_categories_of<Category>[I]>...>{};
+    }(std::make_index_sequence<entity_categories_of<Category>.size()>{}));
 }
 
 #endif

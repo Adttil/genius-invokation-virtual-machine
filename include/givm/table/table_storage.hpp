@@ -22,7 +22,7 @@ namespace givm
         std::uint32_t max_rounds = 14;
         player_id active_player{ 0 };
         bool first_ended = false;
-        player_id self_player{ 2 };
+        optional_player_id self_player{};
     };
 
     namespace detail

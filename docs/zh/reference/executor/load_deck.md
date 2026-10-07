@@ -23,7 +23,7 @@ void load_deck(table& table, const definition_library& library, const linked_dec
 
 双方的牌库和角色区必须尚未装载实体。每方卡牌按其牌组中 `cards` 的顺序装入，最后一张位于牌库顶；角色按 `characters` 的顺序装入。
 
-角色状态采用 [`character_initial_state`](../definition/queries/character_initial_state.md) 的查询结果，初始技能通过 [`character_initial_skill`](../definition/queries/character_initial_skill.md) 从索引零开始逐项查询，首次返回无效 ID 即结束。卡牌状态采用 [`card_initial_state`](../definition/queries/card_initial_state.md) 的查询结果，技能采用默认状态。
+角色状态采用 [`character_initial_state`](../definition/queries/character_initial_state.md) 的查询结果，初始技能通过 [`character_initial_skill`](../definition/queries/character_initial_skill.md) 从索引零开始逐项查询，首次返回空 ID 即结束。卡牌状态采用 [`card_initial_state`](../definition/queries/card_initial_state.md) 的查询结果，技能采用默认状态。
 
 [历史摘要](../definition/history_summary.md)在后续调用 [`executor::start`](executor/start.md) 时初始化。通常先装载双方牌组，使摘要的初始化响应可以读取完整的初始牌桌。
 
@@ -46,10 +46,10 @@ void load_deck(table& table, const definition_library& library, const linked_dec
 
 #include <givm/givm.hpp>
 
-template<class Category>
+template<givm::definition_category Category>
 struct example_source
 {
-    using definition_category = Category;
+    static constexpr auto category = Category;
     struct definition_type {};
 
     std::string_view name() const { return "示例"; }
@@ -61,8 +61,8 @@ int main()
     const auto basics = givm::genshin_impact::reaction_names_3_3_0;
     givm::definition_source_library sources{};
     sources.add(givm::genshin_impact::reaction_sources_3_3_0());
-    const example_source<givm::card_definition> card_source{};
-    const example_source<givm::character_view> character_source{};
+    const example_source<givm::definition_category::card> card_source{};
+    const example_source<givm::definition_category::character> character_source{};
     if(not sources.add(card_source, character_source)) return 1;
     auto library_result = compile(sources, basics, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     if(not library_result)
@@ -73,8 +73,8 @@ int main()
     const auto [library, id_map] = std::move(*library_result);
     givm::table table{};
     givm::linked_deck deck{};
-    deck.cards.push_back(id_map.get_id<givm::card_definition>("示例"));
-    deck.characters.push_back(id_map.get_id<givm::character_view>("示例"));
+    deck.cards.push_back(id_map.get_id<givm::definition_category::card>("示例"));
+    deck.characters.push_back(id_map.get_id<givm::definition_category::character>("示例"));
     load_deck(table, library, deck, {});
     const auto player = table[givm::player_id{ 0 }];
     std::println("牌库张数: {}", player.deck_card_count());

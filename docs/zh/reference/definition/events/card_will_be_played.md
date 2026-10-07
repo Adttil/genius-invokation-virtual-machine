@@ -15,7 +15,7 @@ struct card_will_be_played;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `card` | `const hand_card_id` | 本次事件对应的牌标识；只读 |
-| `definition_id` | `const definition_id<card_definition>` | 对应的牌定义标识；只读 |
+| `definition_id` | `const definition_id<givm::definition_category::card>` | 对应的牌定义标识；只读 |
 | `targets` | `const std::array<card_target_id, 2>` | 本次采用的两个目标位置；只读 |
 | `speed` | [`const action_speed`](../../enums/action_speed.md) | 费用计算确定的行动速度；只读 |
 | `effect_cancelled` | `bool` | 是否取消卡牌效果，初始为 false |
@@ -36,7 +36,7 @@ int main()
 {
     givm::card_will_be_played event{ .card = {}, .definition_id = {}, .targets = { givm::character_id{}, {} }, .speed = givm::action_speed::combat };
     event.effect_cancelled = true;
-    std::println("首个目标是角色: {}", std::holds_alternative<givm::character_id>(event.targets[0]));
+    std::println("首个目标是角色: {}", event.targets[0].holds<givm::entity_category::character>());
     std::println("原效果被反制: {}", event.effect_cancelled);
 }
 ```

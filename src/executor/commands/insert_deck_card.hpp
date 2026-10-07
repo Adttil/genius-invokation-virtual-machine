@@ -26,7 +26,7 @@ namespace givm::detail
         const auto& instruction = context.instruction_data<1, givm::insert_deck_card>(library);
 #ifndef NDEBUG
         debug_validate_entity(table, instruction.player, "insert_deck_card", "player");
-        debug_validate_definition(library, instruction.definition, "insert_deck_card", "definition");
+        debug_validate_definition(library, instruction.definition.get<definition_category::card>(), "insert_deck_card", "definition");
 #endif
         auto player_entity = table[instruction.player];
         const auto size = player_entity.deck_card_count();
@@ -50,8 +50,8 @@ namespace givm::detail
             GIVM_ASSERT(offset_from_top <= size);
             index = size - offset_from_top;
         }
-        const auto state = library[instruction.definition].query(card_initial_state{});
-        player_entity.insert_deck_card(index, instruction.definition, state);
+        const auto state = library[instruction.definition.get<definition_category::card>()].query(card_initial_state{});
+        player_entity.insert_deck_card(index, instruction.definition.get<definition_category::card>(), state);
 
         return context.advance(instruction_extent<1, givm::insert_deck_card>);
     }
@@ -70,10 +70,10 @@ namespace givm::detail
     {
         using reason = insert_deck_card::error_type::reason;
         std::vector<insert_deck_card::error_type> errors;
-        if(command.player.index >= 2)
-            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index });
-        if(command.definition.value() >= context.definition_count<card_definition>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<card_definition>() });
+        if(command.player.index() >= 2)
+            errors.push_back({ .cause = reason::invalid_player, .value = command.player.index() });
+        if(not command.definition || command.definition.get<definition_category::card>().value() >= context.definition_count<definition_category::card>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition ? command.definition.get<definition_category::card>().value() : command.definition.value(), .limit = context.definition_count<definition_category::card>() });
         return errors;
     }
 }

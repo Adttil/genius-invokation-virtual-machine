@@ -24,8 +24,8 @@ namespace
 {
     struct character_source
     {
-        using definition_category = givm::character_view;
-        struct definition_type { givm::definition_id<givm::skill_view> skill; };
+        static constexpr auto category = givm::definition_category::character;
+        struct definition_type { givm::optional_definition_id<givm::definition_category::skill> skill; };
         std::string_view source_name;
         std::string_view skill_name;
 
@@ -33,11 +33,11 @@ namespace
         auto skill_dependencies() const { return std::array{ skill_name }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { context.resolve_id<givm::skill_view>(skill_name) };
+            return { context.resolve_id<givm::definition_category::skill>(skill_name) };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& input)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& input)
         {
-            return input.skill_index == 0 ? data.skill : givm::definition_id<givm::skill_view>{};
+            return input.skill_index == 0 ? data.skill : givm::optional_definition_id<givm::definition_category::skill>{};
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
@@ -52,7 +52,7 @@ namespace
 
     struct response_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             std::vector<givm::character_id>* handlers;
@@ -88,7 +88,7 @@ namespace
     };
     struct nested_selection_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             std::vector<givm::hand_card_id>* drawn;
@@ -127,7 +127,7 @@ namespace
     };
     struct context_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             std::vector<std::uint32_t>* samples;
@@ -153,7 +153,7 @@ namespace
 
     struct mixed_response_source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type
         {
             std::vector<givm::character_id>* handlers;
@@ -178,7 +178,7 @@ namespace
         {
             const auto self = context.entity();
             data.handlers->push_back(self.character().id());
-            switch(self.character().id().index)
+            switch(self.character().id().index())
             {
             case 0: return {};
             case 1: return context.invoke(data.empty);
@@ -197,7 +197,7 @@ namespace
     template<class TView>
     struct order_source
     {
-        using definition_category = TView;
+        static constexpr auto category = givm::definition_category_of<std::remove_cvref_t<TView>::category>;
         struct definition_type
         {
             std::vector<std::string>* log;
@@ -213,8 +213,8 @@ namespace
         static givm::normal_effect handle(const definition_type& data, givm::before_action&, givm::handle_context<TView>& context, std::uint32_t = 0)
         {
             const auto self = context.entity();
-            std::string label = std::to_string(self.player().id().index) + ":" + std::string{ data.name };
-            if constexpr(requires { self.character(); }) label += ":" + std::to_string(self.character().id().index);
+            std::string label = std::to_string(self.player().id().index()) + ":" + std::string{ data.name };
+            if constexpr(requires { self.character(); }) label += ":" + std::to_string(self.character().id().index());
             data.log->push_back(std::move(label));
             return {};
         }
@@ -222,7 +222,7 @@ namespace
 
     struct order_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
             std::vector<std::string>* log;
@@ -244,19 +244,19 @@ namespace
                 const auto add = [&](std::string_view name)
                 {
                     return givm::add_attachment{ .player = player,
-                        .definition = context.resolve_id<givm::attachment_view>(name), .state = { 1 } };
+                        .definition = context.resolve_id<givm::definition_category::attachment>(name), .state = { 1 } };
                 };
                 return std::tuple{ add("OrdinaryA"), add("Talent"), add("Weapon"), add("Technique"), add("OrdinaryB"), add("Artifact") };
             };
             return { log, context.add_normal_effect(std::tuple_cat(
                 attachments(givm::relative_player::self), attachments(givm::relative_player::opponent),
                 std::tuple{
-                    givm::add_combat_status{ .definition = context.resolve_id<givm::combat_status_view>("CombatStatus"), .state = { 1 } },
+                    givm::add_combat_status{ .definition = context.resolve_id<givm::definition_category::combat_status>("CombatStatus"), .state = { 1 } },
                     givm::add_combat_status{ .player = givm::relative_player::opponent,
-                        .definition = context.resolve_id<givm::combat_status_view>("CombatStatus"), .state = { 1 } },
-                    givm::add_summon{ .definition = context.resolve_id<givm::summon_view>("Summon"), .state = { 1, 1 } },
+                        .definition = context.resolve_id<givm::definition_category::combat_status>("CombatStatus"), .state = { 1 } },
+                    givm::add_summon{ .definition = context.resolve_id<givm::definition_category::summon>("Summon"), .state = { 1, 1 } },
                     givm::add_summon{ .player = givm::relative_player::opponent,
-                        .definition = context.resolve_id<givm::summon_view>("Summon"), .state = { 1, 1 } }
+                        .definition = context.resolve_id<givm::definition_category::summon>("Summon"), .state = { 1, 1 } }
                 }
             )) };
         }
@@ -270,7 +270,7 @@ namespace
         {
             const auto self = context.entity();
             const auto zone = std::same_as<TCard, givm::hand_card_view> ? ":hand:" : ":deck:";
-            data.log->push_back(std::to_string(self.player().id().index) + zone + std::to_string(self.id().index));
+            data.log->push_back(std::to_string(self.player().id().index()) + zone + std::to_string(self.id().index()));
             return {};
         }
     };
@@ -284,13 +284,13 @@ TEST_CASE("handle context exposes the current table random source and invocation
     std::vector<std::uint32_t> samples;
     const context_source source{ &samples };
     const character_source character{ "ContextCharacter", source.name() };
-    const givm::test::named_definition_source<givm::card_definition> card{ "ContextCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "ContextCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(card.name()) },
-        .characters = { ids.get_id<givm::character_view>(character.name()) }
+        .cards = { ids.get_id<givm::definition_category::card>(card.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(character.name()) }
     }, {});
     struct sequential_random
     {
@@ -322,7 +322,7 @@ TEST_CASE("broadcast responses finish before the next handler and may end the ga
     ));
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, { .characters = {
-        ids.get_id<givm::character_view>(first_character.name()), ids.get_id<givm::character_view>(second_character.name())
+        ids.get_id<givm::definition_category::character>(first_character.name()), ids.get_id<givm::definition_category::character>(second_character.name())
     } }, {});
     givm_test::executor_driver target;
     target.start(library, table);
@@ -347,7 +347,7 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
     std::vector<givm::hand_card_id> drawn;
     const nested_selection_source source{ &drawn };
     const character_source character{ "NestedCharacter", source.name() };
-    const givm::test::named_definition_source<givm::card_definition> card{ "NestedCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "NestedCard" };
     auto [library, ids] = givm::test::compile_definitions_with_program(
         mode,
         std::tuple{
@@ -357,10 +357,10 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
         }, std::tuple{}, source, character, card
     );
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
-    const auto card_id = ids.get_id<givm::card_definition>(card.name());
+    const auto card_id = ids.get_id<givm::definition_category::card>(card.name());
     load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
-        .characters = { ids.get_id<givm::character_view>(character.name()) }
+        .characters = { ids.get_id<givm::definition_category::character>(character.name()) }
     }, {});
     givm_test::executor_driver target;
     target.start(library, table);
@@ -420,12 +420,12 @@ TEST_CASE("consecutive broadcasts mix missing empty and parameterized response p
     std::uint32_t nested_responses = 0;
     const mixed_response_source source{ &handlers, &nested_responses };
     const character_source character{ "MixedCharacter", source.name() };
-    const givm::test::named_definition_source<givm::card_definition> card{ "MixedResponseCard" };
+    const givm::test::named_definition_source<givm::definition_category::card> card{ "MixedResponseCard" };
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::start_round{}, givm::settle{}, givm::start_round{}, givm::settle{}, givm::draw_cards{ .position = 0, .count = 1 },
                     givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, source, character, card);
-    const auto character_id = ids.get_id<givm::character_view>(character.name());
-    const auto card_id = ids.get_id<givm::card_definition>(card.name());
+    const auto character_id = ids.get_id<givm::definition_category::character>(character.name());
+    const auto card_id = ids.get_id<givm::definition_category::card>(card.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, {
         .cards = { card_id, card_id, card_id },
@@ -471,8 +471,8 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
             givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 },
             givm::begin_action{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         skill, character, card, ordinary_a, ordinary_b, weapon, artifact, talent, technique, status, summon);
-    const auto character_id = ids.get_id<givm::character_view>(character.name());
-    const auto card_id = ids.get_id<givm::card_definition>(card.name());
+    const auto character_id = ids.get_id<givm::definition_category::character>(character.name());
+    const auto card_id = ids.get_id<givm::definition_category::card>(card.name());
     const givm::linked_deck deck{
         .cards = { card_id, card_id, card_id }, .characters = { character_id, character_id, character_id }
     };

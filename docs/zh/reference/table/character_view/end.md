@@ -34,7 +34,7 @@ constexpr auto end(this const auto& self);
 
 struct example_source
 {
-    using definition_category = givm::character_view;
+    static constexpr auto category = givm::definition_category::character;
     struct definition_type {};
     std::string_view name() const { return "示例"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -61,7 +61,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto definition = ids.get_id<givm::character_view>("示例");
+    const auto definition = ids.get_id<givm::definition_category::character>("示例");
     givm::table table{};
     load_deck(table, library, givm::linked_deck{ .characters = { definition } }, {});
 

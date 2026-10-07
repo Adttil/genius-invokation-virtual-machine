@@ -44,7 +44,7 @@ namespace
     template<givm::event_category Category>
     struct source
     {
-        using definition_category = givm::skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         std::array<givm::effect<Category>, 4>* results;
         std::string_view name() const { return "EffectForms"; }
 

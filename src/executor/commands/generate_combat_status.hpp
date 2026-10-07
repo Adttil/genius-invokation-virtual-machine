@@ -28,7 +28,7 @@ namespace givm::detail
         {
             if(existing.definition_id() != input.definition)
                 continue;
-            if(not definition.can_handle<this_combat_status_regenerate, combat_status_view>())
+            if(not definition.can_handle<this_combat_status_regenerate, entity_category::combat_status>())
                 return {};
             this_combat_status_regenerate event{ input.state };
             prepare_single_response(event, existing.id(), table, context, resume);
@@ -60,8 +60,8 @@ namespace givm::detail
             const auto& command = context.instruction_data<1, generate_combat_status>(library);
             input = {
                 .player = command.player == relative_player::self
-                    ? table.state().self_player : other_player(table.state().self_player),
-                .definition = command.definition, .state = command.state
+                    ? table.state().self_player.get() : other_player(table.state().self_player.get()),
+                .definition = command.definition.get<definition_category::combat_status>(), .state = command.state
             };
             context.advance(instruction_extent<1, generate_combat_status>);
         }
@@ -105,8 +105,8 @@ namespace givm::detail
         }
         if(command.player != relative_player::self && command.player != relative_player::opponent)
             errors.push_back({ .cause = reason::invalid_player, .value = static_cast<std::size_t>(command.player) });
-        if(command.definition.value() >= context.definition_count<combat_status_view>())
-            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.value(), .limit = context.definition_count<combat_status_view>() });
+        if(command.definition.get<definition_category::combat_status>().value() >= context.definition_count<definition_category::combat_status>())
+            errors.push_back({ .cause = reason::invalid_definition, .value = command.definition.get<definition_category::combat_status>().value(), .limit = context.definition_count<definition_category::combat_status>() });
         return errors;
     }
 }

@@ -33,7 +33,7 @@ bool has_all_tags(std::span<const tag_id> tags) const;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "恢复药剂"; }
     auto tags() const { return std::array<std::string_view, 1>{ "治疗" }; }
@@ -57,7 +57,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto card = ids.get_id<givm::card_definition>("恢复药剂");
+    const auto card = ids.get_id<givm::definition_category::card>("恢复药剂");
     const std::array tags{ ids.get_tag_id("治疗") };
     std::println("符合分类条件: {}", library[card].has_all_tags(tags));
 }

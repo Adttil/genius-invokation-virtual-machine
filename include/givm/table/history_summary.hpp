@@ -19,7 +19,6 @@ namespace givm
     class definition_compile_context;
     class definition_library;
 
-    struct history_summary_definition {};
 
     enum class history_value_type
     {

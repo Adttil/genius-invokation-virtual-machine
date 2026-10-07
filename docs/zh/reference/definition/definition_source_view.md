@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source_interface.hpp>`
 
 ```cpp
-template<class TCategory>
+template<definition_category TCategory>
 class definition_source_view;
 ```
 
@@ -15,7 +15,7 @@ class definition_source_view;
 
 |  |  |
 | --- | --- |
-| `TCategory` | 定义类别，见 [`definition_types`](definition_types.md) |
+| `TCategory` | 定义类别，见 [`definition_category`](../enums/definition_category.md) |
 
 ## 成员函数
 
@@ -41,7 +41,7 @@ class definition_source_view;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "召唤卡"; }
     auto tags() const { return std::array<std::string_view, 1>{ "召唤" }; }
@@ -53,9 +53,9 @@ struct card_source
 int main()
 {
     const card_source source{};
-    const givm::definition_source_view<givm::card_definition> view{ source };
+    const givm::definition_source_view<givm::definition_category::card> view{ source };
     std::println("定义源名称: {}", view.name());
-    std::println("依赖的支援: {}", view.dependencies<givm::support_view>().front());
+    std::println("依赖的支援: {}", view.dependencies<givm::definition_category::support>().front());
 }
 ```
 

@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class TDefinition>
+template<definition_category TDefinition>
 bool has(std::string_view name) const;
 ```
 
@@ -15,7 +15,7 @@ bool has(std::string_view name) const;
 
 |  |  |
 | --- | --- |
-| `TDefinition` | 定义类别，见 [`definition_types`](../definition_types.md) |
+| `TDefinition` | 定义类别，见 [`definition_category`](../../enums/definition_category.md) |
 
 ## 参数
 
@@ -37,9 +37,9 @@ bool has(std::string_view name) const;
 int main()
 {
     givm::issued_id_map ids{};
-    ids.add<givm::card_definition>("恢复药剂", {});
-    std::println("存在卡牌定义: {}", ids.has<givm::card_definition>("恢复药剂"));
-    std::println("存在同名角色定义: {}", ids.has<givm::character_view>("恢复药剂"));
+    ids.add<givm::definition_category::card>("恢复药剂", {});
+    std::println("存在卡牌定义: {}", ids.has<givm::definition_category::card>("恢复药剂"));
+    std::println("存在同名角色定义: {}", ids.has<givm::definition_category::character>("恢复药剂"));
 }
 ```
 

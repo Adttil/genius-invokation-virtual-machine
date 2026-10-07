@@ -5,7 +5,7 @@
 
 #include "../enums/action_speed.hpp"
 #include "../enums/elemental_dice.hpp"
-#include "issued_id.hpp"
+#include "tag_id.hpp"
 
 namespace givm
 {
@@ -14,7 +14,7 @@ namespace givm
         elemental_dice_requirement dice_requirement;
         action_speed speed = action_speed::combat;
         std::uint32_t energy = 0;
-        tag_id energy_tag{};
+        optional_tag_id energy_tag{};
     };
 }
 

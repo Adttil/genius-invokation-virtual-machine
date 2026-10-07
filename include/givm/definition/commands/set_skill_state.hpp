@@ -2,6 +2,7 @@
 #define GIVM_DEFINITION_COMMANDS_SET_SKILL_STATE_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "../../table.hpp"
@@ -20,7 +21,7 @@ namespace givm
         };
 
         reason cause;
-        std::size_t value{};
+        std::uint64_t value{};
         std::size_t limit{};
     };
 
@@ -54,7 +55,7 @@ namespace givm
         using input_type = set_skill_state_input;
 
         relative_character_target character{};
-        definition_id<skill_view> definition{};
+        optional_definition_id<definition_category::skill> definition{};
         skill_state state{};
     };
 }

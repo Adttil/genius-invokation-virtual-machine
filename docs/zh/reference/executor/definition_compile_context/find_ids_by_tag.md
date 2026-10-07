@@ -5,7 +5,7 @@
 定义于头文件 `<givm/definition_source.hpp>`
 
 ```cpp
-template<class TCategory>
+template<definition_category TCategory>
 std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) const;
 ```
 
@@ -46,7 +46,7 @@ std::vector<definition_id<TCategory>> find_ids_by_tag(std::string_view filter) c
 
 struct potion_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "恢复药剂"; }
     auto tags() const { return std::array<std::string_view, 1>{ "治疗" }; }
     int compile(givm::definition_compile_context&) const { return 0; }
@@ -54,11 +54,11 @@ struct potion_source
 
 struct search_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "治疗检索"; }
     auto compile(givm::definition_compile_context& context) const
     {
-        auto cards = context.find_ids_by_tag<givm::card_definition>("治疗 & !料理");
+        auto cards = context.find_ids_by_tag<givm::definition_category::card>("治疗 & !料理");
         std::println("可检索的治疗牌数量: {}", cards.size());
         return cards;
     }

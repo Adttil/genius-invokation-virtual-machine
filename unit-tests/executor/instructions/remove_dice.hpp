@@ -28,7 +28,7 @@ namespace
 
     struct removed_dice_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type
         {
             removed_dice_log* log;
@@ -96,7 +96,7 @@ namespace
 
     struct collector_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type
         {
             collection_log* log;
@@ -153,7 +153,7 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
         [](givm::definition_compile_context& context)
         {
             return std::tuple{ givm::add_support{ .player = givm::relative_player::self,
-                .definition = context.resolve_id<givm::support_view>("RemovedDice") } };
+                .definition = context.resolve_id<givm::definition_category::support>("RemovedDice") } };
         }, {}, support_names };
     const givm::test::initialization_character_source character;
     REQUIRE(sources.add(initialization, character));
@@ -162,7 +162,7 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
         std::tuple{}, mode));
     givm::table table{ { .round_number = 1, .active_player = givm::player_id{ 0 }, .self_player = givm::player_id{ 1 } },
         { .dice = log.expected[0] }, { .dice = log.expected[1] } };
-    load_deck(table, library, {}, { .characters = { ids.get_id<givm::character_view>(character.name()) } });
+    load_deck(table, library, {}, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
@@ -205,7 +205,7 @@ TEST_CASE("successive end-round collectors choose dice from the updated pool", "
         [](givm::definition_compile_context& context)
         {
             const givm::add_support add{ .player = givm::relative_player::self,
-                .definition = context.resolve_id<givm::support_view>("DiceCollector"), .state = {} };
+                .definition = context.resolve_id<givm::definition_category::support>("DiceCollector"), .state = {} };
             return std::tuple{ add, add };
         }, {}, support_names };
     const givm::test::initialization_character_source character;
@@ -218,7 +218,7 @@ TEST_CASE("successive end-round collectors choose dice from the updated pool", "
     initial[givm::elemental_dice::pyro] = 1;
     initial[givm::elemental_dice::geo] = 2;
     givm::table table{ { .round_number = 1, .self_player = givm::player_id{ 0 } }, { .dice = initial }, {} };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } }, {});
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } }, {});
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };

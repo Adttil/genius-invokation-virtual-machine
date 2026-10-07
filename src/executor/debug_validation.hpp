@@ -18,14 +18,14 @@
 
 namespace givm::detail
 {
-    template<class TCategory>
+    template<definition_category TCategory>
     inline void debug_validate_definition(const definition_library& library, definition_id<TCategory> id,
         std::string_view command, std::string_view field)
     {
         const auto count = library.template definition_count<TCategory>();
         if(id.value() >= count)
             throw command_input_error{ command, invalid_definition_argument{
-                std::string{ field }, definition_types::index_of<TCategory>(), id.value(), count } };
+                std::string{ field }, TCategory, id.value(), count } };
     }
 
     template<class T>
@@ -37,15 +37,15 @@ namespace givm::detail
                     throw command_input_error{ command, duplicate_entity_argument{ std::string{ field }, first, index } };
     }
 
-    template<class TTable, class TCategory>
+    template<class TTable, definition_category TCategory>
     inline void debug_validate_required_entity(const TTable& table, player_id player, definition_id<TCategory> definition,
         std::string_view command, std::string_view field)
     {
         debug_validate_entity(table, player, command, "player");
         auto entities = [&]
         {
-            if constexpr(std::is_same_v<TCategory, support_view>) return table[player].supports();
-            else if constexpr(std::is_same_v<TCategory, summon_view>) return table[player].summons();
+            if constexpr(TCategory == definition_category::support) return table[player].supports();
+            else if constexpr(TCategory == definition_category::summon) return table[player].summons();
             else return table[player].combat_statuses();
         }();
         if(not std::ranges::any_of(entities, [&](const auto entity) { return entity.definition_id() == definition; }))

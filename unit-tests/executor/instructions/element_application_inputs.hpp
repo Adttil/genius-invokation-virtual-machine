@@ -21,7 +21,7 @@ namespace
 
     struct element_input_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             element_input_log* log;
@@ -76,7 +76,7 @@ namespace
         {
             const auto self = context.entity().character();
             data.log->order.push_back(2);
-            CHECK(event.reaction.slot == givm::elemental_reaction::vaporize);
+            CHECK(event.reaction.slot() == givm::elemental_reaction::vaporize);
             CHECK(event.reacted_aura == givm::element_aura::hydro);
             CHECK(context.table()[event.target].state().aura == givm::element_aura::hydro);
             return context.invoke(data.during_reaction,
@@ -89,7 +89,7 @@ namespace
         {
             const auto self = context.entity().character();
             data.log->order.push_back(3);
-            CHECK(event.reaction.slot == givm::elemental_reaction::vaporize);
+            CHECK(event.reaction.slot() == givm::elemental_reaction::vaporize);
             CHECK(event.reacted_aura == givm::element_aura::hydro);
             CHECK(context.table()[event.target].state().aura == givm::element_aura::cryo);
             return context.invoke(data.after_reaction,
@@ -120,8 +120,8 @@ TEST_CASE("element application inputs resume nested responses with the same resu
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library,
-        { .characters = { ids.get_id<givm::character_view>(source.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(target.name()) } });
+        { .characters = { ids.get_id<givm::definition_category::character>(source.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(target.name()) } });
     const auto target_id = (*table[givm::player_id{ 1 }].characters().begin()).id();
     givm_test::executor_driver executor;
     executor.start(library, table);

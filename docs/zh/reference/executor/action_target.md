@@ -35,7 +35,7 @@ struct action_target;
 
 int main()
 {
-    givm::action_target target{ .kind = givm::action_target_kind::character, .character = { .player_id = givm::player_id{ 1 }, .index = 0 } };
+    givm::action_target target{ .kind = givm::action_target_kind::character, .character = { givm::player_id{ 1 }, 0 } };
     std::println("使用角色目标: {}", target.kind == givm::action_target_kind::character);
 }
 ```

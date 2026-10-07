@@ -21,7 +21,7 @@ namespace
 {
     struct tuning_opponent_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type {};
 
         std::string_view name() const noexcept { return "TuningOpponent"; }
@@ -45,7 +45,7 @@ namespace
 
     struct tuning_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { tuning_log* log; bool allowed; bool empowered; };
         tuning_log* log;
         std::string_view source_name;
@@ -82,7 +82,7 @@ namespace
 
     struct tuning_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             tuning_log* log;
@@ -130,7 +130,7 @@ namespace
             ++data.log->modifications;
             CHECK(context.table()[event.card].is_valid());
             CHECK(event.from == givm::elemental_dice::cryo);
-            CHECK(context.table()[event.card.player_id].state().dice[givm::elemental_dice::cryo] == 1);
+            CHECK(context.table()[event.card.player_id()].state().dice[givm::elemental_dice::cryo] == 1);
             return data.log->nested ? context.invoke(data.immediate_pause) : givm::immediate_effect{};
         }
         static givm::normal_effect handle(const definition_type& data,
@@ -141,7 +141,7 @@ namespace
             const auto card = context.table()[event.card];
             CHECK_FALSE(card.is_valid());
             CHECK(card.state().cost.dice_requirement.any == 2);
-            CHECK(context.table()[event.card.player_id].state().dice[givm::elemental_dice::cryo] == 0);
+            CHECK(context.table()[event.card.player_id()].state().dice[givm::elemental_dice::cryo] == 0);
             return data.log->nested ? context.invoke(data.pause) : givm::normal_effect{};
         }
         template<class TEvent>
@@ -189,9 +189,9 @@ TEST_CASE("elemental tuning shares card candidates and validates card attributes
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
-        .cards = { ids.get_id<givm::card_definition>(blocked.name()), ids.get_id<givm::card_definition>(allowed.name()) },
-        .characters = { ids.get_id<givm::character_view>(character.name()) }
-    }, { .characters = { ids.get_id<givm::character_view>(opponent.name()) } });
+        .cards = { ids.get_id<givm::definition_category::card>(blocked.name()), ids.get_id<givm::definition_category::card>(allowed.name()) },
+        .characters = { ids.get_id<givm::definition_category::character>(character.name()) }
+    }, { .characters = { ids.get_id<givm::definition_category::character>(opponent.name()) } });
     givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
@@ -225,18 +225,18 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
     tuning_log log{ .nested = nested };
     const auto character = givm::test::with_passive_skill(tuning_character_source{ &log });
     const tuning_card_source card{ &log, "SelectedTuningCard", true, empowered };
-    const givm::test::named_definition_source<givm::card_definition> filler{ "TuningFiller" };
+    const givm::test::named_definition_source<givm::definition_category::card> filler{ "TuningFiller" };
     const tuning_opponent_source opponent;
     const auto [library, ids] = givm::test::compile_definitions_with_program(
         mode, setup(), std::tuple{}, character, card, filler, opponent);
-    const auto card_definition = ids.get_id<givm::card_definition>(card.name());
-    const auto filler_definition = ids.get_id<givm::card_definition>(filler.name());
+    const auto card_definition = ids.get_id<givm::definition_category::card>(card.name());
+    const auto filler_definition = ids.get_id<givm::definition_category::card>(filler.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
     load_deck(table, library, {
         .cards = { filler_definition, filler_definition, card_definition },
-        .characters = { ids.get_id<givm::character_view>(character.name()) }
-    }, { .characters = { ids.get_id<givm::character_view>(opponent.name()) } });
+        .characters = { ids.get_id<givm::definition_category::character>(character.name()) }
+    }, { .characters = { ids.get_id<givm::definition_category::character>(opponent.name()) } });
     givm_test::executor_driver execution;
     execution.start(library, table);
     REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);

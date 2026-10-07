@@ -5,10 +5,10 @@
 定义于头文件 `<givm/definition.hpp>`
 
 ```cpp
-template<class TDefinition>
+template<definition_category TDefinition>
 definition_id<TDefinition> add(std::string_view name, std::initializer_list<std::string_view> tags); // (1)
 
-template<class TDefinition, std::ranges::input_range TTags>
+template<definition_category TDefinition, std::ranges::input_range TTags>
     requires std::convertible_to<std::ranges::range_reference_t<TTags>, std::string_view>
 definition_id<TDefinition> add(std::string_view name, TTags&& tags); // (2)
 ```
@@ -19,7 +19,7 @@ definition_id<TDefinition> add(std::string_view name, TTags&& tags); // (2)
 
 |  |  |
 | --- | --- |
-| `TDefinition` | 定义类别，见 [`definition_types`](../definition_types.md) |
+| `TDefinition` | 定义类别，见 [`definition_category`](../../enums/definition_category.md) |
 | `TTags` | 元素可转换为 `std::string_view` 的输入范围 |
 
 ## 参数
@@ -47,9 +47,9 @@ definition_id<TDefinition> add(std::string_view name, TTags&& tags); // (2)
 int main()
 {
     givm::issued_id_map ids{ "治疗" };
-    const auto card = ids.add<givm::card_definition>("恢复药剂", { "治疗" });
-    std::println("新 ID 有效: {}", card.is_valid());
-    std::println("已登记定义: {}", ids.has<givm::card_definition>("恢复药剂"));
+    const auto card = ids.add<givm::definition_category::card>("恢复药剂", { "治疗" });
+    std::println("新 ID 有效: {}", card.value() == 0);
+    std::println("已登记定义: {}", ids.has<givm::definition_category::card>("恢复药剂"));
 }
 ```
 

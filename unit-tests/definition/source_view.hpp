@@ -29,15 +29,15 @@ namespace
     struct dependency_observation
     {
         bool handled = false;
-        givm::definition_id<givm::support_view> alpha_support;
-        givm::definition_id<givm::support_view> beta_support;
+        givm::optional_definition_id<givm::definition_category::support> alpha_support;
+        givm::optional_definition_id<givm::definition_category::support> beta_support;
         givm::tag_id chosen_tag;
-        std::vector<givm::definition_id<givm::support_view>> filtered_supports;
+        std::vector<givm::definition_id<givm::definition_category::support>> filtered_supports;
     };
 
     struct tagged_support_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
 
         struct definition_type{};
 
@@ -63,15 +63,15 @@ namespace
 
     struct dependent_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
 
         struct definition_type
         {
             dependency_observation* observation;
-            givm::definition_id<givm::support_view> alpha_support;
-            givm::definition_id<givm::support_view> beta_support;
+            givm::optional_definition_id<givm::definition_category::support> alpha_support;
+            givm::optional_definition_id<givm::definition_category::support> beta_support;
             givm::tag_id chosen_tag;
-            std::vector<givm::definition_id<givm::support_view>> filtered_supports;
+            std::vector<givm::definition_id<givm::definition_category::support>> filtered_supports;
         };
 
         dependency_observation* observation;
@@ -93,21 +93,21 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto self = context.find_definition<givm::card_definition>(name());
+            const auto self = context.find_definition<givm::definition_category::card>(name());
             REQUIRE(self);
-            CHECK(self->can_handle<givm::round_started, givm::hand_card_view>());
-            CHECK_FALSE(self->can_handle<givm::round_started, givm::deck_card_view>());
+            CHECK(self->can_handle<givm::round_started, givm::entity_category::hand_card>());
+            CHECK_FALSE(self->can_handle<givm::round_started, givm::entity_category::deck_card>());
             CHECK_FALSE(self->has_query<givm::card_initial_state>());
-            CHECK(std::ranges::equal(self->dependencies<givm::support_view>(),
+            CHECK(std::ranges::equal(self->dependencies<givm::definition_category::support>(),
                 std::array<std::string_view, 2>{ "AlphaSupport", "BetaSupport" }));
-            CHECK(self->dependencies<givm::card_definition>().empty());
+            CHECK(self->dependencies<givm::definition_category::card>().empty());
             return {
                 .observation = observation,
-                .alpha_support = context.resolve_id<givm::support_view>("AlphaSupport"),
-                .beta_support = context.resolve_id<givm::support_view>("BetaSupport"),
-                .chosen_tag = context.find_tag("chosen").value(),
+                .alpha_support = context.resolve_id<givm::definition_category::support>("AlphaSupport"),
+                .beta_support = context.resolve_id<givm::definition_category::support>("BetaSupport"),
+                .chosen_tag = context.find_tag("chosen").get(),
                 .filtered_supports =
-                    context.find_ids_by_tag<givm::support_view>("selected & !excluded")
+                    context.find_ids_by_tag<givm::definition_category::support>("selected & !excluded")
             };
         }
 
@@ -129,7 +129,7 @@ namespace
     {
         bool event_compiled = false;
         bool onpay_compiled = false;
-        givm::definition_id<givm::support_view> resolved_support;
+        givm::optional_definition_id<givm::definition_category::support> resolved_support;
         bool first_event_entry_set = false;
         bool second_event_entry_set = false;
         bool onpay_entry_set = false;
@@ -137,12 +137,12 @@ namespace
 
     struct programmed_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
 
         struct definition_type
         {
             program_observation* observation;
-            givm::definition_id<givm::support_view> support;
+            givm::optional_definition_id<givm::definition_category::support> support;
             givm::normal_effect first_entry;
             givm::normal_effect second_entry;
         };
@@ -162,7 +162,7 @@ namespace
         definition_type compile(givm::definition_compile_context& context) const
         {
             observation->event_compiled = true;
-            const auto support = context.resolve_id<givm::support_view>("ProgrammedSupport");
+            const auto support = context.resolve_id<givm::definition_category::support>("ProgrammedSupport");
             observation->resolved_support = support;
 
             const auto first_entry = context.add_normal_effect(std::tuple{
@@ -185,7 +185,7 @@ namespace
 
     struct programmed_support_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
 
         struct definition_type
         {
@@ -215,7 +215,7 @@ namespace
 
     struct undeclared_dependency_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
 
         struct definition_type{};
 
@@ -226,14 +226,14 @@ namespace
 
         definition_type compile(givm::definition_compile_context& context) const noexcept
         {
-            (void)context.resolve_id<givm::support_view>("MissingDeclaration");
+            (void)context.resolve_id<givm::definition_category::support>("MissingDeclaration");
             return {};
         }
     };
 
     struct selectable_handler_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         static constexpr bool is_dynamic = true;
 
         struct definition_type{};
@@ -252,11 +252,11 @@ namespace
             return {};
         }
 
-        template<class TView, class TEvent>
+        template<givm::entity_category Entity, class TEvent>
         constexpr bool can_handle() const noexcept
         {
             if(capability_checks) ++*capability_checks;
-            return enabled && std::is_same_v<TView, givm::support_view>
+            return enabled && (Entity == givm::entity_category::support)
                 && std::is_same_v<TEvent, givm::round_started>;
         }
 
@@ -293,7 +293,7 @@ namespace
 
     struct static_handler_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
 
         struct definition_type{};
 
@@ -304,7 +304,7 @@ namespace
 
         definition_type compile(givm::definition_compile_context&) const noexcept { return {}; }
 
-        template<class TView, class TEvent>
+        template<givm::entity_category Entity, class TEvent>
         bool can_handle() const noexcept
         {
             ++*capability_checks;
@@ -331,19 +331,19 @@ namespace
 
         void inspect(const givm::definition_compile_context& context) const
         {
-            const auto definitions = context.definitions<givm::support_view>();
+            const auto definitions = context.definitions<givm::definition_category::support>();
             STATIC_REQUIRE(std::ranges::sized_range<decltype(definitions)>);
             STATIC_REQUIRE(std::same_as<std::ranges::range_value_t<decltype(definitions)>,
-                givm::definition_compile_context::definition_view<givm::support_view>>);
+                givm::definition_compile_context::definition_view<givm::definition_category::support>>);
             REQUIRE(definitions.size() == 4);
             for(const auto definition : definitions)
             {
-                CHECK(bool(context[definition.id()].name() == definition.name()));
-                const auto found = context.find_definition<givm::support_view>(definition.name());
+                CHECK(bool(context[definition.id().get()].name() == definition.name()));
+                const auto found = context.find_definition<givm::definition_category::support>(definition.name());
                 REQUIRE(found);
                 CHECK(found->id() == definition.id());
                 CHECK_FALSE(definition.can_handle<givm::damage_effect>());
-                CHECK_FALSE(definition.can_handle<givm::round_started, givm::hand_card_view>());
+                CHECK_FALSE(definition.can_handle<givm::round_started, givm::entity_category::hand_card>());
                 CHECK_FALSE(definition.has_query<givm::card_initial_state>());
             }
 
@@ -361,23 +361,23 @@ namespace
             }
             std::ranges::sort(active);
             CHECK(bool(active == std::vector<std::string_view>{ "DynamicEnabled", "StaticCustom" }));
-            CHECK_FALSE(context.find_definition<givm::support_view>("Unknown"));
-            CHECK_FALSE(context.find_definition<givm::card_definition>("StaticCustom"));
+            CHECK_FALSE(context.find_definition<givm::definition_category::support>("Unknown"));
+            CHECK_FALSE(context.find_definition<givm::definition_category::card>("StaticCustom"));
             CHECK(context.find_tag("metadata"));
             CHECK_FALSE(context.find_tag("Unknown"));
 
-            const auto defaulted = context.find_definition<givm::support_view>("StaticDefault");
+            const auto defaulted = context.find_definition<givm::definition_category::support>("StaticDefault");
             REQUIRE(defaulted);
             CHECK_FALSE(defaulted->can_handle<givm::round_started>());
             CHECK_FALSE(defaulted->has_query<givm::support_state_limit>());
             CHECK(defaulted->tags().empty());
             CHECK_FALSE(defaulted->has_tag("metadata"));
-            const auto disabled = context.find_definition<givm::support_view>("DynamicDisabled");
+            const auto disabled = context.find_definition<givm::definition_category::support>("DynamicDisabled");
             REQUIRE(disabled);
             CHECK_FALSE(disabled->can_handle<givm::round_started>());
             CHECK_FALSE(disabled->has_query<givm::support_state_limit>());
 
-            const auto summary = context.find_definition<givm::history_summary_definition>("MetadataObserver");
+            const auto summary = context.find_definition<givm::definition_category::history_summary>("MetadataObserver");
             REQUIRE(summary);
             CHECK(summary->can_handle<givm::history_summary_initialization>());
             CHECK_FALSE(summary->can_handle<givm::round_started>());
@@ -387,7 +387,7 @@ namespace
 
     struct metadata_support_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type {};
         std::string_view source_name;
         metadata_observation* observation;
@@ -426,7 +426,7 @@ namespace
 
     struct metadata_default_support_source
     {
-        using definition_category = givm::support_view;
+        static constexpr auto category = givm::definition_category::support;
         struct definition_type {};
         metadata_observation* observation;
 
@@ -458,10 +458,10 @@ namespace
         static constexpr bool is_dynamic = true;
         bool enabled;
 
-        template<class TView, class TEvent>
+        template<givm::entity_category Entity, class TEvent>
         bool can_handle() const noexcept
         {
-            return enabled && std::same_as<TView, givm::support_view> && std::same_as<TEvent, givm::round_started>;
+            return enabled && (Entity == givm::entity_category::support) && std::same_as<TEvent, givm::round_started>;
         }
         template<class TQuery>
         bool can_query() const noexcept
@@ -481,7 +481,7 @@ namespace
 
     struct metadata_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         struct definition_type {};
         metadata_observation* observation;
 
@@ -545,7 +545,7 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     REQUIRE(source_library.add(card, alpha, beta));
     const auto program = std::tuple{ givm::draw_cards{ .position = 0, .count = 1 }, givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = givm_test::require_success(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal));
-    const auto card_id = id_map.get_id<givm::card_definition>(card.name());
+    const auto card_id = id_map.get_id<givm::definition_category::card>(card.name());
 
     givm::table table{ { .self_player = givm::player_id{ 0 } } };
     load_deck(table, library, givm::linked_deck{ .cards = { card_id } }, {});
@@ -555,14 +555,14 @@ TEST_CASE("definition compile context resolves declared dependencies", "[source_
     REQUIRE(executor.advance(library, table, random_source) == givm::execution_state::finished);
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == 1);
     REQUIRE(observation.handled);
-    CHECK(observation.alpha_support.value() == id_map.get_id<givm::support_view>("AlphaSupport").value());
-    CHECK(observation.beta_support.value() == id_map.get_id<givm::support_view>("BetaSupport").value());
+    CHECK(observation.alpha_support == id_map.get_id<givm::definition_category::support>("AlphaSupport"));
+    CHECK(observation.beta_support == id_map.get_id<givm::definition_category::support>("BetaSupport"));
     CHECK(observation.chosen_tag.value() == id_map.get_tag_id("chosen").value());
 
     REQUIRE(observation.filtered_supports.size() == 1);
     CHECK(
         observation.filtered_supports.front().value()
-        == id_map.get_id<givm::support_view>("AlphaSupport").value()
+        == id_map.get_id<givm::definition_category::support>("AlphaSupport").value()
     );
 }
 
@@ -583,7 +583,7 @@ TEST_CASE("definition compile context rejects undeclared dependency queries", "[
     const auto* reason = std::get_if<givm::definition_resolution_error>(&error.reason);
     REQUIRE(reason);
     CHECK(reason->cause == givm::definition_resolution_error::reason::undeclared_dependency);
-    CHECK(reason->definition.category_index == givm::definition_types::index_of<givm::support_view>());
+    CHECK(reason->definition.category == givm::definition_category::support);
     CHECK(reason->definition.name == "MissingDeclaration");
 }
 
@@ -592,8 +592,8 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     std::size_t capability_checks = 0;
     const selectable_handler_source enabled{ "Enabled", true, &capability_checks };
     const selectable_handler_source disabled{ "Disabled", false, &capability_checks };
-    const givm::definition_source_view<givm::support_view> enabled_view{ enabled };
-    const givm::definition_source_view<givm::support_view> disabled_view{ disabled };
+    const givm::definition_source_view<givm::definition_category::support> enabled_view{ enabled };
+    const givm::definition_source_view<givm::definition_category::support> disabled_view{ disabled };
     CHECK(bool(enabled_view.name() == "Enabled"));
     CHECK(bool(disabled_view.name() == "Disabled"));
     CHECK(capability_checks == 0);
@@ -603,16 +603,16 @@ TEST_CASE("compiled definitions expose only enabled source handlers", "[source_v
     const auto program = std::tuple{ givm::end_game{ givm::game_result::both_loss } };
     const auto [library, id_map] = givm_test::require_success(compile(source_library, givm_test::basic_sources, program, program, givm::compile_mode::normal));
 
-    CHECK(library[id_map.get_id<givm::support_view>(enabled.name())].can_handle<givm::round_started, givm::support_view>());
+    CHECK(library[id_map.get_id<givm::definition_category::support>(enabled.name())].can_handle<givm::round_started, givm::entity_category::support>());
     CHECK_FALSE(
-        library[id_map.get_id<givm::support_view>(enabled.name())].can_handle<givm::damage_effect, givm::support_view>()
+        library[id_map.get_id<givm::definition_category::support>(enabled.name())].can_handle<givm::damage_effect, givm::entity_category::support>()
     );
     CHECK_FALSE(
-        library[id_map.get_id<givm::support_view>(disabled.name())].can_handle<givm::round_started, givm::support_view>()
+        library[id_map.get_id<givm::definition_category::support>(disabled.name())].can_handle<givm::round_started, givm::entity_category::support>()
     );
     CHECK(capability_checks > 0);
     const auto default_state = givm::query_default(givm::support_state_limit{});
-    const auto disabled_state = library[id_map.get_id<givm::support_view>(disabled.name())]
+    const auto disabled_state = library[id_map.get_id<givm::definition_category::support>(disabled.name())]
         .query(givm::support_state_limit{});
     CHECK(disabled_state.count == default_state.count);
     CHECK(disabled_state.round_usages == default_state.round_usages);
@@ -627,12 +627,12 @@ TEST_CASE("static handler availability depends on the implementation alone", "[s
     REQUIRE(sources.add(implicit_source, explicit_source));
     const auto [library, ids] = givm_test::require_success(compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
 
-    CHECK(library[ids.get_id<givm::support_view>(implicit_source.name())]
-        .can_handle<givm::round_started, givm::support_view>());
-    CHECK(library[ids.get_id<givm::support_view>(explicit_source.name())]
-        .can_handle<givm::round_started, givm::support_view>());
-    CHECK_FALSE(library[ids.get_id<givm::support_view>(implicit_source.name())]
-        .can_handle<givm::damage_effect, givm::support_view>());
+    CHECK(library[ids.get_id<givm::definition_category::support>(implicit_source.name())]
+        .can_handle<givm::round_started, givm::entity_category::support>());
+    CHECK(library[ids.get_id<givm::definition_category::support>(explicit_source.name())]
+        .can_handle<givm::round_started, givm::entity_category::support>());
+    CHECK_FALSE(library[ids.get_id<givm::definition_category::support>(implicit_source.name())]
+        .can_handle<givm::damage_effect, givm::entity_category::support>());
     CHECK(capability_checks == 0);
 }
 
@@ -652,7 +652,7 @@ TEST_CASE("definition metadata reuses registered declarations before every layou
 
     const std::array<std::string_view, 1> roots{ "MetadataObserver" };
     givm::definition_selection selection{};
-    selection[givm::definition_types::index_of<givm::history_summary_definition>()] = roots;
+    selection[static_cast<std::size_t>(givm::definition_category::history_summary)] = roots;
     const auto [library, ids] = givm_test::require_success(selected
         ? compile(sources, givm_test::basic_sources, selection, std::tuple{}, std::tuple{}, givm::compile_mode::normal)
         : compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal));
@@ -663,8 +663,8 @@ TEST_CASE("definition metadata reuses registered declarations before every layou
     {
         CAPTURE(name);
         const bool custom = std::string_view{ name } == "StaticCustom" || std::string_view{ name } == "DynamicEnabled";
-        const auto definition = library[ids.get_id<givm::support_view>(name)];
-        CHECK(definition.can_handle<givm::round_started, givm::support_view>() == custom);
+        const auto definition = library[ids.get_id<givm::definition_category::support>(name)];
+        CHECK(definition.can_handle<givm::round_started, givm::entity_category::support>() == custom);
         const auto limit = definition.query(givm::support_state_limit{});
         const auto expected = custom ? givm::support_state{ .count = 7, .round_usages = 2 }
             : query_default(givm::support_state_limit{});
@@ -687,8 +687,8 @@ TEST_CASE("definition compile context accepts heterogeneous tuples and homogeneo
     CHECK(observation.event_compiled);
     CHECK(observation.onpay_compiled);
     CHECK(
-        observation.resolved_support.value()
-        == id_map.get_id<givm::support_view>(support.name()).value()
+        observation.resolved_support.get().value()
+        == id_map.get_id<givm::definition_category::support>(support.name()).value()
     );
     CHECK(observation.first_event_entry_set);
     CHECK(observation.second_event_entry_set);

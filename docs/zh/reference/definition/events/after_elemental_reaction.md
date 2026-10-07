@@ -17,7 +17,7 @@
 int main()
 {
     givm::after_elemental_reaction event{ .source = givm::character_id{}, .target = {}, .incoming_element = givm::element::pyro, .reacted_aura = givm::element_aura::hydro, .reaction = { givm::player_id{ 0 }, givm::elemental_reaction::vaporize } };
-    std::println("发生蒸发: {}", event.reaction.slot == givm::elemental_reaction::vaporize);
+    std::println("发生蒸发: {}", event.reaction.slot() == givm::elemental_reaction::vaporize);
     std::println("由独立效果附着: {}", event.cause == givm::element_application_cause::effect);
 }
 ```

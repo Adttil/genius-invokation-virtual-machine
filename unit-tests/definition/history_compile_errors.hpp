@@ -28,7 +28,7 @@ namespace
 
     struct layout_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         std::string_view source_name;
         givm::history_summary_layout fields;
 
@@ -42,7 +42,7 @@ namespace
 
     struct premature_access_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
 
         std::string_view name() const noexcept { return "PrematureAccess"; }
         auto layout(const givm::definition_compile_context& context) const
@@ -56,7 +56,7 @@ namespace
 
     struct invalid_lookup_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         std::vector<std::string_view>* completed;
 
         std::string_view name() const noexcept { return "AInvalidLookup"; }
@@ -74,7 +74,7 @@ namespace
 
     struct subsequent_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         std::vector<std::string_view>* completed;
 
         std::string_view name() const noexcept { return "ZSubsequentSource"; }
@@ -87,7 +87,7 @@ namespace
 
     struct visited_summary_source
     {
-        using definition_category = givm::history_summary_definition;
+        static constexpr auto category = givm::definition_category::history_summary;
         using definition_type = std::array<givm::dynamic_history_field, 2>;
 
         std::string_view name() const noexcept { return "VisitedHistory"; }
@@ -135,7 +135,7 @@ TEST_CASE("history declarations and dynamic keys retain scalar and array types",
     REQUIRE(sources.add(summary));
     auto result = compile(sources, givm_test::basic_sources, std::tuple{}, std::tuple{}, givm::compile_mode::normal);
     REQUIRE(result);
-    const auto id = result->id_map.get_id<givm::history_summary_definition>(summary.name());
+    const auto id = result->id_map.get_id<givm::definition_category::history_summary>(summary.name());
     givm::table table;
     load_deck(table, result->library, {}, {});
     givm_test::executor_driver executor;
@@ -277,7 +277,7 @@ TEST_CASE("invalid history lookups collect errors and allow later definitions to
     {
         CHECK(error.location.stage == givm::compile_stage::definition);
         REQUIRE(error.location.source);
-        CHECK(error.location.source->category_index == givm::definition_types::index_of<givm::card_definition>());
+        CHECK(error.location.source->category == givm::definition_category::card);
         CHECK(error.location.source->name == "AInvalidLookup");
         if(const auto* mismatch = std::get_if<givm::history_field_type_mismatch>(&error.reason))
         {

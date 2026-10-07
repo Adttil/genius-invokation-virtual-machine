@@ -82,7 +82,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    std::println("激化领域定义: {}", library.name(ids.get_id<givm::combat_status_view>(givm::genshin_impact::catalyzing_field_3_4_0.name())));
+    std::println("激化领域定义: {}", library.name(ids.get_id<givm::definition_category::combat_status>(givm::genshin_impact::catalyzing_field_3_4_0.name())));
 }
 ```
 

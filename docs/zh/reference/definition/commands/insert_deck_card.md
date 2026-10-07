@@ -21,7 +21,7 @@ struct insert_deck_card;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `player` | [`player_id`](../../table/player_id.md) | 接收牌的玩家 |
-| `definition` | `definition_id<card_definition>` | 要插入的牌定义 |
+| `definition` | `optional_definition_id<givm::definition_category::card>` | 要插入的牌定义 |
 | `position` | `std::int32_t` | 插入位置，初始为 -1，即牌堆顶 |
 
 ## 编译检查
@@ -36,7 +36,7 @@ struct insert_deck_card_error;
 
 | | |
 | --- | --- |
-| `invalid_player` | `player.index` 不是固定席位 `0` 或 `1` |
+| `invalid_player` | `player.index()` 不是固定席位 `0` 或 `1` |
 | `invalid_definition` | `definition` 的定义 ID 数值超出本次编译集合的 `card_definition` 定义数量 |
 
 ### `insert_deck_card_error` 的成员对象
@@ -44,7 +44,7 @@ struct insert_deck_card_error;
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | `cause` | `reason` | 上表中的错误原因 |
-| `value` | `std::size_t` | 出错的 `player.index` 或定义 ID 的 `value()` |
+| `value` | `std::uint64_t` | 出错的 `player.index()` 或定义 ID 的 `value()` |
 | `limit` | `std::size_t` | `invalid_definition` 对应类别的定义数量，即有效 ID 数值范围的上界（不含） |
 
 仅与当前 `cause` 对应的附加成员具有诊断含义。
@@ -69,7 +69,7 @@ struct insert_deck_card_error;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     struct definition_type {};
     std::string_view name() const { return "first"; }
     definition_type compile(givm::definition_compile_context&) const { return {}; }
@@ -77,14 +77,14 @@ struct card_source
 
 struct effect_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
     std::string_view name() const { return "second"; }
     auto card_dependencies() const
     { return std::array<std::string_view, 1>{ "first" }; }
 
     givm::normal_effect compile(givm::definition_compile_context& context) const
     {
-        const auto definition = context.resolve_id<givm::card_definition>("first");
+        const auto definition = context.resolve_id<givm::definition_category::card>("first");
         return context.add_normal_effect(
             givm::insert_deck_card{ .player = givm::player_id{ 0 }, .definition = definition });
     }
@@ -116,14 +116,14 @@ int main()
     const auto [library, ids] = std::move(*library_result);
     givm::table table{};
     load_deck(table, library,
-        givm::linked_deck{ .cards = { ids.get_id<givm::card_definition>("second") } },
+        givm::linked_deck{ .cards = { ids.get_id<givm::definition_category::card>("second") } },
         givm::linked_deck{});
     givm::executor execution{};
     auto random = []() -> std::uint32_t { return 0; };
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     const auto player = table[givm::player_id{ 0 }];
-    const auto card = ids.get_id<givm::card_definition>("first");
+    const auto card = ids.get_id<givm::definition_category::card>("first");
     std::println("牌堆数量: {}", player.deck_card_count());
     std::println("插入指定牌: {}", player.deck_card_definition(1) == card);
 }

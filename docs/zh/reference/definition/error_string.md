@@ -35,7 +35,7 @@ inline std::string error_string(start_round_error error); // (6)
 
 冲突文本包含定义类别名称、定义名称、对象不同或类型不同的原因，以及双方来自输入参数还是已有库。缺失依赖文本包含源定义、参数索引及缺失依赖的类别和名称。选择错误包含缺失定义，若由另一项定义要求还会列出该来源。输入参数索引从零开始，与结构化诊断保持一致。
 
-定义类别使用 [`definition_types`](definition_types.md) 中的 C++ 类型名称，如 `card_definition`、`support_view`。冲突原因写作 `different_object` 或 `different_type`；参数位置写作 `input[N]`，接收库与被合并库分别写作 `receiver library` 和 `incoming library`。完整调用与输出示例见 [`add`](definition_source_library/add.md#示例)。
+定义类别使用 [`definition_category`](../enums/definition_category.md) 中的 C++ 类型名称，如 `card_definition`、`support_view`。冲突原因写作 `different_object` 或 `different_type`；参数位置写作 `input[N]`，接收库与被合并库分别写作 `receiver library` 和 `incoming library`。完整调用与输出示例见 [`add`](definition_source_library/add.md#示例)。
 
 定义名称使用双引号包围，其中的反斜线、双引号、换行符、回车符和制表符分别转义为 `\\`、`\"`、`\n`、`\r` 和 `\t`，使每条诊断保持为一行。
 

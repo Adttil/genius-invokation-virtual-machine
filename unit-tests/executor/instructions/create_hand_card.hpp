@@ -22,7 +22,7 @@ namespace
 {
     struct created_card_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type {};
 
         constexpr std::string_view name() const { return "CreatedCard"; }
@@ -44,11 +44,11 @@ namespace
 
     struct creation_driver_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type
         {
             creation_log* log;
-            givm::definition_id<givm::card_definition> card;
+            givm::optional_definition_id<givm::definition_category::card> card;
             givm::normal_effect create;
             givm::normal_effect nested;
         };
@@ -58,7 +58,7 @@ namespace
         auto card_dependencies() const { return std::array{ std::string_view{ "CreatedCard" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto card = context.resolve_id<givm::card_definition>("CreatedCard");
+            const auto card = context.resolve_id<givm::definition_category::card>("CreatedCard");
             const auto create = log->dynamic ? givm::create_hand_card{}
                 : givm::create_hand_card{ .player = givm::relative_player::opponent, .definition = card };
             const auto nested = log->dynamic ? givm::create_hand_card{}
@@ -73,8 +73,8 @@ namespace
         {
             if(data.log->dynamic)
                 return context.invoke(data.create,
-                    givm::create_hand_card_input{ .player = givm::player_id{ 0 }, .definition = data.card },
-                    givm::create_hand_card_input{ .player = givm::player_id{ 0 }, .definition = data.card });
+                    givm::create_hand_card_input{ .player = givm::player_id{ 0 }, .definition = data.card.get() },
+                    givm::create_hand_card_input{ .player = givm::player_id{ 0 }, .definition = data.card.get() });
             return context.invoke(data.create);
         }
         template<class TEvent>
@@ -94,7 +94,7 @@ namespace
             {
                 if(data.log->dynamic)
                     return context.invoke(data.nested,
-                        givm::create_hand_card_input{ .player = givm::player_id{ 1 }, .definition = data.card });
+                        givm::create_hand_card_input{ .player = givm::player_id{ 1 }, .definition = data.card.get() });
                 return context.invoke(data.nested);
             }
             return {};
@@ -118,7 +118,7 @@ namespace
     template<bool AnyEntry>
     struct entry_attachment_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { entry_order_log* log; };
         entry_order_log* log;
 
@@ -137,7 +137,7 @@ namespace
 
     struct entry_order_driver_source
     {
-        using definition_category = givm::card_definition;
+        static constexpr auto category = givm::definition_category::card;
         struct definition_type { givm::normal_effect effect; };
         entry_order_log* log;
 
@@ -149,14 +149,14 @@ namespace
         auto card_dependencies() const { return std::array{ std::string_view{ "CreatedCard" } }; }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            const auto first = context.resolve_id<givm::attachment_view>(log->reverse ? "AnyEntry" : "DrawOnly");
-            const auto second = context.resolve_id<givm::attachment_view>(log->reverse ? "DrawOnly" : "AnyEntry");
+            const auto first = context.resolve_id<givm::definition_category::attachment>(log->reverse ? "AnyEntry" : "DrawOnly");
+            const auto second = context.resolve_id<givm::definition_category::attachment>(log->reverse ? "DrawOnly" : "AnyEntry");
             return { context.add_normal_effect(std::tuple{
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = first },
                 givm::add_attachment{ .player = givm::relative_player::opponent, .definition = second },
                 givm::draw_cards{ .player = givm::relative_player::opponent, .position = 0, .count = 1 },
                 givm::create_hand_card{ .player = givm::relative_player::opponent,
-                    .definition = context.resolve_id<givm::card_definition>("CreatedCard") } }) };
+                    .definition = context.resolve_id<givm::definition_category::card>("CreatedCard") } }) };
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::deck_card_view>& context, std::uint32_t = 0)
@@ -174,10 +174,10 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
     const auto [library, ids] = givm::test::compile_definitions_with_program(mode,
         std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{},
         created_card_source{}, creation_driver_source{ &log });
-    const auto card = ids.get_id<givm::card_definition>("CreatedCard");
+    const auto card = ids.get_id<givm::definition_category::card>("CreatedCard");
     givm::table table{ {}, { .hand_limit = full ? 1u : 10u }, {} };
     load_deck(table, library, { .cards = { card } },
-        { .cards = { ids.get_id<givm::card_definition>("CreationDriver") } });
+        { .cards = { ids.get_id<givm::definition_category::card>("CreationDriver") } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
@@ -220,9 +220,9 @@ TEST_CASE("draw and general hand entry responders share attachment order", "[cre
     const givm::character_id active{ givm::player_id{ 0 }, 0 };
     givm::table table{ {}, { .active_character = active }, {} };
     load_deck(table, library,
-        { .cards = { ids.get_id<givm::card_definition>("CreatedCard") },
-            .characters = { ids.get_id<givm::character_view>("Character") } },
-        { .cards = { ids.get_id<givm::card_definition>("EntryOrderDriver") } });
+        { .cards = { ids.get_id<givm::definition_category::card>("CreatedCard") },
+            .characters = { ids.get_id<givm::definition_category::character>("Character") } },
+        { .cards = { ids.get_id<givm::definition_category::card>("EntryOrderDriver") } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };

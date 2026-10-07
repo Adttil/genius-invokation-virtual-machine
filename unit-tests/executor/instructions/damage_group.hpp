@@ -21,7 +21,7 @@ namespace
     constexpr givm::player_id attacking_player{ 0 };
     constexpr givm::player_id defending_player{ 1 };
     constexpr givm::character_id attacker{ attacking_player, 0 };
-    constexpr givm::character_id victim(std::size_t index) { return { defending_player, index }; }
+    constexpr givm::character_id victim(std::size_t index) { return { defending_player, static_cast<std::uint32_t>(index) }; }
 
     enum class phase { calculation, effect, reaction, after_reaction, after_damage };
 
@@ -44,7 +44,7 @@ namespace
 
     struct group_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             group_log* log;
@@ -101,7 +101,7 @@ namespace
             givm::damage_calculation& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
             if(data.log->take_over) event.cancel_reaction_bonus = true;
-            data.log->order.emplace_back(phase::calculation, event.target.index);
+            data.log->order.emplace_back(phase::calculation, event.target.index());
             if(data.log->nested && !data.log->nested_invoked && event.target == victim(0))
             {
                 data.log->nested_invoked = true;
@@ -113,7 +113,7 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::damage_effect& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::effect, event.target.index);
+            data.log->order.emplace_back(phase::effect, event.target.index());
             data.log->final_types.push_back(event.type);
             if(data.log->change_aura_during_effect && event.target == victim(0))
                 return context.invoke(data.change_target_aura);
@@ -122,8 +122,8 @@ namespace
         static givm::immediate_effect handle(const definition_type& data,
             givm::elemental_reaction_will_occur& event, givm::handle_context<givm::skill_view, givm::event_category::immediate>& context, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::reaction, event.target.index);
-            data.log->reactions.push_back(event.reaction.slot);
+            data.log->order.emplace_back(phase::reaction, event.target.index());
+            data.log->reactions.push_back(event.reaction.slot());
             if(data.log->take_over) event.cancel_default_effects = true;
             return data.log->invoke_each_phase ? context.invoke(data.immediate_count_response) : givm::immediate_effect{};
         }
@@ -137,14 +137,14 @@ namespace
         static givm::normal_effect handle(const definition_type& data,
             givm::after_elemental_reaction& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::after_reaction, event.target.index);
+            data.log->order.emplace_back(phase::after_reaction, event.target.index());
             record_health(*data.log, context.table());
             return data.log->invoke_each_phase ? context.invoke(data.count_response) : givm::normal_effect{};
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
-            data.log->order.emplace_back(phase::after_damage, event.target.index);
+            data.log->order.emplace_back(phase::after_damage, event.target.index());
             record_health(*data.log, context.table());
             data.log->after_second_aura.push_back(context.table()[victim(1)].state().aura);
             if(data.log->nested_after_first && event.target == victim(0))
@@ -166,7 +166,7 @@ namespace
 
     struct death_attachment_source
     {
-        using definition_category = givm::attachment_view;
+        static constexpr auto category = givm::definition_category::attachment;
         struct definition_type { death_log* log; };
         death_log* log;
         std::string_view source_name;
@@ -185,13 +185,13 @@ namespace
 
     struct dying_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             death_log* log;
-            givm::definition_id<givm::skill_view> skill;
-            givm::definition_id<givm::attachment_view> ordinary;
-            givm::definition_id<givm::attachment_view> artifact;
+            givm::optional_definition_id<givm::definition_category::skill> skill;
+            givm::optional_definition_id<givm::definition_category::attachment> ordinary;
+            givm::optional_definition_id<givm::definition_category::attachment> artifact;
             givm::normal_effect setup;
         };
         death_log* log;
@@ -204,26 +204,26 @@ namespace
         }
         definition_type compile(givm::definition_compile_context& context) const
         {
-            return { log, context.resolve_id<givm::skill_view>("RetainedSkill"),
-                context.resolve_id<givm::attachment_view>("RemovedAttachment"),
-                context.resolve_id<givm::attachment_view>("RemovedArtifact"),
+            return { log, context.resolve_id<givm::definition_category::skill>("RetainedSkill"),
+                context.resolve_id<givm::definition_category::attachment>("RemovedAttachment"),
+                context.resolve_id<givm::definition_category::attachment>("RemovedArtifact"),
                 context.add_normal_effect(std::tuple{ givm::add_attachment{}, givm::add_attachment{} }) };
         }
         static givm::character_state query(const definition_type&, const givm::character_initial_state&)
         {
             return { .max_health = 10, .max_energy = 3, .health = 1, .energy = 3 };
         }
-        static givm::definition_id<givm::skill_view> query(const definition_type& data, const givm::character_initial_skill& query)
+        static givm::optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const givm::character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.skill : givm::definition_id<givm::skill_view>{};
+            return query.skill_index == 0 ? data.skill : givm::optional_definition_id<givm::definition_category::skill>{};
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::round_started&, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
         {
             const auto self = context.entity().character();
             return context.invoke(data.setup,
-                givm::add_attachment_input{ .target = self.id(), .definition = data.ordinary },
-                givm::add_attachment_input{ .target = self.id(), .definition = data.artifact });
+                givm::add_attachment_input{ .target = self.id(), .definition = data.ordinary.get() },
+                givm::add_attachment_input{ .target = self.id(), .definition = data.artifact.get() });
         }
         static givm::normal_effect handle(const definition_type& data,
             givm::after_damage& event, givm::handle_context<givm::skill_view>& context, std::uint32_t = 0)
@@ -272,9 +272,9 @@ TEST_CASE("damage groups finish all health changes before invoking completion re
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    const auto character_id = compiled.id_map.get_id<givm::character_view>(character.name());
+    const auto character_id = compiled.id_map.get_id<givm::definition_category::character>(character.name());
     load_deck(table, compiled.library,
-        { .characters = { compiled.id_map.get_id<givm::character_view>(observer.name()) } },
+        { .characters = { compiled.id_map.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { character_id, character_id } });
     givm_test::executor_driver executor;
     executor.start(compiled.library, table);
@@ -312,8 +312,8 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(front.name()), ids.get_id<givm::character_view>(back.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(front.name()), ids.get_id<givm::definition_category::character>(back.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -363,15 +363,15 @@ TEST_CASE("segment sealing clears defeated energy before game end and defers att
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::start_round{}, givm::settle{}, damages[0], damages[1],
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, dying, character,
-        givm::test::named_definition_source<givm::skill_view>{ "RetainedSkill" },
+        givm::test::named_definition_source<givm::definition_category::skill>{ "RetainedSkill" },
         death_attachment_source{ &log, "RemovedAttachment", {} },
         death_attachment_source{ &log, "RemovedArtifact", { "artifact" } });
-    givm::linked_deck defending_deck{ .characters = { ids.get_id<givm::character_view>(dying.name()) } };
-    if(!terminal) defending_deck.characters.push_back(ids.get_id<givm::character_view>(character.name()));
+    givm::linked_deck defending_deck{ .characters = { ids.get_id<givm::definition_category::character>(dying.name()) } };
+    if(!terminal) defending_deck.characters.push_back(ids.get_id<givm::definition_category::character>(character.name()));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(character.name()) } }, defending_deck);
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } }, defending_deck);
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -431,13 +431,13 @@ TEST_CASE("reactions use the calculated element and expand over the living oppos
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, 0 } }, damages[0],
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, front, back);
-    givm::linked_deck defending_deck{ .characters = { ids.get_id<givm::character_view>(front.name()) } };
+    givm::linked_deck defending_deck{ .characters = { ids.get_id<givm::definition_category::character>(front.name()) } };
     for(std::size_t i = 1; i < count; ++i)
-        defending_deck.characters.push_back(ids.get_id<givm::character_view>(back.name()));
+        defending_deck.characters.push_back(ids.get_id<givm::definition_category::character>(back.name()));
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } }, defending_deck);
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } }, defending_deck);
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -466,11 +466,11 @@ TEST_CASE("reaction damage finishes before the next initial description", "[deal
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -500,9 +500,9 @@ TEST_CASE("swirled damage can expand another reaction inside the same group", "[
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(front.name()), ids.get_id<givm::character_view>(electro.name()),
-            ids.get_id<givm::character_view>(empty.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(front.name()), ids.get_id<givm::definition_category::character>(electro.name()),
+            ids.get_id<givm::definition_category::character>(empty.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -525,11 +525,11 @@ TEST_CASE("replacing a reaction suppresses its extra damage while consuming the 
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -557,12 +557,12 @@ TEST_CASE("prioritized damage skips defeated characters and standby ranges keep 
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::set_active_character{ .target = givm::relative_character_target{ givm::relative_player::opponent, 2 } }, damages[0], damages[1], damages[2],
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, alive, dead);
-    const auto alive_id = ids.get_id<givm::character_view>(alive.name());
-    const auto dead_id = ids.get_id<givm::character_view>(dead.name());
+    const auto alive_id = ids.get_id<givm::definition_category::character>(alive.name());
+    const auto dead_id = ids.get_id<givm::definition_category::character>(dead.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { alive_id, dead_id, alive_id, dead_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -591,11 +591,11 @@ TEST_CASE("relative damage ranges keep their original anchor and visit each samp
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, alive, dead);
-    const auto alive_id = ids.get_id<givm::character_view>(alive.name());
-    const auto dead_id = ids.get_id<givm::character_view>(dead.name());
+    const auto alive_id = ids.get_id<givm::definition_category::character>(alive.name());
+    const auto dead_id = ids.get_id<givm::definition_category::character>(dead.name());
     const auto other_id = lone_survivor ? dead_id : alive_id;
     givm::table table{ { .self_player = givm::player_id{ 0 } }, { .active_character = attacker }, { .active_character = victim(2) } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { other_id, dead_id, alive_id, dead_id, other_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -607,7 +607,7 @@ TEST_CASE("relative damage ranges keep their original anchor and visit each samp
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         REQUIRE(state == givm::execution_state::health_reduced);
-        observations.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index);
+        observations.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index());
     }
     std::vector<std::size_t> expected;
     if(selection != givm::character_selection::character) expected.push_back(2);
@@ -639,11 +639,11 @@ TEST_CASE("damage groups copied at health observation resume independently", "[d
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::observed,
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -686,11 +686,11 @@ TEST_CASE("a nested damage command completes its own group before resuming the c
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -718,12 +718,12 @@ TEST_CASE("range damage still calculates a target made dying by an earlier inlin
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ damages[0], givm::settle{}, givm::end_game{ givm::game_result::both_loss } },
         std::tuple{}, observer, alive, fragile);
-    const auto alive_id = ids.get_id<givm::character_view>(alive.name());
+    const auto alive_id = ids.get_id<givm::definition_category::character>(alive.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { alive_id, alive_id, ids.get_id<givm::character_view>(fragile.name()), alive_id, alive_id } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { alive_id, alive_id, ids.get_id<givm::definition_category::character>(fragile.name()), alive_id, alive_id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -734,7 +734,7 @@ TEST_CASE("range damage still calculates a target made dying by an earlier inlin
         if(state == givm::execution_state::finished) break;
         REQUIRE(observed);
         REQUIRE(state == givm::execution_state::health_reduced);
-        observed_targets.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index);
+        observed_targets.push_back(executor.view_in<givm::execution_state::health_reduced>().target().index());
         REQUIRE(observed_targets.size() <= 4);
     }
     CHECK(targets_at(log, phase::calculation) == std::vector<std::size_t>{ 0, 2, 1, 2, 3 });
@@ -759,11 +759,11 @@ TEST_CASE("standalone element application has reaction effects without damage", 
         observed ? givm::compile_mode::observed : givm::compile_mode::normal,
         std::tuple{ givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = incoming },
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -801,11 +801,11 @@ TEST_CASE("a damage group stops before completion responses when the last charac
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::replace_cards{ .player = attacking_player },
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -830,11 +830,11 @@ TEST_CASE("an independent nested damage group can end the game before its caller
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ damages[0], damages[1], givm::settle{}, givm::replace_cards{ .player = attacking_player },
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);
@@ -862,8 +862,8 @@ TEST_CASE("elemental reaction identity survives aura changes during damage effec
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
-        { .characters = { ids.get_id<givm::character_view>(front.name()), ids.get_id<givm::character_view>(back.name()) } });
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
+        { .characters = { ids.get_id<givm::definition_category::character>(front.name()), ids.get_id<givm::definition_category::character>(back.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
@@ -884,11 +884,11 @@ TEST_CASE("applying no element clears an existing aura without reaction or damag
     const auto [library, ids] = givm::test::compile_definitions_with_program(givm::compile_mode::normal,
         std::tuple{ givm::apply_element{ .source = givm::relative_character_target{ givm::relative_player::self, 0 }, .target = givm::relative_character_target{ givm::relative_player::opponent, 0 }, .element = givm::element::none },
             givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, observer, character);
-    const auto id = ids.get_id<givm::character_view>(character.name());
+    const auto id = ids.get_id<givm::definition_category::character>(character.name());
     givm::table table{ { .self_player = givm::player_id{ 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 0 }, 0 } },
         { .active_character = givm::character_id{ givm::player_id{ 1 }, 0 } } };
-    load_deck(table, library, { .characters = { ids.get_id<givm::character_view>(observer.name()) } },
+    load_deck(table, library, { .characters = { ids.get_id<givm::definition_category::character>(observer.name()) } },
         { .characters = { id, id } });
     givm_test::executor_driver executor;
     executor.start(library, table);

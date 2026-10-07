@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<class TDefinitionType>
+template<definition_category TDefinitionType>
 std::string_view name(definition_id<TDefinitionType> id) const;
 ```
 
@@ -40,7 +40,7 @@ std::string_view name(definition_id<TDefinitionType> id) const;
 
 struct card_source
 {
-    using definition_category = givm::card_definition;
+    static constexpr auto category = givm::definition_category::card;
 
     std::string_view name() const { return "恢复药剂"; }
     auto tags() const { return std::array<std::string_view, 1>{ "治疗" }; }
@@ -64,7 +64,7 @@ int main()
         return 1;
     }
     const auto [library, ids] = std::move(*library_result);
-    const auto card = ids.get_id<givm::card_definition>("恢复药剂");
+    const auto card = ids.get_id<givm::definition_category::card>("恢复药剂");
     std::println("卡牌名称: {}", library.name(card));
 }
 ```

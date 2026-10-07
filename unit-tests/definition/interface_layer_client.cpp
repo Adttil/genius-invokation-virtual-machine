@@ -35,7 +35,7 @@ TEST_CASE("definition authoring compilation and runtime interfaces link independ
     REQUIRE(state == givm::execution_state::finished);
     CHECK(execution.view_in<givm::execution_state::finished>().result() == givm::game_result::player_0_win);
     CHECK(table[character].state().energy == 2);
-    CHECK(table[character.player_id].state().dice[givm::elemental_dice::cryo] == 2);
+    CHECK(table[character.player_id()].state().dice[givm::elemental_dice::cryo] == 2);
     CHECK(library[skill.definition_id()].query(givm::skill_target_validation{
         .skill = skill, .table = table, .library = library }) == givm::target_validation::valid_complete);
 }

@@ -11,7 +11,7 @@ namespace givm::test
 {
     struct initialized_character_source
     {
-        using definition_category = givm::character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type { givm::character_state initial_state; };
 
         std::string_view source_name = "Character";
@@ -29,7 +29,7 @@ namespace givm::test
     template<class TProgram>
     struct initialization_skill_source
     {
-        using definition_category = skill_view;
+        static constexpr auto category = givm::definition_category::skill;
         struct definition_type { normal_effect entry; };
 
         TProgram program;
@@ -56,11 +56,11 @@ namespace givm::test
 
     struct initialization_character_source
     {
-        using definition_category = character_view;
+        static constexpr auto category = givm::definition_category::character;
         struct definition_type
         {
             character_state initial_state;
-            definition_id<skill_view> initialization;
+            optional_definition_id<givm::definition_category::skill> initialization;
         };
 
         std::string_view source_name = "InitializationCharacter";
@@ -70,15 +70,15 @@ namespace givm::test
         auto skill_dependencies() const { return std::array{ std::string_view{ "TestInitialization" } }; }
         definition_type compile(definition_compile_context& context) const
         {
-            return { initial_state, context.resolve_id<skill_view>("TestInitialization") };
+            return { initial_state, context.resolve_id<givm::definition_category::skill>("TestInitialization") };
         }
         static character_state query(const definition_type& data, const character_initial_state&)
         {
             return data.initial_state;
         }
-        static definition_id<skill_view> query(const definition_type& data, const character_initial_skill& query)
+        static optional_definition_id<givm::definition_category::skill> query(const definition_type& data, const character_initial_skill& query)
         {
-            return query.skill_index == 0 ? data.initialization : definition_id<skill_view>{};
+            return query.skill_index == 0 ? data.initialization : optional_definition_id<givm::definition_category::skill>{};
         }
     };
 }
