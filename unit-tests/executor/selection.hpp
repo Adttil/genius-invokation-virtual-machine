@@ -90,9 +90,9 @@ TEST_CASE("card selection checks leave submitted replacements and the table unch
     CHECK(random.calls == prepared_random_count);
 
     execution.submitted(initial.select(library, table, random, givm::player_id{ 1 }, std::bitset<givm::selection_capacity>{ 0b01 }));
-    REQUIRE(execution.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(execution.advance(library, table, random)));
     CHECK(hand_definitions(table[givm::player_id{ 1 }]) == std::vector{ b, a });
-    const auto remaining = execution.view_in<givm::execution_state::card_selection>();
+    const auto remaining = execution.view_in<givm::execution_state::card_selection0>();
     REQUIRE(remaining.player() == givm::player_id{ 0 });
     const std::bitset<givm::selection_capacity> submitted{ 0b10 };
     CHECK(remaining.selection_validate(table, {}));
@@ -134,9 +134,9 @@ TEST_CASE("card selections cover their highest bit when the hand reaches or exce
     givm_test::executor_driver execution;
     execution.start(library, table);
     counting_random random;
-    REQUIRE(execution.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(execution.advance(library, table, random)));
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == hand_count);
-    const auto input = execution.view_in<givm::execution_state::card_selection>();
+    const auto input = execution.view_in<givm::execution_state::card_selection0>();
     std::bitset<givm::selection_capacity> highest_bit;
     highest_bit.set(givm::selection_capacity - 1);
     CHECK(input.selection_validate(table, highest_bit));
@@ -185,8 +185,8 @@ TEST_CASE("initial character checks validate ownership and existence without req
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     CHECK(random.calls == 0);
     execution.submitted(initial.select(library, table, random, first_choice));
-    REQUIRE(execution.advance(library, table, random) == givm::execution_state::remaining_active_character_selection);
-    const auto remaining = execution.view_in<givm::execution_state::remaining_active_character_selection>();
+    REQUIRE(givm_test::is_remaining_active_character_selection(execution.advance(library, table, random)));
+    const auto remaining = execution.view_in<givm::execution_state::remaining_active_character_selection0>();
     CHECK(remaining.first_selected_character() == first_choice);
     CHECK(remaining.player() == givm::player_id{ 0 });
     CHECK(remaining.selection_validate(table, second_choice) == remaining_validation::valid);
@@ -230,11 +230,11 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     givm_test::executor_driver execution;
     execution.start(library, table);
     counting_random random;
-    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
+    REQUIRE(givm_test::is_dice_selection(execution.advance(library, table, random)));
     const auto prepared_random_count = random.calls;
     const auto player0_dice = table[givm::player_id{ 0 }].state().dice;
     const auto player1_dice = table[givm::player_id{ 1 }].state().dice;
-    const auto input = execution.view_in<givm::execution_state::dice_selection>();
+    const auto input = execution.view_in<givm::execution_state::dice_selection_both>();
     givm::dice_counts submitted;
     submitted[givm::elemental_dice::cryo] = 2;
     givm::dice_counts alternative;
@@ -259,14 +259,14 @@ TEST_CASE("dice checks validate available counts and rerolls without changing a 
     CHECK(table[givm::player_id{ 1 }].state().dice == player1_dice);
     CHECK(random.calls == prepared_random_count);
     execution.submitted(input.select(library, table, random, givm::player_id{ 1 }, submitted));
-    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
+    REQUIRE(givm_test::is_dice_selection(execution.advance(library, table, random)));
 
-    const auto player0_input = execution.view_in<givm::execution_state::dice_selection>();
+    const auto player0_input = execution.view_in<givm::execution_state::dice_selection_both>();
     REQUIRE(player0_input.player() == givm::player_id{ 0 });
     CHECK(player0_input.remaining(givm::player_id{ 1 }) == 1);
     execution.submitted(player0_input.select(library, table, random, alternative));
-    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
-    const auto last_input = execution.view_in<givm::execution_state::dice_selection>();
+    REQUIRE(givm_test::is_dice_selection(execution.advance(library, table, random)));
+    const auto last_input = execution.view_in<givm::execution_state::dice_selection1>();
     REQUIRE(last_input.player() == givm::player_id{ 1 });
     CHECK(last_input.remaining(givm::player_id{ 0 }) == 0);
     CHECK(last_input.selection_validate(table, givm::player_id{ 0 }, {}) == check_result::no_rerolls_remaining);

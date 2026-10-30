@@ -47,7 +47,7 @@ struct replace_cards_error;
 
 ## 注意
 
-等待输入时，执行器返回 `execution_state::card_selection`，通过相应的[现场视图](../../executor/execution_view/card_selection.md)提交选择。选择位按换牌前有效手牌的遍历顺序，空选择不改变手牌与牌堆。
+等待输入时，执行器返回 `execution_state::card_selection0`，通过相应的[现场视图](../../executor/execution_view/card_selection.md)提交选择。选择位按换牌前有效手牌的遍历顺序，空选择不改变手牌与牌堆。
 
 ### 替换结果
 
@@ -116,7 +116,7 @@ int main()
     initialized.resume(library, table, random);
     std::bitset<givm::selection_capacity> selected{};
     selected.set(0);
-    execution.view_in<givm::execution_state::card_selection>().select(library, table, random, selected);
+    execution.view_in<givm::execution_state::card_selection0>().select(library, table, random, selected);
     std::println("玩家 0 的手牌数量: {}", table[givm::player_id{ 0 }].hand_card_count());
     std::println("玩家 0 抽到另一种牌: {}",
         (*table[givm::player_id{ 0 }].hand_cards().begin()).definition_id().value() == b.value());

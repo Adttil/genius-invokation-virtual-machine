@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<dice_selection>](../dice_selection.md) / **dice_count**
 
-# givm::execution_view<execution_state::dice_selection>::dice_count
+# givm::execution_view<execution_state::dice_selection_both>::dice_count
 
 定义于头文件 `<givm/runtime.hpp>`
 

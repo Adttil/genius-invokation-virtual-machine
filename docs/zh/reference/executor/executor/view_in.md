@@ -5,8 +5,8 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<execution_state State>
-constexpr execution_view<State> view_in() noexcept(/* Release 为 true，Debug 为 false */);
+template<execution_state State, role Role = role::full>
+constexpr execution_view<State, Role> view_in() noexcept(/* Release 为 true，Debug 为 false */);
 ```
 [`execution_state`](../execution_state.md)
 [`execution_view`](../execution_view.md)
@@ -19,11 +19,18 @@ constexpr execution_view<State> view_in() noexcept(/* Release 为 true，Debug �
 
 | | |
 | --- | --- |
+| `Role` | 读取及输入身份，默认为 `role::full`；见 [`role`](../../enums/role.md) |
 | `State` | 当前执行现场的种类 |
 
 ## 返回值
 
 与 `State` 对应的现场访问对象，可用成员见相应[现场视图](../execution_view.md)的说明；观察现场通过 `resume` 继续执行。调用方可用 `auto` 接收结果。
+
+## 角色与接口
+
+`role::full` 保留完整接口。本人窗口具有相应的提交接口；对手窗口仅提供公开读取；观众可读取双方私有信息和费用预览，但不能提交输入。`resume` 仅由全权视图提供。
+
+双方选择窗口的玩家版本将输入绑定本人，省略原有的 `player_id` 参数。`state`、`access_role`、`accepts_input` 为类型的静态常量。角色不会增加视图的数据成员，也不会增加运行期权限检查。
 
 ## 注意
 

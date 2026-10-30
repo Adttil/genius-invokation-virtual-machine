@@ -73,7 +73,7 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
     executor.start(library, table);
     counting_random random;
     const auto first_state = executor.advance(library, table, random);
-    REQUIRE(first_state == (observed ? givm::execution_state::round_started : givm::execution_state::card_selection));
+    REQUIRE(first_state == (observed ? givm::execution_state::round_started : givm::execution_state::card_selection0));
     CHECK(table.state().round_number == 1);
     if(observed)
     {
@@ -112,12 +112,12 @@ TEST_CASE("automatic round advancement clears dice before rolling and checks the
             }
             else
             {
-                REQUIRE(state == givm::execution_state::card_selection);
+                REQUIRE(givm_test::is_card_selection(state));
                 ++inputs;
                 CHECK(current.state().round_number == inputs);
                 CHECK(log.notifications.size() == inputs);
                 for(const auto player : current.players()) CHECK(player.state().dice.total() == 2);
-                running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, random, {}));
+                running.submitted(running.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, current, random, {}); }));
             }
             state = running.advance(library, current, random);
         }

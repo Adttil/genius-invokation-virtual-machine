@@ -124,9 +124,9 @@ TEST_CASE("initial replacements assign random values by player and selected card
         random_tape later_random;
         const auto selected = std::bitset<givm::selection_capacity>{ 1u << 2 };
         execution.submitted(execution.view_in<givm::execution_state::initial_card_selection>().select(library, table, later_random, first_player, selected));
-        REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::card_selection);
-        REQUIRE(execution.view_in<givm::execution_state::card_selection>().player() == other_player(first_player));
-        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, later_random, selected));
+        REQUIRE(givm_test::is_card_selection(execution.advance(library, table, later_random)));
+        REQUIRE(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.player(); }) == other_player(first_player));
+        execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, later_random, selected); }));
         REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::finished);
         CHECK(later_random.consumed == 0);
         CHECK(deck_definitions(table[givm::player_id{ 0 }]) == std::vector{ c, a });
@@ -171,9 +171,9 @@ TEST_CASE("replacements fill a blacklist shortfall in deck order and preserve th
         givm_test::executor_driver execution;
         execution.start(library, table);
         random_tape random{ { 0u, 0xffffffffu, 0x80000000u } };
-        REQUIRE(execution.advance(library, table, random) == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(execution.advance(library, table, random)));
         CHECK(random.consumed == 0);
-        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, random, std::bitset<givm::selection_capacity>{ 0b0111 }));
+        execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, std::bitset<givm::selection_capacity>{ 0b0111 }); }));
         REQUIRE(execution.advance(library, table, random) == givm::execution_state::finished);
         CHECK(random.consumed == 3);
 
@@ -205,7 +205,7 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
         | (5u << 12) | (6u << 15) | (7u << 18) | (1u << 24) | (2u << 27));
     random.values.push_back(3u | (4u << 3));
     random.values.push_back(0x3fffffffu);
-    REQUIRE(execution.advance(library, table, random) == givm::execution_state::dice_selection);
+    REQUIRE(givm_test::is_dice_selection(execution.advance(library, table, random)));
     REQUIRE(random.consumed == 15);
     CHECK(table[givm::player_id{ 0 }].state().dice[givm::elemental_dice::cryo] == 6);
     CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::cryo] == 6);
@@ -213,8 +213,8 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
     random_tape later_random;
     givm::dice_counts player1_selection;
     player1_selection[givm::elemental_dice::cryo] = 2;
-    execution.submitted(execution.view_in<givm::execution_state::dice_selection>().select(library, table, later_random, givm::player_id{ 1 }, player1_selection));
-    REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::dice_selection);
+    execution.submitted(execution.view_in<givm::execution_state::dice_selection_both>().select(library, table, later_random, givm::player_id{ 1 }, player1_selection));
+    REQUIRE(givm_test::is_dice_selection(execution.advance(library, table, later_random)));
     CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::cryo] == 4);
     CHECK(table[givm::player_id{ 1 }].state().dice[givm::elemental_dice::omni] == 2);
 
@@ -228,11 +228,11 @@ TEST_CASE("rerolls continue each player's random dice sequence across partial se
     player0_selections[2][givm::elemental_dice::geo] = 1;
     for(std::size_t index = 0; index < 2; ++index)
     {
-        execution.submitted(execution.view_in<givm::execution_state::dice_selection>().select(library, table, later_random, givm::player_id{ 0 }, player0_selections[index]));
-        REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::dice_selection);
+        execution.submitted(execution.view_in<givm::execution_state::dice_selection0>().select(library, table, later_random, givm::player_id{ 0 }, player0_selections[index]));
+        REQUIRE(givm_test::is_dice_selection(execution.advance(library, table, later_random)));
     }
-    REQUIRE(execution.view_in<givm::execution_state::dice_selection>().remaining(givm::player_id{ 0 }) == 1);
-    execution.submitted(execution.view_in<givm::execution_state::dice_selection>().select(library, table, later_random, givm::player_id{ 0 }, player0_selections[2]));
+    REQUIRE(execution.view_in<givm::execution_state::dice_selection0>().remaining(givm::player_id{ 0 }) == 1);
+    execution.submitted(execution.view_in<givm::execution_state::dice_selection0>().select(library, table, later_random, givm::player_id{ 0 }, player0_selections[2]));
     REQUIRE(execution.advance(library, table, later_random) == givm::execution_state::finished);
     CHECK(later_random.consumed == 0);
     givm::dice_counts expected;

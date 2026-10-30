@@ -97,3 +97,7 @@ int main()
 卡牌名称: 恢复药剂
 具有治疗标签: true
 ```
+
+## 公开标签
+
+[`public_tag_count`](definition_library/public_tag_count.md) 返回公开标签前缀的长度。 [`public_tags`](definition_library/public_tags.md) 取得定义或隐藏手牌的只读标签前缀。

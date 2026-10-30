@@ -158,14 +158,14 @@ TEST_CASE("prepared program inputs own nested ranges through compilation invocat
     const auto library = compiled_library;
     auto table = make_table(library, ids);
     givm::executor execution;
-    REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(execution.start(library, table).resume(library, table, givm_test::zero_random)));
     CHECK(table[actor].state().energy == 2);
     CHECK(table[opponent].state().energy == 0);
     auto copied = execution;
     auto copied_table = table;
     const auto finish = [&](givm::executor& current, givm::table& current_table)
     {
-        REQUIRE(current.view_in<givm::execution_state::card_selection>().select(library, current_table,
+        REQUIRE(current.view_in<givm::execution_state::card_selection0>().select(library, current_table,
             givm_test::zero_random, {}) == givm::execution_state::finished);
         CHECK(current_table[actor].state().energy == target_count + 5);
         CHECK(current_table[opponent].state().energy == 0);

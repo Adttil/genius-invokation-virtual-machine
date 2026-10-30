@@ -125,7 +125,8 @@ namespace givm::detail
         const auto& command = context.instruction_data<1, givm::replace_cards>(library);
         context.stack().push(command.player, std::bitset<selection_capacity>{});
         context.advance(instruction_extent<1, givm::replace_cards>);
-        return context.yield(execution_state::card_selection);
+        return context.yield(command.player == player_id{ 0 }
+            ? execution_state::card_selection0 : execution_state::card_selection1);
     }
 
     inline execution_state apply_card_selection(

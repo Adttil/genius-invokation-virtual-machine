@@ -23,13 +23,20 @@ namespace givm::detail
     {
         switch(state)
         {
+        case execution_state::active_character_selection0: return "active_character_selection0";
+        case execution_state::active_character_selection1: return "active_character_selection1";
         case execution_state::finished: return "finished";
-        case execution_state::card_selection: return "card_selection";
+        case execution_state::card_selection0: return "card_selection0";
+        case execution_state::card_selection1: return "card_selection1";
         case execution_state::initial_card_selection: return "initial_card_selection";
         case execution_state::initial_active_character_selection: return "initial_active_character_selection";
-        case execution_state::remaining_active_character_selection: return "remaining_active_character_selection";
-        case execution_state::dice_selection: return "dice_selection";
-        case execution_state::action_selection: return "action_selection";
+        case execution_state::remaining_active_character_selection0: return "remaining_active_character_selection0";
+        case execution_state::remaining_active_character_selection1: return "remaining_active_character_selection1";
+        case execution_state::dice_selection_both: return "dice_selection_both";
+        case execution_state::dice_selection0: return "dice_selection0";
+        case execution_state::dice_selection1: return "dice_selection1";
+        case execution_state::action_selection0: return "action_selection0";
+        case execution_state::action_selection1: return "action_selection1";
         case execution_state::health_reduced: return "health_reduced";
         case execution_state::deck_cards_discarded: return "deck_cards_discarded";
         case execution_state::active_character_changed: return "active_character_changed";
@@ -38,7 +45,8 @@ namespace givm::detail
         case execution_state::action_started: return "action_started";
         case execution_state::round_end_declared: return "round_end_declared";
         case execution_state::round_ending: return "round_ending";
-        case execution_state::dice_reroll_selection: return "dice_reroll_selection";
+        case execution_state::dice_reroll_selection0: return "dice_reroll_selection0";
+        case execution_state::dice_reroll_selection1: return "dice_reroll_selection1";
         case execution_state::initialized: return "initialized";
         default: return "unavailable";
         }

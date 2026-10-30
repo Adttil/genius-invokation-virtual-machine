@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **calculate_switch_cost**
 
-# givm::execution_view<execution_state::action_selection>::calculate_switch_cost
+# givm::execution_view<execution_state::action_selection0>::calculate_switch_cost
 
 定义于头文件 `<givm/runtime.hpp>`
 

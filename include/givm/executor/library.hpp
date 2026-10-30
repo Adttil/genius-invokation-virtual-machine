@@ -173,7 +173,7 @@ namespace givm
 #ifndef NDEBUG
           input_markers_{ other.input_markers_ }, debug_programs_{ other.debug_programs_ }, debug_library_identity_{ other.debug_library_identity_ },
 #endif
-          tag_names_{ other.tag_names_ },
+          tag_names_{ other.tag_names_ }, public_tag_count_{ other.public_tag_count_ },
           equipment_tags_{ other.equipment_tags_ }, skill_tags_{ other.skill_tags_ }, control_tag_{ other.control_tag_ },
           control_immunity_tag_{ other.control_immunity_tag_ },
           remove_at_zero_usages_tag_{ other.remove_at_zero_usages_tag_ }, default_reactions_{ other.default_reactions_ },
@@ -202,6 +202,18 @@ namespace givm
         template<definition_category T>
         std::size_t definition_count() const noexcept { return bucket_for<T>().data.size(); }
         std::size_t tag_count() const noexcept { return tag_names_.size(); }
+        std::size_t public_tag_count() const noexcept { return public_tag_count_; }
+
+        tag_mask_view public_tags(hidden_hand_card_view card) const noexcept
+        {
+            return public_tags(card.card_.definition_id());
+        }
+
+        template<definition_category Category>
+        tag_mask_view public_tags(definition_id<Category> id) const noexcept
+        {
+            return bucket_for<Category>().tags[id.value()].first(public_tag_count_);
+        }
 
         definition_id<definition_category::reaction> default_reaction_id(elemental_reaction slot) const noexcept
         {
@@ -597,22 +609,25 @@ namespace givm
     public:
         static std::expected<definition_compile_result, std::vector<compile_error>> compile(
             const definition_source_library& sources, const reaction_definition_names& basics,
-            std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+            std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode,
+            std::span<const std::string_view> public_tags = {});
 
         static std::expected<definition_compile_result, std::vector<compile_error>> compile(
             const definition_source_library& sources, const reaction_definition_names& basics,
             const std::array<std::span<const std::string_view>, detail::definition_categories.size()>& selection,
-            std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode);
+            std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode,
+            std::span<const std::string_view> public_tags = {});
 
         template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
         requires (not std::convertible_to<TInitializationSequence, std::span<const any_command>>
             || not std::convertible_to<TRoundSequence, std::span<const any_command>>)
         static auto compile(const definition_source_library& sources, const reaction_definition_names& basics,
-            TInitializationSequence&& initialization_program, TRoundSequence&& round_program, compile_mode mode)
+            TInitializationSequence&& initialization_program, TRoundSequence&& round_program, compile_mode mode,
+            std::span<const std::string_view> public_tags = {})
         {
             const auto initialization = detail::make_command_sequence(std::forward<TInitializationSequence>(initialization_program));
             const auto round = detail::make_command_sequence(std::forward<TRoundSequence>(round_program));
-            return compile(sources, basics, std::span{ initialization }, std::span{ round }, mode);
+            return compile(sources, basics, std::span{ initialization }, std::span{ round }, mode, public_tags);
         }
 
         template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
@@ -621,11 +636,12 @@ namespace givm
         static auto compile(const definition_source_library& sources, const reaction_definition_names& basics,
             const std::array<std::span<const std::string_view>, detail::definition_categories.size()>& selection,
             TInitializationSequence&& initialization_program,
-            TRoundSequence&& round_program, compile_mode mode)
+            TRoundSequence&& round_program, compile_mode mode,
+            std::span<const std::string_view> public_tags = {})
         {
             const auto initialization = detail::make_command_sequence(std::forward<TInitializationSequence>(initialization_program));
             const auto round = detail::make_command_sequence(std::forward<TRoundSequence>(round_program));
-            return compile(sources, basics, selection, std::span{ initialization }, std::span{ round }, mode);
+            return compile(sources, basics, selection, std::span{ initialization }, std::span{ round }, mode, public_tags);
         }
 
     private:
@@ -642,6 +658,7 @@ namespace givm
         std::size_t debug_library_identity_ = detail::next_program_library_identity.fetch_add(1, std::memory_order_relaxed);
 #endif
         std::vector<std::string_view> tag_names_;
+        std::size_t public_tag_count_ = 0;
         std::array<optional_tag_id, static_cast<size_t>(givm::equipment_type::none)> equipment_tags_{};
         std::array<optional_tag_id, 3> skill_tags_{};
         optional_tag_id control_tag_{};

@@ -1,12 +1,13 @@
 [givm](../../../reference.md) / [执行](../../executor.md) / [execution_view](../execution_view.md) / **execution_view<card_selection>**
 
-# givm::execution_view<execution_state::card_selection>
+# givm::execution_view<execution_state::card_selection0>
 
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<>
-class execution_view<execution_state::card_selection>;
+template<execution_state State, role Role>
+requires (State == execution_state::card_selection0 || State == execution_state::card_selection1)
+class execution_view<State, Role>;
 ```
 
 指定玩家换牌现场的视图，包含本次等待换牌的玩家及当前填写的选择。
@@ -31,3 +32,5 @@ class execution_view<execution_state::card_selection>;
 | | |
 | --- | --- |
 | [`executor::view_in`](../executor/view_in.md) | 取得对应执行现场的视图 |
+
+对应的 `card_selection1` 具有相同现场结构，关联玩家由状态静态确定。模板身份默认使用全权；受限接口见 [`execution_view`](../execution_view.md#角色与接口)。

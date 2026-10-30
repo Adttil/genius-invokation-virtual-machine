@@ -30,7 +30,8 @@ namespace givm::detail
         execution_context& context, random_fn&
     )
     {
-        return context.yield_next(execution_state::remaining_active_character_selection);
+        return context.yield_next(other_player(get<1>(context.stack().top<std::size_t, character_id>()).player_id()) == player_id{ 0 }
+            ? execution_state::remaining_active_character_selection0 : execution_state::remaining_active_character_selection1);
     }
 
     inline execution_state prepare_initial_character_broadcasts(

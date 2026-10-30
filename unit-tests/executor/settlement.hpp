@@ -221,14 +221,14 @@ TEST_CASE("nested deferred scopes restore parent segments and rebuild after copi
         std::tuple{ givm::start_round{}, givm::settle{}, givm::end_game{ givm::game_result::both_loss } }, std::tuple{}, skill, character);
     auto table = make_table(library, ids);
     givm::executor execution;
-    REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(execution.start(library, table).resume(library, table, givm_test::zero_random)));
     CHECK(table[own].state().energy == 0);
     CHECK(log.responses == std::vector<std::uint32_t>{ 0 });
     auto branch = execution;
     auto branch_table = table;
-    REQUIRE(execution.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {})
+    REQUIRE(execution.view_in<givm::execution_state::card_selection0>().select(library, table, givm_test::zero_random, {})
         == givm::execution_state::finished);
-    REQUIRE(branch.view_in<givm::execution_state::card_selection>().select(library, branch_table, givm_test::zero_random, {})
+    REQUIRE(branch.view_in<givm::execution_state::card_selection0>().select(library, branch_table, givm_test::zero_random, {})
         == givm::execution_state::finished);
     // Both queued segments finish in order, then the parent continues after settle
     // and appends another child to the rebuilt domain: 4096 - 4 + 16 - 4.
@@ -248,8 +248,8 @@ TEST_CASE("starting an executor replaces paused domains without changing an exis
         suspended_skill, character);
     auto suspended_table = make_table(suspended_library, suspended_ids);
     givm::executor execution;
-    REQUIRE(execution.start(suspended_library, suspended_table).resume(
-        suspended_library, suspended_table, givm_test::zero_random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(execution.start(suspended_library, suspended_table).resume(
+        suspended_library, suspended_table, givm_test::zero_random)));
     auto preserved = execution;
     auto preserved_table = suspended_table;
 
@@ -265,7 +265,7 @@ TEST_CASE("starting an executor replaces paused domains without changing an exis
     CHECK(suspended_table[own].state().energy == 0);
     CHECK(suspended_log.responses == std::vector<std::uint32_t>{ 0 });
 
-    REQUIRE(preserved.view_in<givm::execution_state::card_selection>().select(
+    REQUIRE(preserved.view_in<givm::execution_state::card_selection0>().select(
         suspended_library, preserved_table, givm_test::zero_random, {}) == givm::execution_state::finished);
     CHECK(preserved_table[own].state().energy == 4104);
     CHECK(suspended_log.responses == std::vector<std::uint32_t>{ 0, 4 });
@@ -353,8 +353,7 @@ TEST_CASE("root deferred records survive action windows independent settlements 
         { .characters = { ids.get_id<givm::definition_category::character>(character.name()) } },
         { .characters = { ids.get_id<givm::definition_category::character>(victim.name()) } });
     givm::executor execution;
-    REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random)
-        == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(execution.start(library, table).resume(library, table, givm_test::zero_random)));
     CHECK(table[own].state().energy == 1);
     CHECK(table[opponent].state().health == 9);
     CHECK(log.at_response.empty());
@@ -364,16 +363,16 @@ TEST_CASE("root deferred records survive action windows independent settlements 
     const auto finish = [&](givm::executor& current, givm::table& current_table)
     {
         log.at_response.clear();
-        REQUIRE(current.view_in<givm::execution_state::action_selection>().declare_round_end(
-            library, current_table, givm_test::zero_random) == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(current.view_in<givm::execution_state::action_selection0>().declare_round_end(
+            library, current_table, givm_test::zero_random)));
         CHECK(current_table[own].state().energy == 1);
         CHECK(log.at_response == std::vector<std::uint32_t>{ 1, 1 });
-        REQUIRE(current.view_in<givm::execution_state::action_selection>().declare_round_end(
-            library, current_table, givm_test::zero_random) == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(current.view_in<givm::execution_state::action_selection1>().declare_round_end(
+            library, current_table, givm_test::zero_random)));
         // This root pause is after begin_action has returned and before its explicit settle.
         CHECK(current_table[own].state().energy == 1);
         CHECK(log.at_response == std::vector<std::uint32_t>{ 1, 1, 1, 1 });
-        REQUIRE(current.view_in<givm::execution_state::card_selection>().select(
+        REQUIRE(current.view_in<givm::execution_state::card_selection0>().select(
             library, current_table, givm_test::zero_random, {}) == givm::execution_state::finished);
         CHECK(current_table[own].state().energy == 0);
         CHECK(current_table[opponent].state().health == 9);

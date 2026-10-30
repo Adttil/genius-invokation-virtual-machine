@@ -190,9 +190,9 @@ TEST_CASE("deal_damage settles handler adjustments, reactions and saturation", "
     auto state = target.advance(library, table, random);
     if(expected_damage >= initial.health)
     {
-        REQUIRE(state == givm::execution_state::active_character_selection);
-        target.submitted(target.view_in<givm::execution_state::active_character_selection>().select(
-            library, table, random, { damaged.player_id(), 1 }));
+        REQUIRE(givm_test::is_active_character_selection(state));
+        target.submitted(target.with_view<givm::execution_state::active_character_selection0, givm::execution_state::active_character_selection1>([&](auto view) -> decltype(auto) { return view.select(
+            library, table, random, { damaged.player_id(), 1 }); }));
         state = target.advance(library, table, random);
     }
     REQUIRE(state == givm::execution_state::finished);

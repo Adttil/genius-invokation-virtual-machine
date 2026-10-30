@@ -228,7 +228,7 @@ TEST_CASE("healing broadcasts resume and copy before and after recovery", "[heal
     givm_test::executor_driver executor;
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(executor.advance(library, table, random)));
     CHECK(table[patient].state().health == 4);
     CHECK(log.requested == std::vector{ 5u });
     CHECK(log.actual.empty());
@@ -236,14 +236,14 @@ TEST_CASE("healing broadcasts resume and copy before and after recovery", "[heal
     auto before_table = table;
     for(auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &before_executor, &before_table } })
     {
-        running->submitted(running->view_in<givm::execution_state::card_selection>().select(library, *current, random, {}));
-        REQUIRE(running->advance(library, *current, random) == givm::execution_state::card_selection);
+        running->submitted(running->view_in<givm::execution_state::card_selection0>().select(library, *current, random, {}));
+        REQUIRE(givm_test::is_card_selection(running->advance(library, *current, random)));
         CHECK((*current)[patient].state().health == 10);
         auto after_executor = *running;
         auto after_table = *current;
         for(auto [finishing, final] : { std::pair{ running, current }, std::pair{ &after_executor, &after_table } })
         {
-            finishing->submitted(finishing->view_in<givm::execution_state::card_selection>().select(library, *final, random, {}));
+            finishing->submitted(finishing->view_in<givm::execution_state::card_selection0>().select(library, *final, random, {}));
             REQUIRE(finishing->advance(library, *final, random) == givm::execution_state::finished);
             CHECK((*final)[patient].state().health == 10);
         }
@@ -264,11 +264,11 @@ TEST_CASE("range healing resumes and copies during calculations and notification
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
 
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(executor.advance(library, table, random)));
     CHECK(table[patient].state().health == 4);
     CHECK(table[other].state().health == 4);
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
+    REQUIRE(givm_test::is_card_selection(executor.advance(library, table, random)));
     CHECK(table[patient].state().health == 7);
     CHECK(table[other].state().health == 4);
     CHECK(log.requested == std::vector{ 2u, 2u });
@@ -277,17 +277,17 @@ TEST_CASE("range healing resumes and copies during calculations and notification
     auto before_table = table;
     for(auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &before_executor, &before_table } })
     {
-        running->submitted(running->view_in<givm::execution_state::card_selection>().select(library, *current, random, {}));
-        REQUIRE(running->advance(library, *current, random) == givm::execution_state::card_selection);
+        running->submitted(running->view_in<givm::execution_state::card_selection0>().select(library, *current, random, {}));
+        REQUIRE(givm_test::is_card_selection(running->advance(library, *current, random)));
         CHECK((*current)[patient].state().health == 7);
         CHECK((*current)[other].state().health == 7);
         auto after_executor = *running;
         auto after_table = *current;
         for(auto [finishing, final] : { std::pair{ running, current }, std::pair{ &after_executor, &after_table } })
         {
-            finishing->submitted(finishing->view_in<givm::execution_state::card_selection>().select(library, *final, random, {}));
-            REQUIRE(finishing->advance(library, *final, random) == givm::execution_state::card_selection);
-            finishing->submitted(finishing->view_in<givm::execution_state::card_selection>().select(library, *final, random, {}));
+            finishing->submitted(finishing->view_in<givm::execution_state::card_selection0>().select(library, *final, random, {}));
+            REQUIRE(givm_test::is_card_selection(finishing->advance(library, *final, random)));
+            finishing->submitted(finishing->view_in<givm::execution_state::card_selection0>().select(library, *final, random, {}));
             REQUIRE(finishing->advance(library, *final, random) == givm::execution_state::finished);
             CHECK((*final)[patient].state().health == 7);
             CHECK((*final)[other].state().health == 7);

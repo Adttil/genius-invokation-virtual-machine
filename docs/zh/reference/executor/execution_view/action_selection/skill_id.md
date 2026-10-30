@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **skill_id**
 
-# givm::execution_view<execution_state::action_selection>::skill_id
+# givm::execution_view<execution_state::action_selection0>::skill_id
 
 定义于头文件 `<givm/runtime.hpp>`
 

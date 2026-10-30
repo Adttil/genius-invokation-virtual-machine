@@ -356,7 +356,7 @@ namespace
         for(;;)
         {
             const auto state = executor.advance(library, table, random);
-            if(state == givm::execution_state::action_selection || state == givm::execution_state::card_selection
+            if(givm_test::is_action_selection(state) || givm_test::is_card_selection(state)
                 || state == givm::execution_state::finished)
                 return state;
         }
@@ -625,12 +625,12 @@ TEST_CASE("dynamic history adapters update once after resumable ordinary respons
     CHECK(table[hits] == 0);
     CHECK(table[library.history_field<std::uint64_t[]>(enabled_id, "payload")].size() == 3);
     CHECK(table[library.history_field<std::uint64_t[]>(disabled_id, "payload")].size() == 17);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(executor, library, table)));
     CHECK(table[hits] == 1);
     CHECK(observed == std::vector<std::uint32_t>{ 1 });
     auto branch = table;
     auto branch_executor = executor;
-    branch_executor.submitted(branch_executor.view_in<givm::execution_state::card_selection>().select(library, branch, givm_test::zero_random, {}));
+    branch_executor.submitted(branch_executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, branch, givm_test::zero_random, {}); }));
     REQUIRE(advance(branch_executor, library, branch) == givm::execution_state::finished);
     CHECK(branch[hits] == 2);
     CHECK(table[hits] == 1);
@@ -752,25 +752,25 @@ TEST_CASE("card history excludes initial decks and is available to cards generat
     const auto first_mask = std::uint64_t{ 1 } << (first_id.value() % 64);
     CHECK((table[seen][first_id.value() / 64] & first_mask) == 0);
     CHECK((table[seen][words + first_id.value() / 64] & first_mask) != 0);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
-    const auto initial_action = executor.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
+    const auto initial_action = executor.view_in<givm::execution_state::action_selection0>();
     REQUIRE(initial_action.card_count() == 4);
     for(std::size_t index = 0; index < initial_action.card_count(); ++index)
         CHECK(table[initial_action.card_id(index)].definition_id() != future_id);
     for(const auto expected : std::array{ std::pair{ initial_id, 0u }, std::pair{ first_id, 1u },
             std::pair{ first_id, 1u }, std::pair{ second_id, 2u } })
     {
-        const auto action = executor.view_in<givm::execution_state::action_selection>();
+        const auto action = executor.view_in<givm::execution_state::action_selection0>();
         std::size_t index = 0;
         while(index < action.card_count() && table[action.card_id(index)].definition_id() != expected.first) ++index;
         REQUIRE(index < action.card_count());
         executor.submitted(action.play_card(library, table, givm_test::zero_random, index, {}));
-        REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
         CHECK(table[counts][0] == expected.second);
         CHECK(table[counts][1] == 0);
     }
     CHECK(observed == std::vector<std::uint32_t>{ 0, 1, 1, 2 });
-    const auto action = executor.view_in<givm::execution_state::action_selection>();
+    const auto action = executor.view_in<givm::execution_state::action_selection0>();
     std::size_t future_index = 0;
     while(future_index < action.card_count() && table[action.card_id(future_index)].definition_id() != future_id) ++future_index;
     REQUIRE(future_index < action.card_count());

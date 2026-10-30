@@ -323,10 +323,10 @@ TEST_CASE("all damage broadcast phases resume after their response programs", "[
     {
         const auto state = givm_test::advance_selecting_first_alive(executor, library, table, random);
         if(state == givm::execution_state::finished) break;
-        if(state == givm::execution_state::card_selection)
+        if(givm_test::is_card_selection(state))
         {
             ++response_pauses;
-            executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+            executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
         }
         else
         {

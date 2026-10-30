@@ -10,7 +10,8 @@ std::expected<definition_compile_result, std::vector<compile_error>> compile(
     const reaction_definition_names& basics,
     std::span<const any_command> initialization_program,
     std::span<const any_command> round_program,
-    compile_mode mode
+    compile_mode mode,
+    std::span<const std::string_view> public_tags = {}
 ); // (1)
 
 std::expected<definition_compile_result, std::vector<compile_error>> compile(
@@ -19,7 +20,8 @@ std::expected<definition_compile_result, std::vector<compile_error>> compile(
     const definition_selection& selection,
     std::span<const any_command> initialization_program,
     std::span<const any_command> round_program,
-    compile_mode mode
+    compile_mode mode,
+    std::span<const std::string_view> public_tags = {}
 ); // (2)
 
 template<class TInitializationSequence, class TRoundSequence>
@@ -29,7 +31,8 @@ auto compile(
     const reaction_definition_names& basics,
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
-    compile_mode mode
+    compile_mode mode,
+    std::span<const std::string_view> public_tags = {}
 ); // (3)
 
 template<class TInitializationSequence, class TRoundSequence>
@@ -40,7 +43,8 @@ auto compile(
     const definition_selection& selection,
     TInitializationSequence&& initialization_program,
     TRoundSequence&& round_program,
-    compile_mode mode
+    compile_mode mode,
+    std::span<const std::string_view> public_tags = {}
 ); // (4)
 ```
 
@@ -69,6 +73,9 @@ auto compile(
 | `initialization_program` | 对局开始时依次执行的命令 |
 | `round_program` | 每回合依次执行的命令 |
 | `mode` | [`compile_mode`](compile_mode.md)，决定是否提供额外观察现场 |
+| `public_tags` | 统一指定本定义库中允许公开读取的标签名称，省略时为空 |
+
+`public_tags` 按名称去重并统一登记，即使本次没有定义使用其中的标签也会保留。所有定义上的同名标签具有相同的公开性；定义仍须通过 `tags()` 声明自己具有该标签。公开标签的 ID 连续位于其他标签之前，可通过 [`definition_library::public_tags`](definition_library/public_tags.md) 读取相应位集前缀。增加或选择其他定义不会改变这份公开配置。
 
 ## 返回值
 
@@ -105,14 +112,16 @@ auto compile(
 
 `mode` 必须显式指定。两种模式返回相同的 `definition_library` 类型，并通过同一个 视图的提交或 `resume` 推进；普通模式仍保留输入请求与终局，观察模式额外报告领域观察现场。模式同时应用于初始化、回合流程和定义源登记的所有响应程序。
 
-编译返回后，初始化和回合流程的输入序列及其中的命令对象可以销毁，不影响定义库的使用。定义源编译所得配置数据随定义库保持有效；源名称、标签以及配置数据借用的对象仍须由调用方保证存活。
+编译返回后，初始化和回合流程的输入序列及其中的命令对象可以销毁，不影响定义库的使用。`public_tags` 的数组本身也可销毁，但其标签名称的字符存储须在编译产物使用期间保持有效。定义源编译所得配置数据随定义库保持有效；源名称、标签以及配置数据借用的对象仍须由调用方保证存活。
 
 ## 示例
 
 ```cpp
 #include <utility>
+#include <array>
 #include <cstdint>
 #include <print>
+#include <string_view>
 #include <tuple>
 
 #include <givm/givm.hpp>
@@ -120,11 +129,12 @@ auto compile(
 int main()
 {
     const auto basics = givm::genshin_impact::reaction_names_3_3_0;
+    const std::array public_tags{ std::string_view{ "abyss" } };
     givm::definition_source_library sources{};
     sources.add(givm::genshin_impact::reaction_sources_3_3_0());
     auto library_result = compile(
         sources, basics,
-        std::tuple{}, std::tuple{}, givm::compile_mode::normal
+        std::tuple{}, std::tuple{}, givm::compile_mode::normal, public_tags
     );
     if(not library_result)
     {

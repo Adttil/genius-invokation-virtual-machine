@@ -250,8 +250,8 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
     givm_test::executor_driver execution;
     execution.start(library, table);
     omni_random random;
-    REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table, random)));
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.card_count() == 1);
     const auto played = action.card_id(0);
     givm::dice_counts payment;
@@ -259,7 +259,7 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
     log.record = true;
     execution.submitted(action.play_card(library, table, random, 0, payment,
         dynamic ? std::span<const givm::card_target_id>{ log.targets } : std::span<const givm::card_target_id>{}));
-    REQUIRE(advance(execution, library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(execution, library, table, random)));
     CHECK(log.events == std::vector<std::string>{ "card-effect", "will" });
     CHECK_FALSE(table[played].is_valid());
     const auto paused_log = log;
@@ -271,11 +271,12 @@ TEST_CASE("use_skill commands finish all skill responses before the card notific
         const auto pauses = effect == 0 ? 3 : 2;
         for(int pause = 0; pause < pauses; ++pause)
         {
-            const auto selection = current.view_in<givm::execution_state::card_selection>();
+            const auto selection = current.view_in<givm::execution_state::card_selection0>();
             CHECK(selection.player() == owner);
             current.submitted(selection.select(library, current_table, random, {}));
-            REQUIRE(advance(current, library, current_table, random)
-                == (pause + 1 == pauses ? givm::execution_state::action_selection : givm::execution_state::card_selection));
+            const auto resumed = advance(current, library, current_table, random);
+            if(pause + 1 == pauses) REQUIRE(givm_test::is_action_selection(resumed));
+            else REQUIRE(givm_test::is_card_selection(resumed));
         }
         std::vector<std::string> expected{ "card-effect", "will" };
         if(effect != 2) expected.push_back("effect");
@@ -328,14 +329,14 @@ TEST_CASE("fixed use_skill skips a missing active skill without borrowing a stan
     givm_test::executor_driver execution;
     execution.start(library, table);
     omni_random random;
-    REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table, random)));
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.card_count() == 1);
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 1;
     log.record = true;
     execution.submitted(action.play_card(library, table, random, 0, payment));
-    REQUIRE(advance(execution, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table, random)));
     CHECK(log.events == std::vector<std::string>{ "card-effect", "draw:owner", "played" });
     CHECK(log.cost_broadcasts == 0);
     CHECK(log.payments == 1);

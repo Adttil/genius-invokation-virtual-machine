@@ -33,6 +33,7 @@
 |  |  |
 | --- | --- |
 | [`issued_id_map`](definition/issued_id_map.md) | 定义名称、分类标签与 ID 的对应表 |
+| [`tag_mask_view`](definition/tag_mask_view.md) | 标签位集的只读前缀 |
 | [`tag_mask`](definition/tag_mask.md) | 分类标签集合 |
 
 ### 定义类别与响应映射

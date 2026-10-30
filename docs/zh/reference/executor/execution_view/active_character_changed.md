@@ -5,8 +5,8 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<>
-class execution_view<execution_state::active_character_changed>;
+template<role Role>
+class execution_view<execution_state::active_character_changed, Role>;
 ```
 
 一名玩家设置新出战角色前的现场视图。

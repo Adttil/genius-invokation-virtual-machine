@@ -2,9 +2,12 @@
 #define GIVM_TABLE_HPP
 
 #include "table/unrestricted_table.hpp"
+#include "enums/role.hpp"
 
 namespace givm
 {
+    template<role Role> class perspective_table_view;
+
     class table : private detail::unrestricted_table
     {
         friend class detail::unrestricted_table;
@@ -13,6 +16,12 @@ namespace givm
 
     public:
         using game_state = table_state;
+
+        template<role Role>
+        constexpr auto view_for() const noexcept
+        {
+            return perspective_table_view<Role>{ *this };
+        }
 
         constexpr table(table_state state = {}, player_state player0 = {}, player_state player1 = {})
         : detail::unrestricted_table{ state, player0, player1 }
@@ -97,5 +106,7 @@ namespace givm
         using detail::unrestricted_table::clean_up;
     };
 }
+
+#include "table/perspective_table_view.hpp"
 
 #endif

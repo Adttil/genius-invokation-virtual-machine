@@ -125,7 +125,10 @@ namespace givm::detail
         }
 
         context.advance(response_extent<dice_roll_preparation>);
-        return context.yield(execution_state::dice_selection);
+        return context.yield(phase.first.remaining != 0 && phase.second.remaining != 0
+            ? execution_state::dice_selection_both
+            : phase.first.remaining != 0 ? execution_state::dice_selection0
+                : execution_state::dice_selection1);
     }
 
     inline execution_state apply_dice_reroll(
@@ -166,7 +169,10 @@ namespace givm::detail
 
         input.player = next_reroll_player(phase);
         input.selected = {};
-        return context.yield(execution_state::dice_selection);
+        return context.yield(phase.first.remaining != 0 && phase.second.remaining != 0
+            ? execution_state::dice_selection_both
+            : phase.first.remaining != 0 ? execution_state::dice_selection0
+                : execution_state::dice_selection1);
     }
 
     inline void compile(program_writer& writer, const givm::start_dice_roll_phase& command, compile_mode)

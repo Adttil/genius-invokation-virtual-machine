@@ -186,7 +186,7 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
     {
         const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
-        if(state != givm::execution_state::card_selection) continue;
+        if(!givm_test::is_card_selection(state)) continue;
         ++pauses;
         CHECK(log.notifications == std::vector<char>{ 'A' });
         CHECK(table[givm::player_id{ 0 }].hand_card_count() == (full ? 1 : 3));
@@ -195,9 +195,11 @@ TEST_CASE("hand card creation initializes cards and resumes nested notifications
         auto copied_executor = executor;
         table = std::move(copied_table);
         executor = std::move(copied_executor);
-        const auto view = executor.view_in<givm::execution_state::card_selection>();
-        CHECK(view.selection_validate(table, {}));
-        executor.submitted(view.select(library, table, random, {}));
+        executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view)
+        {
+            CHECK(view.selection_validate(table, {}));
+            executor.submitted(view.select(library, table, random, {}));
+        });
     }
     CHECK(pauses == 1);
     CHECK(log.discards == 0);

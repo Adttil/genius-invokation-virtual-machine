@@ -442,16 +442,18 @@ TEST_CASE("initial active choices update both players before either response", "
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
     REQUIRE(log.active.empty());
-    REQUIRE(target.advance(library, table, random) == givm::execution_state::remaining_active_character_selection);
-    const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
-    CHECK(remaining.first_selected_character() == first_choice);
-    CHECK(remaining.player() == other_player(first_player));
-    CHECK(remaining.first_selected_character() == first_choice);
-    CHECK(remaining.player() == other_player(first_player));
-    CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
-    CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
-    REQUIRE(log.active.empty());
-    target.submitted(remaining.select(library, table, random, givm::character_id{ other_player(first_player), 1 }));
+    REQUIRE(givm_test::is_remaining_active_character_selection(target.advance(library, table, random)));
+    target.with_view<givm::execution_state::remaining_active_character_selection0, givm::execution_state::remaining_active_character_selection1>([&](auto remaining)
+    {
+        CHECK(remaining.first_selected_character() == first_choice);
+        CHECK(remaining.player() == other_player(first_player));
+        CHECK(remaining.first_selected_character() == first_choice);
+        CHECK(remaining.player() == other_player(first_player));
+        CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
+        CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
+        REQUIRE(log.active.empty());
+        target.submitted(remaining.select(library, table, random, givm::character_id{ other_player(first_player), 1 }));
+    });
     REQUIRE(target.advance(library, table, random) == givm::execution_state::initial_active_characters_selected);
     CHECK(table[givm::player_id{ 0 }].state().active_character == givm::character_id{ givm::player_id{ 0 }, 1 });
     CHECK(table[givm::player_id{ 1 }].state().active_character == givm::character_id{ givm::player_id{ 1 }, 1 });
@@ -577,23 +579,23 @@ TEST_CASE("replacing selected cards broadcasts the replacements before the next 
     const auto step_until_input = [&]
     {
         auto state = target.advance(library, table, random);
-        while(state == givm::execution_state::card_selection
-            && target.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 1 })
+        while(givm_test::is_card_selection(state)
+            && target.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.player(); }) == givm::player_id{ 1 })
         {
             ++response_pauses;
-            target.submitted(target.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+            target.submitted(target.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
             state = target.advance(library, table, random);
         }
         return state;
     };
-    REQUIRE(step_until_input() == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(step_until_input()));
     REQUIRE(log.drawn.size() == 2);
     CHECK(log.card_counts_at_drawn == std::vector<std::array<std::size_t, 2>>{ { 2, 4 }, { 2, 4 } });
     for(const auto card : table[givm::player_id{ 0 }].hand_cards()) CHECK(card.definition_id() == first_id);
     log.drawn.clear();
     log.card_counts_at_drawn.clear();
 
-    target.submitted(target.view_in<givm::execution_state::card_selection>().select(library, table, random, std::bitset<givm::selection_capacity>{ 0b11 }));
+    target.submitted(target.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, std::bitset<givm::selection_capacity>{ 0b11 }); }));
     REQUIRE(step_until_input() == givm::execution_state::finished);
     REQUIRE(log.drawn.size() == 3);
     std::vector<givm::hand_card_id> hand;

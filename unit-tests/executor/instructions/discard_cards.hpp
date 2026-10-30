@@ -205,7 +205,7 @@ namespace
         for(;;)
         {
             const auto state = executor.advance(library, table, random);
-            if(state == givm::execution_state::card_selection || state == givm::execution_state::finished
+            if(givm_test::is_card_selection(state) || state == givm::execution_state::finished
                 || state == givm::execution_state::deck_cards_discarded) return state;
         }
     }
@@ -242,14 +242,14 @@ TEST_CASE("discard batches leave together then run each effect and notification 
         else
         {
             ++pauses;
-            CHECK(executor.view_in<givm::execution_state::card_selection>().selection_validate(table, {}));
+            CHECK(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.selection_validate(table, {}); }));
         }
         auto table_copy = table;
         auto executor_copy = executor;
         table = std::move(table_copy);
         executor = std::move(executor_copy);
-        if(state == givm::execution_state::card_selection)
-            executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
+        if(givm_test::is_card_selection(state))
+            executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::zero_random, {}); }));
         else
         {
             const auto cards = executor.view_in<givm::execution_state::deck_cards_discarded>().cards();
@@ -288,6 +288,12 @@ TEST_CASE("deck discard count is capped and empty batches have no observation", 
         ++observations;
         const auto cards = executor.view_in<givm::execution_state::deck_cards_discarded>().cards();
         CHECK(cards.size() == std::min(count, 2u));
+        for(const auto visible : executor.view_in<givm::execution_state::deck_cards_discarded,
+            givm::role::spectator>().cards(table))
+        {
+            CHECK(visible.definition_id() == card);
+            CHECK_FALSE(visible.is_valid());
+        }
         for(auto id : cards)
         {
             CHECK(id.player_id() == givm::player_id{ 1 });
@@ -492,13 +498,13 @@ TEST_CASE("hand discard selects a batch once and resolves every card before the 
     {
         const auto state = advance(executor, library, table);
         if(state == givm::execution_state::finished) break;
-        REQUIRE(state == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(state));
         ++pauses;
         auto copy_table = table;
         auto copy_executor = executor;
         table = std::move(copy_table);
         executor = std::move(copy_executor);
-        executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
+        executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::zero_random, {}); }));
     }
     REQUIRE(log.original.size() == 5);
     const auto count = std::min(log.count, 3u);

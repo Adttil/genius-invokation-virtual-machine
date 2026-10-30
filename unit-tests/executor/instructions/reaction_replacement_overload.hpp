@@ -359,7 +359,7 @@ TEST_CASE("copied overload switch responses resume before group completion exact
     for(;;)
     {
         const auto state = executor.advance(library, table, random);
-        if(state == givm::execution_state::card_selection) break;
+        if(givm_test::is_card_selection(state)) break;
         REQUIRE((state == givm::execution_state::health_reduced || state == givm::execution_state::active_character_changed));
     }
     CHECK(log.switches == std::vector<std::size_t>{ 1 });
@@ -367,13 +367,13 @@ TEST_CASE("copied overload switch responses resume before group completion exact
     CHECK(table[givm::player_id{ 1 }].state().active_character == target(1));
     auto copy = executor;
     auto copy_table = table;
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 3 });
     CHECK(log.active_at_completion == std::vector<std::size_t>{ 1 });
     log.values.clear();
     log.active_at_completion.clear();
-    copy.submitted(copy.view_in<givm::execution_state::card_selection>().select(library, copy_table, random, {}));
+    copy.submitted(copy.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, copy_table, random, {}); }));
     REQUIRE(copy.advance(library, copy_table, random) == givm::execution_state::finished);
     CHECK(log.values == std::vector<std::uint32_t>{ 3 });
     CHECK(log.active_at_completion == std::vector<std::size_t>{ 1 });

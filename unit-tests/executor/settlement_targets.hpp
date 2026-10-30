@@ -165,15 +165,17 @@ namespace
             const auto state = execution.advance(library, table, zero_random);
             if(state == execution_state::finished) return choices;
             if(state == execution_state::health_reduced) continue;
-            REQUIRE(state == execution_state::active_character_selection);
+            REQUIRE(givm_test::is_active_character_selection(state));
             ++choices;
-            const auto view = execution.view_in<execution_state::active_character_selection>();
-            for(const auto candidate : table[view.player()].characters())
-                if(candidate.state().alive && candidate.state().health != 0)
-                {
-                    execution.submitted(view.select(library, table, zero_random, candidate.id()));
-                    break;
-                }
+            execution.with_view<givm::execution_state::active_character_selection0, givm::execution_state::active_character_selection1>([&](auto view)
+            {
+                for(const auto candidate : table[view.player()].characters())
+                    if(candidate.state().alive && candidate.state().health != 0)
+                    {
+                        execution.submitted(view.select(library, table, zero_random, candidate.id()));
+                        break;
+                    }
+            });
         }
     }
 }
@@ -303,10 +305,10 @@ TEST_CASE("only a child settlement with its own defeat checks the parent's defea
         { .characters = { fragile_id, ids.get_id<givm::definition_category::character>(victim.name()) } });
     executor_driver execution;
     execution.start(library, table);
-    REQUIRE(execution.advance(library, table, zero_random) == execution_state::active_character_selection);
+    REQUIRE(givm_test::is_active_character_selection(execution.advance(library, table, zero_random)));
     CHECK(log.dead_at_continuation == not kills);
     CHECK((std::find(log.order.begin(), log.order.end(), 1) == log.order.end()) == kills);
-    const auto view = execution.view_in<execution_state::active_character_selection>();
+    const auto view = execution.view_in<execution_state::active_character_selection1>();
     CHECK(view.player() == player_id{ 1 });
     execution.submitted(view.select(library, table, zero_random, character(1, 1)));
     CHECK(finish(execution, library, table) == 0);
@@ -335,11 +337,11 @@ TEST_CASE("both defeated active choices are collected before switches and acting
     execution.start(library, table);
     auto state = execution.advance(library, table, zero_random);
     while(state == execution_state::health_reduced) state = execution.advance(library, table, zero_random);
-    REQUIRE(state == execution_state::active_character_selection);
-    const auto first_view = execution.view_in<execution_state::active_character_selection>();
+    REQUIRE(givm_test::is_active_character_selection(state));
+    const auto first_view = execution.view_in<execution_state::active_character_selection0>();
     CHECK(first_view.player() == player_id{ 0 });
     execution.submitted(first_view.select(library, table, zero_random, character(0, 1)));
-    REQUIRE(execution.advance(library, table, zero_random) == execution_state::active_character_selection);
+    REQUIRE(givm_test::is_active_character_selection(execution.advance(library, table, zero_random)));
     CHECK(log.changes.empty());
     CHECK(table[player_id{ 0 }].state().active_character == character(0, 0));
     CHECK(table[player_id{ 1 }].state().active_character == character(1, 0));
@@ -347,7 +349,7 @@ TEST_CASE("both defeated active choices are collected before switches and acting
     auto copied_table = table;
     execution = std::move(copied_execution);
     table = std::move(copied_table);
-    const auto second_view = execution.view_in<execution_state::active_character_selection>();
+    const auto second_view = execution.view_in<execution_state::active_character_selection1>();
     CHECK(second_view.player() == player_id{ 1 });
     execution.submitted(second_view.select(library, table, zero_random, character(1, 1)));
     CHECK(finish(execution, library, table) == 0);

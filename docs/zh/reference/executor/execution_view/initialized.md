@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<execution_state State>
+template<execution_state State, role Role = role::full>
 class execution_view;
 ```
 

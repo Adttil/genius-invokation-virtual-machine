@@ -26,7 +26,7 @@ enum class replace_cards_both_error {};
 
 ## 注意
 
-尚未接受任何一方的选择时，执行器返回 `execution_state::initial_card_selection`，通过相应的[现场视图](../../executor/execution_view/initial_card_selection.md)指定首先换牌的玩家及其选择。该方换牌完成后返回 `execution_state::card_selection`，由相应[视图](../../executor/execution_view/card_selection.md)读取剩余玩家并提交其选择。
+尚未接受任何一方的选择时，执行器返回 `execution_state::initial_card_selection`，通过相应的[现场视图](../../executor/execution_view/initial_card_selection.md)指定首先换牌的玩家及其选择。该方换牌完成后返回 `execution_state::card_selection0`，由相应[视图](../../executor/execution_view/card_selection.md)读取剩余玩家并提交其选择。
 
 可以任选先提交的一方；选择位按该方换牌前有效手牌的遍历顺序。空选择不改变该方手牌与牌堆。这个双方开局替换过程不发出 [`card_drawn`](../events/card_drawn.md)。
 
@@ -102,7 +102,7 @@ int main()
     std::bitset<givm::selection_capacity> selected{};
     selected.set(0);
     execution.view_in<givm::execution_state::initial_card_selection>().select(library, table, random, givm::player_id{ 1 }, selected);
-    const auto remaining = execution.view_in<givm::execution_state::card_selection>();
+    const auto remaining = execution.view_in<givm::execution_state::card_selection0>();
     std::println("剩余玩家为玩家 0: {}", remaining.player() == givm::player_id{ 0 });
     remaining.select(library, table, random, selected);
     std::println("玩家 0 的手牌数量: {}", table[givm::player_id{ 0 }].hand_card_count());

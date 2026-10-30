@@ -169,9 +169,9 @@ namespace
         {
             const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::finished) return targets;
-            if(state == givm::execution_state::active_character_selection)
+            if(givm_test::is_active_character_selection(state))
             {
-                const auto view = executor.view_in<givm::execution_state::active_character_selection>();
+                const auto view = executor.view_in<givm::execution_state::active_character_selection1>();
                 auto choices = table[view.player()].characters();
                 const auto chosen = std::ranges::find_if(choices, [](const auto character)
                     { return character.state().alive && character.state().health != 0; });

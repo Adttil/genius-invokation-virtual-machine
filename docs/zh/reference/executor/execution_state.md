@@ -7,24 +7,33 @@
 ```cpp
 enum class execution_state : std::uint8_t
 {
-    finished = 1,
-    card_selection,
-    initial_card_selection,
-    initial_active_character_selection,
-    remaining_active_character_selection,
-    active_character_selection,
-    dice_selection,
-    action_selection,
-    health_reduced,
-    deck_cards_discarded,
-    active_character_changed,
-    initial_active_characters_selected,
-    round_started,
-    action_started,
-    round_end_declared,
-    round_ending,
-    dice_reroll_selection,
-    initialized
+    finished = 0x03,
+    initialized = 0x07,
+
+    card_selection0 = 0x40,
+    card_selection1 = 0x41,
+    remaining_active_character_selection0 = 0x44,
+    remaining_active_character_selection1 = 0x45,
+    active_character_selection0 = 0x48,
+    active_character_selection1 = 0x49,
+    dice_reroll_selection0 = 0x4c,
+    dice_reroll_selection1 = 0x4d,
+    dice_selection0 = 0x50,
+    dice_selection1 = 0x51,
+    dice_selection_both = 0x52,
+    action_selection0 = 0x54,
+    action_selection1 = 0x55,
+    initial_card_selection = 0x5a,
+    initial_active_character_selection = 0x5e,
+
+    health_reduced = 0x83,
+    deck_cards_discarded = 0x87,
+    active_character_changed = 0x8b,
+    initial_active_characters_selected = 0x8f,
+    round_started = 0x93,
+    action_started = 0x97,
+    round_end_declared = 0x9b,
+    round_ending = 0x9f
 };
 ```
 
@@ -36,13 +45,13 @@ enum class execution_state : std::uint8_t
 | --- | --- |
 | `initialized` | 已完成初始化、尚未执行游戏流程的现场 |
 | `finished` | 已结束的对局 |
-| `card_selection` | 等待指定玩家换牌的现场 |
+| `card_selection0`、`card_selection1` | 等待指定玩家换牌的现场 |
 | `initial_card_selection` | 开局尚未接受任何一方换牌选择的现场 |
 | `initial_active_character_selection` | 开局尚未接受任何一方出战角色选择的现场 |
-| `remaining_active_character_selection` | 开局已经接受一方选择、等待另一方选择出战角色的现场 |
-| `active_character_selection` | 结算域处理完通知后，等待被击倒出战角色一方选择新出战角色 |
-| `dice_selection` | 双方投骰阶段等待重投选择的现场 |
-| `action_selection` | 等待选择行动的现场 |
+| `remaining_active_character_selection0`、`remaining_active_character_selection1` | 开局已经接受一方选择、等待另一方选择出战角色的现场 |
+| `active_character_selection0`、`active_character_selection1` | 结算域处理完通知后，等待被击倒出战角色一方选择新出战角色 |
+| `dice_selection_both`、`dice_selection0`、`dice_selection1` | 双方投骰阶段等待重投选择的现场 |
+| `action_selection0`、`action_selection1` | 等待选择行动的现场 |
 | `deck_cards_discarded` | 一批牌堆牌全部被舍弃、自身效果尚未开始的现场 |
 | `health_reduced` | 非零伤害扣除生命后的现场 |
 | `active_character_changed` | 一名玩家即将设置出战角色的现场 |
@@ -51,13 +60,17 @@ enum class execution_state : std::uint8_t
 | `action_started` | 当前玩家开始一次行动机会的现场 |
 | `round_end_declared` | 当前玩家已经宣布本回合结束、尚未处理相应响应的现场 |
 | `round_ending` | 即将处理回合结束的现场 |
-| `dice_reroll_selection` | 单方重投命令等待指定玩家选择骰子的现场 |
+| `dice_reroll_selection0`、`dice_reroll_selection1` | 单方重投命令等待指定玩家选择骰子的现场 |
+
+后缀 `0`、`1` 表示当前可输入的玩家，分派此枚举后，执行视图的关联方即成为类型信息。`dice_selection_both` 表示双方仍有重投机会；一方完成后改报对应的单方状态。
+
+枚举值显式编码：输入现场设置第 6 位，观察现场设置第 7 位，两类范围不重叠。最低两位为 `0`、`1`、`2` 时分别表示玩家 0、玩家 1、双方可输入；无输入的公开现场为 `3`。单方视图直接从最低位取得关联玩家，不维护另一份按现场分类的映射。
 
 ## 注意
 
 以 [`compile_mode::normal`](compile_mode.md) 编译时，视图的输入提交或 [`resume`](execution_view/resume.md) 返回输入现场或 `finished`；以 `compile_mode::observed` 编译时还会返回观察现场。每种现场均可取得相应 [`execution_view`](execution_view.md)。`initial_active_characters_selected` 和四种流程通知的视图提供 `resume`，不提供其他读取或输入操作，相关信息直接从牌桌读取。
 
-`card_selection` 的玩家已由当前流程确定，不一定是牌桌上的行动方；`initial_card_selection` 和 `initial_active_character_selection` 允许任选先提交的一方。首次出战选择被接受后，`remaining_active_character_selection` 固定等待另一方；双方选择全部被接受后才同时设置出战角色。以观察模式编译时，先报告 `initial_active_characters_selected`，随后推进才处理相应变更响应。
+`card_selection0`、`card_selection1` 的玩家已由当前流程确定，不一定是牌桌上的行动方；`initial_card_selection` 和 `initial_active_character_selection` 允许任选先提交的一方。首次出战选择被接受后，`remaining_active_character_selection0`、`remaining_active_character_selection1` 固定等待另一方；双方选择全部被接受后才同时设置出战角色。以观察模式编译时，先报告 `initial_active_characters_selected`，随后推进才处理相应变更响应。
 
 `active_character_changed` 时，目标角色已经确定，牌桌上仍保留原出战角色。通过相应[视图](execution_view/active_character_changed.md)取得目标后，可按其所属玩家直接读取原出战角色；下一次推进才写入目标并处理变更响应。支付已完成；资源变化通知按其所在段在结算点处理。
 

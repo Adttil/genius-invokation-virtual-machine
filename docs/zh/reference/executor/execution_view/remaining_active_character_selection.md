@@ -1,12 +1,13 @@
 [givm](../../../reference.md) / [执行](../../executor.md) / [execution_view](../execution_view.md) / **execution_view<remaining_active_character_selection>**
 
-# givm::execution_view<execution_state::remaining_active_character_selection>
+# givm::execution_view<execution_state::remaining_active_character_selection0>
 
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<>
-class execution_view<execution_state::remaining_active_character_selection>;
+template<execution_state State, role Role>
+requires (State == execution_state::remaining_active_character_selection0 || State == execution_state::remaining_active_character_selection1)
+class execution_view<State, Role>;
 ```
 
 开局已接受一方出战选择、等待另一方选择的现场视图。
@@ -29,3 +30,5 @@ class execution_view<execution_state::remaining_active_character_selection>;
 | | |
 | --- | --- |
 | [`execution_view<initial_active_character_selection>`](initial_active_character_selection.md) | 开局首次出战选择现场的视图 |
+
+对应的 `remaining_active_character_selection1` 具有相同现场结构，关联玩家由状态静态确定。模板身份默认使用全权；受限接口见 [`execution_view`](../execution_view.md#角色与接口)。

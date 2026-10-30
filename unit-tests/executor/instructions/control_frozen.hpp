@@ -278,7 +278,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table, random)));
     CHECK(library.is_control(ids.get_id<givm::definition_category::attachment>("Control")));
     CHECK(library.is_control(ids.get_id<givm::definition_category::attachment>(givm::genshin_impact::frozen_3_3_0.name())));
     CHECK_FALSE(library.is_control(ids.get_id<givm::definition_category::attachment>("Immunity")));
@@ -290,7 +290,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     CHECK(log.reapplied == std::size_t(preexisting && not immune));
     CHECK(log.switches.size() == (immune ? 0 : 1));
     CHECK(table[givm::player_id{ 0 }].state().active_character == (immune ? actor : ally));
-    const auto view = executor.view_in<givm::execution_state::action_selection>();
+    const auto view = executor.view_in<givm::execution_state::action_selection0>();
     CHECK(view.is_controlled(library, table) == (immune && preexisting));
     REQUIRE(view.card_count() == 1);
     CHECK(view.card_targets_validate(library, table, 0) == (immune && preexisting
@@ -300,7 +300,7 @@ TEST_CASE("control immunity blocks fixed and dynamic control commands but permit
     const auto quote_1 = view.calculate_switch_cost(library, table, 0);
     REQUIRE(view.switch_payment_validate(table, quote_1, {}) == givm::switch_payment_validation::valid);
     executor.submitted(view.switch_active_character_with_cached_cost(library, table, random, quote_1, {}));
-    REQUIRE(advance(executor, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table, random)));
     CHECK(table[givm::player_id{ 0 }].state().active_character == selected);
     CHECK(log.switches.back() == selected);
 }
@@ -522,16 +522,16 @@ TEST_CASE("round start responses wait for both rerolls and resume independently 
         CHECK(library.is_controlled(table[target]));
         state = advance(executor, library, table, random);
     }
-    REQUIRE(state == givm::execution_state::dice_selection);
+    REQUIRE(givm_test::is_dice_selection(state));
     CHECK(table.state().round_number == 2);
     CHECK(log.rounds_started == 0);
     CHECK(library.is_controlled(table[target]));
-    executor.submitted(executor.view_in<givm::execution_state::dice_selection>().select(library, table, random, {}));
-    REQUIRE(advance(executor, library, table, random) == givm::execution_state::dice_selection);
+    executor.submitted(executor.view_in<givm::execution_state::dice_selection_both>().select(library, table, random, {}));
+    REQUIRE(givm_test::is_dice_selection(advance(executor, library, table, random)));
     CHECK(log.rounds_started == 0);
     CHECK(library.is_controlled(table[target]));
-    executor.submitted(executor.view_in<givm::execution_state::dice_selection>().select(library, table, random, {}));
-    REQUIRE(advance(executor, library, table, random) == givm::execution_state::card_selection);
+    executor.submitted(executor.view_in<givm::execution_state::dice_selection1>().select(library, table, random, {}));
+    REQUIRE(givm_test::is_card_selection(advance(executor, library, table, random)));
     CHECK(log.rounds_started == 1);
     CHECK(log.dice_at_round_start == std::vector<std::array<std::uint32_t, 2>>{ { 2, 2 } });
     CHECK(library.is_controlled(table[target]));
@@ -539,7 +539,7 @@ TEST_CASE("round start responses wait for both rerolls and resume independently 
     auto copied_table = table;
     const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
     {
-        running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, random, {}));
+        running.submitted(running.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, current, random, {}); }));
         REQUIRE(advance(running, library, current, random) == givm::execution_state::finished);
         CHECK_FALSE(library.is_controlled(current[target]));
         CHECK(current[givm::player_id{ 0 }].state().dice.total() == 2);

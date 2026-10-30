@@ -17,16 +17,18 @@ namespace givm
 
     inline std::expected<definition_compile_result, std::vector<compile_error>> compile(
         const definition_source_library& sources, const reaction_definition_names& basics,
-        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode)
+        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode,
+        std::span<const std::string_view> public_tags = {})
     {
-        return definition_library::compile(sources, basics, initialization_program, round_program, mode);
+        return definition_library::compile(sources, basics, initialization_program, round_program, mode, public_tags);
     }
 
     inline std::expected<definition_compile_result, std::vector<compile_error>> compile(
         const definition_source_library& sources, const reaction_definition_names& basics, const definition_selection& selection,
-        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode)
+        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode,
+        std::span<const std::string_view> public_tags = {})
     {
-        return definition_library::compile(sources, basics, selection, initialization_program, round_program, mode);
+        return definition_library::compile(sources, basics, selection, initialization_program, round_program, mode, public_tags);
     }
 
     template<detail::command_sequence TInitializationSequence, detail::command_sequence TRoundSequence>
@@ -37,13 +39,14 @@ namespace givm
         const reaction_definition_names& basics,
         TInitializationSequence&& initialization_program,
         TRoundSequence&& round_program,
-        compile_mode mode
+        compile_mode mode,
+        std::span<const std::string_view> public_tags = {}
     )
     {
         return definition_library::compile(
             sources, basics,
             std::forward<TInitializationSequence>(initialization_program),
-            std::forward<TRoundSequence>(round_program), mode
+            std::forward<TRoundSequence>(round_program), mode, public_tags
         );
     }
 
@@ -56,13 +59,14 @@ namespace givm
         const definition_selection& selection,
         TInitializationSequence&& initialization_program,
         TRoundSequence&& round_program,
-        compile_mode mode
+        compile_mode mode,
+        std::span<const std::string_view> public_tags = {}
     )
     {
         return definition_library::compile(
             sources, basics, selection,
             std::forward<TInitializationSequence>(initialization_program),
-            std::forward<TRoundSequence>(round_program), mode
+            std::forward<TRoundSequence>(round_program), mode, public_tags
         );
     }
 }

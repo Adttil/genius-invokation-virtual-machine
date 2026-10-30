@@ -404,10 +404,10 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
     CHECK(log.initial_skill_indices == std::vector<std::size_t>{ 0, 1, 2, 3 });
     CHECK(log.passive_responses == 1);
-    const auto action = target.view_in<givm::execution_state::action_selection>();
+    const auto action = target.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.skill_count() == 2);
     CHECK(action.skill_id(0) == skills[1]);
     CHECK(action.skill_id(1) == skills[3]);
@@ -425,12 +425,12 @@ TEST_CASE("deck loading initializes indexed skills once and only active skills b
     const std::array<givm::skill_target_id, 1> invalid_targets{ character.id() };
     CHECK(action.skill_targets_validate(library, table, 1, invalid_targets) == givm::target_validation::invalid);
     target.submitted(action.use_skill_with_cached_cost(library, table, random, quote_1, {}));
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
     CHECK(log.effects == std::vector{ skills[3] });
     CHECK(log.effect_targets == std::vector{ skill_targets{} });
     CHECK(table[skills[3]].is_valid());
     CHECK(table.state().active_player == givm::player_id{ 1 });
-    CHECK(target.view_in<givm::execution_state::action_selection>().skill_count() == 0);
+    CHECK(target.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.skill_count(); }) == 0);
     CHECK(log.initial_cost_queries == 1);
     CHECK(log.initial_skill_indices.size() == 4);
 }
@@ -457,8 +457,8 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
-    const auto action = target.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
+    const auto action = target.view_in<givm::execution_state::action_selection0>();
     const auto skill = action.skill_id(0);
     const givm::skill_target_id opponent = givm::character_id{ givm::player_id{ 1 }, 0 };
     const givm::skill_target_id own = givm::character_id{ givm::player_id{ 0 }, 0 };
@@ -475,7 +475,7 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
     CHECK(random.calls == calls);
     CHECK(log.cost_queries == 0);
     target.submitted(action.use_skill(library, table, random, 0, {}, targets));
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
     CHECK(log.effects == std::vector{ skill });
     CHECK(log.effect_targets == std::vector{ skill_targets{ opponent, opponent } });
     CHECK(log.used_targets == log.effect_targets);
@@ -487,15 +487,17 @@ TEST_CASE("skill targets validate incrementally and submission ignores targets b
     CHECK(log.cost_queries == 1);
     CHECK(log.initial_cost_queries == 1);
     CHECK(table.state().active_player == (fast ? givm::player_id{ 0 } : givm::player_id{ 1 }));
-    const auto next_action = target.view_in<givm::execution_state::action_selection>();
-    CHECK(next_action.skill_count() == (fast ? 2 : 0));
-    if(fast)
+    target.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto next_action)
     {
-        CHECK(next_action.skill_id(0) == skill);
-        quote_1 = next_action.calculate_skill_cost(library, table, 0);
-        CHECK(log.cost_queries == 2);
-        CHECK(log.initial_cost_queries == 1);
-    }
+        CHECK(next_action.skill_count() == (fast ? 2 : 0));
+        if(fast)
+        {
+            CHECK(next_action.skill_id(0) == skill);
+            quote_1 = next_action.calculate_skill_cost(library, table, 0);
+            CHECK(log.cost_queries == 2);
+            CHECK(log.initial_cost_queries == 1);
+        }
+    });
 }
 
 TEST_CASE("skill payment validates dice before energy and pays energy without a separate selection", "[use_skill][payment][compile-mode]")
@@ -518,11 +520,11 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
-    const auto action = target.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
+    const auto action = target.view_in<givm::execution_state::action_selection0>();
     const auto calls = random.calls;
     auto unaffordable = target;
-    const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection>();
+    const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection0>();
     log.extra_energy = 2;
     const auto quote_1 = unaffordable_action.calculate_skill_cost(library, table, 0);
     CHECK(unaffordable_action.skill_cost(quote_1).requirement.energy == 4);
@@ -540,7 +542,7 @@ TEST_CASE("skill payment validates dice before energy and pays energy without a 
     CHECK(random.calls == calls);
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4, 3 });
     target.submitted(action.use_skill_with_cached_cost(library, table, random, quote_2, pay(dice)));
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4u - dice, 1 });
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().energy_tag == ids.get_tag_id("Resolve"));
     CHECK(log.events == (dice == 0 ? std::vector<std::string>{ "will", "effect", "energy", "used" }
@@ -578,12 +580,12 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
     log.record = true;
-    const auto action = target.view_in<givm::execution_state::action_selection>();
+    const auto action = target.view_in<givm::execution_state::action_selection0>();
     const auto skill = action.skill_id(0);
     target.submitted(action.use_skill(library, table, random, 0, pay(1)));
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(target, library, table, random)));
     CHECK(log.events == std::vector<std::string>{ "draw" });
     CHECK(resources(table) == std::array<std::uint32_t, 2>{ 4, 3 });
     const auto saved_log = log;
@@ -595,9 +597,9 @@ TEST_CASE("skill onpay and effect broadcasts resume after nested input and prese
         const auto draws = cancelled ? 5u : 6u;
         for(std::uint32_t index = 0; index < draws; ++index)
         {
-            execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, current_table, random, {}));
+            execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, current_table, random, {}); }));
             REQUIRE(advance(execution, library, current_table, random)
-                == (index + 1 == draws ? givm::execution_state::action_selection : givm::execution_state::card_selection));
+                == (index + 1 == draws ? givm::execution_state::action_selection1 : givm::execution_state::card_selection0));
         }
         CHECK(log.events == (cancelled
             ? std::vector<std::string>{ "draw", "will", "dice", "draw", "energy", "draw", "used", "draw", "draw" }
@@ -647,12 +649,12 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
-    const auto action = target.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
+    const auto action = target.view_in<givm::execution_state::action_selection0>();
     if(switching)
     {
         auto unaffordable = target;
-        const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection>();
+        const auto unaffordable_action = unaffordable.view_in<givm::execution_state::action_selection0>();
         log.extra_energy = 4;
         quote_1 = unaffordable_action.calculate_switch_cost(library, table, 0);
         CHECK(unaffordable_action.switch_cost(*quote_1).requirement.energy == 4);
@@ -672,7 +674,7 @@ TEST_CASE("cards and switches share energy requirements and charge the outgoing 
         CHECK(action.card_payment_validate(table, *quote_3, pay(dice)) == givm::card_payment_validation::valid);
         target.submitted(action.play_card_with_cached_cost(library, table, random, *quote_3, pay(dice)));
     }
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().energy == 1);
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 0 }].state().energy_tag == log.switch_energy_tag);
     CHECK(table[givm::character_id{ givm::player_id{ 0 }, 1 }].state().energy == 0);
@@ -730,9 +732,9 @@ TEST_CASE("action payments distinguish energy tags without consuming resources",
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
     const auto calls = random.calls;
-    const auto action = target.view_in<givm::execution_state::action_selection>();
+    const auto action = target.view_in<givm::execution_state::action_selection0>();
     const auto quote_1 = action.calculate_switch_cost(library, table, 0);
     log.extra_energy = 0;
     log.extra_dice = 0;
@@ -809,8 +811,8 @@ TEST_CASE("card energy validation follows dice requirement and ownership checks"
     givm_test::executor_driver target;
     target.start(library, table);
     counting_random random;
-    REQUIRE(advance(target, library, table, random) == givm::execution_state::action_selection);
-    const auto action = target.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(target, library, table, random)));
+    const auto action = target.view_in<givm::execution_state::action_selection0>();
     const auto quote_1 = action.calculate_card_cost(library, table, 0);
     CHECK(action.card_cost(quote_1).requirement.energy == 1);
     CHECK(action.card_payment_validate(table, quote_1, {}) == givm::card_payment_validation::requirement_mismatch);

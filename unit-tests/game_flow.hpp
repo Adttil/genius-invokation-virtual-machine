@@ -98,7 +98,7 @@ namespace
         givm::execution_state& state
     )
     {
-        if(state != givm::execution_state::action_selection)
+        if(!givm_test::is_action_selection(state))
         {
             return false;
         }
@@ -116,21 +116,23 @@ namespace
             return false;
         }
 
-        const auto current = target.view_in<givm::execution_state::action_selection>();
-        if(current.switch_target_count() == 0)
+        return target.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto current)
         {
-            return false;
-        }
-        const auto dice_before = table[acting_player].state().dice.total();
-        target.submitted(current.switch_active_character(library, table, random, 0, paid));
-        state = target.advance(library, table, random);
+            if(current.switch_target_count() == 0)
+            {
+                return false;
+            }
+            const auto dice_before = table[acting_player].state().dice.total();
+            target.submitted(current.switch_active_character(library, table, random, 0, paid));
+            state = target.advance(library, table, random);
 
-        const auto active_after = table[acting_player].state().active_character;
-        return active_after.has_value()
-            && *active_after != *active_before
-            && table[acting_player].state().dice.total() == dice_before - 1
-            && table.state().active_player == other_player(acting_player)
-            && state == givm::execution_state::action_selection;
+            const auto active_after = table[acting_player].state().active_character;
+            return active_after.has_value()
+                && *active_after != *active_before
+                && table[acting_player].state().dice.total() == dice_before - 1
+                && table.state().active_player == other_player(acting_player)
+                && givm_test::is_action_selection(state);
+        });
     }
 
     template<class TRandom>
@@ -139,11 +141,11 @@ namespace
         givm_test::executor_driver& target, givm::table& table, TRandom& random, givm::execution_state& state
     )
     {
-        if(state != givm::execution_state::action_selection)
+        if(!givm_test::is_action_selection(state))
         {
             return false;
         }
-        target.submitted(target.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random));
+        target.submitted(target.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.declare_round_end(library, table, random); }));
         state = target.advance(library, table, random);
         return true;
     }
@@ -201,9 +203,9 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     const auto second_selection_player = other_player(first_selection_player);
     target.submitted(target.view_in<givm::execution_state::initial_card_selection>().select(library, table, random, first_selection_player, std::bitset<givm::selection_capacity>{ 0b11 }));
     state = target.advance(library, table, random);
-    REQUIRE(state == givm::execution_state::card_selection);
-    REQUIRE(target.view_in<givm::execution_state::card_selection>().player() == second_selection_player);
-    target.submitted(target.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    REQUIRE(givm_test::is_card_selection(state));
+    REQUIRE(target.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.player(); }) == second_selection_player);
+    target.submitted(target.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     state = target.advance(library, table, random);
 
     REQUIRE(table[givm::player_id{ 0 }].hand_card_count() == 5);
@@ -215,11 +217,13 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     target.submitted(target.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ first_selection_player, 0  }));
     state = target.advance(library, table, random);
 
-    REQUIRE(state == givm::execution_state::remaining_active_character_selection);
-    const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
-    REQUIRE(remaining.player() == second_selection_player);
-    CHECK(remaining.first_selected_character() == givm::character_id{ first_selection_player, 0  });
-    target.submitted(remaining.select(library, table, random, givm::character_id{ second_selection_player, 0  }));
+    REQUIRE(givm_test::is_remaining_active_character_selection(state));
+    target.with_view<givm::execution_state::remaining_active_character_selection0, givm::execution_state::remaining_active_character_selection1>([&](auto remaining)
+    {
+        REQUIRE(remaining.player() == second_selection_player);
+        CHECK(remaining.first_selected_character() == givm::character_id{ first_selection_player, 0  });
+        target.submitted(remaining.select(library, table, random, givm::character_id{ second_selection_player, 0  }));
+    });
     state = target.advance(library, table, random);
 
     REQUIRE(table[givm::player_id{ 0 }].state().active_character.has_value());
@@ -229,26 +233,29 @@ TEST_CASE("minimal game reaches the max-round result", "[game-flow]")
     {
         CAPTURE(round);
 
-        REQUIRE(state == givm::execution_state::dice_selection);
+        REQUIRE(givm_test::is_dice_selection(state));
         REQUIRE(table.state().round_number == round);
         REQUIRE(table[givm::player_id{ 0 }].state().dice.total() == 8);
         REQUIRE(table[givm::player_id{ 1 }].state().dice.total() == 8);
 
         const auto prepared_random_count = random.value;
-        REQUIRE(target.view_in<givm::execution_state::dice_selection>().remaining(first_selection_player) == 1);
+        REQUIRE(target.view_in<givm::execution_state::dice_selection_both>().remaining(first_selection_player) == 1);
         givm::dice_counts rerolled;
         rerolled[givm::elemental_dice::omni] = 1;
-        target.submitted(target.view_in<givm::execution_state::dice_selection>().select(library, table, random, first_selection_player, rerolled));
+        target.submitted(target.view_in<givm::execution_state::dice_selection_both>().select(library, table, random, first_selection_player, rerolled));
         state = target.advance(library, table, random);
-        REQUIRE(state == givm::execution_state::dice_selection);
+        REQUIRE(givm_test::is_dice_selection(state));
 
-        REQUIRE(target.view_in<givm::execution_state::dice_selection>().player() == second_selection_player);
-        REQUIRE(target.view_in<givm::execution_state::dice_selection>().remaining(first_selection_player) == 0);
-        CHECK(random.value == prepared_random_count);
-        target.submitted(target.view_in<givm::execution_state::dice_selection>().select(library, table, random, {}));
+        target.with_view<givm::execution_state::dice_selection0, givm::execution_state::dice_selection1>([&](auto remaining_dice)
+        {
+            REQUIRE(remaining_dice.player() == second_selection_player);
+            REQUIRE(remaining_dice.remaining(first_selection_player) == 0);
+            CHECK(random.value == prepared_random_count);
+            target.submitted(remaining_dice.select(library, table, random, {}));
+        });
         state = target.advance(library, table, random);
         CHECK(random.value == prepared_random_count);
-        REQUIRE(state == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(state));
         REQUIRE(table.state().active_player == givm::player_id{ 0 });
 
         REQUIRE(perform_first_available_switch(library, target, table, random, state));
@@ -305,13 +312,13 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     const auto prepared_random_count = random.value;
     const std::bitset<givm::selection_capacity> replaced{ 0b11 };
     target.submitted(target.view_in<givm::execution_state::initial_card_selection>().select(library, table, random, givm::player_id{ 1 }, replaced));
-    REQUIRE(target.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(target.advance(library, table, random)));
     CHECK(table[givm::player_id{ 1 }].hand_card_count() == 5);
     CHECK(table[givm::player_id{ 1 }].deck_card_count() == 5);
     CHECK(random.value == prepared_random_count);
 
-    REQUIRE(target.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 0 });
-    target.submitted(target.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    REQUIRE(target.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.player(); }) == givm::player_id{ 0 });
+    target.submitted(target.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     REQUIRE(target.advance(library, table, random) == givm::execution_state::initial_active_character_selection);
     CHECK(random.value == prepared_random_count);
 
@@ -320,10 +327,10 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     target.submitted(target.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, player1_choice));
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
-    REQUIRE(target.advance(library, table, random) == givm::execution_state::remaining_active_character_selection);
+    REQUIRE(givm_test::is_remaining_active_character_selection(target.advance(library, table, random)));
     CHECK_FALSE(table[givm::player_id{ 0 }].state().active_character.has_value());
     CHECK_FALSE(table[givm::player_id{ 1 }].state().active_character.has_value());
-    const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection>();
+    const auto remaining = target.view_in<givm::execution_state::remaining_active_character_selection0>();
     CHECK(remaining.first_selected_character() == player1_choice);
     CHECK(remaining.player() == givm::player_id{ 0 });
     CHECK(remaining.first_selected_character() == player1_choice);
@@ -336,6 +343,6 @@ TEST_CASE("step skips replacements and observes simultaneous initial active choi
     CHECK(table[givm::player_id{ 0 }].state().active_character == player0_choice);
     CHECK(table[givm::player_id{ 1 }].state().active_character == player1_choice);
     REQUIRE(target.advance(library, table, random) == givm::execution_state::action_started);
-    REQUIRE(target.advance(library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(target.advance(library, table, random)));
 }
 }

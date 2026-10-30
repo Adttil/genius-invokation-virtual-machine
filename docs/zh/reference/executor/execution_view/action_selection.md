@@ -1,12 +1,13 @@
 [givm](../../../reference.md) / [执行](../../executor.md) / [execution_view](../execution_view.md) / **execution_view<action_selection>**
 
-# givm::execution_view<execution_state::action_selection>
+# givm::execution_view<execution_state::action_selection0>
 
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<>
-class execution_view<execution_state::action_selection>;
+template<execution_state State, role Role>
+requires (State == execution_state::action_selection0 || State == execution_state::action_selection1)
+class execution_view<State, Role>;
 ```
 
 选择行动的现场视图，用于使用技能、特技、打出手牌、元素调和、切换出战角色或宣布结束本回合，并提供选择前所需的费用与合法性查询。
@@ -15,6 +16,7 @@ class execution_view<execution_state::action_selection>;
 
 | | |
 | --- | --- |
+| [`player`](action_selection/player.md) | 取得静态确定的当前行动方。 |
 | [`is_controlled`](action_selection/is_controlled.md) | 检查当前出战角色是否受控。 |
 | [`skill_count`](action_selection/skill_count.md) | 取得当前技能候选数量。 |
 | [`skill_id`](action_selection/skill_id.md) | 按技能候选索引取得技能 ID。 |
@@ -87,3 +89,5 @@ class execution_view<execution_state::action_selection>;
 技能定义带 `normal_attack` 标签时，建立行动候选会按支付前的骰子总数判定重击：偶数（包括零）具有 `charged_attack`。若该玩家仍有 `can_plunge` 资格，同时具有 `plunging_attack`。两者可以共存，均出现在 `cost_of_skill::flags` 中，因此报价可先按重击减费，再支付折扣后的费用。支付不会重新判定这些性质。
 
 只有行动选择中的普通攻击候选自动获得这些性质；特技、手牌以及其他效果产生的伤害不会因骰子数量自动获得重击性质。定义需要将技能效果事件的 flags 显式转换并填写进其伤害。
+
+对应的 `action_selection1` 具有相同现场结构，关联玩家由状态静态确定。模板身份默认使用全权；受限接口见 [`execution_view`](../execution_view.md#角色与接口)。

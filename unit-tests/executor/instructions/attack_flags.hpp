@@ -156,8 +156,8 @@ namespace
         if(select_initial && state == givm::execution_state::initial_active_character_selection)
         {
             executor.submitted(executor.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, givm_test::omni_random, { givm::player_id{ 0 }, 0 }));
-            REQUIRE(executor.advance(library, table, random) == givm::execution_state::remaining_active_character_selection);
-            executor.submitted(executor.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, givm_test::omni_random, { givm::player_id{ 1 }, 0 }));
+            REQUIRE(givm_test::is_remaining_active_character_selection(executor.advance(library, table, random)));
+            executor.submitted(executor.with_view<givm::execution_state::remaining_active_character_selection1, givm::execution_state::remaining_active_character_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::omni_random, { givm::player_id{ 1 }, 0 }); }));
             state = executor.advance(library, table, random);
         }
         while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started
@@ -171,8 +171,8 @@ namespace
     {
         if(table.state().active_player == givm::player_id{ 1 })
         {
-            executor.submitted(executor.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, givm_test::omni_random));
-            REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+            executor.submitted(executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.declare_round_end(library, table, givm_test::omni_random); }));
+            REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
         }
     }
 }
@@ -185,8 +185,8 @@ TEST_CASE("normal attack previews preserve prepayment charged and plunging flags
     auto table = attack_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
-    auto action = executor.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
+    auto action = executor.view_in<givm::execution_state::action_selection0>();
     const auto quote_1 = action.calculate_skill_cost(library, table, 0);
     const auto flags = action.skill_cost(quote_1).flags;
     CHECK(flags.contains(givm::skill_flag_bits::normal_attack));
@@ -197,7 +197,7 @@ TEST_CASE("normal attack previews preserve prepayment charged and plunging flags
     payment[givm::elemental_dice::omni] = 2;
     REQUIRE(action.skill_payment_validate(table, quote_1, payment) == givm::skill_payment_validation::valid);
     executor.submitted(action.use_skill_with_cached_cost(library, table, givm_test::omni_random, quote_1, payment));
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 4);
     CHECK_FALSE(table[givm::player_id{ 0 }].state().can_plunge);
     REQUIRE(log.effects.size() == 1);
@@ -208,8 +208,8 @@ TEST_CASE("normal attack previews preserve prepayment charged and plunging flags
     CHECK(log.damage[0].contains(givm::damage_flag_bits::charged_attack));
     CHECK(log.damage[0].contains(givm::damage_flag_bits::plunging_attack));
     return_to_player_zero(executor, library, table);
-    const auto quote_2 = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0);
-    const auto next = executor.view_in<givm::execution_state::action_selection>().skill_cost(quote_2).flags;
+    const auto quote_2 = executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.calculate_skill_cost(library, table, 0); });
+    const auto next = executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.skill_cost(quote_2); }).flags;
     CHECK(next.contains(givm::skill_flag_bits::charged_attack));
     CHECK_FALSE(next.contains(givm::skill_flag_bits::plunging_attack));
 }
@@ -222,8 +222,8 @@ TEST_CASE("charged attack uses even dice counts including zero and ignores non-n
     auto table = attack_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
-    const auto action = executor.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
+    const auto action = executor.view_in<givm::execution_state::action_selection0>();
     const auto quote_1 = action.calculate_skill_cost(library, table, 0);
     CHECK(action.skill_cost(quote_1).flags.contains(givm::skill_flag_bits::charged_attack) == (dice % 2 == 0));
     const auto quote_2 = action.calculate_skill_cost(library, table, 1);
@@ -243,13 +243,13 @@ TEST_CASE("only final combat speed consumes plunging opportunity and effects may
     auto table = attack_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
-    executor.submitted(executor.view_in<givm::execution_state::action_selection>().play_card(library, table, givm_test::omni_random, 0, {}));
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
+    executor.submitted(executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.play_card(library, table, givm_test::omni_random, 0, {}); }));
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     return_to_player_zero(executor, library, table);
     CHECK(table[givm::player_id{ 0 }].state().can_plunge == (fast || switch_character));
-    const auto quote_1 = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0);
-    const auto flags = executor.view_in<givm::execution_state::action_selection>().skill_cost(quote_1).flags;
+    const auto quote_1 = executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.calculate_skill_cost(library, table, 0); });
+    const auto flags = executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.skill_cost(quote_1); }).flags;
     CHECK(flags.contains(givm::skill_flag_bits::plunging_attack) == (fast || switch_character));
 }
 
@@ -262,11 +262,11 @@ TEST_CASE("skill speed modifiers take effect before consuming the plunging oppor
     auto table = attack_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 3;
-    executor.submitted(executor.view_in<givm::execution_state::action_selection>().use_skill(library, table, givm_test::omni_random, 1, payment));
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    executor.submitted(executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.use_skill(library, table, givm_test::omni_random, 1, payment); }));
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     CHECK(table[givm::player_id{ 0 }].state().can_plunge == fast);
 }
 
@@ -278,9 +278,9 @@ TEST_CASE("setting the already active character does not renew plunging opportun
     auto table = attack_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
-    executor.submitted(executor.view_in<givm::execution_state::action_selection>().play_card(library, table, givm_test::omni_random, 0, {}));
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
+    executor.submitted(executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.play_card(library, table, givm_test::omni_random, 0, {}); }));
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     CHECK_FALSE(table[givm::player_id{ 0 }].state().can_plunge);
 }
 
@@ -299,13 +299,13 @@ TEST_CASE("initial character choices grant plunging opportunities and library co
     executor.start(library, table);
     REQUIRE(advance(executor, library, table, false) == givm::execution_state::initial_active_character_selection);
     executor.submitted(executor.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, givm_test::omni_random, { givm::player_id{ 0 }, 1 }));
-    REQUIRE(advance(executor, library, table, false) == givm::execution_state::remaining_active_character_selection);
-    executor.submitted(executor.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, givm_test::omni_random, { givm::player_id{ 1 }, 0 }));
-    REQUIRE(advance(executor, library, table, false) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_remaining_active_character_selection(advance(executor, library, table, false)));
+    executor.submitted(executor.with_view<givm::execution_state::remaining_active_character_selection1, givm::execution_state::remaining_active_character_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::omni_random, { givm::player_id{ 1 }, 0 }); }));
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table, false)));
     CHECK(table[givm::player_id{ 0 }].state().can_plunge);
     CHECK(table[givm::player_id{ 1 }].state().can_plunge);
-    const auto quote_1 = executor.view_in<givm::execution_state::action_selection>().calculate_skill_cost(library, table, 0);
-    CHECK(executor.view_in<givm::execution_state::action_selection>().skill_cost(quote_1)
+    const auto quote_1 = executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.calculate_skill_cost(library, table, 0); });
+    CHECK(executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.skill_cost(quote_1); })
         .flags.contains(givm::skill_flag_bits::plunging_attack));
 }
 }

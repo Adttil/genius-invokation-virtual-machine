@@ -5,8 +5,8 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<>
-class execution_view<execution_state::initial_card_selection>;
+template<role Role>
+class execution_view<execution_state::initial_card_selection, Role>;
 ```
 
 开局尚未接受任何一方换牌选择时的现场视图。可以任选一方先提交。

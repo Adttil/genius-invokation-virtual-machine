@@ -32,7 +32,7 @@ enum class begin_action_error {};
 
 准备技能先离场并完成离场通知，再调用其自身效果；选定后不因离场响应改变状态而撤销。它无需支付，不发送普通技能或特技使用通知；默认战斗行动，可由响应改为快速行动，最终速度决定是否交接行动权和消耗 `can_plunge`。一次只消耗一个准备技能；跨回合或宣布结束本身不清除准备技能附属。
 
-等待选择行动时，执行器返回 `execution_state::action_selection`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、检查或选择行动。出牌选择当前行动玩家的有效手牌，并提供支付骰子及至多两个目标；目标参数默认为空 span，超过两个的元素忽略。目标和用牌条件由牌定义决定。主动切换选择当前行动玩家存活、非出战的角色。调用方保证支付满足费用、骰子持有数量及出战角色充能；宣布结束无需支付骰子。
+等待选择行动时，执行器返回 `execution_state::action_selection0`，通过相应的[现场视图](../../executor/execution_view/action_selection.md)预览费用、检查或选择行动。出牌选择当前行动玩家的有效手牌，并提供支付骰子及至多两个目标；目标参数默认为空 span，超过两个的元素忽略。目标和用牌条件由牌定义决定。主动切换选择当前行动玩家存活、非出战的角色。调用方保证支付满足费用、骰子持有数量及出战角色充能；宣布结束无需支付骰子。
 
 调用方必须通过 `use_skill`、`use_technique`、`play_card`、`elemental_tuning`、`switch_active_character` 或 `declare_round_end` 提交本次行动输入并立即推进。费用预览、支付检查与目标检查不提供行动输入；等待玩家决定期间由上层保留当前现场。
 
@@ -124,10 +124,10 @@ int main()
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
-    auto state = execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
-    if(state == givm::execution_state::action_selection)
+    auto state = execution.view_in<givm::execution_state::remaining_active_character_selection1>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
+    if(state == givm::execution_state::action_selection0)
     {
-        const auto action = execution.view_in<givm::execution_state::action_selection>();
+        const auto action = execution.view_in<givm::execution_state::action_selection0>();
         // 显示候选只需索引，不必先计算费用。
         std::println("第一个切换候选是后备角色: {}",
             action.switch_target(0) == givm::character_id{ givm::player_id{ 0 }, 1 });
@@ -135,10 +135,14 @@ int main()
             table[action.card_id(0)].definition_id() == card_definition);
     }
     int declarations = 0;
-    while(state == givm::execution_state::action_selection)
+    while(state == givm::execution_state::action_selection0
+        || state == givm::execution_state::action_selection1)
     {
         // 当前玩家宣布本回合结束。
-        state = execution.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random);
+        if(state == givm::execution_state::action_selection0)
+            state = execution.view_in<givm::execution_state::action_selection0>().declare_round_end(library, table, random);
+        else
+            state = execution.view_in<givm::execution_state::action_selection1>().declare_round_end(library, table, random);
         ++declarations;
     }
     std::println("双方结束声明次数: {}", declarations);

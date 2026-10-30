@@ -51,3 +51,5 @@
 | [`reaction_from_aura`](enums/reaction_from_aura.md) | 判断附着与新元素的反应 |
 | [`aura_after_reaction`](enums/aura_after_reaction.md) | 取得反应后的附着 |
 | [`elemental_dice_from_random`](enums/elemental_dice_from_random.md) | 从随机值取得骰子种类 |
+
+[`role`](enums/role.md) 表示视图的读取和输入身份。

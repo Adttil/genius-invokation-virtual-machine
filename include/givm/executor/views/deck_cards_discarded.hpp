@@ -2,15 +2,17 @@
 #define GIVM_EXECUTOR_VIEWS_DECK_CARDS_DISCARDED_HPP
 
 #include <span>
+#include <ranges>
 
 #include "../executor.hpp"
 
 namespace givm
 {
     template<>
-    class execution_view<execution_state::deck_cards_discarded>
+    class execution_view<execution_state::deck_cards_discarded, role::full>
     {
         friend class executor;
+        template<execution_state, role> friend class execution_view;
         constexpr explicit execution_view(executor& owner
 #ifndef NDEBUG
             , std::size_t version
@@ -26,12 +28,24 @@ namespace givm
 #endif
 
     public:
+        static constexpr execution_state state = execution_state::deck_cards_discarded;
+        static constexpr givm::role access_role = role::full;
+        static constexpr bool accepts_input = false;
+
         constexpr std::span<const deck_card_id> cards() const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
             executor_->validate_view<execution_state::deck_cards_discarded>(version_);
 #endif
             return get<0>(std::as_const(executor_->context_.stack()).top<deck_card_id[], stack_count_t>());
+        }
+
+        constexpr auto cards(const table& card_table) const noexcept(detail::view_checks_disabled)
+        {
+            return cards() | std::views::transform([&card_table](deck_card_id id)
+            {
+                return card_table[id];
+            });
         }
 
         template<class TRandom>
@@ -42,6 +56,31 @@ namespace givm
 #endif
             return executor_->advance(library, card_table, random);
         }
+    };
+
+    template<role Role>
+    requires (Role != role::full)
+    class execution_view<execution_state::deck_cards_discarded, Role> : private execution_view<execution_state::deck_cards_discarded, role::full>
+    {
+        using base = execution_view<execution_state::deck_cards_discarded, role::full>;
+
+    public:
+        static constexpr execution_state state = execution_state::deck_cards_discarded;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = false;
+        using base::cards;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
     };
 }
 

@@ -114,8 +114,8 @@ TEST_CASE("action target queries can inspect target definition tags", "[action][
     auto state = executor.advance(library, table, random);
     while(state == givm::execution_state::active_character_changed || state == givm::execution_state::action_started)
         state = executor.advance(library, table, random);
-    REQUIRE(state == givm::execution_state::action_selection);
-    const auto action = executor.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(state));
+    const auto action = executor.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.card_count() == 1);
     REQUIRE(action.skill_count() == 1);
     CHECK(action.card_targets_validate(library, table, 0) == givm::target_validation::valid_incomplete);

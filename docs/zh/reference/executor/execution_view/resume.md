@@ -111,7 +111,7 @@ int main()
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
+    execution.view_in<givm::execution_state::remaining_active_character_selection1>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     execution.view_in<givm::execution_state::initial_active_characters_selected>().resume(library, table, random);
     const auto switch_view = execution.view_in<givm::execution_state::active_character_changed>();
     std::println("切人现场指向新角色: {}", switch_view.character() == attacker);

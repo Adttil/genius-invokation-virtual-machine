@@ -137,8 +137,8 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
         { .characters = { ids.get_id<givm::definition_category::character>(plain.name()) } });
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
-    const auto action = executor.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
+    const auto action = executor.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.has_technique());
     CHECK_FALSE(action.is_controlled(library, table));
     const auto technique = action.technique_id();
@@ -160,21 +160,21 @@ TEST_CASE("technique selection pays cached costs and resumes effect and notifica
     executor.submitted(action.use_technique_with_cached_cost(library, table, givm_test::zero_random, quote_1, payment));
     if(not cancelled)
     {
-        REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(advance(executor, library, table)));
         auto branch = executor;
         auto branch_table = table;
-        branch.submitted(branch.view_in<givm::execution_state::card_selection>().select(library, branch_table, givm_test::zero_random, {}));
-        REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
-        CHECK_FALSE(branch.view_in<givm::execution_state::action_selection>().has_technique());
+        branch.submitted(branch.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, branch_table, givm_test::zero_random, {}); }));
+        REQUIRE(givm_test::is_action_selection(advance(branch, library, branch_table)));
+        CHECK_FALSE(branch.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.has_technique(); }));
         log.events.pop_back();
-        executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
+        executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::zero_random, {}); }));
     }
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     CHECK(table[technique].state().count == 1);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 3);
     CHECK(table[technique.character_id()].state().energy == 2);
     CHECK(log.events == (cancelled ? std::vector<std::string>{ "quote", "before", "after" }
         : std::vector<std::string>{ "quote", "before", "effect", "after" }));
-    CHECK_FALSE(executor.view_in<givm::execution_state::action_selection>().has_technique());
+    CHECK_FALSE(executor.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.has_technique(); }));
 }
 }

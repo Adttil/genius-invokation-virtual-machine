@@ -215,7 +215,8 @@ namespace givm::detail
 #endif
             stack_count_t{}, action_selection{}, substack()
         );
-        return context.yield(execution_state::action_selection);
+        return context.yield(player.id() == player_id{ 0 }
+            ? execution_state::action_selection0 : execution_state::action_selection1);
     }
 
     template<bool Observed>

@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **use_technique**
 
-# givm::execution_view<execution_state::action_selection>::use_technique
+# givm::execution_view<execution_state::action_selection0>::use_technique
 
 定义于头文件 `<givm/runtime.hpp>`
 

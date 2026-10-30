@@ -5,7 +5,7 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<execution_state State>
+template<execution_state State, role Role = role::full>
 class execution_view;
 ```
 [`execution_state`](execution_state.md)
@@ -18,6 +18,7 @@ class execution_view;
 
 | | |
 | --- | --- |
+| `Role` | 读取及输入身份，默认为 `role::full`；见 [`role`](../enums/role.md) |
 | `State` | 视图对应的执行现场种类 |
 
 ## 特化
@@ -26,13 +27,13 @@ class execution_view;
 | --- | --- |
 | [`execution_view<initialized>`](execution_view/initialized.md) | 初始化完成、尚未执行游戏流程的视图 |
 | [`execution_view<finished>`](execution_view/finished.md) | 已结束对局的结果视图 |
-| [`execution_view<card_selection>`](execution_view/card_selection.md) | 指定玩家换牌现场的视图 |
+| [`execution_view<card_selection0> / execution_view<card_selection1>`](execution_view/card_selection.md) | 指定玩家换牌现场的视图 |
 | [`execution_view<initial_card_selection>`](execution_view/initial_card_selection.md) | 开局首次换牌选择现场的视图 |
 | [`execution_view<initial_active_character_selection>`](execution_view/initial_active_character_selection.md) | 开局首次出战选择现场的视图 |
-| [`execution_view<remaining_active_character_selection>`](execution_view/remaining_active_character_selection.md) | 开局剩余一方出战选择现场的视图 |
-| [`execution_view<dice_selection>`](execution_view/dice_selection.md) | 双方投骰阶段的重投选择现场视图 |
-| [`execution_view<dice_reroll_selection>`](execution_view/dice_reroll_selection.md) | 单方重投命令的选择现场视图 |
-| [`execution_view<action_selection>`](execution_view/action_selection.md) | 选择行动的现场视图 |
+| [`execution_view<remaining_active_character_selection0> / execution_view<remaining_active_character_selection1>`](execution_view/remaining_active_character_selection.md) | 开局剩余一方出战选择现场的视图 |
+| [`execution_view<dice_selection_both> / execution_view<dice_selection0> / execution_view<dice_selection1>`](execution_view/dice_selection.md) | 双方投骰阶段的重投选择现场视图 |
+| [`execution_view<dice_reroll_selection0> / execution_view<dice_reroll_selection1>`](execution_view/dice_reroll_selection.md) | 单方重投命令的选择现场视图 |
+| [`execution_view<action_selection0> / execution_view<action_selection1>`](execution_view/action_selection.md) | 选择行动的现场视图 |
 | [`execution_view<deck_cards_discarded>`](execution_view/deck_cards_discarded.md) | 整批牌堆牌已经舍弃、效果尚未开始的现场视图 |
 | [`execution_view<health_reduced>`](execution_view/health_reduced.md) | 伤害扣除生命后的现场视图 |
 | [`execution_view<active_character_changed>`](execution_view/active_character_changed.md) | 设置新出战角色前的现场视图 |
@@ -43,13 +44,21 @@ class execution_view;
 
 主模板用于 `initial_active_characters_selected`、`round_started`、`action_started`、`round_end_declared` 和 `round_ending`。这些视图提供 [`resume`](execution_view/resume.md)，不提供其他读取或输入操作；对应的出战角色、玩家及回合数等信息直接从牌桌读取。
 
+## 角色与接口
+
+`role::full` 保留完整接口。本人窗口具有相应的提交接口；对手窗口仅提供公开读取；观众可读取双方私有信息和费用预览，但不能提交输入。`resume` 仅由全权视图提供。
+
+双方选择窗口的玩家版本将输入绑定本人，省略原有的 `player_id` 参数。`state`、`access_role`、`accepts_input` 为类型的静态常量。角色不会增加视图的数据成员，也不会增加运行期权限检查。
+
+各角色使用独立特化，只公开该角色可用的成员；不允许读取或提交的成员不属于其公开接口，代码补全也只提供可用接口。
+
 ## 注意
 
 有数据的视图借用当前执行现场，不拥有历史记录；下一次推进或重建现场后，先前的借用失效。复制执行器不会把原有视图重定向到副本。
 
 输入操作提交选择并直接推进，返回下一处 [`execution_state`](execution_state.md)。观察现场由 `resume` 推进；终局视图没有推进操作。查询、费用预览和独立合法性检查不提交输入，也不推进。
 
-未定义 `NDEBUG` 时，每个视图操作都检查现场种类和是否仍有效；种类不匹配或旧视图被使用时抛出 [`execution_view_error`](execution_view_error.md)。检查包括同种类现场的再次出现，不能复用上一处现场的视图。Release 不保留这些诊断记录，不执行检查。
+未定义 `NDEBUG` 时，访问现场数据的操作检查现场种类和是否仍有效；种类不匹配或旧视图被使用时抛出 [`execution_view_error`](execution_view_error.md)。检查包括同种类现场的再次出现，不能复用上一处现场的视图。Release 不保留这些诊断记录，不执行检查。
 
 输入提交在 Debug 下还会自动验证相应参数，合法性结果失败时抛出 [`view_input_error`](view_input_error.md)，实体 ID 越界或已移除的诊断沿用 [`command_input_error`](command_input_error.md)；均发生在提交或推进之前。独立 `*_validate` 接口仍供 UI 自行查询；Release 提交直接使用输入，调用方必须保证其合法。
 

@@ -23,6 +23,7 @@ class table;
 |  |  |
 | --- | --- |
 | [`(构造函数)`](table/constructor.md) | 构造一个 `table` |
+| [`view_for`](table/view_for.md) | 取得指定身份的只读视图 |
 | [`state`](table/state.md) | 访问对局的共同状态 |
 | [`players`](table/players.md) | 遍历双方玩家 |
 | [`operator[]`](table/operator_subscript.md) | 通过实体 ID 访问实体，或通过历史字段键读取记录 |

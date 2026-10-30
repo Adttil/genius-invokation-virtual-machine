@@ -246,7 +246,7 @@ namespace
         for(std::size_t step = 0; step < 20; ++step)
         {
             const auto state = executor.advance(library, table, random);
-            if(state == givm::execution_state::finished || state == givm::execution_state::card_selection) return state;
+            if(state == givm::execution_state::finished || givm_test::is_card_selection(state)) return state;
         }
         FAIL("attachment transfer did not finish");
         return givm::execution_state::finished;
@@ -352,7 +352,7 @@ TEST_CASE("displaced equipment observes completed transfer and can change it acr
     auto table = make_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(executor, library, table)));
     CHECK(table[log.transferred].state().count == 9);
     CHECK(table[log.transferred].state().round_usages == 2);
     CHECK(log.state_changes == 1);
@@ -361,7 +361,7 @@ TEST_CASE("displaced equipment observes completed transfer and can change it acr
     auto copied_executor = executor;
     const auto resume = [&](givm_test::executor_driver& execution, givm::table& branch)
     {
-        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, branch, givm_test::zero_random, {}));
+        execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, branch, givm_test::zero_random, {}); }));
         REQUIRE(advance(execution, library, branch) == givm::execution_state::finished);
         REQUIRE(branch[log.transferred].is_valid());
         CHECK(branch[log.transferred].state().count == 9);
@@ -416,7 +416,7 @@ TEST_CASE("equipment targets resolve the current slot when each command executes
     auto table = make_table(library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(executor, library, table)));
     CHECK_FALSE(table[log.source].is_valid());
     CHECK_FALSE(table[log.transferred].is_valid());
     REQUIRE(log.changed.size() == 2);
@@ -440,7 +440,7 @@ TEST_CASE("equipment targets resolve the current slot when each command executes
     const auto resume = [&](givm_test::executor_driver& execution, givm::table& branch)
     {
         log = paused_log;
-        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, branch, givm_test::zero_random, {}));
+        execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, branch, givm_test::zero_random, {}); }));
         REQUIRE(advance(execution, library, branch) == givm::execution_state::finished);
         CHECK_FALSE(branch[target_character].has(givm::equipment_type::artifact));
         CHECK_FALSE(branch[replacement_id].is_valid());

@@ -207,10 +207,10 @@ TEST_CASE("infusion precedes earlier bonuses and damage can count as both normal
     {
         const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
-        if(state == givm::execution_state::card_selection)
+        if(givm_test::is_card_selection(state))
         {
             ++pauses;
-            executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+            executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
         }
         else
         {
@@ -266,8 +266,8 @@ TEST_CASE("replacement reaction numbers are applied without default secondary da
     givm_test::executor_driver executor;
     executor.start(library, table);
     zero_random random;
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    REQUIRE(givm_test::is_card_selection(executor.advance(library, table, random)));
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[front].state().health == 13);
     CHECK(table[back].state().health == 20);

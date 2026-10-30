@@ -253,9 +253,9 @@ TEST_CASE("cost preview preserves the caller while cached payment executes on it
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     if(observed) REQUIRE(executor.advance(library, table, random) == givm::execution_state::action_started);
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(executor.advance(library, table, random)));
     CHECK(table.state().self_player == no_self);
-    const auto action = executor.view_in<givm::execution_state::action_selection>();
+    const auto action = executor.view_in<givm::execution_state::action_selection0>();
     const auto quote_1 = action.calculate_switch_cost(library, table, 0);
     CHECK(action.switch_cost(quote_1).requirement.dice_requirement.any == 0);
     CHECK(action.switch_payment_validate(table, quote_1, {}) == givm::switch_payment_validation::valid);
@@ -269,14 +269,14 @@ TEST_CASE("cost preview preserves the caller while cached payment executes on it
     auto copied_table = table;
     for(const auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &copied_executor, &copied_table } })
     {
-        running->submitted(running->view_in<givm::execution_state::action_selection>().switch_active_character_with_cached_cost(library, *current, random, quote_1, {}));
+        running->submitted(running->view_in<givm::execution_state::action_selection0>().switch_active_character_with_cached_cost(library, *current, random, quote_1, {}));
         auto state = running->advance(library, *current, random);
         if(observed)
         {
             REQUIRE(state == givm::execution_state::active_character_changed);
             state = running->advance(library, *current, random);
         }
-        REQUIRE(state == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(state));
         CHECK(current->state().self_player == no_self);
         CHECK(current->state().active_player == first);
         CHECK((*current)[first].state().active_character == givm::character_id{ first, 1 });

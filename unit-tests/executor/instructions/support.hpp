@@ -333,9 +333,9 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
     load_scenario(table, library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     const auto before = support_ids(table);
-    const auto action = executor.view_in<givm::execution_state::action_selection>();
+    const auto action = executor.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.card_count() == 1);
     CHECK(action.card_targets_validate(library, table, 0) == (full
         ? givm::target_validation::valid_incomplete : givm::target_validation::valid_complete));
@@ -358,7 +358,7 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
     };
     if(full && refill)
     {
-        REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(advance(executor, library, table)));
         CHECK(support_ids(table).size() == 4);
         CHECK_FALSE(table[before[1]].is_valid());
         CHECK(log.removed == std::vector{ before[1] });
@@ -366,15 +366,15 @@ TEST_CASE("support cards select a replacement only when full and wait for its re
         auto copied_table = table;
         for(auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &copied_executor, &copied_table } })
         {
-            running->submitted(running->view_in<givm::execution_state::card_selection>().select(library, *current, givm_test::zero_random, {}));
-            REQUIRE(advance(*running, library, *current) == givm::execution_state::action_selection);
+            running->submitted(running->view_in<givm::execution_state::card_selection0>().select(library, *current, givm_test::zero_random, {}));
+            REQUIRE(givm_test::is_action_selection(advance(*running, library, *current)));
             check_result(*current);
         }
         CHECK(log.remaining_on_removal == std::vector<std::size_t>{ 4, 4, 4 });
     }
     else
     {
-        REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
         check_result(table);
         CHECK(log.removed.size() == (full ? 2 : 0));
         if(full) CHECK(log.remaining_on_removal == std::vector<std::size_t>{ 4, 4 });
@@ -393,7 +393,7 @@ TEST_CASE("support definitions can remove themselves through a resumable state c
     load_scenario(table, library, ids);
     givm_test::executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(executor, library, table)));
     const auto waiting = support_ids(table);
     REQUIRE(waiting.size() == 1);
     CHECK(table[waiting[0]].is_valid());
@@ -404,7 +404,7 @@ TEST_CASE("support definitions can remove themselves through a resumable state c
     CHECK(log.current == std::vector<values>{ { 0, 2 } });
     CHECK(log.removed.empty());
     CHECK(log.next_action == 2);
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::zero_random, {}); }));
     REQUIRE(advance(executor, library, table) == givm::execution_state::finished);
     CHECK(log.next_action == 3);
     CHECK(log.removed == std::vector{ waiting[0], waiting[0] });

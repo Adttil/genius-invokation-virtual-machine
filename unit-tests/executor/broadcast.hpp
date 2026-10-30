@@ -365,7 +365,7 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
     givm_test::executor_driver target;
     target.start(library, table);
     zero_random random;
-    REQUIRE(target.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(target.advance(library, table, random)));
     REQUIRE(drawn.size() == 1);
     CHECK(table[givm::player_id{ 0 }].hand_card_count() == 2);
 
@@ -386,13 +386,13 @@ TEST_CASE("nested input resumes after library copies and moves in both compile m
         for(std::uint32_t index = 0; index < 3; ++index)
         {
             REQUIRE(drawn.size() == index + 1);
-            CHECK(execution.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 0 });
-            execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(current_library, current_table, random, {}));
-            REQUIRE(execution.advance(current_library, current_table, random) == givm::execution_state::card_selection);
+            CHECK(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.player(); }) == givm::player_id{ 0 });
+            execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(current_library, current_table, random, {}); }));
+            REQUIRE(givm_test::is_card_selection(execution.advance(current_library, current_table, random)));
             CHECK(drawn.size() == index + 1);
-            execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(current_library, current_table, random, {}));
+            execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(current_library, current_table, random, {}); }));
             const auto state = execution.advance(current_library, current_table, random);
-            REQUIRE(state == (index == 2 ? givm::execution_state::finished : givm::execution_state::card_selection));
+            REQUIRE(state == (index == 2 ? givm::execution_state::finished : givm::execution_state::card_selection0));
         }
         CHECK(current_table.state().round_number == 0);
         CHECK(current_table[givm::player_id{ 0 }].hand_card_count() == 3);
@@ -485,7 +485,7 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     const auto next_selection = [&]
     {
         auto state = execution.advance(library, table, random);
-        while(state != givm::execution_state::action_selection)
+        while(!givm_test::is_action_selection(state))
         {
             REQUIRE((state == givm::execution_state::active_character_changed
                 || state == givm::execution_state::action_started || state == givm::execution_state::round_end_declared));
@@ -506,7 +506,7 @@ TEST_CASE("global broadcasts follow acting player cyclic character and equipment
     CHECK(log == expected);
     CHECK(table.state().active_player == givm::player_id{ 0 });
     log.clear();
-    execution.submitted(execution.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random));
+    execution.submitted(execution.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.declare_round_end(library, table, random); }));
     next_selection();
     expected = second;
     expected.insert(expected.end(), first.begin(), first.end());

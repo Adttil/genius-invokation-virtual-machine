@@ -108,7 +108,7 @@ int main()
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
+    execution.view_in<givm::execution_state::remaining_active_character_selection1>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     std::println("目标剩余生命: {}", table[target].state().health);
     std::println("其余角色剩余生命: {}", table[other].state().health);
 }

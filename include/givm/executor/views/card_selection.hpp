@@ -19,22 +19,24 @@ namespace givm
         return "invalid card positions " + error.selected.to_string() + "; hand size " + std::to_string(error.card_count);
     }
 
-    template<>
-    class execution_view<execution_state::card_selection>
+    template<execution_state State>
+    requires (State == execution_state::card_selection0 || State == execution_state::card_selection1)
+    class execution_view<State, role::full>
     {
     public:
-        constexpr player_id player() const noexcept(detail::view_checks_disabled)
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = role::full;
+        static constexpr bool accepts_input = true;
+
+        static constexpr player_id player() noexcept
         {
-#ifndef NDEBUG
-            executor_->validate_view<execution_state::card_selection>(version_);
-#endif
-            return get<0>(std::as_const(executor_->context_.stack()).top<player_id, std::bitset<selection_capacity>>());
+            return player_id{ (static_cast<unsigned>(State) & 1u) };
         }
 
         constexpr std::bitset<selection_capacity> selected() const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
-            executor_->validate_view<execution_state::card_selection>(version_);
+            executor_->validate_view<State>(version_);
 #endif
             return get<0>(std::as_const(executor_->context_.stack()).top<std::bitset<selection_capacity>>());
         }
@@ -44,7 +46,7 @@ namespace givm
         ) const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
-            executor_->validate_view<execution_state::card_selection>(version_);
+            executor_->validate_view<State>(version_);
 #endif
             return (selected >> card_table[player()].hand_card_count()).none();
         }
@@ -56,7 +58,7 @@ namespace givm
         ) const
         {
 #ifndef NDEBUG
-            executor_->validate_view<execution_state::card_selection>(version_);
+            executor_->validate_view<State>(version_);
             if(not selection_validate(card_table, selected))
                 throw view_input_error{ "card_selection.select", invalid_card_positions{ selected, card_table[player()].hand_card_count() } };
 #endif
@@ -66,6 +68,7 @@ namespace givm
 
     private:
         friend class executor;
+        template<execution_state, role> friend class execution_view;
         constexpr explicit execution_view(executor& owner
 #ifndef NDEBUG
             , std::size_t version
@@ -79,6 +82,87 @@ namespace givm
 #ifndef NDEBUG
         std::size_t version_;
 #endif
+    };
+
+    template<execution_state State, role Role>
+    requires ((State == execution_state::card_selection0 || State == execution_state::card_selection1) && Role != role::full && detail::accepts_input<State, Role>)
+    class execution_view<State, Role> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = true;
+        using base::player;
+        using base::selection_validate;
+        using base::selected;
+        using base::select;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
+    };
+
+    template<execution_state State>
+    requires (State == execution_state::card_selection0 || State == execution_state::card_selection1)
+    class execution_view<State, role::spectator> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = role::spectator;
+        static constexpr bool accepts_input = false;
+        using base::player;
+        using base::selection_validate;
+        using base::selected;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
+    };
+
+    template<execution_state State, role Role>
+    requires ((State == execution_state::card_selection0 || State == execution_state::card_selection1) && detail::player_role<Role> && !detail::accepts_input<State, Role>)
+    class execution_view<State, Role> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = false;
+        using base::player;
+        using base::selection_validate;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
     };
 }
 

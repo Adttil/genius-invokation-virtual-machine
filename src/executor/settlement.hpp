@@ -240,7 +240,8 @@ namespace givm::detail
                             .first_player = table.state().active_player });
                         context.stack().push(player, character_id{});
                         context.advance(2 * sizeof(execute_fn));
-                        return context.yield(execution_state::active_character_selection);
+                        return context.yield(player == player_id{ 0 }
+            ? execution_state::active_character_selection0 : execution_state::active_character_selection1);
                     }
                     return context.jump(resume);
                 }
@@ -531,7 +532,8 @@ namespace givm::detail
                 const auto active = table[next].state().active_character;
                 if(not active || table[*active].state().alive) continue;
                 context.stack().push(next, character_id{});
-                return context.yield(execution_state::active_character_selection);
+                return context.yield(next == player_id{ 0 }
+            ? execution_state::active_character_selection0 : execution_state::active_character_selection1);
             }
             return context.enter_next();
         }

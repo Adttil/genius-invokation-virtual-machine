@@ -138,14 +138,14 @@ namespace
         {
             const auto state = executor.advance(library, table, random);
             if(state == givm::execution_state::finished) break;
-            if(state != givm::execution_state::card_selection) continue;
+            if(!givm_test::is_card_selection(state)) continue;
             ++log.pauses;
             CHECK(log.drawn.size() == 1);
             auto table_copy = table;
             auto executor_copy = executor;
             table = std::move(table_copy);
             executor = std::move(executor_copy);
-            const auto view = executor.view_in<givm::execution_state::card_selection>();
+            const auto view = executor.view_in<givm::execution_state::card_selection0>();
             CHECK(view.selection_validate(table, {}));
             executor.submitted(view.select(library, table, random, {}));
         }

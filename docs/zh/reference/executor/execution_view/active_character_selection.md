@@ -1,6 +1,6 @@
 [givm](../../../reference.md) / [执行](../../executor.md) / [执行视图](../execution_view.md) / **active_character_selection**
 
-# givm::execution_view<execution_state::active_character_selection>
+# givm::execution_view<execution_state::active_character_selection0>
 
 定义于头文件 `<givm/runtime.hpp>`。
 

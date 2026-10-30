@@ -121,7 +121,8 @@ namespace givm::detail
         ));
         for(auto& value : random_pool)
             value = random();
-        return context.yield(execution_state::dice_reroll_selection);
+        return context.yield(input.player == player_id{ 0 }
+            ? execution_state::dice_reroll_selection0 : execution_state::dice_reroll_selection1);
     }
 
     inline execution_state apply_single_player_dice_reroll(
@@ -145,7 +146,8 @@ namespace givm::detail
             return context.enter_next();
         }
         selected = {};
-        return context.yield(execution_state::dice_reroll_selection);
+        return context.yield(phase.player == player_id{ 0 }
+            ? execution_state::dice_reroll_selection0 : execution_state::dice_reroll_selection1);
     }
 
     inline void compile(program_writer& writer, const reroll_dice& command, compile_mode)

@@ -6,6 +6,43 @@
 
 namespace givm_test
 {
+    constexpr bool is_action_selection(givm::execution_state state) noexcept
+    {
+        return state == givm::execution_state::action_selection0
+            || state == givm::execution_state::action_selection1;
+    }
+
+    constexpr bool is_card_selection(givm::execution_state state) noexcept
+    {
+        return state == givm::execution_state::card_selection0
+            || state == givm::execution_state::card_selection1;
+    }
+
+    constexpr bool is_remaining_active_character_selection(givm::execution_state state) noexcept
+    {
+        return state == givm::execution_state::remaining_active_character_selection0
+            || state == givm::execution_state::remaining_active_character_selection1;
+    }
+
+    constexpr bool is_active_character_selection(givm::execution_state state) noexcept
+    {
+        return state == givm::execution_state::active_character_selection0
+            || state == givm::execution_state::active_character_selection1;
+    }
+
+    constexpr bool is_dice_reroll_selection(givm::execution_state state) noexcept
+    {
+        return state == givm::execution_state::dice_reroll_selection0
+            || state == givm::execution_state::dice_reroll_selection1;
+    }
+
+    constexpr bool is_dice_selection(givm::execution_state state) noexcept
+    {
+        return state == givm::execution_state::dice_selection_both
+            || state == givm::execution_state::dice_selection0
+            || state == givm::execution_state::dice_selection1;
+    }
+
     inline auto zero_random = [] { return std::uint32_t{ 0 }; };
     inline auto omni_random = [] { return std::uint32_t{ std::to_underlying(givm::elemental_dice::omni) }; };
     // Preserve each returned pause until the test has asserted it. Every transition
@@ -20,8 +57,16 @@ namespace givm_test
             return execution_.start(library, table);
         }
 
-        template<givm::execution_state State>
-        auto view_in() { return execution_.view_in<State>(); }
+        template<givm::execution_state State, givm::role Role = givm::role::full>
+        auto view_in() { return execution_.view_in<State, Role>(); }
+
+        template<givm::execution_state State0, givm::execution_state State1, class TFunction>
+        decltype(auto) with_view(TFunction&& function)
+        {
+            if(state_ == State0) return function(execution_.view_in<State0>());
+            if(state_ == State1) return function(execution_.view_in<State1>());
+            throw std::logic_error{ "test expected one of the specified input states" };
+        }
 
         void submitted(givm::execution_state state)
         {
@@ -78,18 +123,23 @@ namespace givm_test
         const givm::definition_library& library, givm::table& table, TRandom& random)
     {
         auto state = execution.advance(library, table, random);
-        while(state == givm::execution_state::active_character_selection)
+        while(state == givm::execution_state::active_character_selection0
+            || state == givm::execution_state::active_character_selection1)
         {
-            const auto view = execution.view_in<givm::execution_state::active_character_selection>();
-            bool selected = false;
-            for(const auto character : table[view.player()].characters())
+            auto select = [&]<givm::execution_state State>()
             {
-                if(not character.state().alive || character.state().health == 0) continue;
-                execution.submitted(view.select(library, table, random, character.id()));
-                selected = true;
-                break;
-            }
-            if(not selected) throw std::logic_error{ "no living character available for selection" };
+                const auto view = execution.view_in<State>();
+                for(const auto character : table[view.player()].characters())
+                {
+                    if(not character.state().alive || character.state().health == 0) continue;
+                    execution.submitted(view.select(library, table, random, character.id()));
+                    return;
+                }
+                throw std::logic_error{ "no living character available for selection" };
+            };
+            if(state == givm::execution_state::active_character_selection0)
+                select.template operator()<givm::execution_state::active_character_selection0>();
+            else select.template operator()<givm::execution_state::active_character_selection1>();
             state = execution.advance(library, table, random);
         }
         return state;

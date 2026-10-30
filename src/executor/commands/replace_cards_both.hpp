@@ -59,7 +59,8 @@ namespace givm::detail
         {
             input_player = other_player(player);
             input_selected.reset();
-            return context.yield_next(execution_state::card_selection);
+            return context.yield_next(input_player == player_id{ 0 }
+            ? execution_state::card_selection0 : execution_state::card_selection1);
         }
         else
         {

@@ -74,7 +74,7 @@ int main()
     initialized.resume(library, table, random);
     std::bitset<givm::selection_capacity> selected{};
     selected.set(0);
-    execution.view_in<givm::execution_state::card_selection>().select(library, table, random, selected);
+    execution.view_in<givm::execution_state::card_selection0>().select(library, table, random, selected);
     std::println("清理前的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));
     table.clean_up();
     std::println("清理后的手牌槽位数: {}", std::ranges::distance(table[givm::player_id{ 0 }].hand_cards<false>()));

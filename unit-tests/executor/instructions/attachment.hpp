@@ -255,7 +255,7 @@ namespace
         return table;
     }
 
-    std::size_t card_index(const givm::execution_view<givm::execution_state::action_selection>& action, const givm::table& table, givm::definition_id<givm::definition_category::card> definition)
+    std::size_t card_index(const givm::execution_view<givm::execution_state::action_selection0>& action, const givm::table& table, givm::definition_id<givm::definition_category::card> definition)
     {
         for(std::size_t index = 0; index < action.card_count(); ++index)
             if(table[action.card_id(index)].definition_id() == definition) return index;
@@ -350,7 +350,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     auto table = load_equipment_scenario(library, ids);
     givm_test::executor_driver execution;
     execution.start(library, table);
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
     const std::vector<std::string> initial_order{ "Weapon", "Artifact", "Talent", "Technique", "OrdinaryA", "OrdinaryB" };
     CHECK(log.responders == initial_order);
     const auto character = table[equipped_character];
@@ -362,7 +362,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     CHECK(character.get(givm::equipment_type::talent).state().count == 5);
     CHECK(character.get(givm::equipment_type::technique).state().count == 6);
     const auto old_weapon = character.get(givm::equipment_type::weapon).id();
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     const auto equipment_index = card_index(action, table, ids.get_id<givm::definition_category::card>("EquipWeaponCard"));
     CHECK(action.card_targets_validate(library, table, equipment_index) == givm::target_validation::valid_incomplete);
     const std::array<givm::card_target_id, 1> targets{ equipped_character };
@@ -381,7 +381,7 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     log.responders.clear();
     log.pause_after_removal = true;
     execution.submitted(action.play_card_with_cached_cost(library, table, zero_random, quote_1, {}));
-    REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(execution, library, table)));
     CHECK(log.events == std::vector<std::string>{ "left:7" });
     CHECK_FALSE(table[old_weapon].is_valid());
     CHECK(table[equipped_character].has(givm::equipment_type::weapon));
@@ -392,8 +392,8 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
     const auto resume = [&](givm_test::executor_driver& branch, givm::table& branch_table)
     {
         log = paused_log;
-        branch.submitted(branch.view_in<givm::execution_state::card_selection>().select(library, branch_table, zero_random, {}));
-        REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
+        branch.submitted(branch.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, branch_table, zero_random, {}); }));
+        REQUIRE(givm_test::is_action_selection(advance(branch, library, branch_table)));
         CHECK(log.events == std::vector<std::string>{ "left:7" });
         CHECK(log.responders == std::vector<std::string>{ "NewWeapon", "Artifact", "Talent", "Technique", "OrdinaryA", "OrdinaryB" });
         CHECK_FALSE(branch_table[old_weapon].is_valid());
@@ -402,19 +402,19 @@ TEST_CASE("equipment cards validate targets and resume replacement after the rem
         const auto new_weapon = branch_table[equipped_character].get(givm::equipment_type::weapon).id();
         CHECK(new_weapon != old_weapon);
         CHECK(branch_table[new_weapon].definition_id() == ids.get_id<givm::definition_category::attachment>("NewWeapon"));
-        const auto next_action = branch.view_in<givm::execution_state::action_selection>();
+        const auto next_action = branch.view_in<givm::execution_state::action_selection0>();
         const auto removal_index = card_index(next_action, branch_table, ids.get_id<givm::definition_category::card>("RemoveWeaponCard"));
         CHECK(next_action.card_targets_validate(library, branch_table, removal_index, targets) == givm::target_validation::valid_complete);
         log.events.clear();
         branch.submitted(next_action.play_card(library, branch_table, zero_random, removal_index, {}, targets));
-        REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(advance(branch, library, branch_table)));
         CHECK(log.events == std::vector<std::string>{ "left:9" });
         CHECK_FALSE(branch_table[equipped_character].has(givm::equipment_type::weapon));
         CHECK_FALSE(branch_table[new_weapon].is_valid());
         CHECK(branch_table[new_weapon].state().count == 9);
-        branch.submitted(branch.view_in<givm::execution_state::action_selection>().declare_round_end(library, branch_table, zero_random));
-        REQUIRE(advance(branch, library, branch_table) == givm::execution_state::action_selection);
-        branch.submitted(branch.view_in<givm::execution_state::action_selection>().declare_round_end(library, branch_table, zero_random));
+        branch.submitted(branch.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.declare_round_end(library, branch_table, zero_random); }));
+        REQUIRE(givm_test::is_action_selection(advance(branch, library, branch_table)));
+        branch.submitted(branch.with_view<givm::execution_state::action_selection0, givm::execution_state::action_selection1>([&](auto view) -> decltype(auto) { return view.declare_round_end(library, branch_table, zero_random); }));
         REQUIRE(advance(branch, library, branch_table) == givm::execution_state::finished);
         branch_table.clean_up();
         CHECK_FALSE(branch_table[equipped_character].has(givm::equipment_type::weapon));
@@ -441,14 +441,14 @@ TEST_CASE("equipment replacement handles a nested replacement in the removal bro
     auto table = load_equipment_scenario(library, ids);
     givm_test::executor_driver execution;
     execution.start(library, table);
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
     log.events.clear();
     log.add_during_removal = true;
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     const auto index = card_index(action, table, ids.get_id<givm::definition_category::card>("EquipWeaponCard"));
     const std::array<givm::card_target_id, 1> targets{ equipped_character };
     execution.submitted(action.play_card(library, table, zero_random, index, {}, targets));
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
     CHECK(log.events == std::vector<std::string>{ "left:7", "left:9" });
     REQUIRE(log.removed.size() == 2);
     CHECK_FALSE(table[log.removed[0]].is_valid());
@@ -469,14 +469,14 @@ TEST_CASE("equipment card input selects a reserve character without changing the
     auto table = load_equipment_scenario(library, ids);
     givm_test::executor_driver execution;
     execution.start(library, table);
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     const auto index = card_index(action, table, ids.get_id<givm::definition_category::card>("EquipWeaponCard"));
     const givm::character_id reserve{ givm::player_id{ 0 }, 1 };
     const std::array<givm::card_target_id, 1> targets{ reserve };
     CHECK(action.card_targets_validate(library, table, index, targets) == givm::target_validation::valid_complete);
     execution.submitted(action.play_card(library, table, zero_random, index, {}, targets));
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
     CHECK_FALSE(table[equipped_character].has(givm::equipment_type::weapon));
     REQUIRE(table[reserve].has(givm::equipment_type::weapon));
     CHECK(table[reserve].get(givm::equipment_type::weapon).character().id() == reserve);

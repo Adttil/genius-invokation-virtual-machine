@@ -26,7 +26,7 @@ enum class select_active_character_both_error {};
 
 ## 注意
 
-尚未接受任何一方的选择时，执行器返回 `execution_state::initial_active_character_selection`，通过相应的[现场视图](../../executor/execution_view/initial_active_character_selection.md)提交任意一方的有效角色。首次选择被接受后返回 `execution_state::remaining_active_character_selection`；此时相应[视图](../../executor/execution_view/remaining_active_character_selection.md)提供已接受的选择和待选玩家，第二次输入提交该玩家的有效角色 ID。两种视图都提供独立的 `selection_validate`，提交及继续推进不会自动检查。
+尚未接受任何一方的选择时，执行器返回 `execution_state::initial_active_character_selection`，通过相应的[现场视图](../../executor/execution_view/initial_active_character_selection.md)提交任意一方的有效角色。首次选择被接受后返回 `execution_state::remaining_active_character_selection0`；此时相应[视图](../../executor/execution_view/remaining_active_character_selection.md)提供已接受的选择和待选玩家，第二次输入提交该玩家的有效角色 ID。两种视图都提供独立的 `selection_validate`，提交及继续推进不会自动检查。
 
 第一次选择被接受后仍未设置出战角色，第二次选择被接受后才同时生效。随后先发出玩家 0 的 [`active_character_changed`](../events/active_character_changed.md)，其响应及后续效果完成后再发出玩家 1 的通知；顺序不受双方提交选择的先后影响。响应若结束对局，后续通知不再进行。
 
@@ -85,7 +85,7 @@ int main()
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, target);
-    const auto remaining = execution.view_in<givm::execution_state::remaining_active_character_selection>();
+    const auto remaining = execution.view_in<givm::execution_state::remaining_active_character_selection0>();
     std::println("首份选择已接受: {}", remaining.first_selected_character() == target);
     std::println("剩余玩家为玩家 0: {}", remaining.player() == givm::player_id{ 0 });
     if(remaining.selection_validate(table, attacker) != givm::remaining_active_character_selection_validation::valid)

@@ -265,7 +265,8 @@ namespace givm
             const definition_name& required_by
         ) const;
 
-        issued_id_map make_issued_id_map(const selection_mask& selected) const;
+        issued_id_map make_issued_id_map(const selection_mask& selected,
+            std::span<const std::string_view> public_tags) const;
 
         template<size_t I>
         void collect_selected_tags(

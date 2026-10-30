@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<dice_selection>](../dice_selection.md) / **remaining**
 
-# givm::execution_view<execution_state::dice_selection>::remaining
+# givm::execution_view<execution_state::dice_selection_both>::remaining
 
 定义于头文件 `<givm/runtime.hpp>`
 

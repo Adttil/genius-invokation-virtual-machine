@@ -15,6 +15,7 @@ class tag_mask;
 |  |  |
 | --- | --- |
 | [(构造函数)](tag_mask/constructor.md) | 构造一个空标签集合 |
+| [`first`](tag_mask/first.md) | 借用标签位集前缀 |
 | [`set`](tag_mask/set.md) | 设置或清除一个标签 |
 | [`has`](tag_mask/has.md) | 检查一个标签 |
 | [`has_all`](tag_mask/has_all.md) | 检查是否包含所有标签 |

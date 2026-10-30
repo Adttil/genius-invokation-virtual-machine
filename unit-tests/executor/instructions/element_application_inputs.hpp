@@ -127,11 +127,11 @@ TEST_CASE("element application inputs resume nested responses with the same resu
     executor.start(library, table);
     zero_random random;
     auto state = executor.advance(library, table, random);
-    REQUIRE(state == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(state));
     CHECK(log.order == std::vector{ 1, 2 });
     CHECK(table[target_id].state().aura == givm::element_aura::dendro);
     CHECK(table[target_id].state().health == 10);
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(log.order == std::vector{ 1, 2, 3 });
     CHECK(table[target_id].state().aura == givm::element_aura::none);

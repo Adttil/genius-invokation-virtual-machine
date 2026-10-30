@@ -167,8 +167,8 @@ TEST_CASE("dying broadcasts allow the target's attachment to revive before defea
     }
     if(not revive && has_reserve)
     {
-        REQUIRE(state == givm::execution_state::active_character_selection);
-        const auto view = executor.view_in<givm::execution_state::active_character_selection>();
+        REQUIRE(givm_test::is_active_character_selection(state));
+        const auto view = executor.view_in<givm::execution_state::active_character_selection1>();
         CHECK(view.player() == victim.player_id());
         CHECK(view.selection_validate(table, victim) == givm::active_character_selection_validation::defeated_character);
         executor.submitted(view.select(library, table, random, { victim.player_id(), 1 }));
@@ -215,17 +215,17 @@ TEST_CASE("dying response inputs survive suspension and independent executor cop
         REQUIRE(state == givm::execution_state::health_reduced);
         state = executor.advance(library, table, random);
     }
-    REQUIRE(state == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(state));
     CHECK(log.order == std::vector<int>{ 1, 2 });
     CHECK(log.after_health.empty());
     CHECK(table[victim].state().health == 0);
     auto copied_executor = executor;
     auto copied_table = table;
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::finished);
     CHECK(table[victim].state().health == 2);
     CHECK(copied_table[victim].state().health == 0);
-    copied_executor.submitted(copied_executor.view_in<givm::execution_state::card_selection>().select(library, copied_table, random, {}));
+    copied_executor.submitted(copied_executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, copied_table, random, {}); }));
     REQUIRE(copied_executor.advance(library, copied_table, random) == givm::execution_state::finished);
     CHECK(copied_table[victim].state().health == 2);
     CHECK(copied_table[victim].state().energy == 2);
@@ -267,7 +267,7 @@ TEST_CASE("confirmed defeat notifications follow cleanup and resume before damag
         CHECK(table[victim].state().aura == givm::element_aura::hydro);
         state = executor.advance(library, table, random);
     }
-    REQUIRE(state == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(state));
     CHECK(log.order == std::vector<int>{ 1, 2 });
     CHECK(log.defeated == std::vector{ victim });
     CHECK(log.after_health == std::vector<std::uint32_t>{ 0 });
@@ -276,10 +276,10 @@ TEST_CASE("confirmed defeat notifications follow cleanup and resume before damag
     CHECK(table[victim].attachments().empty());
     auto copied_executor = executor;
     auto copied_table = table;
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     REQUIRE(givm_test::advance_selecting_first_alive(executor, library, table, random) == givm::execution_state::finished);
     CHECK(log.after_health == std::vector<std::uint32_t>{ 0 });
-    copied_executor.submitted(copied_executor.view_in<givm::execution_state::card_selection>().select(library, copied_table, random, {}));
+    copied_executor.submitted(copied_executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, copied_table, random, {}); }));
     REQUIRE(givm_test::advance_selecting_first_alive(copied_executor, library, copied_table, random) == givm::execution_state::finished);
     CHECK(log.after_health == std::vector<std::uint32_t>{ 0 });
     CHECK(log.defeated == std::vector{ victim });

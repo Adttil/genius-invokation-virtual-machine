@@ -142,6 +142,7 @@ namespace givm
 {
     definition_library::definition_library(const issued_id_map& id_map, const reaction_definition_names& basics)
     : program_(sizeof(detail::execute_fn), 0), tag_names_(id_map.tag_names().begin(), id_map.tag_names().end()),
+      public_tag_count_(id_map.public_tag_count()),
       default_reactions_{}
     {
         for(std::size_t index = 0; index != elemental_reaction_count; ++index)
@@ -415,22 +416,24 @@ namespace givm
 
     std::expected<definition_compile_result, std::vector<compile_error>> definition_library::compile(
         const definition_source_library& sources, const reaction_definition_names& basics,
-        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode)
+        std::span<const any_command> initialization_program, std::span<const any_command> round_program, compile_mode mode,
+        std::span<const std::string_view> public_tags)
     {
         std::vector<source_preparation_error> preparation_errors;
         sources.resolve_selection({}, basics, preparation_errors);
         return compile_prepared(sources, basics,
-            sources.make_issued_id_map(sources.make_full_selection()),
+            sources.make_issued_id_map(sources.make_full_selection(), public_tags),
             initialization_program, round_program, mode, std::move(preparation_errors));
     }
 
     std::expected<definition_compile_result, std::vector<compile_error>> definition_library::compile(
         const definition_source_library& sources, const reaction_definition_names& basics,
         const definition_selection& selection, std::span<const any_command> initialization_program,
-        std::span<const any_command> round_program, compile_mode mode)
+        std::span<const any_command> round_program, compile_mode mode,
+        std::span<const std::string_view> public_tags)
     {
         std::vector<source_preparation_error> preparation_errors;
-        auto ids = sources.make_issued_id_map(sources.resolve_selection(selection, basics, preparation_errors));
+        auto ids = sources.make_issued_id_map(sources.resolve_selection(selection, basics, preparation_errors), public_tags);
         return compile_prepared(sources, basics, std::move(ids),
             initialization_program, round_program, mode, std::move(preparation_errors));
     }

@@ -87,7 +87,7 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 2);
     CHECK(applications == 0);
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(executor.advance(library, table, random)));
     CHECK(applications == 1);
     CHECK(table[target].state().health == 18);
     CHECK(table.state().round_number == 1);
@@ -96,7 +96,7 @@ TEST_CASE("a copied damage group resumes after the selected frozen definition's 
     auto copied_table = table;
     const auto finish = [&](givm_test::executor_driver& running, givm::table& current)
     {
-        running.submitted(running.view_in<givm::execution_state::card_selection>().select(library, current, random, {}));
+        running.submitted(running.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, current, random, {}); }));
         REQUIRE(running.advance(library, current, random) == givm::execution_state::health_reduced);
         const auto next = running.view_in<givm::execution_state::health_reduced>();
         CHECK(next.target() == target);

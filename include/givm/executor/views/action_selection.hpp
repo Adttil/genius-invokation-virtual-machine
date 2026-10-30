@@ -32,7 +32,7 @@ namespace givm
         friend bool operator==(action_cost_id, action_cost_id) = default;
 
     private:
-        friend class execution_view<execution_state::action_selection>;
+        template<execution_state, role> friend class execution_view;
         explicit action_cost_id(std::size_t offset
 #ifndef NDEBUG
             , std::size_t window, std::size_t quote
@@ -494,8 +494,9 @@ namespace givm
         return "Unknown elemental tuning validation result.";
     }
 
-    template<>
-    class execution_view<execution_state::action_selection>
+    template<execution_state State>
+    requires (State == execution_state::action_selection0 || State == execution_state::action_selection1)
+    class execution_view<State, role::full>
     {
         constexpr auto window() const noexcept
         {
@@ -503,6 +504,15 @@ namespace givm
         }
 
     public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = role::full;
+        static constexpr bool accepts_input = true;
+
+
+        static constexpr player_id player() noexcept
+        {
+            return player_id{ (static_cast<unsigned>(State) & 1u) };
+        }
 
         bool is_controlled(const definition_library& library, const table& card_table) const noexcept(detail::view_checks_disabled)
         {
@@ -1103,6 +1113,7 @@ namespace givm
 
     private:
         friend class executor;
+        template<execution_state, role> friend class execution_view;
         constexpr explicit execution_view(executor& owner
 #ifndef NDEBUG
             , std::size_t version
@@ -1144,7 +1155,7 @@ namespace givm
 #ifndef NDEBUG
         void validate_view() const
         {
-            executor_->template validate_view<execution_state::action_selection>(version_);
+            executor_->template validate_view<State>(version_);
         }
 
 
@@ -1256,6 +1267,152 @@ namespace givm
                 && largest_remaining_group + (omni - required_omni) >= requirement.same;
         }
 
+    };
+
+    template<execution_state State, role Role>
+    requires ((State == execution_state::action_selection0 || State == execution_state::action_selection1) && Role != role::full && detail::accepts_input<State, Role>)
+    class execution_view<State, Role> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = true;
+        using base::player;
+        using base::is_controlled;
+        using base::switch_target_count;
+        using base::switch_target;
+        using base::card_count;
+        using base::card_id;
+        using base::skill_count;
+        using base::skill_id;
+        using base::has_technique;
+        using base::technique_id;
+        using base::calculate_switch_cost;
+        using base::switch_cost;
+        using base::switch_payment_validate;
+        using base::calculate_card_cost;
+        using base::card_cost;
+        using base::card_payment_validate;
+        using base::card_targets_validate;
+        using base::calculate_skill_cost;
+        using base::skill_cost;
+        using base::skill_payment_validate;
+        using base::skill_targets_validate;
+        using base::calculate_technique_cost;
+        using base::technique_cost;
+        using base::technique_payment_validate;
+        using base::technique_targets_validate;
+        using base::elemental_tuning_card_validate;
+        using base::elemental_tuning_dice_validate;
+        using base::switch_active_character_with_cached_cost;
+        using base::switch_active_character;
+        using base::play_card_with_cached_cost;
+        using base::play_card;
+        using base::use_skill_with_cached_cost;
+        using base::use_skill;
+        using base::use_technique_with_cached_cost;
+        using base::use_technique;
+        using base::elemental_tuning;
+        using base::declare_round_end;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
+    };
+
+    template<execution_state State>
+    requires (State == execution_state::action_selection0 || State == execution_state::action_selection1)
+    class execution_view<State, role::spectator> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = role::spectator;
+        static constexpr bool accepts_input = false;
+        using base::player;
+        using base::is_controlled;
+        using base::switch_target_count;
+        using base::switch_target;
+        using base::card_count;
+        using base::card_id;
+        using base::skill_count;
+        using base::skill_id;
+        using base::has_technique;
+        using base::technique_id;
+        using base::calculate_switch_cost;
+        using base::switch_cost;
+        using base::switch_payment_validate;
+        using base::calculate_card_cost;
+        using base::card_cost;
+        using base::card_payment_validate;
+        using base::card_targets_validate;
+        using base::calculate_skill_cost;
+        using base::skill_cost;
+        using base::skill_payment_validate;
+        using base::skill_targets_validate;
+        using base::calculate_technique_cost;
+        using base::technique_cost;
+        using base::technique_payment_validate;
+        using base::technique_targets_validate;
+        using base::elemental_tuning_card_validate;
+        using base::elemental_tuning_dice_validate;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
+    };
+
+    template<execution_state State, role Role>
+    requires ((State == execution_state::action_selection0 || State == execution_state::action_selection1) && detail::player_role<Role> && !detail::accepts_input<State, Role>)
+    class execution_view<State, Role> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = false;
+        using base::player;
+        using base::is_controlled;
+        using base::switch_target_count;
+        using base::switch_target;
+        using base::card_count;
+        using base::card_id;
+        using base::skill_count;
+        using base::skill_id;
+        using base::has_technique;
+        using base::technique_id;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
     };
 }
 

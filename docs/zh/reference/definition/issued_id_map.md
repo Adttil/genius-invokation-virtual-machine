@@ -58,3 +58,7 @@ int main()
 非料理治疗牌数量: 1
 包含恢复药剂: true
 ```
+
+## 公开标签
+
+[`public_tag_count`](issued_id_map/public_tag_count.md) 返回公开标签前缀的长度。

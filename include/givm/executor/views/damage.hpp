@@ -10,9 +10,10 @@
 namespace givm
 {
     template<>
-    class execution_view<execution_state::health_reduced>
+    class execution_view<execution_state::health_reduced, role::full>
     {
         friend class executor;
+        template<execution_state, role> friend class execution_view;
         constexpr explicit execution_view(executor& owner
 #ifndef NDEBUG
             , std::size_t version
@@ -37,6 +38,10 @@ namespace givm
         }
 
     public:
+        static constexpr execution_state state = execution_state::health_reduced;
+        static constexpr givm::role access_role = role::full;
+        static constexpr bool accepts_input = false;
+
         const damage_source_id& source() const noexcept(detail::view_checks_disabled) { return observation().source; }
         character_id target() const noexcept(detail::view_checks_disabled) { return observation().target; }
         std::uint32_t value() const noexcept(detail::view_checks_disabled) { return observation().value; }
@@ -52,6 +57,36 @@ namespace givm
 #endif
             return executor_->advance(library, card_table, random);
         }
+    };
+
+    template<role Role>
+    requires (Role != role::full)
+    class execution_view<execution_state::health_reduced, Role> : private execution_view<execution_state::health_reduced, role::full>
+    {
+        using base = execution_view<execution_state::health_reduced, role::full>;
+
+    public:
+        static constexpr execution_state state = execution_state::health_reduced;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = false;
+        using base::source;
+        using base::target;
+        using base::value;
+        using base::type;
+        using base::flags;
+        using base::reaction;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
     };
 }
 

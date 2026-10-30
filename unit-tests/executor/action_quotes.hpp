@@ -196,9 +196,8 @@ TEST_CASE("target quotations retain distinct costs and inputs in copied action w
     auto table = make_table(library, ids, dice(0, 0, 3));
     givm::executor execution;
     zero_random random;
-    REQUIRE(advance(execution, library, table, random, execution.start(library, table).resume(library, table, random))
-        == givm::execution_state::action_selection);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table, random, execution.start(library, table).resume(library, table, random))));
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     auto unquoted_copy = execution;
     const targets_t first_targets{ original, {} }, second_targets{ next, original };
     const auto first_quote = action.calculate_card_cost(library, table, 0, first_targets);
@@ -216,16 +215,16 @@ TEST_CASE("target quotations retain distinct costs and inputs in copied action w
         auto branch_table = table;
         log.order.clear();
         const auto quote = second ? second_quote : first_quote;
-        REQUIRE(advance(branch, library, branch_table, random,
-            branch.view_in<givm::execution_state::action_selection>().play_card_with_cached_cost(
-                library, branch_table, random, quote, dice(0, 0, second ? 2 : 1))) == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(advance(branch, library, branch_table, random,
+            branch.view_in<givm::execution_state::action_selection0>().play_card_with_cached_cost(
+                library, branch_table, random, quote, dice(0, 0, second ? 2 : 1)))));
         CHECK(log.effect_targets == (second ? second_targets : first_targets));
         CHECK(log.effect_energy == (second ? 2 : 1));
         CHECK(log.effect_dice == dice(0, 0, second ? 1 : 2));
         CHECK(log.order == std::vector<std::string>{ "effect", "dice", "played" });
         CHECK(log.quoted.size() == 2);
 #ifndef NDEBUG
-        REQUIRE_THROWS_AS(branch.view_in<givm::execution_state::action_selection>().card_cost(quote),
+        REQUIRE_THROWS_AS(branch.view_in<givm::execution_state::action_selection0>().card_cost(quote),
             givm::view_input_error<givm::action_cost_cache_error>);
 #endif
     }
@@ -234,7 +233,7 @@ TEST_CASE("target quotations retain distinct costs and inputs in copied action w
 #ifndef NDEBUG
     REQUIRE_THROWS_AS(action.calculate_card_cost(library, table, 0, std::span<const givm::card_target_id>{ first_targets }.first(1)),
         givm::view_input_error<givm::action_cost_cache_error>);
-    const auto other_action = unquoted_copy.view_in<givm::execution_state::action_selection>();
+    const auto other_action = unquoted_copy.view_in<givm::execution_state::action_selection0>();
     REQUIRE_THROWS_AS(other_action.card_cost(first_quote), givm::view_input_error<givm::action_cost_cache_error>);
     const auto other_quote = other_action.calculate_card_cost(library, table, 0, second_targets);
     REQUIRE_THROWS_AS(other_action.card_cost(first_quote), givm::view_input_error<givm::action_cost_cache_error>);
@@ -255,13 +254,12 @@ TEST_CASE("payment settles discard chains before saturating selected colors and 
     auto table = make_table(library, ids, dice(2, 1, 1));
     givm::executor execution;
     zero_random random;
-    REQUIRE(advance(execution, library, table, random, execution.start(library, table).resume(library, table, random))
-        == givm::execution_state::action_selection);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table, random, execution.start(library, table).resume(library, table, random))));
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     const auto quote = action.calculate_card_cost(library, table, 0);
     REQUIRE(action.card_payment_validate(table, quote, dice(2, 1, 0)) == givm::card_payment_validation::valid);
-    REQUIRE(advance(execution, library, table, random,
-        action.play_card_with_cached_cost(library, table, random, quote, dice(2, 1, 0))) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(advance(execution, library, table, random,
+        action.play_card_with_cached_cost(library, table, random, quote, dice(2, 1, 0)))));
     CHECK(table[player].hand_card_count() == 1);
     CHECK(table[player].state().dice == dice(2, 1, 1));
     auto copy = execution;
@@ -271,9 +269,8 @@ TEST_CASE("payment settles discard chains before saturating selected colors and 
         auto& current = copied ? copy : execution;
         auto& current_table = copied ? copy_table : table;
         log.order.clear(); log.removed.clear(); log.energy.clear();
-        REQUIRE(advance(current, library, current_table, random,
-            current.view_in<givm::execution_state::card_selection>().select(library, current_table, random, {}))
-            == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(advance(current, library, current_table, random,
+            current.view_in<givm::execution_state::card_selection0>().select(library, current_table, random, {}))));
         CHECK(log.order == std::vector<std::string>{ "discard-chain", "dice", "effect", "dice", "played" });
         CHECK(log.removed == std::vector<givm::dice_counts>{ dice(1, 1, 0), dice(extra ? 2 : 1, 0, 0) });
         CHECK(log.effect_dice == dice(extra ? 1 : 0, 0, 1));
@@ -297,12 +294,10 @@ TEST_CASE("a terminal cached fee stops before payment and the selected card effe
     auto table = make_table(library, ids, dice(2, 1, 1));
     givm::executor execution;
     zero_random random;
-    REQUIRE(advance(execution, library, table, random, execution.start(library, table).resume(library, table, random))
-        == givm::execution_state::action_selection);
-    REQUIRE(advance(execution, library, table, random,
-        execution.view_in<givm::execution_state::action_selection>().play_card(library, table, random, 0, dice(2, 1, 0)))
-        == givm::execution_state::card_selection);
-    REQUIRE(execution.view_in<givm::execution_state::card_selection>().select(library, table, random, {})
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table, random, execution.start(library, table).resume(library, table, random))));
+    REQUIRE(givm_test::is_card_selection(advance(execution, library, table, random,
+        execution.view_in<givm::execution_state::action_selection0>().play_card(library, table, random, 0, dice(2, 1, 0)))));
+    REQUIRE(execution.view_in<givm::execution_state::card_selection0>().select(library, table, random, {})
         == givm::execution_state::finished);
     CHECK(table[player].state().dice == dice(2, 1, 1));
     CHECK(table[original].state().energy == 3);

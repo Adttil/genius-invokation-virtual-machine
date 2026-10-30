@@ -13,3 +13,7 @@ constexpr std::span<const deck_card_id> cards() const noexcept(/* Release 为 tr
 ## 注意
 
 Debug 下，视图不属于当前现场或已经失效时抛出 [`execution_view_error`](../../execution_view_error.md)；Release 保持 `noexcept` 且不检查这些条件。
+
+## 已公开卡牌的实体读取
+
+`cards(const table&)` 返回借用牌桌的只读卡牌视图范围，可读取本批已经舍弃卡牌的定义。范围沿用本现场生命周期，不会开放仍在牌堆中的卡牌读取。

@@ -26,18 +26,20 @@ namespace givm
 
     class executor;
 
+    template<execution_state State, role Role = role::full>
+    class execution_view;
+
     template<execution_state State>
-    class execution_view
+    requires (State == execution_state::initialized
+        || State == execution_state::initial_active_characters_selected
+        || State == execution_state::round_started
+        || State == execution_state::action_started
+        || State == execution_state::round_end_declared
+        || State == execution_state::round_ending)
+    class execution_view<State, role::full>
     {
-        static_assert(
-            State == execution_state::initialized
-            || State == execution_state::initial_active_characters_selected
-            || State == execution_state::round_started
-            || State == execution_state::action_started
-            || State == execution_state::round_end_declared
-            || State == execution_state::round_ending
-        );
         friend class executor;
+        template<execution_state, role> friend class execution_view;
         constexpr explicit execution_view(executor& owner
 #ifndef NDEBUG
             , std::size_t version
@@ -54,6 +56,10 @@ namespace givm
 #endif
 
     public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = role::full;
+        static constexpr bool accepts_input = false;
+
         template<class TRandom>
         execution_state resume(this const auto& self, const definition_library& library, table& card_table, TRandom& random)
         {
@@ -62,6 +68,29 @@ namespace givm
 #endif
             return self.executor_->advance(library, card_table, random);
         }
+    };
+
+    template<execution_state State, role Role>
+    class execution_view : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = false;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
     };
 }
 
@@ -272,13 +301,13 @@ namespace givm
             return view_in<execution_state::initialized>();
         }
 
-        template<execution_state State>
-        constexpr execution_view<State> view_in() noexcept(detail::view_checks_disabled)
+        template<execution_state State, role Role = role::full>
+        constexpr execution_view<State, Role> view_in() noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
             validate_view<State>(version_);
 #endif
-            return execution_view<State>{ *this
+            return execution_view<State, Role>{ *this
 #ifndef NDEBUG
                 , version_
 #endif
@@ -286,7 +315,7 @@ namespace givm
         }
 
     private:
-        template<execution_state> friend class execution_view;
+        template<execution_state, role> friend class execution_view;
 
 #ifndef NDEBUG
         constexpr void invalidate_views() noexcept
@@ -338,8 +367,8 @@ namespace givm
 #endif
     };
 
-    template<>
-    class execution_view<execution_state::finished>
+    template<role Role>
+    class execution_view<execution_state::finished, Role>
     {
         friend class executor;
         constexpr explicit execution_view(executor& owner
@@ -357,6 +386,10 @@ namespace givm
 #endif
 
     public:
+        static constexpr execution_state state = execution_state::finished;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = false;
+
         constexpr game_result result() const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG

@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **use_skill**
 
-# givm::execution_view<execution_state::action_selection>::use_skill
+# givm::execution_view<execution_state::action_selection0>::use_skill
 
 定义于头文件 `<givm/runtime.hpp>`
 
@@ -131,8 +131,8 @@ int main()
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
-    auto state = execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    auto state = execution.view_in<givm::execution_state::remaining_active_character_selection1>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     std::println("技能候选数量: {}", action.skill_count());
     const auto user = action.skill_id(0).character_id();
     const auto quote_1 = action.calculate_skill_cost(library, table, 0);
@@ -142,9 +142,13 @@ int main()
         action.skill_targets_validate(library, table, 0) == givm::target_validation::valid_complete);
     state = action.use_skill_with_cached_cost(library, table, random, quote_1, {});
     std::println("使用后的充能: {}", table[user].state().energy);
-    while(state == givm::execution_state::action_selection)
+    while(state == givm::execution_state::action_selection0
+        || state == givm::execution_state::action_selection1)
     {
-        state = execution.view_in<givm::execution_state::action_selection>().declare_round_end(library, table, random);
+        if(state == givm::execution_state::action_selection0)
+            state = execution.view_in<givm::execution_state::action_selection0>().declare_round_end(library, table, random);
+        else
+            state = execution.view_in<givm::execution_state::action_selection1>().declare_round_end(library, table, random);
     }
 }
 ```

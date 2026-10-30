@@ -1,12 +1,13 @@
 [givm](../../../reference.md) / [执行](../../executor.md) / [execution_view](../execution_view.md) / **execution_view<dice_selection>**
 
-# givm::execution_view<execution_state::dice_selection>
+# givm::execution_view<execution_state::dice_selection_both>
 
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<>
-class execution_view<execution_state::dice_selection>;
+template<execution_state State, role Role>
+requires (State == execution_state::dice_selection_both || State == execution_state::dice_selection0 || State == execution_state::dice_selection1)
+class execution_view<State, Role>;
 ```
 
 双方投骰阶段的重投选择现场视图，包含玩家、当前选择及剩余重投机会。
@@ -32,3 +33,5 @@ class execution_view<execution_state::dice_selection>;
 | --- | --- |
 | [`executor::view_in`](../executor/view_in.md) | 取得对应执行现场的视图 |
 | [`execution_view<dice_reroll_selection>`](dice_reroll_selection.md) | 单方重投命令的选择现场视图 |
+
+对应的 `dice_selection1` 具有相同现场结构，关联玩家由状态静态确定。模板身份默认使用全权；受限接口见 [`execution_view`](../execution_view.md#角色与接口)。

@@ -18,6 +18,8 @@ namespace givm
 {
     class issued_id_map
     {
+        friend class definition_source_library;
+
     public:
         template<definition_category TDefinition>
         using id_type = definition_id<TDefinition>;
@@ -73,6 +75,8 @@ namespace givm
         {
             return tag_masks_[static_cast<std::size_t>(TDefinition)].size();
         }
+
+        std::size_t public_tag_count() const noexcept { return public_tag_count_; }
 
         bool has_tag(std::string_view name) const
         {
@@ -166,6 +170,7 @@ namespace givm
         std::array<name_map_type, detail::definition_categories.size()> name_to_ids_;
         name_map_type tag_to_id_;
         std::vector<std::string_view> tag_names_;
+        std::size_t public_tag_count_ = 0;
     };
 }
 

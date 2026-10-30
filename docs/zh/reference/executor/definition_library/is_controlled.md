@@ -101,11 +101,11 @@ int main()
     const auto initialized = execution.start(library, table);
     initialized.resume(library, table, random);
     execution.view_in<givm::execution_state::initial_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 0 }, 0 });
-    execution.view_in<givm::execution_state::remaining_active_character_selection>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
+    execution.view_in<givm::execution_state::remaining_active_character_selection1>().select(library, table, random, givm::character_id{ givm::player_id{ 1 }, 0 });
     std::println("投骰时出战角色受控: {}", library.is_controlled(table[target]));
     std::println("冻结属于控制: {}", library.is_control(ids.get_id<givm::definition_category::attachment>(givm::genshin_impact::frozen_3_3_0.name())));
-    execution.view_in<givm::execution_state::dice_selection>().select(library, table, random, {});
-    execution.view_in<givm::execution_state::dice_selection>().select(library, table, random, {});
+    execution.view_in<givm::execution_state::dice_selection_both>().select(library, table, random, {});
+    execution.view_in<givm::execution_state::dice_selection1>().select(library, table, random, {});
     std::println("回合开始通知后仍受控: {}", library.is_controlled(table[target]));
 }
 ```

@@ -511,7 +511,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
         CHECK(std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses()) == (target == first ? 0 : 1));
         CHECK(log.values.empty());
     }
-    REQUIRE(executor.advance(library, table, random) == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(executor.advance(library, table, random)));
     CHECK(log.repeated == 1);
     CHECK(log.values.empty());
     REQUIRE(std::ranges::distance(table[givm::player_id{ 0 }].combat_statuses()) == 1);
@@ -519,7 +519,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     CHECK(table[second].state().health == 28);
     auto copied_executor = executor;
     auto copied_table = table;
-    executor.submitted(executor.view_in<givm::execution_state::card_selection>().select(library, table, random, {}));
+    executor.submitted(executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, random, {}); }));
     REQUIRE(executor.advance(library, table, random) == givm::execution_state::health_reduced);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().target() == first);
     CHECK(executor.view_in<givm::execution_state::health_reduced>().value() == 1);
@@ -531,7 +531,7 @@ TEST_CASE("reaction regeneration resumes once before the next hit and copied gro
     CHECK(log.repeated == 1);
     log.values.clear();
     log.statuses_at_completion.clear();
-    copied_executor.submitted(copied_executor.view_in<givm::execution_state::card_selection>().select(library, copied_table, random, {}));
+    copied_executor.submitted(copied_executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, copied_table, random, {}); }));
     REQUIRE(copied_executor.advance(library, copied_table, random) == givm::execution_state::health_reduced);
     CHECK(copied_executor.view_in<givm::execution_state::health_reduced>().target() == first);
     CHECK(copied_executor.view_in<givm::execution_state::health_reduced>().value() == 1);

@@ -203,10 +203,10 @@ TEST_CASE("equipment target queries discount only the uniquely applicable talent
     }, { .characters = { other_id } });
     executor_driver executor;
     executor.start(library, table);
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     REQUIRE(log.initialized);
     CHECK(log.ordinary_queries == 6);
-    const auto action = executor.view_in<givm::execution_state::action_selection>();
+    const auto action = executor.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.card_count() == 3);
     const givm::character_id target{ givm::player_id{ 0 }, active_only ? 0u : 1u };
     const std::array<givm::card_target_id, 1> targets{ target };
@@ -226,7 +226,7 @@ TEST_CASE("equipment target queries discount only the uniquely applicable talent
     givm::dice_counts payment;
     payment[givm::elemental_dice::omni] = 1;
     executor.submitted(action.play_card_with_cached_cost(library, table, omni_random, quote_1, payment));
-    REQUIRE(advance(executor, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(executor, library, table)));
     CHECK(log.discounts == 1);
     CHECK(log.card_effects == 1);
     CHECK(table[givm::player_id{ 0 }].state().dice.total() == 3);

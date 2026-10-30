@@ -29,22 +29,24 @@ namespace givm
         return "unknown selection validation";
     }
 
-    template<>
-    class execution_view<execution_state::remaining_active_character_selection>
+    template<execution_state State>
+    requires (State == execution_state::remaining_active_character_selection0 || State == execution_state::remaining_active_character_selection1)
+    class execution_view<State, role::full>
     {
     public:
-        constexpr player_id player() const noexcept(detail::view_checks_disabled)
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = role::full;
+        static constexpr bool accepts_input = true;
+
+        static constexpr player_id player() noexcept
         {
-#ifndef NDEBUG
-            executor_->validate_view<execution_state::remaining_active_character_selection>(version_);
-#endif
-            return other_player(first_selected_character().player_id());
+            return player_id{ (static_cast<unsigned>(State) & 1u) };
         }
 
         constexpr character_id first_selected_character() const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
-            executor_->validate_view<execution_state::remaining_active_character_selection>(version_);
+            executor_->validate_view<State>(version_);
 #endif
             return get<1>(std::as_const(executor_->context_.stack()).top<std::size_t, character_id>());
         }
@@ -54,7 +56,7 @@ namespace givm
         ) const noexcept(detail::view_checks_disabled)
         {
 #ifndef NDEBUG
-            executor_->validate_view<execution_state::remaining_active_character_selection>(version_);
+            executor_->validate_view<State>(version_);
 #endif
             if(character.player_id().index() >= 2)
             {
@@ -79,7 +81,7 @@ namespace givm
         ) const
         {
 #ifndef NDEBUG
-            executor_->validate_view<execution_state::remaining_active_character_selection>(version_);
+            executor_->validate_view<State>(version_);
             const auto result = selection_validate(card_table, character);
             if(result != remaining_active_character_selection_validation::valid)
                 throw view_input_error{ "remaining_active_character_selection.select", result };
@@ -90,6 +92,7 @@ namespace givm
 
     private:
         friend class executor;
+        template<execution_state, role> friend class execution_view;
         constexpr explicit execution_view(executor& owner
 #ifndef NDEBUG
             , std::size_t version
@@ -103,6 +106,60 @@ namespace givm
 #ifndef NDEBUG
         std::size_t version_;
 #endif
+    };
+
+    template<execution_state State, role Role>
+    requires ((State == execution_state::remaining_active_character_selection0 || State == execution_state::remaining_active_character_selection1) && Role != role::full && detail::accepts_input<State, Role>)
+    class execution_view<State, Role> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = true;
+        using base::player;
+        using base::selection_validate;
+        using base::select;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
+    };
+
+    template<execution_state State, role Role>
+    requires ((State == execution_state::remaining_active_character_selection0 || State == execution_state::remaining_active_character_selection1) && Role != role::full && !detail::accepts_input<State, Role>)
+    class execution_view<State, Role> : private execution_view<State, role::full>
+    {
+        using base = execution_view<State, role::full>;
+
+    public:
+        static constexpr execution_state state = State;
+        static constexpr givm::role access_role = Role;
+        static constexpr bool accepts_input = false;
+        using base::player;
+        using base::first_selected_character;
+        using base::selection_validate;
+
+    private:
+        friend class executor;
+        constexpr explicit execution_view(executor& owner
+#ifndef NDEBUG
+            , std::size_t version
+#endif
+        ) noexcept : base{ owner
+#ifndef NDEBUG
+            , version
+#endif
+        } {}
     };
 }
 

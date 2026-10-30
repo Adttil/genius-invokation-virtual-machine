@@ -132,10 +132,9 @@ TEST_CASE("payment previews cache nested deferred inputs once and settle each re
     auto table = make_table(library, ids);
     givm::executor execution;
     counting_random random;
-    REQUIRE(finish_observation(execution, library, table, random, execution.start(library, table).resume(library, table, random))
-        == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(finish_observation(execution, library, table, random, execution.start(library, table).resume(library, table, random))));
     REQUIRE(random.calls == 0);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.switch_target_count() == 1);
     const auto quote_1 = action.calculate_switch_cost(library, table, 0);
     CHECK(action.switch_cost(quote_1).requirement.dice_requirement.any == 0);
@@ -148,9 +147,8 @@ TEST_CASE("payment previews cache nested deferred inputs once and settle each re
     CHECK(table[second].state().energy == 0);
     CHECK(table[givm::player_id{ 0 }].state().active_character == first);
 
-    REQUIRE(finish_observation(execution, library, table, random,
-        action.switch_active_character_with_cached_cost(library, table, random, quote_1, {}))
-        == givm::execution_state::card_selection);
+    REQUIRE(givm_test::is_card_selection(finish_observation(execution, library, table, random,
+        action.switch_active_character_with_cached_cost(library, table, random, quote_1, {}))));
     CHECK(log.active.empty());
     CHECK(random.calls == 0);
     auto copied = execution;
@@ -161,18 +159,16 @@ TEST_CASE("payment previews cache nested deferred inputs once and settle each re
         counting_random branch_random;
         log.active.clear();
         log.energy.clear();
-        REQUIRE(finish_observation(current, library, current_table, branch_random,
-            current.view_in<givm::execution_state::card_selection>().select(library, current_table, branch_random, {}))
-            == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(finish_observation(current, library, current_table, branch_random,
+            current.view_in<givm::execution_state::card_selection0>().select(library, current_table, branch_random, {}))));
         CHECK(log.active == std::vector{ second });
         CHECK(log.energy == std::vector{ std::array<std::uint32_t, 2>{ target_count, 0 } });
         CHECK(current_table[first].state().energy == target_count);
         CHECK(current_table[second].state().energy == 0);
         CHECK(branch_random.calls == 1);
 
-        REQUIRE(finish_observation(current, library, current_table, branch_random,
-            current.view_in<givm::execution_state::card_selection>().select(library, current_table, branch_random, {}))
-            == givm::execution_state::action_selection);
+        REQUIRE(givm_test::is_action_selection(finish_observation(current, library, current_table, branch_random,
+            current.view_in<givm::execution_state::card_selection0>().select(library, current_table, branch_random, {}))));
         CHECK(log.active == std::vector{ second, first, second });
         CHECK(log.energy == std::vector{
             std::array<std::uint32_t, 2>{ target_count, 0 },
@@ -201,10 +197,10 @@ TEST_CASE("payment input validation rejects a dynamic return marker and a nested
     auto table = make_table(library, ids);
     givm::executor execution;
     counting_random random;
-    REQUIRE(execution.start(library, table).resume(library, table, random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(execution.start(library, table).resume(library, table, random)));
     try
     {
-        quote_1 = execution.view_in<givm::execution_state::action_selection>().calculate_switch_cost(library, table, 0);
+        quote_1 = execution.view_in<givm::execution_state::action_selection0>().calculate_switch_cost(library, table, 0);
         FAIL("invalid cached inputs must be rejected during quotation");
     }
     catch(const givm::program_input_error& exception)

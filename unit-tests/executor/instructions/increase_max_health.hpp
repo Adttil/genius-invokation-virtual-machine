@@ -97,7 +97,7 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
     executor.start(library, table);
     auto random = [] { return std::uint32_t{ 0 }; };
     const auto result = executor.advance(library, table, random);
-    REQUIRE(result == (log.pause ? givm::execution_state::card_selection : givm::execution_state::finished));
+    REQUIRE(result == (log.pause ? givm::execution_state::card_selection0 : givm::execution_state::finished));
     const auto increase = std::min(log.value, std::numeric_limits<std::uint32_t>::max() - log.initial.max_health);
     CHECK(table[target].state().max_health == log.initial.max_health + increase);
     CHECK(table[target].state().health == log.initial.health + increase);
@@ -107,7 +107,7 @@ TEST_CASE("increasing maximum health restores the same amount without healing ca
         auto copy_table = table;
         for(auto [running, current] : { std::pair{ &executor, &table }, std::pair{ &copy_executor, &copy_table } })
         {
-            running->submitted(running->view_in<givm::execution_state::card_selection>().select(library, *current, random, {}));
+            running->submitted(running->view_in<givm::execution_state::card_selection0>().select(library, *current, random, {}));
             REQUIRE(running->advance(library, *current, random) == givm::execution_state::finished);
             CHECK((*current)[target].state().max_health == log.initial.max_health + increase);
             CHECK((*current)[target].state().health == log.initial.health + increase);

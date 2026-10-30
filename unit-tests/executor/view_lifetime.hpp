@@ -38,15 +38,13 @@ namespace givm_test::executor::view_lifetime
         const auto initialized = execution.start(library, table);
         auto branch = execution;
         auto branch_table = table;
-        REQUIRE(initialized.resume(library, table, givm_test::zero_random) == givm::execution_state::card_selection);
-        REQUIRE(branch.view_in<givm::execution_state::initialized>().resume(library, branch_table, givm_test::zero_random)
-            == givm::execution_state::card_selection);
-        REQUIRE(execution.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {})
-            == givm::execution_state::card_selection);
-        REQUIRE(execution.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {})
+        REQUIRE(givm_test::is_card_selection(initialized.resume(library, table, givm_test::zero_random)));
+        REQUIRE(givm_test::is_card_selection(branch.view_in<givm::execution_state::initialized>().resume(library, branch_table, givm_test::zero_random)));
+        REQUIRE(givm_test::is_card_selection(execution.view_in<givm::execution_state::card_selection0>().select(library, table, givm_test::zero_random, {})));
+        REQUIRE(execution.view_in<givm::execution_state::card_selection0>().select(library, table, givm_test::zero_random, {})
             == givm::execution_state::finished);
         CHECK(execution.view_in<givm::execution_state::finished>().result() == givm::game_result::both_loss);
-        CHECK(branch.view_in<givm::execution_state::card_selection>().player() == givm::player_id{ 0 });
+        CHECK(branch.view_in<givm::execution_state::card_selection0>().player() == givm::player_id{ 0 });
     }
 
 #ifndef NDEBUG
@@ -69,12 +67,12 @@ namespace givm_test::executor::view_lifetime
             CHECK(reason->actual == givm::execution_state::initialized);
             CHECK(std::string{ error.what() }.find("initialized") != std::string::npos);
         }
-        REQUIRE(initialized.resume(library, table, givm_test::zero_random) == givm::execution_state::card_selection);
-        const auto old = execution.view_in<givm::execution_state::card_selection>();
-        REQUIRE(old.select(library, table, givm_test::zero_random, {}) == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(initialized.resume(library, table, givm_test::zero_random)));
+        const auto old = execution.view_in<givm::execution_state::card_selection0>();
+        REQUIRE(givm_test::is_card_selection(old.select(library, table, givm_test::zero_random, {})));
         try
         {
-            (void)old.player();
+            (void)old.selected();
             FAIL("the prior selection view must expire even when the state is unchanged");
         }
         catch(const givm::execution_view_error& error)
@@ -92,9 +90,8 @@ namespace givm_test::executor::view_lifetime
         const auto [library, ids] = selection_library();
         givm::table table;
         givm::executor execution;
-        REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random)
-            == givm::execution_state::card_selection);
-        const auto input = execution.view_in<givm::execution_state::card_selection>();
+        REQUIRE(givm_test::is_card_selection(execution.start(library, table).resume(library, table, givm_test::zero_random)));
+        const auto input = execution.view_in<givm::execution_state::card_selection0>();
         const std::bitset<givm::selection_capacity> invalid{ 1 };
         try
         {
@@ -109,7 +106,7 @@ namespace givm_test::executor::view_lifetime
             CHECK(error_string(error) == error.what());
         }
         CHECK(input.player() == givm::player_id{ 0 });
-        REQUIRE(input.select(library, table, givm_test::zero_random, {}) == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(input.select(library, table, givm_test::zero_random, {})));
     }
 
     TEST_CASE("start copy assignment and moves invalidate previously acquired views", "[execution-view][lifecycle][debug]")
@@ -130,18 +127,15 @@ namespace givm_test::executor::view_lifetime
             const auto stale = target.start(library, table);
             target = source;
             REQUIRE_THROWS_AS(stale.resume(library, table, givm_test::zero_random), givm::execution_view_error);
-            REQUIRE(target.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)
-                == givm::execution_state::card_selection);
-            REQUIRE(source.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)
-                == givm::execution_state::card_selection);
+            REQUIRE(givm_test::is_card_selection(target.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)));
+            REQUIRE(givm_test::is_card_selection(source.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)));
         }
         SECTION("move construction")
         {
             const auto stale = source.view_in<givm::execution_state::initialized>();
             givm::executor moved{ std::move(source) };
             REQUIRE_THROWS_AS(stale.resume(library, table, givm_test::zero_random), givm::execution_view_error);
-            REQUIRE(moved.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)
-                == givm::execution_state::card_selection);
+            REQUIRE(givm_test::is_card_selection(moved.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)));
         }
         SECTION("move assignment")
         {
@@ -151,8 +145,7 @@ namespace givm_test::executor::view_lifetime
             target = std::move(source);
             REQUIRE_THROWS_AS(old_target.resume(library, table, givm_test::zero_random), givm::execution_view_error);
             REQUIRE_THROWS_AS(old_source.resume(library, table, givm_test::zero_random), givm::execution_view_error);
-            REQUIRE(target.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)
-                == givm::execution_state::card_selection);
+            REQUIRE(givm_test::is_card_selection(target.view_in<givm::execution_state::initialized>().resume(library, table, givm_test::zero_random)));
         }
     }
 #endif

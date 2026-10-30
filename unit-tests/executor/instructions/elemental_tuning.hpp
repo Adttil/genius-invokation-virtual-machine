@@ -194,8 +194,8 @@ TEST_CASE("elemental tuning shares card candidates and validates card attributes
     }, { .characters = { ids.get_id<givm::definition_category::character>(opponent.name()) } });
     givm_test::executor_driver execution;
     execution.start(library, table);
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     REQUIRE(action.card_count() == 2);
     CHECK(action.elemental_tuning_card_validate(table, 0));
     CHECK_FALSE(action.elemental_tuning_card_validate(table, 1));
@@ -239,8 +239,8 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
     }, { .characters = { ids.get_id<givm::definition_category::character>(opponent.name()) } });
     givm_test::executor_driver execution;
     execution.start(library, table);
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
-    const auto action = execution.view_in<givm::execution_state::action_selection>();
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
+    const auto action = execution.view_in<givm::execution_state::action_selection0>();
     const auto selected_card = action.card_id(0);
     if(quoted)
     {
@@ -251,17 +251,17 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
     execution.submitted(action.elemental_tuning(library, table, givm_test::zero_random, 0, givm::elemental_dice::cryo));
     if(nested)
     {
-        REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
+        REQUIRE(givm_test::is_card_selection(advance(execution, library, table)));
         CHECK(table[selected_card].is_valid());
         CHECK(log.modifications == 1);
         CHECK(log.completions == 0);
-        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
-        REQUIRE(advance(execution, library, table) == givm::execution_state::card_selection);
+        execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::zero_random, {}); }));
+        REQUIRE(givm_test::is_card_selection(advance(execution, library, table)));
         CHECK_FALSE(table[selected_card].is_valid());
         CHECK(log.completions == 1);
-        execution.submitted(execution.view_in<givm::execution_state::card_selection>().select(library, table, givm_test::zero_random, {}));
+        execution.submitted(execution.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view) -> decltype(auto) { return view.select(library, table, givm_test::zero_random, {}); }));
     }
-    REQUIRE(advance(execution, library, table) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(advance(execution, library, table)));
     CHECK(table.state().active_player == givm::player_id{ 0 });
     CHECK_FALSE(table[selected_card].is_valid());
     CHECK(table[selected_card].definition_id() == card_definition);
@@ -277,7 +277,7 @@ TEST_CASE("elemental tuning converts one die and resumes both broadcasts without
     CHECK(dice[givm::elemental_dice::cryo] == 0);
     CHECK(dice[givm::elemental_dice::pyro] == (empowered ? 1 : 2));
     CHECK(dice[givm::elemental_dice::omni] == (empowered ? 2 : 1));
-    const auto next = execution.view_in<givm::execution_state::action_selection>();
+    const auto next = execution.view_in<givm::execution_state::action_selection0>();
     REQUIRE(next.card_count() == 1);
     CHECK(table[next.card_id(0)].definition_id() == filler_definition);
 }

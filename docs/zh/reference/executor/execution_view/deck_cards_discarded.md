@@ -5,8 +5,8 @@
 定义于头文件 `<givm/runtime.hpp>`
 
 ```cpp
-template<>
-class execution_view<execution_state::deck_cards_discarded>;
+template<role Role>
+class execution_view<execution_state::deck_cards_discarded, Role>;
 ```
 
 一批牌堆顶的卡牌已经全部舍弃、尚未开始任何自身舍弃效果时的观察视图。仅在 `compile_mode::observed` 下报告；实际舍弃零张牌时不报告。

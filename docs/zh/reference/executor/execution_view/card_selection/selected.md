@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<card_selection>](../card_selection.md) / **selected**
 
-# givm::execution_view<execution_state::card_selection>::selected
+# givm::execution_view<execution_state::card_selection0>::selected
 
 定义于头文件 `<givm/runtime.hpp>`
 

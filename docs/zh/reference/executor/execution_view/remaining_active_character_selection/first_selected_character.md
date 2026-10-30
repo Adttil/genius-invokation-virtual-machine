@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<remaining_active_character_selection>](../remaining_active_character_selection.md) / **first_selected_character**
 
-# givm::execution_view<execution_state::remaining_active_character_selection>::first_selected_character
+# givm::execution_view<execution_state::remaining_active_character_selection0>::first_selected_character
 
 定义于头文件 `<givm/runtime.hpp>`
 

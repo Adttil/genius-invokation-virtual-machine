@@ -169,7 +169,7 @@ TEST_CASE("consumed prepared effect continues and preserves its selected speed",
         givm::test::initialized_character_source{ "SingleSettlementOpponent" });
     auto table = make_table(library, ids);
     givm::executor execution;
-    REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(execution.start(library, table).resume(library, table, givm_test::zero_random)));
     CHECK(log.indices == std::vector<std::uint32_t>{ 0, 7 });
     CHECK(log.energy == std::vector<std::uint32_t>{ 0, 4096 });
     CHECK(table.state().active_player == owner);
@@ -190,7 +190,7 @@ TEST_CASE("prepared combat effect keeps plunge eligibility gained by its charact
         { .characters = { ids.get_id<givm::definition_category::character>("SingleSettlementDriver"), ordinary } },
         { .characters = { ordinary } });
     givm::executor execution;
-    REQUIRE(execution.start(library, table).resume(library, table, givm_test::zero_random) == givm::execution_state::action_selection);
+    REQUIRE(givm_test::is_action_selection(execution.start(library, table).resume(library, table, givm_test::zero_random)));
     CHECK(log.indices == std::vector<std::uint32_t>{ 0, 7 });
     CHECK(log.energy == std::vector<std::uint32_t>{ 0, 4096 });
     CHECK(table[owner].state().active_character == givm::character_id{ owner, 1 });

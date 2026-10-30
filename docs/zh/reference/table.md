@@ -12,6 +12,10 @@
 
 |  |  |
 | --- | --- |
+| [`perspective_table_view`](table/perspective_table_view.md) | 按身份读取的牌桌 |
+| [`perspective_player_view`](table/perspective_player_view.md) | 静态归属的玩家读取视图 |
+| [`hidden_hand_card_view`](table/hidden_hand_card_view.md) | 身份隐藏的对手手牌 |
+| [`role`](enums/role.md) | 读取和输入身份 |
 | [`table`](table/table.md) | 一场游戏的牌桌 |
 
 ### 定义身份与牌组

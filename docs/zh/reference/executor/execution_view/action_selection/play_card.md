@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **play_card**
 
-# givm::execution_view<execution_state::action_selection>::play_card
+# givm::execution_view<execution_state::action_selection0>::play_card
 
 定义于头文件 `<givm/runtime.hpp>`
 

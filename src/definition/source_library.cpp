@@ -444,7 +444,8 @@ namespace givm
         }
     }
 
-    issued_id_map definition_source_library::make_issued_id_map(const selection_mask& selected) const
+    issued_id_map definition_source_library::make_issued_id_map(const selection_mask& selected,
+        std::span<const std::string_view> public_tag_names) const
     {
         std::vector<std::string_view> tags;
         [&]<size_t...I>(std::index_sequence<I...>)
@@ -456,7 +457,13 @@ namespace givm
         const auto unique_end = std::ranges::unique(tags).begin();
         tags.erase(unique_end, tags.end());
 
-        issued_id_map id_map{ tags };
+        std::vector<std::string_view> public_tags{ public_tag_names.begin(), public_tag_names.end() };
+        std::ranges::sort(public_tags);
+        public_tags.erase(std::ranges::unique(public_tags).begin(), public_tags.end());
+
+        issued_id_map id_map{ public_tags };
+        id_map.public_tag_count_ = public_tags.size();
+        for(const auto tag : tags) id_map.add_tag(tag);
         [&]<size_t...I>(std::index_sequence<I...>)
         {
             (add_selected_sources<I>(selected[I], id_map), ...);

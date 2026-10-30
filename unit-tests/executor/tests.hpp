@@ -1,3 +1,4 @@
+#include "roles.hpp"
 #include "broadcast.hpp"
 #include "action_quotes.hpp"
 #include "card_equipment_queries.hpp"

@@ -58,7 +58,7 @@ enum class start_dice_roll_phase_error {};
 
 ### 重投结果的预先分配
 
-双方首次投骰完成后，在首次返回 `execution_state::dice_selection` 前，先为玩家 0 取得 `ceil(C × R0 / 10)` 个值，再为玩家 1 取得 `ceil(C × R1 / 10)` 个值。这里 `ceil` 表示向上取整；乘积为零时不取值。即使玩家随后放弃重投，这些调用也已经发生。
+双方首次投骰完成后，在首次返回 `execution_state::dice_selection_both` 前，先为玩家 0 取得 `ceil(C × R0 / 10)` 个值，再为玩家 1 取得 `ceil(C × R1 / 10)` 个值。这里 `ceil` 表示向上取整；乘积为零时不取值。即使玩家随后放弃重投，这些调用也已经发生。
 
 每个值提供按顺序排列的十个骰子结果。第 `i` 个结果为 `floor(r / 2^(3 × i)) % 8`，其中 `i` 从 `0` 到 `9`，`floor` 表示向下取整；骰子种类与上表相同。因此低三位先使用，随后每三位一组，最高两位不用于骰子结果。例如 `r = 17` 的前三个结果依次为水、火、冰。
 
@@ -68,7 +68,7 @@ enum class start_dice_roll_phase_error {};
 
 ### 重投选择
 
-等待重投时，执行器返回 `execution_state::dice_selection`，通过相应的[现场视图](../../executor/execution_view/dice_selection.md)提交选择。选择以 [`dice_counts`](../../enums/dice_counts.md) 指定每种骰子要重投的数量，各类数量不得超过当前持有数量；可先使用视图的 `selection_validate` 独立检查。非空选择移除选中的骰子，再加入上述新结果，并消耗该方一次重投机会。所有数量为零的选择放弃该方全部剩余机会；不再使用的预分配结果弃用。
+等待重投时，双方仍有机会则返回 `execution_state::dice_selection_both`，只剩一方时返回 `dice_selection0` 或 `dice_selection1`，通过相应的[现场视图](../../executor/execution_view/dice_selection.md)提交选择。选择以 [`dice_counts`](../../enums/dice_counts.md) 指定每种骰子要重投的数量，各类数量不得超过当前持有数量；可先使用视图的 `selection_validate` 独立检查。非空选择移除选中的骰子，再加入上述新结果，并消耗该方一次重投机会。所有数量为零的选择放弃该方全部剩余机会；不再使用的预分配结果弃用。
 
 默认提示仍有重投机会的玩家 0，否则提示玩家 1；调用方可以指定任意仍有机会的玩家先提交，提交顺序不改变各方获配的随机结果序列。双方均无重投机会时，本命令完成，继续后续命令。本命令不广播回合开始；后续显式安排的 `start_round{}` 负责该通知。通知中取得的额外骰子不参与已经结束的重投，也不会被本轮投骰覆盖。
 
@@ -110,13 +110,12 @@ int main()
     // 该随机源使首次投骰全部为万能骰，双方各重投一颗。
     givm::dice_counts selected{};
     selected[givm::elemental_dice::omni] = 1;
-    for(int submission = 0; submission < 2; ++submission)
-    {
-        const auto view = execution.view_in<givm::execution_state::dice_selection>();
-        if(not view.selection_validate(table, selected))
-            return 1;
-        view.select(library, table, random, selected);
-    }
+    const auto first = execution.view_in<givm::execution_state::dice_selection_both>();
+    if(not first.selection_validate(table, selected)) return 1;
+    first.select(library, table, random, selected);
+    const auto second = execution.view_in<givm::execution_state::dice_selection1>();
+    if(not second.selection_validate(table, selected)) return 1;
+    second.select(library, table, random, selected);
     std::println("玩家 0 的骰子数量: {}", table[givm::player_id{ 0 }].state().dice.total());
     std::println("玩家 1 的骰子数量: {}", table[givm::player_id{ 1 }].state().dice.total());
 }

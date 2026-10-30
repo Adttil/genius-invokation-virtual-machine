@@ -171,7 +171,7 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
     {
         const auto state = executor.advance(library, table, random);
         if(state == givm::execution_state::finished) break;
-        if(state != givm::execution_state::card_selection) continue;
+        if(!givm_test::is_card_selection(state)) continue;
         ++pauses;
         REQUIRE(log.players.size() == 1);
         CHECK(table[givm::player_id{ 0 }].state().dice == log.expected[0]);
@@ -180,9 +180,11 @@ TEST_CASE("removing dice updates all types before notifying and resumes nested e
         auto copied_executor = executor;
         table = std::move(copied_table);
         executor = std::move(copied_executor);
-        const auto view = executor.view_in<givm::execution_state::card_selection>();
-        REQUIRE(view.selection_validate(table, {}));
-        executor.submitted(view.select(library, table, random, {}));
+        executor.with_view<givm::execution_state::card_selection0, givm::execution_state::card_selection1>([&](auto view)
+        {
+            REQUIRE(view.selection_validate(table, {}));
+            executor.submitted(view.select(library, table, random, {}));
+        });
     }
     CHECK(pauses == 1);
     CHECK(log.players == std::vector<givm::player_id>{ givm::player_id{ 0 }, givm::player_id{ 1 }, givm::player_id{ 1 } });

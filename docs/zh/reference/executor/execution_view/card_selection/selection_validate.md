@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<card_selection>](../card_selection.md) / **selection_validate**
 
-# givm::execution_view<execution_state::card_selection>::selection_validate
+# givm::execution_view<execution_state::card_selection0>::selection_validate
 
 定义于头文件 `<givm/runtime.hpp>`
 

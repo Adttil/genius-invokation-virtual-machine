@@ -1,6 +1,6 @@
 [givm](../../../../reference.md) / [执行](../../../executor.md) / [execution_view<action_selection>](../action_selection.md) / **technique_payment_validate**
 
-# givm::execution_view<execution_state::action_selection>::technique_payment_validate
+# givm::execution_view<execution_state::action_selection0>::technique_payment_validate
 
 定义于头文件 `<givm/runtime.hpp>`
 
