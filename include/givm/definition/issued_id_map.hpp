@@ -13,6 +13,7 @@
 
 #include "../table.hpp"
 #include "definition_categories.hpp"
+#include "tag_mask.hpp"
 
 namespace givm
 {
@@ -58,7 +59,7 @@ namespace givm
             auto& mask = tags_for_entity.emplace_back(tag_to_id_.size());
             for(auto&& tag : tags)
             {
-                mask[get_tag_id(std::string_view{ tag }).value()] = true;
+                mask.set(get_tag_id(std::string_view{ tag }));
             }
             name_to_ids_[index].emplace(name, value);
             return definition_id<TDefinition>{ value };
@@ -109,7 +110,6 @@ namespace givm
 
     private:
         using name_map_type = std::unordered_map<std::string_view, size_t>;
-        using tag_mask = std::vector<bool>;
         static constexpr std::string_view whitespace = " \t\n\r\f\v";
         static constexpr std::string_view negation_or_whitespace = "! \t\n\r\f\v";
 
@@ -120,31 +120,6 @@ namespace givm
             {
                 tag_names_.push_back(tag);
             }
-        }
-
-        static bool match_tags(
-            const tag_mask& tags,
-            std::span<const tag_id> required_tags,
-            std::span<const tag_id> excluded_tags
-        )
-        {
-            for(tag_id tag : required_tags)
-            {
-                if(not tags[tag.value()])
-                {
-                    return false;
-                }
-            }
-
-            for(tag_id tag : excluded_tags)
-            {
-                if(tags[tag.value()])
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         template<definition_category TDefinition>
@@ -158,7 +133,7 @@ namespace givm
             std::vector<definition_id<TDefinition>> result;
             for(size_t value = 0; value < tags.size(); ++value)
             {
-                if(match_tags(tags[value], required_tags, excluded_tags))
+                if(tags[value].matches(required_tags, excluded_tags))
                 {
                     result.push_back(definition_id<TDefinition>{ value });
                 }

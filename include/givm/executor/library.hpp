@@ -212,7 +212,7 @@ namespace givm
         template<definition_category Category>
         tag_mask_view public_tags(definition_id<Category> id) const noexcept
         {
-            return bucket_for<Category>().tags[id.value()].first(public_tag_count_);
+            return bucket_for<Category>().tags[id.value()].take(public_tag_count_);
         }
 
         definition_id<definition_category::reaction> default_reaction_id(elemental_reaction slot) const noexcept

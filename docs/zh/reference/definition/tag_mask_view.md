@@ -15,3 +15,5 @@
 | [`begin`](tag_mask_view/begin.md)、[`end`](tag_mask_view/end.md) | 按ID顺序遍历只读标签位 |
 
 超出可见前缀的标签在查询中视为不存在。视图不拥有位集，原位集必须存活且未被替换。
+
+通过 [`tag_mask::take`](tag_mask/take.md) 取得前缀；迭代器只读且支持随机访问，不依赖视图对象本身的生命周期。

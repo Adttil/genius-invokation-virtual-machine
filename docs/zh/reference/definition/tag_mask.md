@@ -15,7 +15,7 @@ class tag_mask;
 |  |  |
 | --- | --- |
 | [(构造函数)](tag_mask/constructor.md) | 构造一个空标签集合 |
-| [`first`](tag_mask/first.md) | 借用标签位集前缀 |
+| [`take`](tag_mask/take.md) | 借用标签位集前缀 |
 | [`set`](tag_mask/set.md) | 设置或清除一个标签 |
 | [`has`](tag_mask/has.md) | 检查一个标签 |
 | [`has_all`](tag_mask/has_all.md) | 检查是否包含所有标签 |
@@ -25,6 +25,8 @@ class tag_mask;
 ## 注意
 
 构造时指定可用标签数量；之后使用的标签 ID 必须来自对应映射，并在这个数量范围内。
+
+内部使用 [`small_bitset<192>`](../utils/small_bitset.md)：最多 192 个标签位时使用内联存储，超过时分配整个位集。编译准备阶段的 ID 映射与运行期定义库共用 `tag_mask`。
 
 ## 示例
 

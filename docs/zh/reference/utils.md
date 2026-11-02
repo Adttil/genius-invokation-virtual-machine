@@ -14,6 +14,8 @@
 | [`substack_t`](utils/substack_t.md) | 帧尾子栈的类型标记 |
 | [子栈视图](utils/substack_view.md) | 访问帧中另一个栈的内容 |
 | [`type_list`](utils/type_list.md) | 编译期的有序类型序列 |
+| [`small_bitset`](utils/small_bitset.md) | 内联保存小集合、超出容量时分配存储的位集 |
+| [`bitset_view`](utils/bitset_view.md) | 位集或其前缀的只读借用 |
 
 ## 类型别名
 
